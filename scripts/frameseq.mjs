@@ -6,7 +6,7 @@ import { basename, dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
-import { build, createServer, preview } from "vite";
+import { build as viteBuild, createServer, preview } from "vite";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -16,11 +16,13 @@ function help() {
 
 Usage:
   frameseq dev [file]                 Preview a deck with hot reload
+  frameseq build [file] [--output dir] Build a static HTML presentation
   frameseq pdf [file] [--output path] Export a deck to PDF
   frameseq new [file]                 Create a starter .slides.ts file
 
 Examples:
   frameseq dev talk.slides.ts
+  frameseq build talk.slides.ts
   frameseq pdf talk.slides.ts
   frameseq new quarterly.slides.ts`);
 }
@@ -87,12 +89,21 @@ async function startDevelopmentServer(entry) {
   process.once("SIGTERM", close);
 }
 
+async function buildHtml(entry, requestedOutput) {
+  const buildDirectory = resolve(requestedOutput ?? resolve(process.cwd(), "dist"));
+  process.env.FRAMESEQ_ENTRY = entry;
+  process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
+
+  await viteBuild({ configFile, root: packageRoot });
+  console.log(`HTML presentation built in ${buildDirectory}`);
+}
+
 async function exportPdf(entry, requestedOutput) {
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-build");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
 
-  await build({ configFile, root: packageRoot });
+  await viteBuild({ configFile, root: packageRoot });
 
   const server = await preview({
     configFile,
@@ -153,10 +164,11 @@ try {
     help();
   } else if (command === "new") {
     await createDeckFile(resolve(process.cwd(), file));
-  } else if (command === "dev" || command === "pdf") {
+  } else if (command === "dev" || command === "build" || command === "pdf") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") await startDevelopmentServer(entry);
+    if (command === "build") await buildHtml(entry, option("--output"));
     if (command === "pdf") await exportPdf(entry, option("--output"));
   } else {
     help();

@@ -1,6 +1,8 @@
 node_modules/
 dist/
+lib/
 output/
 tmp/
+*.tgz
 *.log
 .DS_Store

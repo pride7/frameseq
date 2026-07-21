@@ -2,6 +2,27 @@
 
 FrameSeq is an experimental TypeScript framework for building presentations like app interfaces.
 
+## Quick start
+
+Create a complete presentation project:
+
+```bash
+npm create frameseq@latest my-talk
+cd my-talk
+npm install
+npm run dev
+```
+
+The generated project includes a `slides.ts` document, editor type support, HTML builds, and PDF export commands.
+
+To add FrameSeq to an existing TypeScript project instead:
+
+```bash
+npm install --save-dev frameseq
+npx frameseq new my-talk.slides.ts
+npx frameseq dev my-talk.slides.ts
+```
+
 ## Create one file
 
 After installing or linking the package, create a deck with:
@@ -102,6 +123,14 @@ The browser opens automatically. Changes update immediately. Use Arrow keys, Pag
 
 For the included `slides.ts` example, run `npm run dev`.
 
+## Build HTML
+
+```bash
+frameseq build my-talk.slides.ts
+```
+
+The static presentation is written to `dist/`. Use `--output path/to/directory` to choose another directory. The result can be hosted on any static web server.
+
 ## Export PDF
 
 ```bash
@@ -136,4 +165,14 @@ export default customDeck;
 
 The low-level layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable style modifiers.
 
-The explicit import/export form remains supported for ordinary TypeScript modules. Zero-boilerplate injection applies to the entry file passed to `frameseq dev` or `frameseq pdf`.
+The explicit import/export form remains supported for ordinary TypeScript modules. Zero-boilerplate injection applies to the entry file passed to `frameseq dev`, `frameseq build`, or `frameseq pdf`.
+
+## Maintainer release check
+
+Before publishing, run:
+
+```bash
+npm run release:check
+```
+
+This builds the library and demo, runs the browser smoke test, creates the npm tarballs, installs them in a clean project, checks the generated TypeScript document, and builds static HTML through the installed CLI.
