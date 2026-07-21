@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -13,6 +13,16 @@ const packDirectory = resolve(testRoot, "packs");
 const harnessDirectory = resolve(testRoot, "harness");
 const appDirectory = resolve(harnessDirectory, "app");
 const npmCli = process.env.npm_execpath;
+
+const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+const creatorJson = JSON.parse(await readFile(
+  resolve(packageRoot, "packages", "create-frameseq", "package.json"),
+  "utf8",
+));
+
+function tarballName(name, version) {
+  return `${name.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`;
+}
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, {
@@ -48,8 +58,14 @@ runNpm(
   packageRoot,
 );
 
-const frameSeqTarball = resolve(packDirectory, "pride7-frameseq-0.1.0.tgz");
-const creatorTarball = resolve(packDirectory, "create-frameseq-0.1.0.tgz");
+const frameSeqTarball = resolve(
+  packDirectory,
+  tarballName(packageJson.name, packageJson.version),
+);
+const creatorTarball = resolve(
+  packDirectory,
+  tarballName(creatorJson.name, creatorJson.version),
+);
 if (!existsSync(frameSeqTarball) || !existsSync(creatorTarball)) {
   throw new Error("Expected npm package tarballs were not created");
 }

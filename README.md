@@ -23,6 +23,19 @@ npx frameseq new my-talk.slides.ts
 npx frameseq dev my-talk.slides.ts
 ```
 
+## Documentation
+
+- [Getting started](docs/getting-started.md)
+- [Document model](docs/document-model.md)
+- [Content](docs/content.md)
+- [Layout](docs/layout.md)
+- [Styling](docs/styling.md)
+- [API reference](docs/api-reference.md)
+- [CLI reference](docs/cli.md)
+- [Advanced composition](docs/advanced.md)
+
+Start with the document model to understand how `presentation()`, `slide()`, and region selection work in a linear slide file.
+
 ## Create one file
 
 After installing or linking the package, create a deck with:
