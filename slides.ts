@@ -1,6 +1,8 @@
 presentation({ title: "FrameSeq", theme: "midnight" });
 
-slide({ name: "Cover" }).cover();
+slide({ name: "Cover" })
+  .cover()
+  .notes("Welcome the audience and introduce FrameSeq as a UI-style presentation framework.");
 text("A UI framework for presentations").eyebrow();
 text("Build slides like building apps.").hero();
 text("ArkUI-style TypeScript → HTML → PDF").subtitle();
@@ -8,7 +10,9 @@ text("One file. Useful defaults. Full control when needed.").author();
 text("Tailwind utilities, without configuration.")
   .style("tailwind-smoke text-[31px] font-[750] tracking-[2px] text-[#f97316]");
 
-slide("Write one file").split("38:62");
+slide("Write one file")
+  .split("38:62")
+  .notes("Emphasize that source order replaces nested callbacks and layout boilerplate.");
 
 text("Use semantic components for common slides. Layout is expressed with named regions instead of nested UI trees.");
 bullets(
@@ -27,7 +31,8 @@ right()
 text("Compiler").lead()
 bullets("DSL", "HTML", "PDF")`);
 
-slide("A fixed canvas with time");
+slide("A fixed canvas with time")
+  .notes("Reveal the three points one at a time. Pause after each step.");
 text("Presentation structure stays shallow. Progressive reveals are expressed as content, not an animation timeline.");
 steps(
   "Layout like an app",
@@ -61,7 +66,9 @@ typstFile("./tests/typst-fragment.typ")
   .className("typst-file-smoke")
   .width(460);
 
-slide("Shapes and connectors").canvas();
+slide("Shapes and connectors")
+  .canvas()
+  .notes("Explain that nodes are HTML while connectors and arrowheads remain vector SVG.");
 
 line({ x1: 320, y1: 200, x2: 460, y2: 200 })
   .className("shape-line-smoke")

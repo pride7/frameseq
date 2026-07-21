@@ -30,6 +30,8 @@ frameseq dev talk.slides.ts
 
 The browser opens automatically and the presentation updates after source changes.
 
+Press `P` in the audience page to open presenter view, or add `?presenter=1` to the preview URL. Both windows stay synchronized while they share the same origin and browser device.
+
 ## Build static HTML
 
 ```bash

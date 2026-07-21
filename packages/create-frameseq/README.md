@@ -8,3 +8,5 @@ cd my-talk
 npm install
 npm run dev
 ```
+
+Press `P` in the presentation to open the synchronized presenter view.

@@ -87,6 +87,20 @@ text("My Talk").hero();
 - `name` identifies the page but is not rendered.
 - `title` creates the standard visible page heading.
 
+## Speaker notes
+
+Attach private notes to a slide with `notes()`:
+
+```ts
+slide("Architecture")
+  .notes(`
+    Explain the three compiler stages.
+    Pause before revealing the result.
+  `);
+```
+
+Notes belong to the slide as metadata. They are available in [presenter view](presenter.md) but are not rendered into the audience page or PDF.
+
 ## Create a cover
 
 `cover()` changes the current slide to the cover layout. It does not invent cover content.

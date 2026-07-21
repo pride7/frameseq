@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.5.0";
+const FRAMESEQ_VERSION = "^0.8.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -70,7 +70,8 @@ text("Build presentations like interfaces").hero();
 text("TypeScript → HTML → PDF").subtitle();
 text("Made with FrameSeq").author();
 
-slide("First idea");
+slide("First idea")
+  .notes("Introduce the main idea and pause before the supporting points.");
 text("Explain the idea in one clear sentence.")
   .style("text-[30px] font-semibold tracking-tight text-[#0ea5e9]");
 bullets(

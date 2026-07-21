@@ -412,6 +412,27 @@ frameseq pdf my-talk.slides.ts
 
 The static HTML can be hosted on any static web server. Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
+## Presenter view
+
+Attach private notes to any slide:
+
+```ts
+slide("Architecture")
+  .notes("Explain why FrameSeq owns structure while Typst owns complex local layout.");
+```
+
+While viewing the presentation, press `P` or use the `P` button to open presenter view in a second window. It shows the current slide, next slide, speaker notes, timer, page selector, navigation controls, and a synchronized virtual laser pointer. Press `Ctrl+L` in presenter view to toggle the laser. The audience and presenter windows stay synchronized in both directions without a server.
+
+You can also append `?presenter=1` to the audience page's current URL. For example, if the audience page is running on port `5174`:
+
+```text
+http://localhost:5174/?presenter=1
+```
+
+Use the port printed by `npm run dev`; Vite does not always use `5173` when that port is occupied.
+
+Synchronization uses `BroadcastChannel`, so both windows must use the same browser origin and device. See [Presenter view](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/presenter.md).
+
 ## Advanced object API
 
 The linear authoring layer is recommended for most slides. The low-level UI layer is available for special compositions:
@@ -445,6 +466,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
 - [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
 - [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md)
+- [Presenter view](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/presenter.md)
 - [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md)
 - [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
 - [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)

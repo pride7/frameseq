@@ -28,7 +28,8 @@ text("Build presentations like interfaces").hero();
 text("TypeScript → HTML → PDF").subtitle();
 text("Your name").author();
 
-slide("First idea");
+slide("First idea")
+  .notes("Introduce the main idea and pause before the three supporting points.");
 text("Explain one idea per page.")
   .style("text-3xl font-semibold tracking-tight text-blue-600");
 bullets(
@@ -55,6 +56,8 @@ npm run dev
 ```
 
 The browser opens automatically and updates when the source file changes. Use Arrow keys, Page Up, Page Down, or Space to navigate. Incremental content created with `steps()` or `showAt()` is revealed before navigation continues to the next page.
+
+Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output.
 
 ## Build static HTML
 

@@ -54,6 +54,7 @@ export interface DeckOptions {
 export interface SlideOptions {
   title?: string;
   name?: string;
+  notes?: string;
 }
 
 export interface GridPosition {
@@ -314,7 +315,12 @@ export class LineBuilder extends ElementBuilder {
   }
 }
 
-export class SlideBuilder extends ContainerBuilder {}
+export class SlideBuilder extends ContainerBuilder {
+  notes(content: string): this {
+    this.node.props.notes = content;
+    return this;
+  }
+}
 
 export class DeckDefinition extends ElementBuilder {
   get canvasWidth(): number {

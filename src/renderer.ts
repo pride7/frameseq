@@ -300,6 +300,145 @@ function addThemeChrome(
   canvas.append(footer);
 }
 
+function slideLabel(slide: FrameSeqNode, index: number): string {
+  const label = typeof slide.props.title === "string"
+    ? slide.props.title
+    : typeof slide.props.name === "string"
+      ? slide.props.name
+      : undefined;
+  return label ?? `Slide ${index + 1}`;
+}
+
+function renderSlideCanvas(
+  slide: FrameSeqNode,
+  index: number,
+  deck: DeckDefinition,
+): HTMLElement {
+  const canvas = renderNode(slide);
+  addThemeChrome(canvas, slide, index, deck);
+  canvas.setAttribute("role", "group");
+  canvas.setAttribute("aria-roledescription", "slide");
+  canvas.setAttribute(
+    "aria-label",
+    `${index + 1} of ${deck.slides.length}: ${slideLabel(slide, index)}`,
+  );
+  return canvas;
+}
+
+function scaleCanvas(canvas: HTMLElement, frame: HTMLElement, deck: DeckDefinition): void {
+  const frameWidth = frame.clientWidth;
+  const frameHeight = frame.clientHeight;
+  const scale = Math.min(frameWidth / deck.canvasWidth, frameHeight / deck.canvasHeight);
+  canvas.style.left = `${(frameWidth - deck.canvasWidth) / 2}px`;
+  canvas.style.top = `${(frameHeight - deck.canvasHeight) / 2}px`;
+  canvas.style.transform = `scale(${scale})`;
+}
+
+interface PresenterElements {
+  shell: HTMLElement;
+  currentHost: HTMLElement;
+  nextFrame: HTMLElement;
+  nextLabel: HTMLElement;
+  notes: HTMLElement;
+  currentLabel: HTMLElement;
+  counter: HTMLElement;
+  pageSelect: HTMLSelectElement;
+  timer: HTMLElement;
+  timerToggle: HTMLButtonElement;
+  laserToggle: HTMLButtonElement;
+  controls: HTMLElement;
+}
+
+function createPresenterView(
+  target: HTMLElement,
+  root: HTMLElement,
+  deck: DeckDefinition,
+): PresenterElements {
+  const shell = document.createElement("main");
+  shell.className = "frameseq-presenter";
+  shell.innerHTML = `
+    <header class="frameseq-presenter-header">
+      <div>
+        <div class="frameseq-presenter-kicker">Presenter view</div>
+        <div class="frameseq-presenter-title"></div>
+      </div>
+      <div class="frameseq-presenter-timer-group">
+        <button type="button" data-action="laser-toggle" aria-pressed="false" title="Toggle laser pointer (Ctrl+L)">Laser: Off</button>
+        <span class="frameseq-presenter-timer" aria-live="off">00:00</span>
+        <button type="button" data-action="timer-toggle">Pause</button>
+        <button type="button" data-action="timer-reset">Reset</button>
+      </div>
+    </header>
+    <section class="frameseq-presenter-current" aria-label="Current slide"></section>
+    <aside class="frameseq-presenter-side">
+      <section class="frameseq-presenter-next">
+        <div class="frameseq-presenter-section-heading">
+          <span>Next</span>
+          <span class="frameseq-presenter-next-label"></span>
+        </div>
+        <div class="frameseq-presenter-next-frame"></div>
+      </section>
+      <section class="frameseq-presenter-notes-panel">
+        <div class="frameseq-presenter-section-heading">Speaker notes</div>
+        <div class="frameseq-presenter-notes"></div>
+      </section>
+    </aside>
+    <nav class="frameseq-presenter-controls" aria-label="Presenter controls">
+      <button type="button" data-action="previous">← Previous</button>
+      <span class="frameseq-counter"></span>
+      <button type="button" data-action="next">Next →</button>
+      <label>
+        <span>Go to</span>
+        <select class="frameseq-presenter-page-select" aria-label="Go to slide"></select>
+      </label>
+      <button type="button" data-action="audience">Open audience view</button>
+    </nav>
+  `;
+
+  const required = <T extends Element>(selector: string): T => {
+    const element = shell.querySelector<T>(selector);
+    if (!element) throw new Error(`Presenter view is missing ${selector}`);
+    return element;
+  };
+
+  required<HTMLElement>(".frameseq-presenter-title").textContent = deck.title;
+  const currentHost = required<HTMLElement>(".frameseq-presenter-current");
+  currentHost.append(root);
+  const pageSelect = required<HTMLSelectElement>(".frameseq-presenter-page-select");
+  deck.slides.forEach((slide, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = `${index + 1}. ${slideLabel(slide, index)}`;
+    pageSelect.append(option);
+  });
+  target.append(shell);
+
+  return {
+    shell,
+    currentHost,
+    nextFrame: required<HTMLElement>(".frameseq-presenter-next-frame"),
+    nextLabel: required<HTMLElement>(".frameseq-presenter-next-label"),
+    notes: required<HTMLElement>(".frameseq-presenter-notes"),
+    currentLabel: required<HTMLElement>(".frameseq-presenter-title"),
+    counter: required<HTMLElement>(".frameseq-counter"),
+    pageSelect,
+    timer: required<HTMLElement>(".frameseq-presenter-timer"),
+    timerToggle: required<HTMLButtonElement>("[data-action='timer-toggle']"),
+    laserToggle: required<HTMLButtonElement>("[data-action='laser-toggle']"),
+    controls: required<HTMLElement>(".frameseq-presenter-controls"),
+  };
+}
+
+function formatDuration(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 const presentationFontVariables = [
   "--frameseq-body-font-size",
   "--frameseq-body-font-weight",
@@ -354,8 +493,11 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.title = deck.title;
   target.replaceChildren();
 
-  const printMode = new URLSearchParams(location.search).has("print");
+  const searchParams = new URLSearchParams(location.search);
+  const printMode = searchParams.has("print");
+  const presenterMode = !printMode && searchParams.has("presenter");
   document.documentElement.classList.toggle("frameseq-print", printMode);
+  document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
   document.documentElement.style.setProperty("--slide-width", `${deck.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${deck.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
@@ -382,27 +524,20 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     frame.className = "frameseq-slide-frame";
     frame.dataset.index = String(index);
 
-    const canvas = renderNode(slide);
-    addThemeChrome(canvas, slide, index, deck);
-    canvas.setAttribute("role", "group");
-    canvas.setAttribute("aria-roledescription", "slide");
-    const slideName = typeof slide.props.title === "string"
-      ? slide.props.title
-      : typeof slide.props.name === "string"
-        ? slide.props.name
-        : undefined;
-    canvas.setAttribute(
-      "aria-label",
-      `${index + 1} of ${deck.slides.length}${slideName ? `: ${slideName}` : ""}`,
-    );
+    const canvas = renderSlideCanvas(slide, index, deck);
     frame.append(canvas);
     root.append(frame);
-    return { frame, canvas, maxStep: maxStep(slide) };
+    return {
+      frame,
+      canvas,
+      maxStep: maxStep(slide),
+      node: slide,
+      label: slideLabel(slide, index),
+    };
   });
 
-  target.append(root);
-
   if (printMode) {
+    target.append(root);
     for (const { frame, canvas } of slides) {
       frame.classList.add("is-active");
       canvas.style.transform = "none";
@@ -414,30 +549,137 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     return;
   }
 
-  const controls = document.createElement("nav");
-  controls.className = "frameseq-controls";
-  controls.setAttribute("aria-label", "Slide navigation");
-  controls.innerHTML = `
-    <button type="button" data-action="previous" aria-label="Previous slide">←</button>
-    <span class="frameseq-counter"></span>
-    <button type="button" data-action="next" aria-label="Next slide">→</button>
-  `;
-  target.append(controls);
+  const laserPointers = slides.map(({ canvas }) => {
+    const pointer = document.createElement("span");
+    pointer.className = "frameseq-laser-pointer";
+    pointer.setAttribute("aria-hidden", "true");
+    canvas.append(pointer);
+    return pointer;
+  });
+
+  const presenter = presenterMode
+    ? createPresenterView(target, root, deck)
+    : undefined;
+  const controls = presenter?.controls ?? document.createElement("nav");
+  if (!presenter) {
+    target.append(root);
+    controls.className = "frameseq-controls";
+    controls.setAttribute("aria-label", "Slide navigation");
+    controls.innerHTML = `
+      <button type="button" data-action="previous" aria-label="Previous slide">←</button>
+      <span class="frameseq-counter"></span>
+      <button type="button" data-action="next" aria-label="Next slide">→</button>
+      <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
+    `;
+    target.append(controls);
+  }
 
   let currentSlide = 0;
   let currentStep = 0;
+  let nextCanvas: HTMLElement | undefined;
+  let pointerState = {
+    slide: 0,
+    x: 0.5,
+    y: 0.5,
+    visible: false,
+  };
+
+  function updateNextScale(): void {
+    if (presenter && nextCanvas) {
+      scaleCanvas(nextCanvas, presenter.nextFrame, deck);
+    }
+  }
 
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
-    const frameWidth = frame.clientWidth;
-    const frameHeight = frame.clientHeight;
-    const scale = Math.min(frameWidth / deck.canvasWidth, frameHeight / deck.canvasHeight);
-    canvas.style.left = `${(frameWidth - deck.canvasWidth) / 2}px`;
-    canvas.style.top = `${(frameHeight - deck.canvasHeight) / 2}px`;
-    canvas.style.transform = `scale(${scale})`;
+    scaleCanvas(canvas, frame, deck);
   }
 
-  function update(): void {
+  function updatePresenter(): void {
+    if (!presenter) return;
+
+    const current = slides[currentSlide];
+    const notes = current.node.props.notes;
+    const noteText = typeof notes === "string" ? notes.trim() : "";
+    presenter.currentLabel.textContent = `${currentSlide + 1}. ${current.label}`;
+    presenter.notes.textContent = noteText || "No speaker notes for this slide.";
+    presenter.notes.classList.toggle("is-empty", !noteText);
+    presenter.pageSelect.value = String(currentSlide);
+
+    presenter.nextFrame.replaceChildren();
+    nextCanvas = undefined;
+    const nextIndex = currentSlide + 1;
+    if (nextIndex >= slides.length) {
+      presenter.nextLabel.textContent = "End of presentation";
+      presenter.nextFrame.classList.add("is-empty");
+      presenter.nextFrame.textContent = "End";
+      return;
+    }
+
+    presenter.nextFrame.classList.remove("is-empty");
+    presenter.nextLabel.textContent = `${nextIndex + 1}. ${slides[nextIndex].label}`;
+    nextCanvas = renderSlideCanvas(slides[nextIndex].node, nextIndex, deck);
+    nextCanvas.querySelectorAll<HTMLElement>(".frameseq-step").forEach((element) => {
+      element.classList.toggle("is-visible", Number(element.dataset.step ?? 0) <= 0);
+    });
+    presenter.nextFrame.append(nextCanvas);
+    requestAnimationFrame(updateNextScale);
+  }
+
+  const syncChannel = typeof BroadcastChannel === "function"
+    ? new BroadcastChannel(`frameseq-navigation:${location.pathname}`)
+    : undefined;
+
+  function renderLaserPointer(): void {
+    laserPointers.forEach((pointer, index) => {
+      const visible = pointerState.visible
+        && pointerState.slide === index
+        && currentSlide === index;
+      pointer.classList.toggle("is-visible", visible);
+      if (!visible) return;
+      pointer.style.left = `${pointerState.x * 100}%`;
+      pointer.style.top = `${pointerState.y * 100}%`;
+    });
+  }
+
+  function broadcastPointer(): void {
+    syncChannel?.postMessage({
+      type: "pointer",
+      ...pointerState,
+    });
+  }
+
+  function setPointer(
+    state: { slide: number; x: number; y: number; visible: boolean },
+    shouldBroadcast = true,
+  ): void {
+    pointerState = {
+      slide: Math.min(Math.max(Math.trunc(state.slide), 0), slides.length - 1),
+      x: Math.min(Math.max(state.x, 0), 1),
+      y: Math.min(Math.max(state.y, 0), 1),
+      visible: state.visible,
+    };
+    renderLaserPointer();
+    if (shouldBroadcast) broadcastPointer();
+  }
+
+  function hidePointer(shouldBroadcast = true): void {
+    if (!pointerState.visible) return;
+    pointerState = { ...pointerState, visible: false };
+    renderLaserPointer();
+    if (shouldBroadcast) broadcastPointer();
+  }
+
+  function broadcastNavigation(): void {
+    syncChannel?.postMessage({
+      type: "navigation",
+      slide: currentSlide,
+      step: currentStep,
+    });
+  }
+
+  function update(shouldBroadcast = true): void {
+    hidePointer(Boolean(presenter) && shouldBroadcast);
     slides.forEach(({ frame, canvas }, index) => {
       const active = index === currentSlide;
       frame.classList.toggle("is-active", active);
@@ -448,7 +690,8 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       });
     });
 
-    const counter = controls.querySelector<HTMLElement>(".frameseq-counter");
+    const counter = presenter?.counter
+      ?? controls.querySelector<HTMLElement>(".frameseq-counter");
     if (counter) {
       const stepSuffix = slides[currentSlide].maxStep > 0
         ? ` · ${currentStep}/${slides[currentSlide].maxStep}`
@@ -456,6 +699,8 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       counter.textContent = `${currentSlide + 1}/${slides.length}${stepSuffix}`;
     }
     history.replaceState(null, "", `#${currentSlide + 1}`);
+    updatePresenter();
+    if (shouldBroadcast) broadcastNavigation();
     requestAnimationFrame(updateScale);
   }
 
@@ -479,13 +724,163 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     update();
   }
 
+  function goTo(index: number): void {
+    currentSlide = Math.min(Math.max(index, 0), slides.length - 1);
+    currentStep = 0;
+    update();
+  }
+
+  function openMode(mode: "audience" | "presenter"): void {
+    const url = new URL(location.href);
+    url.searchParams.delete("print");
+    if (mode === "presenter") {
+      url.searchParams.set("presenter", "1");
+    } else {
+      url.searchParams.delete("presenter");
+    }
+    url.hash = String(currentSlide + 1);
+    window.open(url.href, `frameseq-${mode}`);
+  }
+
   controls.addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
     if (button?.dataset.action === "next") next();
     if (button?.dataset.action === "previous") previous();
+    if (button?.dataset.action === "presenter") openMode("presenter");
+    if (button?.dataset.action === "audience") openMode("audience");
+  });
+
+  presenter?.pageSelect.addEventListener("change", () => {
+    goTo(Number(presenter.pageSelect.value));
+  });
+
+  if (presenter) {
+    let timerElapsed = 0;
+    let timerStarted = performance.now();
+    let timerRunning = true;
+    let laserEnabled = false;
+    let pointerFrame = 0;
+    let pendingPointer: typeof pointerState | undefined;
+
+    const updateTimer = () => {
+      const elapsed = timerElapsed + (timerRunning ? performance.now() - timerStarted : 0);
+      presenter.timer.textContent = formatDuration(elapsed);
+      presenter.timerToggle.textContent = timerRunning ? "Pause" : "Resume";
+    };
+
+    const flushPointer = () => {
+      pointerFrame = 0;
+      if (!pendingPointer) return;
+      const nextPointer = pendingPointer;
+      pendingPointer = undefined;
+      setPointer(nextPointer);
+    };
+
+    const queuePointer = (state: typeof pointerState) => {
+      pendingPointer = state;
+      if (!pointerFrame) pointerFrame = requestAnimationFrame(flushPointer);
+    };
+
+    const setLaserEnabled = (enabled: boolean) => {
+      laserEnabled = enabled;
+      presenter.laserToggle.textContent = enabled ? "Laser: On" : "Laser: Off";
+      presenter.laserToggle.setAttribute("aria-pressed", String(enabled));
+      presenter.currentHost.classList.toggle("is-laser-active", enabled);
+      if (!enabled) queuePointer({ ...pointerState, visible: false });
+    };
+
+    const toggleLaser = () => setLaserEnabled(!laserEnabled);
+
+    presenter.currentHost.addEventListener("pointermove", (event) => {
+      if (!laserEnabled) return;
+      const canvas = slides[currentSlide].canvas;
+      const bounds = canvas.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width;
+      const y = (event.clientY - bounds.top) / bounds.height;
+      const visible = x >= 0 && x <= 1 && y >= 0 && y <= 1;
+      queuePointer({ slide: currentSlide, x, y, visible });
+    });
+
+    presenter.currentHost.addEventListener("pointerleave", () => {
+      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
+    });
+
+    presenter.currentHost.addEventListener("pointerup", (event) => {
+      if (laserEnabled && event.pointerType === "touch") {
+        queuePointer({ ...pointerState, visible: false });
+      }
+    });
+
+    presenter.currentHost.addEventListener("pointercancel", () => {
+      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
+    });
+
+    presenter.shell.addEventListener("click", (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
+      if (button?.dataset.action === "laser-toggle") toggleLaser();
+      if (button?.dataset.action === "timer-toggle") {
+        if (timerRunning) {
+          timerElapsed += performance.now() - timerStarted;
+        } else {
+          timerStarted = performance.now();
+        }
+        timerRunning = !timerRunning;
+        updateTimer();
+      }
+      if (button?.dataset.action === "timer-reset") {
+        timerElapsed = 0;
+        timerStarted = performance.now();
+        timerRunning = true;
+        updateTimer();
+      }
+    });
+    updateTimer();
+    window.setInterval(updateTimer, 250);
+  }
+
+  syncChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
+    const message = event.data;
+    if (!message || typeof message !== "object") return;
+    const data = message as {
+      type?: unknown;
+      slide?: unknown;
+      step?: unknown;
+      x?: unknown;
+      y?: unknown;
+      visible?: unknown;
+    };
+    if (data.type === "request-state") {
+      broadcastNavigation();
+      if (presenter) broadcastPointer();
+      return;
+    }
+    if (data.type === "pointer"
+      && typeof data.slide === "number"
+      && typeof data.x === "number"
+      && typeof data.y === "number"
+      && typeof data.visible === "boolean") {
+      setPointer({
+        slide: data.slide,
+        x: data.x,
+        y: data.y,
+        visible: data.visible,
+      }, false);
+      return;
+    }
+    if (data.type !== "navigation"
+      || typeof data.slide !== "number"
+      || typeof data.step !== "number") return;
+
+    currentSlide = Math.min(Math.max(Math.trunc(data.slide), 0), slides.length - 1);
+    currentStep = Math.min(
+      Math.max(Math.trunc(data.step), 0),
+      slides[currentSlide].maxStep,
+    );
+    update(false);
   });
 
   addEventListener("keydown", (event) => {
+    const modified = event.ctrlKey || event.altKey || event.metaKey;
     if (["ArrowRight", "PageDown", " "].includes(event.key)) {
       event.preventDefault();
       next();
@@ -494,6 +889,20 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       event.preventDefault();
       previous();
     }
+    if (!presenterMode && event.code === "KeyP" && !modified && !event.repeat) {
+      event.preventDefault();
+      openMode("presenter");
+    }
+    if (presenterMode
+      && event.code === "KeyL"
+      && event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+      && !event.shiftKey
+      && !event.repeat) {
+      event.preventDefault();
+      presenter?.laserToggle.click();
+    }
   });
 
   const initialSlide = Math.min(
@@ -501,7 +910,13 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     Math.max(slides.length - 1, 0),
   );
   currentSlide = initialSlide;
-  new ResizeObserver(updateScale).observe(root);
-  update();
+  const resizeObserver = new ResizeObserver(() => {
+    updateScale();
+    updateNextScale();
+  });
+  resizeObserver.observe(presenter?.currentHost ?? root);
+  if (presenter) resizeObserver.observe(presenter.nextFrame);
+  update(false);
+  syncChannel?.postMessage({ type: "request-state" });
   document.documentElement.dataset.ready = "true";
 }

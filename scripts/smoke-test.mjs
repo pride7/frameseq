@@ -149,6 +149,129 @@ try {
     accent: "#22d3ee",
   });
 
+  assert.equal(await count(".frameseq-presenter"), 0);
+  assert.equal(await count(".frameseq-presenter-notes"), 0);
+
+  const presenterPopup = new Promise((resolve) => page.once("popup", resolve));
+  await page.click("[data-action='presenter']");
+  const presenterPage = await presenterPopup;
+  presenterPage.on("console", (message) => {
+    if (message.type() === "error") errors.push(`Presenter: ${message.text()}`);
+  });
+  presenterPage.on("pageerror", (error) => errors.push(`Presenter: ${error.message}`));
+  await presenterPage.setViewport({ width: 1440, height: 900 });
+  await presenterPage.waitForFunction(
+    () => document.documentElement.dataset.ready === "true",
+  );
+  assert.equal(new URL(presenterPage.url()).searchParams.get("presenter"), "1");
+  await presenterPage.waitForFunction(
+    () => document.querySelector(".frameseq-counter")?.textContent?.startsWith("1/7"),
+  );
+
+  assert.equal(
+    await presenterPage.$eval(".frameseq-presenter-notes", (element) => element.textContent),
+    "Welcome the audience and introduce FrameSeq as a UI-style presentation framework.",
+  );
+  assert.equal(
+    await presenterPage.$$eval(
+      ".frameseq-presenter-current .frameseq-slide-frame.is-active",
+      (elements) => elements.length,
+    ),
+    1,
+  );
+  assert.equal(
+    await presenterPage.$$eval(
+      ".frameseq-presenter-next-frame > .frameseq-slide",
+      (elements) => elements.length,
+    ),
+    1,
+  );
+  assert.match(
+    await presenterPage.$eval(".frameseq-presenter-timer", (element) => element.textContent ?? ""),
+    /^\d{2}:\d{2}$/,
+  );
+
+  await presenterPage.evaluate(() => {
+    dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Process",
+      code: "KeyL",
+    }));
+  });
+  assert.equal(
+    await presenterPage.$eval("[data-action='laser-toggle']", (element) => element.textContent),
+    "Laser: Off",
+  );
+  await presenterPage.evaluate(() => {
+    dispatchEvent(new KeyboardEvent("keydown", {
+      key: "l",
+      code: "KeyL",
+      ctrlKey: true,
+    }));
+  });
+  assert.equal(
+    await presenterPage.$eval("[data-action='laser-toggle']", (element) => element.textContent),
+    "Laser: On",
+  );
+  const presenterCanvas = await presenterPage.$(
+    ".frameseq-presenter-current .frameseq-slide-frame.is-active > .frameseq-slide",
+  );
+  const presenterCanvasBounds = await presenterCanvas?.boundingBox();
+  assert.ok(presenterCanvasBounds);
+  await presenterPage.mouse.move(
+    presenterCanvasBounds.x + presenterCanvasBounds.width * 0.25,
+    presenterCanvasBounds.y + presenterCanvasBounds.height * 0.6,
+  );
+  await page.waitForFunction(
+    () => Boolean(document.querySelector(".frameseq-laser-pointer.is-visible")),
+  );
+  const audiencePointer = await page.$eval(
+    ".frameseq-laser-pointer.is-visible",
+    (element) => ({
+      left: Number.parseFloat(element.style.left),
+      top: Number.parseFloat(element.style.top),
+    }),
+  );
+  assert.ok(Math.abs(audiencePointer.left - 25) < 0.5);
+  assert.ok(Math.abs(audiencePointer.top - 60) < 0.5);
+  assert.equal(
+    await presenterPage.$$eval(".frameseq-laser-pointer.is-visible", (elements) => elements.length),
+    1,
+  );
+  const notesPanel = await presenterPage.$(".frameseq-presenter-notes-panel");
+  const notesBounds = await notesPanel?.boundingBox();
+  assert.ok(notesBounds);
+  await presenterPage.mouse.move(notesBounds.x + 10, notesBounds.y + 10);
+  await page.waitForFunction(
+    () => !document.querySelector(".frameseq-laser-pointer.is-visible"),
+  );
+
+  await presenterPage.click(".frameseq-presenter-controls [data-action='next']");
+  await page.waitForFunction(
+    () => document.querySelector(".frameseq-slide-frame.is-active")?.getAttribute("data-index") === "1",
+  );
+  assert.equal(await attribute(".frameseq-slide-frame.is-active", "data-index"), "1");
+  assert.equal(
+    await presenterPage.$eval(".frameseq-presenter-notes", (element) => element.textContent),
+    "Emphasize that source order replaces nested callbacks and layout boilerplate.",
+  );
+
+  await presenterPage.select(".frameseq-presenter-page-select", "2");
+  await page.waitForFunction(
+    () => document.querySelector(".frameseq-slide-frame.is-active")?.getAttribute("data-index") === "2",
+  );
+  assert.equal(await attribute(".frameseq-slide-frame.is-active", "data-index"), "2");
+
+  await presenterPage.select(".frameseq-presenter-page-select", "0");
+  await page.waitForFunction(
+    () => document.querySelector(".frameseq-slide-frame.is-active")?.getAttribute("data-index") === "0",
+  );
+  await presenterPage.click("[data-action='timer-toggle']");
+  assert.equal(
+    await presenterPage.$eval("[data-action='timer-toggle']", (element) => element.textContent),
+    "Resume",
+  );
+  await presenterPage.close();
+
   await page.setViewport({ width: 375, height: 667 });
   await page.waitForFunction(() => {
     const frame = document.querySelector(".frameseq-slide-frame.is-active");
@@ -250,7 +373,7 @@ try {
   assert.ok(gridRects[0].x < gridRects[1].x && gridRects[1].x < gridRects[2].x);
   assert.deepEqual(errors, []);
 
-  console.log("Smoke test passed: theme, rendering, navigation, reveals, math, and print mode.");
+  console.log("Smoke test passed: theme, rendering, navigation, presenter laser, reveals, math, and print mode.");
 } finally {
   await browser.close();
   await server.close();

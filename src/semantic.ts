@@ -314,6 +314,11 @@ export class ContentSlideBuilder extends SlideBuilder {
 }
 
 export class CoverSlideBuilder extends RegionBuilder {
+  notes(content: string): this {
+    this.node.props.notes = content;
+    return this;
+  }
+
   eyebrow(content: string): this {
     this.add(Text(content.toUpperCase()).className("frameseq-cover-eyebrow"));
     return this;

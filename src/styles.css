@@ -108,6 +108,27 @@ button {
   line-height: var(--frameseq-body-line-height, normal);
 }
 
+.frameseq-laser-pointer {
+  position: absolute;
+  z-index: 1000;
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgb(255 255 255 / 0.9);
+  border-radius: 999px;
+  opacity: 0;
+  background: #ef4444;
+  box-shadow:
+    0 0 0 5px rgb(239 68 68 / 0.28),
+    0 0 22px 8px rgb(239 68 68 / 0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 80ms ease;
+}
+
+.frameseq-laser-pointer.is-visible {
+  opacity: 1;
+}
+
 .frameseq-theme-title-bar {
   position: absolute;
   z-index: 20;
@@ -751,6 +772,273 @@ button {
 .frameseq-counter {
   min-width: 72px;
   text-align: center;
+}
+
+.frameseq-presenter-mode body {
+  color: #e5e7eb;
+  background: #090d16;
+}
+
+.frameseq-presenter {
+  --frameseq-presenter-border: #273244;
+  --frameseq-presenter-panel: #111827;
+  --frameseq-presenter-panel-strong: #182235;
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.85fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  color: #e5e7eb;
+  background: #090d16;
+  font-family: var(--frameseq-font-body);
+}
+
+.frameseq-presenter-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 0;
+  padding: 2px 4px;
+}
+
+.frameseq-presenter-kicker {
+  margin-bottom: 3px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.frameseq-presenter-title {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 22px;
+  font-weight: 720;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.frameseq-presenter-timer-group,
+.frameseq-presenter-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.frameseq-presenter-timer {
+  min-width: 82px;
+  color: #f8fafc;
+  font-family: var(--frameseq-font-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.frameseq-presenter button,
+.frameseq-presenter select {
+  border: 1px solid var(--frameseq-presenter-border);
+  border-radius: 9px;
+  color: #e5e7eb;
+  background: var(--frameseq-presenter-panel-strong);
+}
+
+.frameseq-presenter button {
+  min-height: 36px;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+
+.frameseq-presenter button:hover,
+.frameseq-presenter select:hover {
+  border-color: #60a5fa;
+}
+
+.frameseq-presenter button[aria-pressed="true"] {
+  border-color: #f87171;
+  color: #fff;
+  background: #991b1b;
+}
+
+.frameseq-presenter-current {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--frameseq-presenter-border);
+  border-radius: 12px;
+  background: #020617;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.32);
+}
+
+.frameseq-presenter-current.is-laser-active,
+.frameseq-presenter-current.is-laser-active .frameseq-slide {
+  cursor: crosshair;
+}
+
+.frameseq-presenter-current.is-laser-active {
+  touch-action: none;
+}
+
+.frameseq-presenter-current .frameseq-deck {
+  position: absolute;
+  inset: 0;
+}
+
+.frameseq-presenter-current .frameseq-slide-frame {
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.frameseq-presenter-side {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.frameseq-presenter-next,
+.frameseq-presenter-notes-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--frameseq-presenter-border);
+  border-radius: 12px;
+  background: var(--frameseq-presenter-panel);
+}
+
+.frameseq-presenter-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 39px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--frameseq-presenter-border);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.frameseq-presenter-next-label {
+  overflow: hidden;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-transform: none;
+}
+
+.frameseq-presenter-next-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--slide-ratio);
+  overflow: hidden;
+  background: #020617;
+}
+
+.frameseq-presenter-next-frame > .frameseq-slide {
+  position: absolute;
+}
+
+.frameseq-presenter-next-frame.is-empty {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.frameseq-presenter-notes-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.frameseq-presenter-notes {
+  flex: 1;
+  padding: 18px;
+  overflow: auto;
+  color: #f1f5f9;
+  font-size: 19px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.frameseq-presenter-notes.is-empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+.frameseq-presenter-controls {
+  grid-column: 1 / -1;
+  justify-content: center;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.frameseq-presenter-controls .frameseq-counter {
+  min-width: 100px;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.frameseq-presenter-controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.frameseq-presenter-page-select {
+  max-width: 230px;
+  height: 36px;
+  padding: 0 30px 0 10px;
+}
+
+@media (max-width: 900px) {
+  .frameseq-presenter-mode body {
+    overflow: auto;
+  }
+
+  .frameseq-presenter {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    height: auto;
+    min-height: 100%;
+  }
+
+  .frameseq-presenter-header,
+  .frameseq-presenter-controls {
+    flex-wrap: wrap;
+  }
+
+  .frameseq-presenter-current {
+    grid-column: 1;
+    width: 100%;
+    aspect-ratio: var(--slide-ratio);
+  }
+
+  .frameseq-presenter-side {
+    grid-template-rows: auto minmax(220px, auto);
+  }
+
+  .frameseq-presenter-controls {
+    grid-column: 1;
+  }
 }
 
 .frameseq-print,

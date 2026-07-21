@@ -61,7 +61,8 @@ text("Presentation title").hero();
 text("A short description").subtitle();
 text("Your name").author();
 
-slide("First idea");
+slide("First idea")
+  .notes("Introduce the main idea and pause before the supporting points.");
 text("Explain the idea in one clear sentence.");
 bullets(
   "First point",

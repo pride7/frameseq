@@ -171,10 +171,19 @@ Starts the next slide and resets the active region.
 interface SlideOptions {
   name?: string;
   title?: string;
+  notes?: string;
 }
 ```
 
 The string form sets both `name` and `title`. `name` is metadata; `title` is rendered.
+
+### `notes(content)`
+
+```ts
+notes(content: string): ContentSlideBuilder
+```
+
+Stores private speaker notes on the current slide. Notes are displayed only in presenter view and are omitted from the audience page and PDF output.
 
 ## Content
 
