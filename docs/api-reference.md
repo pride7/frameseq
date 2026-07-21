@@ -1,6 +1,6 @@
 # API reference
 
-This page describes the supported authoring API for FrameSeq 0.2. Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
+This page describes the supported authoring API for FrameSeq 0.3. Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
 
 ## Document
 

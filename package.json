@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Build presentations like interfaces with a linear TypeScript DSL.",
   "keywords": [
     "slides",
