@@ -72,6 +72,50 @@ try {
     accent: "#22d3ee",
   });
 
+  await page.setViewport({ width: 375, height: 667 });
+  await page.waitForFunction(() => {
+    const frame = document.querySelector(".frameseq-slide-frame.is-active");
+    const canvas = frame?.querySelector(".frameseq-slide");
+    if (!frame || !canvas) return false;
+    const frameRect = frame.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    return Math.abs(
+      (frameRect.left + frameRect.right) / 2 - (canvasRect.left + canvasRect.right) / 2,
+    ) < 1;
+  });
+  const mobileGeometry = await page.$eval(
+    ".frameseq-slide-frame.is-active",
+    (frame) => {
+      const canvas = frame.querySelector(".frameseq-slide");
+      if (!canvas) throw new Error("Active slide canvas is missing");
+      const frameRect = frame.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      return {
+        frame: {
+          left: frameRect.left,
+          right: frameRect.right,
+          top: frameRect.top,
+          bottom: frameRect.bottom,
+        },
+        canvas: {
+          left: canvasRect.left,
+          right: canvasRect.right,
+          top: canvasRect.top,
+          bottom: canvasRect.bottom,
+          width: canvasRect.width,
+          height: canvasRect.height,
+        },
+      };
+    },
+  );
+  assert.ok(mobileGeometry.canvas.width > 0 && mobileGeometry.canvas.height > 0);
+  assert.ok(mobileGeometry.canvas.left >= mobileGeometry.frame.left - 1);
+  assert.ok(mobileGeometry.canvas.right <= mobileGeometry.frame.right + 1);
+  assert.ok(mobileGeometry.canvas.top >= mobileGeometry.frame.top - 1);
+  assert.ok(mobileGeometry.canvas.bottom <= mobileGeometry.frame.bottom + 1);
+
+  await page.setViewport({ width: 1440, height: 900 });
+
   const slideText = await page.$$eval(
     ".frameseq-slide-frame",
     (frames) => frames.map((frame) => frame.textContent ?? ""),

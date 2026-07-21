@@ -80,7 +80,6 @@ button {
   position: absolute;
   inset: 18px 18px 58px;
   display: none;
-  place-items: center;
   overflow: hidden;
   border: 1px solid var(--frameseq-border);
   border-radius: var(--frameseq-radius-small);
@@ -89,11 +88,11 @@ button {
 }
 
 .frameseq-slide-frame.is-active {
-  display: grid;
+  display: block;
 }
 
 .frameseq-slide {
-  position: relative;
+  position: absolute;
   width: var(--slide-width);
   min-width: var(--slide-width);
   height: var(--slide-height);

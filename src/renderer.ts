@@ -349,8 +349,11 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
-    const bounds = frame.getBoundingClientRect();
-    const scale = Math.min(bounds.width / deck.canvasWidth, bounds.height / deck.canvasHeight);
+    const frameWidth = frame.clientWidth;
+    const frameHeight = frame.clientHeight;
+    const scale = Math.min(frameWidth / deck.canvasWidth, frameHeight / deck.canvasHeight);
+    canvas.style.left = `${(frameWidth - deck.canvasWidth) / 2}px`;
+    canvas.style.top = `${(frameHeight - deck.canvasHeight) / 2}px`;
     canvas.style.transform = `scale(${scale})`;
   }
 
