@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.9.0";
+const FRAMESEQ_VERSION = "^0.10.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -42,6 +42,7 @@ try {
     scripts: {
       dev: "frameseq dev slides.ts",
       build: "frameseq build slides.ts",
+      "build:single": "frameseq build slides.ts --single-file",
       pdf: "frameseq pdf slides.ts",
       check: "tsc --noEmit && frameseq check slides.ts",
     },
@@ -85,6 +86,52 @@ text\`Inline math works: $E = mc^2$\`;
 math\`\\int_0^\\infty e^{-x}\\,dx = 1\`;
 `;
 
+  const pagesWorkflow = `name: Deploy FrameSeq presentation
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+`;
+
+  await mkdir(resolve(targetDirectory, ".github", "workflows"), { recursive: true });
+
   await Promise.all([
     writeFile(
       resolve(targetDirectory, "package.json"),
@@ -97,6 +144,11 @@ math\`\\int_0^\\infty e^{-x}\\,dx = 1\`;
       "utf8",
     ),
     writeFile(resolve(targetDirectory, "slides.ts"), slides, "utf8"),
+    writeFile(
+      resolve(targetDirectory, ".github", "workflows", "pages.yml"),
+      pagesWorkflow,
+      "utf8",
+    ),
     writeFile(
       resolve(targetDirectory, ".gitignore"),
       "node_modules/\ndist/\noutput/\n*.log\n",

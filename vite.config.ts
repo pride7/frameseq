@@ -143,6 +143,7 @@ function typstError(error: unknown, label: string): Error {
 
 export default defineConfig({
   root: packageRoot,
+  base: "./",
   plugins: [
     {
       name: "frameseq-entry",

@@ -407,11 +407,16 @@ frameseq dev my-talk.slides.ts
 # Static interactive website in dist/
 frameseq build my-talk.slides.ts
 
+# One self-contained dist/index.html
+frameseq build my-talk.slides.ts --single-file
+
 # PDF in output/pdf/
 frameseq pdf my-talk.slides.ts
 ```
 
-The static HTML can be hosted on any static web server. Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. See [Deploy HTML](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/deployment.md).
+
+Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
 ## AI-friendly layout checks
 
@@ -477,6 +482,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
 - [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
 - [AI-friendly layout checks](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout-checks.md)
+- [Deploy HTML](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/deployment.md)
 - [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
 - [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
 - [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md)

@@ -73,7 +73,15 @@ Generated projects run [`frameseq check`](layout-checks.md) as part of this comm
 npm run build
 ```
 
-The generated static presentation is written to `dist/` and can be hosted on a static web server.
+The generated static presentation is written to `dist/`. Its relative asset paths work both at a domain root and at repository URLs such as `https://user.github.io/my-talk/`.
+
+To generate a self-contained `dist/index.html` instead:
+
+```bash
+npm run build:single
+```
+
+New projects also include a GitHub Actions workflow that builds and deploys `dist/`. See [Deploy HTML](deployment.md) for the one-time GitHub Pages setting and alternative hosting options.
 
 ## Export PDF
 

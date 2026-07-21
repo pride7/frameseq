@@ -35,7 +35,7 @@ Press `P` in the audience page to open presenter view, or add `?presenter=1` to 
 ## Build static HTML
 
 ```bash
-frameseq build [file] [--output directory]
+frameseq build [file] [--output directory] [--single-file]
 ```
 
 The default entry is `slides.ts` and the default output directory is `dist/`.
@@ -43,6 +43,16 @@ The default entry is `slides.ts` and the default output directory is `dist/`.
 ```bash
 frameseq build talk.slides.ts --output site
 ```
+
+The default build uses relative asset paths, so the whole output directory can be deployed at a domain root or a repository subpath such as GitHub Pages.
+
+Use `--single-file` to inline the JavaScript, CSS, fonts, and framework assets into one portable `index.html`:
+
+```bash
+frameseq build talk.slides.ts --single-file
+```
+
+The single file can be opened directly or uploaded wherever one HTML file is more convenient. Images loaded from remote URLs remain remote; use data URLs or build-managed local assets when every resource must be embedded.
 
 ## Export PDF
 
@@ -82,6 +92,7 @@ A project generated with `npm create frameseq` provides:
 ```bash
 npm run dev
 npm run build
+npm run build:single
 npm run pdf
 npm run check
 ```

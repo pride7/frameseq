@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { basename, dirname, extname, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
@@ -16,7 +16,8 @@ function help() {
 
 Usage:
   frameseq dev [file]                 Preview a deck with hot reload
-  frameseq build [file] [--output dir] Build a static HTML presentation
+  frameseq build [file] [--output dir] [--single-file]
+                                      Build a static HTML presentation
   frameseq pdf [file] [--output path] Export a deck to PDF
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
@@ -25,6 +26,7 @@ Usage:
 Examples:
   frameseq dev talk.slides.ts
   frameseq build talk.slides.ts
+  frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
   frameseq check talk.slides.ts
   frameseq new quarterly.slides.ts`);
@@ -106,13 +108,152 @@ async function startDevelopmentServer(entry) {
   process.once("SIGTERM", close);
 }
 
-async function buildHtml(entry, requestedOutput) {
+function assetMimeType(path) {
+  const types = {
+    ".css": "text/css",
+    ".gif": "image/gif",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".js": "text/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ttf": "font/ttf",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+  };
+  return types[extname(path).toLowerCase()] ?? "application/octet-stream";
+}
+
+function resolveBuildAsset(buildDirectory, containingFile, url) {
+  const cleanUrl = decodeURIComponent(url.split(/[?#]/, 1)[0]);
+  const assetPath = cleanUrl.startsWith("/")
+    ? resolve(buildDirectory, cleanUrl.slice(1))
+    : resolve(dirname(containingFile), cleanUrl);
+  const relativePath = relative(buildDirectory, assetPath);
+  if (isAbsolute(relativePath) || relativePath === ".." || relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) {
+    throw new Error(`Single-file asset is outside the build directory: ${url}`);
+  }
+  return assetPath;
+}
+
+async function dataUrl(path) {
+  const content = await readFile(path);
+  return `data:${assetMimeType(path)};base64,${content.toString("base64")}`;
+}
+
+async function replaceAsync(source, pattern, replacement) {
+  let output = "";
+  let cursor = 0;
+  for (const match of source.matchAll(pattern)) {
+    output += source.slice(cursor, match.index);
+    output += await replacement(match);
+    cursor = match.index + match[0].length;
+  }
+  return output + source.slice(cursor);
+}
+
+async function inlineCssAssets(css, cssPath, buildDirectory) {
+  return replaceAsync(
+    css,
+    /url\(\s*(["']?)([^"')]+)\1\s*\)/g,
+    async (match) => {
+      const url = match[2];
+      if (/^(?:data:|https?:|#)/i.test(url)) return match[0];
+      const assetPath = resolveBuildAsset(buildDirectory, cssPath, url);
+      return `url("${await dataUrl(assetPath)}")`;
+    },
+  );
+}
+
+async function buildFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await buildFiles(path));
+    if (entry.isFile()) files.push(path);
+  }
+  return files;
+}
+
+async function inlineReferencedBuildAssets(html, htmlPath, buildDirectory) {
+  let output = html;
+  for (const path of await buildFiles(buildDirectory)) {
+    if (path === htmlPath || [".css", ".js"].includes(extname(path).toLowerCase())) continue;
+    const assetUrl = relative(buildDirectory, path).replaceAll("\\", "/");
+    if (!output.includes(assetUrl)) continue;
+    const embedded = await dataUrl(path);
+    output = output
+      .replaceAll(`./${assetUrl}`, embedded)
+      .replaceAll(`/${assetUrl}`, embedded)
+      .replaceAll(assetUrl, embedded);
+  }
+  return output;
+}
+
+async function createSingleFileBuild(buildDirectory) {
+  const htmlPath = resolve(buildDirectory, "index.html");
+  let html = await readFile(htmlPath, "utf8");
+
+  html = await replaceAsync(
+    html,
+    /<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["'][^>]*>/gi,
+    async (match) => {
+      const cssPath = resolveBuildAsset(buildDirectory, htmlPath, match[1]);
+      const css = await inlineCssAssets(await readFile(cssPath, "utf8"), cssPath, buildDirectory);
+      return `<style>${css.replaceAll("</style", "<\\/style")}</style>`;
+    },
+  );
+
+  html = await replaceAsync(
+    html,
+    /<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,
+    async (match) => {
+      const scriptPath = resolveBuildAsset(buildDirectory, htmlPath, match[2]);
+      const script = (await readFile(scriptPath, "utf8")).replaceAll("</script", "<\\/script");
+      const attributes = `${match[1]}${match[3]}`
+        .replace(/\s+crossorigin(?:=["'][^"']*["'])?/gi, "");
+      return `<script${attributes}>${script}</script>`;
+    },
+  );
+
+  html = await replaceAsync(
+    html,
+    /<link\b[^>]*\brel=["']icon["'][^>]*>/gi,
+    async (match) => {
+      const href = match[0].match(/\bhref=["']([^"']+)["']/i)?.[1];
+      if (!href || /^(?:data:|https?:)/i.test(href)) return match[0];
+      const iconPath = resolveBuildAsset(buildDirectory, htmlPath, href);
+      return match[0].replace(href, await dataUrl(iconPath));
+    },
+  );
+
+  html = await inlineReferencedBuildAssets(html, htmlPath, buildDirectory);
+
+  if (/<script\b[^>]*\bsrc=|<link\b[^>]*\brel=["']stylesheet["']/i.test(html)) {
+    throw new Error("Single-file build still contains external script or stylesheet references");
+  }
+
+  await writeFile(htmlPath, html, "utf8");
+  for (const entry of await readdir(buildDirectory, { withFileTypes: true })) {
+    if (entry.name === "index.html") continue;
+    await rm(resolve(buildDirectory, entry.name), { recursive: true, force: true });
+  }
+  return htmlPath;
+}
+
+async function buildHtml(entry, requestedOutput, singleFile = false) {
   const buildDirectory = resolve(requestedOutput ?? resolve(process.cwd(), "dist"));
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
 
   await viteBuild({ configFile, root: packageRoot });
-  console.log(`HTML presentation built in ${buildDirectory}`);
+  if (singleFile) {
+    const outputPath = await createSingleFileBuild(buildDirectory);
+    console.log(`Single-file HTML presentation built at ${outputPath}`);
+  } else {
+    console.log(`HTML presentation built in ${buildDirectory}`);
+  }
 }
 
 async function exportPdf(entry, requestedOutput) {
@@ -436,7 +577,9 @@ try {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") await startDevelopmentServer(entry);
-    if (command === "build") await buildHtml(entry, option("--output"));
+    if (command === "build") {
+      await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
+    }
     if (command === "pdf") await exportPdf(entry, option("--output"));
     if (command === "check") {
       await checkLayout(entry, {
