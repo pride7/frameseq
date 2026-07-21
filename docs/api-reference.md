@@ -16,6 +16,7 @@ Starts a new active presentation. It must be called before `slide()`.
 ```ts
 interface DeckOptions {
   title?: string;
+  subtitle?: string;
   author?: string;
   institute?: string;
   date?: string;
@@ -50,6 +51,7 @@ interface ThemeOptions {
   name: string;
   extends?: BuiltInThemeName | ThemeDefinition;
   family?: "frameseq" | "beamer";
+  coverLayout?: "default" | "center" | "academic-left";
   colors?: Partial<ThemeColors>;
   fonts?: Partial<ThemeFonts>;
   spacing?: Partial<ThemeSpacing>;
@@ -64,7 +66,8 @@ type BuiltInThemeName =
   | "paper"
   | "beamer-default"
   | "beamer-madrid"
-  | "beamer-cambridge-us";
+  | "beamer-cambridge-us"
+  | "minimal-academic";
 ```
 
 Color tokens:
@@ -118,9 +121,12 @@ interface ThemeRadii {
 
 interface ThemeChrome {
   titleBar: boolean;
+  titleBarStyle: "solid" | "underline";
   footer: boolean;
+  footerLayout: "metadata" | "title";
   slideNumber: boolean;
   showOnCover: boolean;
+  autoTitlePage: boolean;
   titleBarHeight: string;
   footerHeight: string;
   titleBarBackground: string;
@@ -129,12 +135,13 @@ interface ThemeChrome {
   footerForeground: string;
   footerAccentBackground: string;
   footerAccentForeground: string;
+  footerBorderColor: string;
 }
 ```
 
 ### `themes`
 
-An object containing all six complete built-in theme definitions. Theme names are usually more concise when selecting or extending a built-in theme; this export is useful when a complete theme object is needed.
+An object containing all seven complete built-in theme definitions. Theme names are usually more concise when selecting or extending a built-in theme; this export is useful when a complete theme object is needed.
 
 ### `slide(nameOrOptions?)`
 

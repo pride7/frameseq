@@ -110,6 +110,47 @@ function hasClass(node: FrameSeqNode, className: string): boolean {
   return classes.includes(className);
 }
 
+function titlePageItem(className: string, content: string): HTMLElement {
+  const element = document.createElement("div");
+  element.className = `frameseq-text ${className}`;
+  appendTextWithInlineMath(element, content);
+  return element;
+}
+
+function addAutomaticTitlePage(canvas: HTMLElement, deck: DeckDefinition): void {
+  const hasManualContent = Array.from(canvas.children).some((child) => {
+    const isEmptyBody = child.classList.contains("frameseq-slide-body")
+      && child.children.length === 0
+      && !child.textContent?.trim();
+    return !isEmptyBody;
+  });
+  if (hasManualContent) return;
+
+  canvas.replaceChildren();
+
+  const titlePage = document.createElement("section");
+  titlePage.className = "frameseq-auto-title-page";
+  titlePage.append(titlePageItem("frameseq-cover-title", deck.title));
+  if (deck.subtitle) {
+    titlePage.append(titlePageItem("frameseq-cover-subtitle", deck.subtitle));
+  }
+
+  const rule = document.createElement("div");
+  rule.className = "frameseq-cover-rule";
+  titlePage.append(rule);
+
+  if (deck.author) {
+    titlePage.append(titlePageItem("frameseq-cover-author", deck.author));
+  }
+  if (deck.institute) {
+    titlePage.append(titlePageItem("frameseq-cover-institute", deck.institute));
+  }
+  if (deck.date) {
+    titlePage.append(titlePageItem("frameseq-cover-date", deck.date));
+  }
+  canvas.append(titlePage);
+}
+
 function addThemeChrome(
   canvas: HTMLElement,
   slide: FrameSeqNode,
@@ -118,12 +159,15 @@ function addThemeChrome(
 ): void {
   const chrome = deck.theme.chrome;
   const isCover = hasClass(slide, "frameseq-cover-slide");
+  if (isCover && chrome.autoTitlePage) {
+    addAutomaticTitlePage(canvas, deck);
+  }
   if (isCover && !chrome.showOnCover) return;
 
   const title = typeof slide.props.title === "string" ? slide.props.title : undefined;
   if (chrome.titleBar && title) {
     const titleBar = document.createElement("header");
-    titleBar.className = "frameseq-theme-title-bar";
+    titleBar.className = `frameseq-theme-title-bar is-${chrome.titleBarStyle}`;
     titleBar.textContent = title;
     canvas.classList.add("frameseq-has-title-bar");
     canvas.prepend(titleBar);
@@ -133,6 +177,23 @@ function addThemeChrome(
 
   const footer = document.createElement("footer");
   footer.className = "frameseq-theme-footer";
+
+  if (chrome.footerLayout === "title") {
+    footer.classList.add("is-title-layout");
+
+    const title = document.createElement("span");
+    title.className = "frameseq-theme-footer-title";
+    title.textContent = deck.title;
+
+    const number = document.createElement("span");
+    number.className = "frameseq-theme-footer-details";
+    number.textContent = chrome.slideNumber ? `${index + 1} / ${deck.slides.length}` : "";
+
+    footer.append(title, number);
+    canvas.classList.add("frameseq-has-footer");
+    canvas.append(footer);
+    return;
+  }
 
   const author = document.createElement("span");
   author.className = "frameseq-theme-footer-author";
@@ -165,6 +226,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
   document.documentElement.dataset.frameseqTheme = deck.theme.name;
   document.documentElement.dataset.frameseqThemeFamily = deck.theme.family;
+  document.documentElement.dataset.frameseqCoverLayout = deck.theme.coverLayout;
   for (const [name, value] of Object.entries(themeCssVariables(deck.theme))) {
     document.documentElement.style.setProperty(name, value);
   }

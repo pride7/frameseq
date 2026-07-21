@@ -21,7 +21,7 @@ presentation({
 
 ## Built-in themes
 
-FrameSeq includes six themes:
+FrameSeq includes seven themes:
 
 - `blank` — neutral white and the default.
 - `midnight` — the original dark FrameSeq appearance with cyan accents.
@@ -29,6 +29,7 @@ FrameSeq includes six themes:
 - `beamer-default` — a clean blue academic style without presentation chrome.
 - `beamer-madrid` — a blue title bar and metadata footer inspired by Beamer Madrid.
 - `beamer-cambridge-us` — a burgundy and cream academic style inspired by Beamer CambridgeUS.
+- `minimal-academic` — a restrained academic theme with a left-aligned title page, underlined frame titles, and a compact footer.
 
 Choose one on the presentation:
 
@@ -65,6 +66,30 @@ bullets("Parser", "Renderer", "Exporter");
 The title bar uses the visible `title` from `slide("Overview")`. A slide created with only `name` metadata does not gain a visible title. Chrome is hidden on cover slides by default.
 
 These themes reproduce the visual language and common frame structure of the Beamer themes in FrameSeq's HTML renderer; they do not execute Beamer or LaTeX theme files.
+
+### Minimal Academic
+
+`minimal-academic` uses a deep-blue palette, a 72%-width title rule, underlined frame titles, and a 78/22 title-and-page-number footer.
+
+An empty cover slide is filled automatically from presentation metadata:
+
+```ts
+presentation({
+  title: "Minimal Academic Theme",
+  subtitle: "A restrained presentation style",
+  author: "Your Name",
+  institute: "FrameSeq Research",
+  date: "2026",
+  theme: "minimal-academic",
+});
+
+slide().cover();
+
+slide("Motivation");
+text("Content starts here.");
+```
+
+Automatic title-page content is only added when the cover is empty. Add your own `text()`, image, or layout objects after `slide().cover()` to keep full manual control.
 
 ## Create a theme
 
@@ -134,6 +159,7 @@ const conferenceTheme = defineTheme({
 - `radii`: `small`, `medium`, `large`, and `pill` CSS radii.
 - `chrome`: optional title bar, footer, slide numbering, their dimensions, and colors.
 - `family`: `"frameseq"` or `"beamer"`; extending a theme preserves its family automatically.
+- `coverLayout`: `"default"`, `"center"`, or `"academic-left"`.
 - `coverBackground`: a CSS color, gradient, or image used by `.cover()` slides.
 
 See [API reference](api-reference.md#themes) for all token names.

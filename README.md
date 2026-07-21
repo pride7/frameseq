@@ -105,6 +105,21 @@ presentation({
 });
 ```
 
+The bundled `minimal-academic` theme can generate a restrained academic title page from presentation metadata:
+
+```ts
+presentation({
+  title: "My Talk",
+  subtitle: "A concise subtitle",
+  author: "Your Name",
+  institute: "Your Institute",
+  date: "2026",
+  theme: "minimal-academic",
+});
+
+slide().cover();
+```
+
 ```ts
 const ocean = defineTheme({
   name: "ocean",

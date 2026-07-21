@@ -4,9 +4,13 @@ export type BuiltInThemeName =
   | "paper"
   | "beamer-default"
   | "beamer-madrid"
-  | "beamer-cambridge-us";
+  | "beamer-cambridge-us"
+  | "minimal-academic";
 
 export type ThemeFamily = "frameseq" | "beamer";
+export type ThemeCoverLayout = "default" | "center" | "academic-left";
+export type ThemeTitleBarStyle = "solid" | "underline";
+export type ThemeFooterLayout = "metadata" | "title";
 
 export interface ThemeColors {
   background: string;
@@ -52,9 +56,12 @@ export interface ThemeRadii {
 
 export interface ThemeChrome {
   titleBar: boolean;
+  titleBarStyle: ThemeTitleBarStyle;
   footer: boolean;
+  footerLayout: ThemeFooterLayout;
   slideNumber: boolean;
   showOnCover: boolean;
+  autoTitlePage: boolean;
   titleBarHeight: string;
   footerHeight: string;
   titleBarBackground: string;
@@ -63,11 +70,13 @@ export interface ThemeChrome {
   footerForeground: string;
   footerAccentBackground: string;
   footerAccentForeground: string;
+  footerBorderColor: string;
 }
 
 export interface ThemeDefinition {
   name: string;
   family: ThemeFamily;
+  coverLayout: ThemeCoverLayout;
   colors: ThemeColors;
   fonts: ThemeFonts;
   spacing: ThemeSpacing;
@@ -80,6 +89,7 @@ export interface ThemeOptions {
   name: string;
   extends?: BuiltInThemeName | ThemeDefinition;
   family?: ThemeFamily;
+  coverLayout?: ThemeCoverLayout;
   colors?: Partial<ThemeColors>;
   fonts?: Partial<ThemeFonts>;
   spacing?: Partial<ThemeSpacing>;
@@ -117,9 +127,12 @@ const defaultRadii: ThemeRadii = {
 
 const defaultChrome: ThemeChrome = {
   titleBar: false,
+  titleBarStyle: "solid",
   footer: false,
+  footerLayout: "metadata",
   slideNumber: false,
   showOnCover: false,
+  autoTitlePage: false,
   titleBarHeight: "54px",
   footerHeight: "30px",
   titleBarBackground: "#f1f5f9",
@@ -128,11 +141,13 @@ const defaultChrome: ThemeChrome = {
   footerForeground: "#4b5563",
   footerAccentBackground: "#2563eb",
   footerAccentForeground: "#ffffff",
+  footerBorderColor: "transparent",
 };
 
 const blank: ThemeDefinition = {
   name: "blank",
   family: "frameseq",
+  coverLayout: "default",
   colors: {
     background: "#ffffff",
     foreground: "#111827",
@@ -159,6 +174,7 @@ const blank: ThemeDefinition = {
 const midnight: ThemeDefinition = {
   name: "midnight",
   family: "frameseq",
+  coverLayout: "default",
   colors: {
     background: "#020617",
     foreground: "#f8fafc",
@@ -186,6 +202,7 @@ const midnight: ThemeDefinition = {
 const paper: ThemeDefinition = {
   name: "paper",
   family: "frameseq",
+  coverLayout: "default",
   colors: {
     background: "#f7f3e8",
     foreground: "#292524",
@@ -247,6 +264,7 @@ const beamerRadii: ThemeRadii = {
 const beamerDefault: ThemeDefinition = {
   name: "beamer-default",
   family: "beamer",
+  coverLayout: "center",
   colors: {
     background: "#ffffff",
     foreground: "#202020",
@@ -328,6 +346,64 @@ const beamerCambridgeUs: ThemeDefinition = {
   coverBackground: "linear-gradient(180deg, #fffdf7 0 82%, #8b1e3f 82% 100%)",
 };
 
+const minimalAcademic: ThemeDefinition = {
+  ...beamerDefault,
+  name: "minimal-academic",
+  coverLayout: "academic-left",
+  colors: {
+    ...beamerDefault.colors,
+    background: "#ffffff",
+    foreground: "#282828",
+    muted: "#787878",
+    subtle: "#787878",
+    accent: "#24528b",
+    accentForeground: "#ffffff",
+    surface: "#f5f5f5",
+    surfaceStrong: "#e9eef5",
+    border: "#d7e0eb",
+    codeBackground: "#f5f5f5",
+    codeForeground: "#282828",
+    error: "#b4322f",
+    stage: "#dddddd",
+  },
+  fonts: {
+    ...beamerFonts,
+    body: '"Latin Modern Sans", "LM Sans 10", Arial, sans-serif',
+    heading: '"Latin Modern Sans", "LM Sans 10", Arial, sans-serif',
+  },
+  spacing: {
+    ...beamerSpacing,
+    slideX: "90px",
+    slideY: "112px",
+    coverX: "90px",
+    coverY: "70px",
+  },
+  radii: {
+    ...beamerRadii,
+    medium: "10px",
+    large: "10px",
+  },
+  chrome: {
+    ...defaultChrome,
+    titleBar: true,
+    titleBarStyle: "underline",
+    footer: true,
+    footerLayout: "title",
+    slideNumber: true,
+    autoTitlePage: true,
+    titleBarHeight: "72px",
+    footerHeight: "34px",
+    titleBarBackground: "#ffffff",
+    titleBarForeground: "#24528b",
+    footerBackground: "#ffffff",
+    footerForeground: "#787878",
+    footerAccentBackground: "#ffffff",
+    footerAccentForeground: "#787878",
+    footerBorderColor: "#24528b",
+  },
+  coverBackground: "#ffffff",
+};
+
 export const themes: Record<BuiltInThemeName, ThemeDefinition> = {
   blank,
   midnight,
@@ -335,12 +411,14 @@ export const themes: Record<BuiltInThemeName, ThemeDefinition> = {
   "beamer-default": beamerDefault,
   "beamer-madrid": beamerMadrid,
   "beamer-cambridge-us": beamerCambridgeUs,
+  "minimal-academic": minimalAcademic,
 };
 
 function cloneTheme(theme: ThemeDefinition): ThemeDefinition {
   return {
     name: theme.name,
     family: theme.family,
+    coverLayout: theme.coverLayout,
     colors: { ...theme.colors },
     fonts: { ...theme.fonts },
     spacing: { ...theme.spacing },
@@ -369,6 +447,7 @@ export function defineTheme(options: ThemeOptions): ThemeDefinition {
   return {
     name: options.name,
     family: options.family ?? base.family,
+    coverLayout: options.coverLayout ?? base.coverLayout,
     colors: { ...base.colors, ...options.colors },
     fonts: { ...base.fonts, ...options.fonts },
     spacing: { ...base.spacing, ...options.spacing },
@@ -419,5 +498,6 @@ export function themeCssVariables(theme: ThemeDefinition): Record<string, string
     "--frameseq-footer-foreground": theme.chrome.footerForeground,
     "--frameseq-footer-accent-background": theme.chrome.footerAccentBackground,
     "--frameseq-footer-accent-foreground": theme.chrome.footerAccentForeground,
+    "--frameseq-footer-border-color": theme.chrome.footerBorderColor,
   };
 }

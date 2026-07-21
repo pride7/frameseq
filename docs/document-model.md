@@ -15,6 +15,7 @@ The object form configures the canvas:
 ```ts
 presentation({
   title: "My Talk",
+  subtitle: "A short description",
   author: "Your Name",
   institute: "Your Institute",
   date: "2026",
@@ -26,7 +27,7 @@ presentation({
 
 Without `theme`, FrameSeq uses the neutral white `blank` theme. See [Themes](themes.md) to select a built-in theme or define your own. The older `background` option remains available as a shortcut for changing only the slide canvas color.
 
-`author`, `institute`, and `date` are optional document metadata. Themes with presentation chrome, such as `beamer-madrid`, use them in the generated footer.
+`subtitle`, `author`, `institute`, and `date` are optional document metadata. Themes may use them differently: `beamer-madrid` puts author, institute, and date in the footer, while `minimal-academic` uses all four fields to generate an empty cover slide automatically.
 
 `ratio` accepts `"16:9"` or `"4:3"`. The default width is `1280`; FrameSeq derives the height from the ratio unless `height` is provided.
 

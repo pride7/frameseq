@@ -45,6 +45,7 @@
   --frameseq-footer-foreground: #4b5563;
   --frameseq-footer-accent-background: #2563eb;
   --frameseq-footer-accent-foreground: #ffffff;
+  --frameseq-footer-border-color: transparent;
 }
 
 * {
@@ -123,6 +124,17 @@ button {
   line-height: 1;
 }
 
+.frameseq-theme-title-bar.is-underline {
+  top: 20px;
+  right: var(--frameseq-slide-x);
+  left: var(--frameseq-slide-x);
+  align-items: flex-end;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--frameseq-title-bar-foreground);
+  background: transparent;
+  font-size: 34px;
+}
+
 .frameseq-has-title-bar > .frameseq-slide-title {
   display: none;
 }
@@ -136,10 +148,21 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   height: var(--frameseq-footer-height);
+  border-top: 1px solid var(--frameseq-footer-border-color);
   color: var(--frameseq-footer-foreground);
   background: var(--frameseq-footer-background);
   font-size: 13px;
   line-height: 1;
+}
+
+.frameseq-theme-footer.is-title-layout {
+  grid-template-columns: 78% 22%;
+}
+
+.frameseq-theme-footer.is-title-layout .frameseq-theme-footer-title {
+  color: var(--frameseq-footer-foreground);
+  background: var(--frameseq-footer-background);
+  font-weight: 400;
 }
 
 .frameseq-theme-footer > span {
@@ -277,10 +300,52 @@ button {
   font-weight: 600;
 }
 
-[data-frameseq-theme-family="beamer"] .frameseq-cover-slide {
+[data-frameseq-cover-layout="center"] .frameseq-cover-slide {
   align-items: center;
   justify-content: center;
   text-align: center;
+}
+
+[data-frameseq-cover-layout="academic-left"] .frameseq-cover-slide {
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.frameseq-auto-title-page {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+[data-frameseq-cover-layout="academic-left"] .frameseq-auto-title-page {
+  margin-top: 40px;
+}
+
+[data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-title {
+  max-width: 980px;
+  font-size: 52px;
+  font-weight: 700;
+}
+
+[data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-subtitle {
+  margin-top: 14px;
+  color: var(--frameseq-muted);
+}
+
+.frameseq-cover-rule {
+  width: 72%;
+  height: 1px;
+  margin: 20px 0 28px;
+  background: var(--frameseq-accent);
+}
+
+.frameseq-cover-institute,
+.frameseq-cover-date {
+  margin-top: 7px;
+  color: var(--frameseq-muted);
+  font-size: 16px;
 }
 
 [data-frameseq-theme-family="beamer"] .frameseq-cover-title {
@@ -437,6 +502,34 @@ button {
 
 [data-frameseq-theme-family="beamer"] .frameseq-list-copy {
   font-size: 21px;
+}
+
+[data-frameseq-theme="minimal-academic"] .frameseq-list-marker {
+  width: 22px;
+  min-width: 22px;
+  height: 29.4px;
+  color: var(--frameseq-accent);
+  background: transparent;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 29.4px;
+}
+
+[data-frameseq-theme="minimal-academic"] .frameseq-list:not(.frameseq-steps) .frameseq-list-marker {
+  color: transparent;
+  font-size: 0;
+}
+
+[data-frameseq-theme="minimal-academic"] .frameseq-list:not(.frameseq-steps) .frameseq-list-marker::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--frameseq-accent);
+  content: "";
+  transform: translate(-50%, -50%);
 }
 
 .frameseq-list-marker {

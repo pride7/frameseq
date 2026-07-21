@@ -69,4 +69,17 @@ assert.equal(quietMadrid.chrome.titleBar, true);
 assert.equal(quietMadrid.chrome.footer, false);
 assert.equal(themes["beamer-cambridge-us"].colors.accent, "#8b1e3f");
 
+const minimalAcademicDeck = presentation({
+  title: "Minimal Academic Theme",
+  subtitle: "A restrained presentation style",
+  theme: "minimal-academic",
+});
+assert.equal(minimalAcademicDeck.subtitle, "A restrained presentation style");
+assert.equal(minimalAcademicDeck.theme.coverLayout, "academic-left");
+assert.equal(minimalAcademicDeck.theme.colors.accent, "#24528b");
+assert.equal(minimalAcademicDeck.theme.colors.error, "#b4322f");
+assert.equal(minimalAcademicDeck.theme.chrome.titleBarStyle, "underline");
+assert.equal(minimalAcademicDeck.theme.chrome.footerLayout, "title");
+assert.equal(minimalAcademicDeck.theme.chrome.autoTitlePage, true);
+
 console.log("Theme test passed: default, built-in, Beamer, custom, metadata, and override behavior.");
