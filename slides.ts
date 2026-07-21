@@ -1,4 +1,4 @@
-presentation("FrameSeq");
+presentation({ title: "FrameSeq", theme: "midnight" });
 
 slide({ name: "Cover" }).cover();
 text("A UI framework for presentations").eyebrow();

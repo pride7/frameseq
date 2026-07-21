@@ -13,6 +13,7 @@
     "src/globals.ts",
     "src/index.ts",
     "src/script.ts",
-    "src/semantic.ts"
+    "src/semantic.ts",
+    "src/theme.ts"
   ]
 }

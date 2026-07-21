@@ -17,9 +17,11 @@ presentation({
   title: "My Talk",
   ratio: "16:9",
   width: 1280,
-  background: "#020617",
+  theme: "midnight",
 });
 ```
+
+Without `theme`, FrameSeq uses the neutral white `blank` theme. See [Themes](themes.md) to select a built-in theme or define your own. The older `background` option remains available as a shortcut for changing only the slide canvas color.
 
 `ratio` accepts `"16:9"` or `"4:3"`. The default width is `1280`; FrameSeq derives the height from the ratio unless `height` is provided.
 

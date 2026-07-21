@@ -22,4 +22,6 @@ declare global {
   const percent: typeof import("./core").percent;
   const vw: typeof import("./core").vw;
   const vh: typeof import("./core").vh;
+  const defineTheme: typeof import("./theme").defineTheme;
+  const themes: typeof import("./theme").themes;
 }

@@ -1,5 +1,7 @@
 # Styling
 
+For presentation-wide colors, fonts, spacing, and corner radii, start with [Themes](themes.md). The modifiers below override the theme for an individual element.
+
 Content and low-level components return builders. Every modifier returns the same builder, so calls can be chained.
 
 ```ts

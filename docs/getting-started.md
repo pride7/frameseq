@@ -41,6 +41,8 @@ text`Inline math: $E = mc^2$`;
 math`\int_0^\infty e^{-x}\,dx = 1`;
 ```
 
+This starts with the neutral white `blank` theme. You can select a built-in theme with `presentation({ title: "My Talk", theme: "midnight" })`; see [Themes](themes.md) for custom themes.
+
 The file needs no framework import, deck variable, wrapper, or default export. FrameSeq injects the common document commands into the entry file and exports the active presentation.
 
 ## Preview

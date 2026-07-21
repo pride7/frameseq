@@ -1,3 +1,5 @@
+import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
+
 export type Length = number | string;
 
 export type ComponentType =
@@ -25,6 +27,7 @@ export interface DeckOptions {
   width?: number;
   height?: number;
   background?: string;
+  theme?: ThemeInput;
 }
 
 export interface SlideOptions {
@@ -257,6 +260,10 @@ export class DeckDefinition extends ElementBuilder {
     return this.node.props.title as string;
   }
 
+  get theme(): ThemeDefinition {
+    return this.node.props.theme as ThemeDefinition;
+  }
+
   get slides(): FrameSeqNode[] {
     return this.node.children;
   }
@@ -280,13 +287,18 @@ export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition 
   const ratio = options.ratio ?? "16:9";
   const width = options.width ?? 1280;
   const height = options.height ?? Math.round(width * (ratio === "4:3" ? 3 / 4 : 9 / 16));
+  const theme = resolveTheme(options.theme);
+  if (options.background) {
+    theme.colors.background = options.background;
+    theme.coverBackground = options.background;
+  }
   const root = node("deck", {
     title: options.title ?? "FrameSeq",
     ratio,
     width,
     height,
+    theme,
   });
-  if (options.background) root.styles.background = options.background;
   return new DeckDefinition(root);
 }
 

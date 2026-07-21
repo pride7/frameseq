@@ -1,5 +1,6 @@
 import katex from "katex";
 import type { DeckDefinition, FrameSeqNode } from "./core";
+import { themeCssVariables } from "./theme";
 
 function applyStyles(element: HTMLElement, styles: Record<string, string>): void {
   Object.assign(element.style, styles);
@@ -111,6 +112,9 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.documentElement.style.setProperty("--slide-width", `${deck.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${deck.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
+  for (const [name, value] of Object.entries(themeCssVariables(deck.theme))) {
+    document.documentElement.style.setProperty(name, value);
+  }
 
   if (printMode) {
     const pageStyle = document.createElement("style");

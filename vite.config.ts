@@ -30,6 +30,8 @@ const documentCommands = [
   "percent",
   "vw",
   "vh",
+  "defineTheme",
+  "themes",
 ];
 
 export default defineConfig({

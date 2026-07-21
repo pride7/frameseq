@@ -84,7 +84,7 @@ run(
   [
     "--input-type=module",
     "--eval",
-    "import { presentation, slide, text } from '@pride7/frameseq'; presentation('Import test'); slide('Ready'); text('Works');",
+    "import { defineTheme, presentation, slide, text } from '@pride7/frameseq'; const theme = defineTheme({ name: 'test', colors: { accent: '#123456' } }); const deck = presentation({ title: 'Import test', theme }); slide('Ready'); text('Works'); if (deck.theme.colors.accent !== '#123456') throw new Error('Custom theme was not applied');",
   ],
   appDirectory,
 );

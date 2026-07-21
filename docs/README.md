@@ -8,6 +8,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 - [Document model](document-model.md) — understand `presentation()`, `slide()`, and content ownership.
 - [Content](content.md) — text, formulas, code, images, lists, and metrics.
 - [Layout](layout.md) — split pages, grids, regions, centered pages, and freeform composition.
+- [Themes](themes.md) — choose a built-in appearance or define reusable design tokens.
 - [Styling](styling.md) — chainable modifiers, text roles, and units.
 - [API reference](api-reference.md) — signatures and behavior of the public authoring API.
 - [CLI reference](cli.md) — `new`, `dev`, `build`, and `pdf`.

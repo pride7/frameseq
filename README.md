@@ -29,6 +29,7 @@ npx frameseq dev my-talk.slides.ts
 - [Document model](docs/document-model.md)
 - [Content](docs/content.md)
 - [Layout](docs/layout.md)
+- [Themes](docs/themes.md)
 - [Styling](docs/styling.md)
 - [API reference](docs/api-reference.md)
 - [CLI reference](docs/cli.md)
@@ -85,6 +86,22 @@ text("A smaller note")
 ```
 
 Font sizes, spacing, and layout have useful defaults, so modifiers are optional.
+
+Presentations start with a neutral white `blank` theme. Select a built-in theme or create your own:
+
+```ts
+presentation({ title: "My Talk", theme: "midnight" });
+```
+
+```ts
+const ocean = defineTheme({
+  name: "ocean",
+  colors: { background: "#effcff", accent: "#007c91" },
+});
+presentation({ title: "Ocean Research", theme: ocean });
+```
+
+See [Themes](docs/themes.md) for built-in themes and every customizable token.
 
 LaTeX-style equations use `math` as a template tag, so backslashes need no extra escaping and `String.raw` is unnecessary:
 

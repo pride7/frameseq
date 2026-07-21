@@ -358,6 +358,5 @@ export function Slides(titleOrOptions: string | DeckOptions = {}): SlidesDefinit
   const options: DeckOptions = typeof titleOrOptions === "string"
     ? { title: titleOrOptions }
     : { ...titleOrOptions };
-  options.background ??= "#020617";
   return new SlidesDefinition(Deck(options).node);
 }

@@ -20,8 +20,95 @@ interface DeckOptions {
   width?: number;
   height?: number;
   background?: string;
+  theme?: "blank" | "midnight" | "paper" | ThemeDefinition;
 }
 ```
+
+The default theme is `blank`. `background` is a compatibility shortcut that overrides the selected theme's normal and cover backgrounds.
+
+## Themes
+
+### `defineTheme(options)`
+
+Creates a complete reusable theme from partial tokens:
+
+```ts
+const ocean = defineTheme({
+  name: "ocean",
+  extends: "blank",
+  colors: { accent: "#007c91" },
+});
+
+presentation({ title: "Ocean", theme: ocean });
+```
+
+```ts
+interface ThemeOptions {
+  name: string;
+  extends?: BuiltInThemeName | ThemeDefinition;
+  colors?: Partial<ThemeColors>;
+  fonts?: Partial<ThemeFonts>;
+  spacing?: Partial<ThemeSpacing>;
+  radii?: Partial<ThemeRadii>;
+  coverBackground?: string;
+}
+
+type BuiltInThemeName = "blank" | "midnight" | "paper";
+```
+
+Color tokens:
+
+```ts
+interface ThemeColors {
+  background: string;
+  foreground: string;
+  muted: string;
+  subtle: string;
+  accent: string;
+  accentForeground: string;
+  surface: string;
+  surfaceStrong: string;
+  border: string;
+  codeBackground: string;
+  codeForeground: string;
+  error: string;
+  stage: string;
+  shadow: string;
+}
+```
+
+Other tokens:
+
+```ts
+interface ThemeFonts {
+  body: string;
+  heading: string;
+  mono: string;
+}
+
+interface ThemeSpacing {
+  slideX: string;
+  slideY: string;
+  coverX: string;
+  coverY: string;
+  contentGap: string;
+  regionGap: string;
+  splitGap: string;
+  gridGap: string;
+  cardPadding: string;
+}
+
+interface ThemeRadii {
+  small: string;
+  medium: string;
+  large: string;
+  pill: string;
+}
+```
+
+### `themes`
+
+An object containing the complete `blank`, `midnight`, and `paper` theme definitions. Theme names are usually more concise when selecting or extending a built-in theme; this export is useful when a complete theme object is needed.
 
 ### `slide(nameOrOptions?)`
 

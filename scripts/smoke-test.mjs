@@ -45,6 +45,17 @@ try {
   assert.equal(await count(".frameseq-grid-cell"), 3);
   assert.equal(await count(".frameseq-layout-center"), 1);
 
+  const activeTheme = await page.evaluate(() => ({
+    background: getComputedStyle(document.documentElement)
+      .getPropertyValue("--frameseq-background").trim(),
+    accent: getComputedStyle(document.documentElement)
+      .getPropertyValue("--frameseq-accent").trim(),
+  }));
+  assert.deepEqual(activeTheme, {
+    background: "#020617",
+    accent: "#22d3ee",
+  });
+
   const slideText = await page.$$eval(
     ".frameseq-slide-frame",
     (frames) => frames.map((frame) => frame.textContent ?? ""),
@@ -94,7 +105,7 @@ try {
   assert.ok(gridRects[0].x < gridRects[1].x && gridRects[1].x < gridRects[2].x);
   assert.deepEqual(errors, []);
 
-  console.log("Smoke test passed: rendering, navigation, reveals, math, and print mode.");
+  console.log("Smoke test passed: theme, rendering, navigation, reveals, math, and print mode.");
 } finally {
   await browser.close();
   await server.close();
