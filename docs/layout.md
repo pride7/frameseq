@@ -88,7 +88,25 @@ Use an object-form slide without `title` when the image should occupy the page w
 
 ## Freeform canvas
 
-Freeform placement is part of the advanced object API because placed objects must be created before they are attached:
+Change the current slide body into a positioned canvas, then set exact coordinates on any element:
+
+```ts
+slide({ name: "System map" }).canvas();
+
+text("Compiler")
+  .position({ x: 80, y: 90 })
+  .width(320)
+  .size(32)
+  .bold();
+
+image("diagram.png", "Compiler diagram")
+  .position({ x: 500, y: 80 })
+  .width(620);
+```
+
+The `x` and `y` coordinates are relative to the current canvas region. Plain numbers are pixels; unit helpers are also accepted. FrameSeq scales the fixed presentation canvas as one unit, so positioned elements retain their relative placement in interactive HTML and PDF.
+
+The explicit object API is also available when an element should be created before it is attached:
 
 ```ts
 import { Slides, Text, Image, px } from "@pride7/frameseq";
@@ -108,4 +126,4 @@ page.place(
 export default deck;
 ```
 
-Prefer structured layouts for most pages. A canvas uses absolute positioning and therefore needs more deliberate sizing.
+Prefer structured layouts for most pages. Use a canvas for diagrams and custom compositions that genuinely need exact placement.

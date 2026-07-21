@@ -6,6 +6,7 @@ import {
   ElementBuilder,
   type Length,
   Text,
+  Typst,
   type SlideOptions,
 } from "./core";
 import {
@@ -155,6 +156,28 @@ export function math(
     ? contentOrStrings
     : String.raw(contentOrStrings, ...values);
   return attach(Equation(content).className("frameseq-semantic-math"));
+}
+
+/** Add a static Typst fragment. The FrameSeq Vite pipeline compiles it at build time. */
+export function typst(content: string): ElementBuilder;
+export function typst(strings: TemplateStringsArray): ElementBuilder;
+export function typst(contentOrStrings: string | TemplateStringsArray): ElementBuilder {
+  const content = typeof contentOrStrings === "string"
+    ? contentOrStrings
+    : String.raw(contentOrStrings);
+  return attach(Typst(content).className("frameseq-semantic-typst"));
+}
+
+/** Add a Typst fragment from a file relative to the slide document. */
+export function typstFile(path: string): ElementBuilder {
+  const element = Typst("").className("frameseq-semantic-typst");
+  element.node.props.file = path;
+  return attach(element);
+}
+
+/** @internal Used by the build-time Typst transform. */
+export function typstSvg(svg: string, source: string): ElementBuilder {
+  return attach(Typst(source, svg).className("frameseq-semantic-typst"));
 }
 
 export function bullets(...items: string[]): ElementBuilder {

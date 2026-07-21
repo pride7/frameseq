@@ -81,6 +81,17 @@ function renderNode(node: FrameSeqNode): HTMLElement {
       }
       break;
     }
+    case "typst": {
+      element = document.createElement("div");
+      const svg = node.props.svg;
+      if (typeof svg === "string" && svg.trim()) {
+        element.innerHTML = svg;
+      } else {
+        element.textContent = "Typst content was not compiled. Use the FrameSeq CLI and install @myriaddreamin/typst-ts-node-compiler.";
+        element.classList.add("frameseq-typst-error");
+      }
+      break;
+    }
     default:
       element = document.createElement("div");
   }

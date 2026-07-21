@@ -1,6 +1,6 @@
 # API reference
 
-This page describes the supported authoring API for FrameSeq 0.3. Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
+This page describes the supported FrameSeq authoring API. Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
 
 ## Document
 
@@ -225,6 +225,23 @@ math(strings: TemplateStringsArray, ...values: unknown[]): ElementBuilder
 ```
 
 Adds a display equation. Prefer the tagged-template form for LaTeX-style input.
+
+### `typst(content)`
+
+```ts
+typst(content: string): ElementBuilder
+typst(strings: TemplateStringsArray): ElementBuilder
+```
+
+Adds a static Typst fragment to the current region. The Vite build compiles the fragment to inline SVG. JavaScript interpolation inside the tagged template is not currently supported. Install the optional `@myriaddreamin/typst-ts-node-compiler` package before using this command.
+
+### `typstFile(path)`
+
+```ts
+typstFile(path: string): ElementBuilder
+```
+
+Adds a Typst fragment from a static path relative to the slide document. The file must stay inside the slide document directory. Vite watches it for changes during development.
 
 ### `bullets(...items)`
 

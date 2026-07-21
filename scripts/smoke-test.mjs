@@ -37,13 +37,24 @@ try {
     name,
   );
 
-  assert.equal(await count(".frameseq-slide-frame"), 5);
+  assert.equal(await count(".frameseq-slide-frame"), 6);
   assert.equal(await attribute(".frameseq-slide-frame.is-active", "data-index"), "0");
   assert.equal(await count(".katex"), 2);
   assert.equal(await count(".frameseq-inline-math .katex"), 1);
+  assert.equal(await count(".frameseq-typst > svg"), 2);
   assert.equal(await count(".frameseq-layout-split"), 1);
   assert.equal(await count(".frameseq-grid-cell"), 3);
-  assert.equal(await count(".frameseq-layout-center"), 1);
+  assert.equal(await count(".frameseq-layout-center"), 2);
+
+  const typstFragments = await page.$$eval(
+    ".frameseq-typst > svg",
+    (elements) => elements.map((element) => ({
+      viewBox: element.getAttribute("viewBox"),
+      width: element.getBoundingClientRect().width,
+      height: element.getBoundingClientRect().height,
+    })),
+  );
+  assert.ok(typstFragments.every((fragment) => fragment.viewBox));
 
   const tailwindStyle = await page.$eval(".tailwind-smoke", (element) => {
     const style = getComputedStyle(element);
@@ -140,8 +151,16 @@ try {
 
   await page.goto(`http://127.0.0.1:${address.port}/?print=1`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
-  assert.equal(await count(".frameseq-slide-frame.is-active"), 5);
+  assert.equal(await count(".frameseq-slide-frame.is-active"), 6);
   assert.equal(await count(".frameseq-step.is-visible"), 3);
+  const printedTypstGeometry = await page.$$eval(
+    ".frameseq-typst > svg",
+    (elements) => elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }),
+  );
+  assert.ok(printedTypstGeometry.every((fragment) => fragment.width > 0 && fragment.height > 0));
 
   const splitRects = await page.$$eval(
     ".frameseq-layout-split > .frameseq-region",

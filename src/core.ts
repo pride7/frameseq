@@ -12,6 +12,7 @@ export type ComponentType =
   | "image"
   | "code"
   | "equation"
+  | "typst"
   | "spacer";
 
 export interface FrameSeqNode {
@@ -399,6 +400,10 @@ export function Code(content: string, language = "text"): ElementBuilder {
 
 export function Equation(content: string, displayMode = true): ElementBuilder {
   return new ElementBuilder(node("equation", { content, displayMode }));
+}
+
+export function Typst(source: string, svg?: string): ElementBuilder {
+  return new ElementBuilder(node("typst", { source, svg }));
 }
 
 export function Spacer(size = 1): ElementBuilder {

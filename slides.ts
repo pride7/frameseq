@@ -48,3 +48,15 @@ slide("LaTeX-compatible equations").center();
 text`Math belongs in text too: $E = mc^2$.`.lead();
 math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
 text("Rendered with KaTeX · exported with the rest of the page").caption();
+
+slide("Typst for complex typesetting").center();
+text("FrameSeq owns the slide; Typst owns the fragment.").lead();
+typst`
+  #set text(size: 15pt, fill: rgb("#67e8f9"))
+  $ integral_0^1 x^2 dif x = 1/3 $
+`
+  .className("typst-inline-smoke")
+  .width(420);
+typstFile("./tests/typst-fragment.typ")
+  .className("typst-file-smoke")
+  .width(460);

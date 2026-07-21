@@ -7,6 +7,8 @@ declare global {
   const image: typeof import("./script").image;
   const code: typeof import("./script").code;
   const math: typeof import("./script").math;
+  const typst: typeof import("./script").typst;
+  const typstFile: typeof import("./script").typstFile;
   const bullets: typeof import("./script").bullets;
   const steps: typeof import("./script").steps;
   const metric: typeof import("./script").metric;

@@ -256,6 +256,23 @@ button {
   color: var(--frameseq-error);
 }
 
+.frameseq-typst {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.frameseq-typst > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.frameseq-typst-error {
+  color: var(--frameseq-error);
+  font-size: 16px;
+}
+
 .frameseq-inline-math {
   display: inline-block;
   margin: 0 0.08em;
@@ -577,6 +594,10 @@ button {
   color: var(--frameseq-foreground);
   background: var(--frameseq-surface-strong);
   font-size: 34px;
+}
+
+.frameseq-semantic-typst {
+  align-self: center;
 }
 
 .frameseq-semantic-image {

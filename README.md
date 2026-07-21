@@ -182,6 +182,37 @@ text`Euler's identity is $e^{i\pi} + 1 = 0$.`;
 
 The tagged forms preserve backslashes, so `String.raw` is unnecessary.
 
+### Typst for complex typesetting
+
+Keep FrameSeq in control of the presentation structure and use Typst for a complex local fragment. Install the optional build-time compiler:
+
+```bash
+npm install --save-dev @myriaddreamin/typst-ts-node-compiler
+```
+
+Then use a static tagged template:
+
+```ts
+slide("Optimization");
+text("Objective function").lead();
+
+typst`
+  #set text(size: 22pt)
+  $ min_theta sum_(i=1)^n
+    loss(f_theta(x_i), y_i) + lambda norm(theta)^2 $
+`
+  .width(720);
+```
+
+For larger fragments, keep Typst in its own file:
+
+```ts
+typstFile("./figures/architecture.typ")
+  .width(percent(100));
+```
+
+FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout, styling, HTML, and PDF output. See [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md) for the current static-source restrictions.
+
 ### Code, lists, images, and reveals
 
 ```ts
@@ -230,7 +261,27 @@ text("Portable").lead();
 text("HTML and PDF");
 ```
 
-Other layout tools include `center()`, `fullBleed()`, `left()`, `main()`, and a freeform canvas for absolute placement.
+### Freeform positioning
+
+Switch the slide body to a canvas when an object needs exact coordinates:
+
+```ts
+slide({ name: "System map" }).canvas();
+
+text("Compiler")
+  .position({ x: 80, y: 90 })
+  .width(320)
+  .size(32)
+  .bold();
+
+image("diagram.png", "Compiler diagram")
+  .position({ x: 500, y: 80 })
+  .width(620);
+```
+
+Coordinates are relative to the current canvas region. Numbers are pixels in FrameSeq's fixed presentation coordinate system; the default presentation canvas is 1280 x 720, and the runtime scales the finished slide as one unit for interactive HTML and PDF. Prefer structured layouts for most pages, then use `canvas()` with `position()` for diagrams and custom compositions.
+
+Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 
 ## Styling
 
@@ -364,6 +415,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
 - [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
 - [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
+- [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md)
 - [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
 - [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)
 - [Advanced composition](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/advanced.md)
