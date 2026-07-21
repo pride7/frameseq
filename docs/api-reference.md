@@ -25,10 +25,25 @@ interface DeckOptions {
   height?: number;
   background?: string;
   theme?: BuiltInThemeName | ThemeDefinition;
+  font?: PresentationFontOptions;
+}
+
+interface FontStyleOptions {
+  family?: string;
+  size?: Length;
+  weight?: number | string;
+  lineHeight?: number | string;
+}
+
+interface PresentationFontOptions extends FontStyleOptions {
+  heading?: FontStyleOptions;
+  code?: FontStyleOptions;
 }
 ```
 
 The default theme is `blank`. `background` is a compatibility shortcut that overrides the selected theme's normal and cover backgrounds.
+
+`font` changes presentation-wide typography without defining a complete theme. Its top-level values apply to body text, `heading` applies to cover and slide headings, and `code` applies to code blocks. A local builder modifier such as `.size(30)` takes precedence over these defaults.
 
 ## Themes
 

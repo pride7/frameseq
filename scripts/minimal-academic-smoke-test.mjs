@@ -32,21 +32,33 @@ try {
   await page.goto("http://127.0.0.1:4175/", { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
 
-  const titlePage = await page.$eval(".frameseq-cover-slide", (slide) => ({
-    title: slide.querySelector(".frameseq-cover-title")?.textContent,
-    subtitle: slide.querySelector(".frameseq-cover-subtitle")?.textContent,
-    author: slide.querySelector(".frameseq-cover-author")?.textContent,
-    institute: slide.querySelector(".frameseq-cover-institute")?.textContent,
-    date: slide.querySelector(".frameseq-cover-date")?.textContent,
-    ruleWidth: slide.querySelector(".frameseq-cover-rule")?.getBoundingClientRect().width,
-    pageWidth: slide.getBoundingClientRect().width,
-    footerCount: slide.querySelectorAll(".frameseq-theme-footer").length,
-  }));
+  const titlePage = await page.$eval(".frameseq-cover-slide", (slide) => {
+    const title = slide.querySelector(".frameseq-cover-title");
+    const titleStyle = title ? getComputedStyle(title) : undefined;
+    return {
+      title: title?.textContent,
+      subtitle: slide.querySelector(".frameseq-cover-subtitle")?.textContent,
+      author: slide.querySelector(".frameseq-cover-author")?.textContent,
+      institute: slide.querySelector(".frameseq-cover-institute")?.textContent,
+      date: slide.querySelector(".frameseq-cover-date")?.textContent,
+      ruleWidth: slide.querySelector(".frameseq-cover-rule")?.getBoundingClientRect().width,
+      pageWidth: slide.getBoundingClientRect().width,
+      footerCount: slide.querySelectorAll(".frameseq-theme-footer").length,
+      titleFontFamily: titleStyle?.fontFamily,
+      titleFontSize: titleStyle?.fontSize,
+      titleFontWeight: titleStyle?.fontWeight,
+      titleLineHeight: titleStyle?.lineHeight,
+    };
+  });
   assert.equal(titlePage.title, "Minimal Academic Theme");
   assert.equal(titlePage.subtitle, "A restrained presentation style");
   assert.equal(titlePage.author, "Ada Lovelace");
   assert.equal(titlePage.institute, "Analytical Engine Institute");
   assert.equal(titlePage.date, "2026");
+  assert.equal(titlePage.titleFontFamily, "Georgia, serif");
+  assert.equal(titlePage.titleFontSize, "40px");
+  assert.equal(titlePage.titleFontWeight, "700");
+  assert.equal(titlePage.titleLineHeight, "48px");
   assert.ok(Math.abs((titlePage.ruleWidth ?? 0) / titlePage.pageWidth - 0.619) < 0.01);
   assert.equal(titlePage.footerCount, 0);
 
@@ -63,6 +75,13 @@ try {
     const copyRect = copy?.getBoundingClientRect();
     const markerStyle = marker ? getComputedStyle(marker) : undefined;
     const bulletStyle = marker ? getComputedStyle(marker, "::before") : undefined;
+    const body = slide.querySelector(".frameseq-body-copy:not(.font-override)");
+    const codeBlock = slide.querySelector(".frameseq-semantic-code");
+    const localOverride = slide.querySelector(".font-override");
+    const titleStyle = titleBar ? getComputedStyle(titleBar) : undefined;
+    const bodyStyle = body ? getComputedStyle(body) : undefined;
+    const codeStyle = codeBlock ? getComputedStyle(codeBlock) : undefined;
+    const localStyle = localOverride ? getComputedStyle(localOverride) : undefined;
     return {
       title: titleBar?.textContent,
       titleClass: titleBar?.className,
@@ -78,6 +97,20 @@ try {
           - (copyRect.top + copyRect.height / 2),
         )
         : undefined,
+      titleFontFamily: titleStyle?.fontFamily,
+      titleFontSize: titleStyle?.fontSize,
+      titleFontWeight: titleStyle?.fontWeight,
+      titleLineHeight: titleStyle?.lineHeight,
+      bodyFontFamily: bodyStyle?.fontFamily,
+      bodyFontSize: bodyStyle?.fontSize,
+      bodyFontWeight: bodyStyle?.fontWeight,
+      bodyLineHeight: bodyStyle?.lineHeight,
+      codeFontFamily: codeStyle?.fontFamily,
+      codeFontSize: codeStyle?.fontSize,
+      codeFontWeight: codeStyle?.fontWeight,
+      codeLineHeight: codeStyle?.lineHeight,
+      localFontSize: localStyle?.fontSize,
+      localFontWeight: localStyle?.fontWeight,
     };
   });
   assert.equal(frame.title, "Design principles");
@@ -88,9 +121,23 @@ try {
   assert.doesNotMatch(frame.footer ?? "", /Ada Lovelace|Analytical Engine Institute|2026/);
   assert.ok((frame.titleInset ?? 0) > 80);
   assert.equal(frame.footerAtBottom, true);
-  assert.equal(frame.bulletHeight, "29.3906px");
   assert.equal(frame.bulletSize, "10px");
   assert.ok((frame.bulletCenterDelta ?? Infinity) < 1);
+  assert.ok(Math.abs(parseFloat(frame.bulletHeight ?? "0") - 38.4) < 0.1);
+  assert.equal(frame.titleFontFamily, "Georgia, serif");
+  assert.equal(frame.titleFontSize, "40px");
+  assert.equal(frame.titleFontWeight, "700");
+  assert.equal(frame.titleLineHeight, "48px");
+  assert.equal(frame.bodyFontFamily, '"Segoe UI", sans-serif');
+  assert.equal(frame.bodyFontSize, "24px");
+  assert.equal(frame.bodyFontWeight, "450");
+  assert.equal(frame.bodyLineHeight, "38.4px");
+  assert.equal(frame.codeFontFamily, "Consolas, monospace");
+  assert.equal(frame.codeFontSize, "17px");
+  assert.equal(frame.codeFontWeight, "500");
+  assert.equal(frame.codeLineHeight, "23.8px");
+  assert.equal(frame.localFontSize, "30px");
+  assert.equal(frame.localFontWeight, "800");
 
   const themeData = await page.evaluate(() => ({
     theme: document.documentElement.dataset.frameseqTheme,

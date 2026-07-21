@@ -21,6 +21,18 @@ export interface FrameSeqNode {
   children: FrameSeqNode[];
 }
 
+export interface FontStyleOptions {
+  family?: string;
+  size?: Length;
+  weight?: number | string;
+  lineHeight?: number | string;
+}
+
+export interface PresentationFontOptions extends FontStyleOptions {
+  heading?: FontStyleOptions;
+  code?: FontStyleOptions;
+}
+
 export interface DeckOptions {
   title?: string;
   subtitle?: string;
@@ -32,6 +44,7 @@ export interface DeckOptions {
   height?: number;
   background?: string;
   theme?: ThemeInput;
+  font?: PresentationFontOptions;
 }
 
 export interface SlideOptions {
@@ -284,6 +297,10 @@ export class DeckDefinition extends ElementBuilder {
     return this.node.props.theme as ThemeDefinition;
   }
 
+  get font(): PresentationFontOptions | undefined {
+    return this.node.props.font as PresentationFontOptions | undefined;
+  }
+
   get slides(): FrameSeqNode[] {
     return this.node.children;
   }
@@ -322,6 +339,13 @@ export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition 
     width,
     height,
     theme,
+    font: options.font
+      ? {
+        ...options.font,
+        heading: options.font.heading ? { ...options.font.heading } : undefined,
+        code: options.font.code ? { ...options.font.code } : undefined,
+      }
+      : undefined,
   });
   return new DeckDefinition(root);
 }

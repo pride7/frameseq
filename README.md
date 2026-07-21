@@ -130,6 +130,23 @@ presentation({ title: "Ocean Research", theme: ocean });
 
 See [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md) for built-in themes and every customizable token.
 
+Override typography for one presentation without creating a new theme:
+
+```ts
+presentation({
+  title: "My Talk",
+  theme: "minimal-academic",
+  font: {
+    family: '"Noto Sans SC", sans-serif',
+    size: 24,
+    heading: { family: '"Noto Serif SC", serif', weight: 700 },
+    code: { family: '"JetBrains Mono", monospace', size: 18 },
+  },
+});
+```
+
+Element modifiers such as `text("Note").size(18)` override these presentation defaults.
+
 LaTeX-style equations use `math` as a template tag, so backslashes need no extra escaping and `String.raw` is unnecessary:
 
 ```ts

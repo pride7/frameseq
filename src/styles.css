@@ -104,6 +104,9 @@ button {
   color: var(--frameseq-foreground);
   background: var(--frameseq-background);
   font-family: var(--frameseq-font-body);
+  font-size: var(--frameseq-body-font-size, inherit);
+  font-weight: var(--frameseq-body-font-weight, inherit);
+  line-height: var(--frameseq-body-line-height, normal);
 }
 
 .frameseq-theme-title-bar {
@@ -119,9 +122,9 @@ button {
   color: var(--frameseq-title-bar-foreground);
   background: var(--frameseq-title-bar-background);
   font-family: var(--frameseq-font-heading);
-  font-size: 28px;
-  font-weight: 650;
-  line-height: 1;
+  font-size: var(--frameseq-heading-font-size, 28px);
+  font-weight: var(--frameseq-heading-font-weight, 650);
+  line-height: var(--frameseq-heading-line-height, 1);
 }
 
 .frameseq-theme-title-bar.is-underline {
@@ -132,7 +135,7 @@ button {
   padding: 0 0 10px;
   border-bottom: 1px solid var(--frameseq-title-bar-foreground);
   background: transparent;
-  font-size: 34px;
+  font-size: var(--frameseq-heading-font-size, 34px);
 }
 
 .frameseq-has-title-bar > .frameseq-slide-title {
@@ -225,8 +228,9 @@ button {
   overflow: hidden;
   color: var(--frameseq-code-foreground);
   font-family: var(--frameseq-font-mono);
-  font-size: 18px;
-  line-height: 1.65;
+  font-size: var(--frameseq-code-font-size, 18px);
+  font-weight: var(--frameseq-code-font-weight, inherit);
+  line-height: var(--frameseq-code-line-height, 1.65);
   tab-size: 2;
   white-space: pre-wrap;
 }
@@ -281,10 +285,10 @@ button {
   max-width: 960px;
   color: var(--frameseq-foreground);
   font-family: var(--frameseq-font-heading);
-  font-size: 72px;
-  font-weight: 820;
+  font-size: var(--frameseq-heading-font-size, 72px);
+  font-weight: var(--frameseq-heading-font-weight, 820);
   letter-spacing: -0.05em;
-  line-height: 1.02;
+  line-height: var(--frameseq-heading-line-height, 1.02);
 }
 
 .frameseq-cover-subtitle {
@@ -325,8 +329,8 @@ button {
 
 [data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-title {
   max-width: 980px;
-  font-size: 52px;
-  font-weight: 700;
+  font-size: var(--frameseq-heading-font-size, 52px);
+  font-weight: var(--frameseq-heading-font-weight, 700);
 }
 
 [data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-subtitle {
@@ -351,10 +355,10 @@ button {
 [data-frameseq-theme-family="beamer"] .frameseq-cover-title {
   max-width: 1000px;
   color: var(--frameseq-accent);
-  font-size: 54px;
-  font-weight: 600;
+  font-size: var(--frameseq-heading-font-size, 54px);
+  font-weight: var(--frameseq-heading-font-weight, 600);
   letter-spacing: -0.015em;
-  line-height: 1.12;
+  line-height: var(--frameseq-heading-line-height, 1.12);
 }
 
 [data-frameseq-theme-family="beamer"] .frameseq-cover-eyebrow {
@@ -442,18 +446,18 @@ button {
   flex: 0 0 auto;
   color: var(--frameseq-foreground);
   font-family: var(--frameseq-font-heading);
-  font-size: 48px;
-  font-weight: 800;
+  font-size: var(--frameseq-heading-font-size, 48px);
+  font-weight: var(--frameseq-heading-font-weight, 800);
   letter-spacing: -0.035em;
-  line-height: 1.08;
+  line-height: var(--frameseq-heading-line-height, 1.08);
 }
 
 [data-frameseq-theme-family="beamer"] .frameseq-slide-title {
   color: var(--frameseq-accent);
-  font-size: 34px;
-  font-weight: 600;
+  font-size: var(--frameseq-heading-font-size, 34px);
+  font-weight: var(--frameseq-heading-font-weight, 600);
   letter-spacing: -0.01em;
-  line-height: 1.15;
+  line-height: var(--frameseq-heading-line-height, 1.15);
 }
 
 .frameseq-slide-lead {
@@ -466,8 +470,9 @@ button {
 .frameseq-body-copy {
   max-width: 1080px;
   color: var(--frameseq-muted);
-  font-size: 21px;
-  line-height: 1.55;
+  font-size: var(--frameseq-body-font-size, 21px);
+  font-weight: var(--frameseq-body-font-weight, inherit);
+  line-height: var(--frameseq-body-line-height, 1.55);
 }
 
 .frameseq-list {
@@ -501,7 +506,7 @@ button {
 }
 
 [data-frameseq-theme-family="beamer"] .frameseq-list-copy {
-  font-size: 21px;
+  font-size: var(--frameseq-body-font-size, 21px);
 }
 
 [data-frameseq-theme="minimal-academic"] .frameseq-list-marker {
@@ -516,8 +521,10 @@ button {
 }
 
 [data-frameseq-theme="minimal-academic"] .frameseq-list:not(.frameseq-steps) .frameseq-list-marker {
+  height: 1lh;
   color: transparent;
-  font-size: 0;
+  font-size: var(--frameseq-body-font-size, 21px);
+  line-height: var(--frameseq-body-line-height, 1.4);
 }
 
 [data-frameseq-theme="minimal-academic"] .frameseq-list:not(.frameseq-steps) .frameseq-list-marker::before {
@@ -547,8 +554,9 @@ button {
 
 .frameseq-list-copy {
   color: var(--frameseq-foreground);
-  font-size: 20px;
-  line-height: 1.4;
+  font-size: var(--frameseq-body-font-size, 20px);
+  font-weight: var(--frameseq-body-font-weight, inherit);
+  line-height: var(--frameseq-body-line-height, 1.4);
 }
 
 .frameseq-semantic-code {
@@ -557,8 +565,9 @@ button {
   border: 1px solid var(--frameseq-border);
   border-radius: var(--frameseq-radius-large);
   background: var(--frameseq-code-background);
-  font-size: 16px;
-  line-height: 1.48;
+  font-size: var(--frameseq-code-font-size, 16px);
+  font-weight: var(--frameseq-code-font-weight, inherit);
+  line-height: var(--frameseq-code-line-height, 1.48);
 }
 
 .frameseq-semantic-math {

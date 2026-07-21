@@ -22,6 +22,19 @@ presentation({
   ratio: "16:9",
   width: 1280,
   theme: "midnight",
+  font: {
+    family: '"Noto Sans SC", sans-serif',
+    size: 24,
+    lineHeight: 1.5,
+    heading: {
+      family: '"Noto Serif SC", serif',
+      weight: 700,
+    },
+    code: {
+      family: '"JetBrains Mono", monospace',
+      size: 18,
+    },
+  },
 });
 ```
 
@@ -30,6 +43,8 @@ Without `theme`, FrameSeq uses the neutral white `blank` theme. See [Themes](the
 `subtitle`, `author`, `institute`, and `date` are optional document metadata. Themes may use them differently: `beamer-madrid` puts author, institute, and date in the footer, while `minimal-academic` uses all four fields to generate an empty cover slide automatically.
 
 `ratio` accepts `"16:9"` or `"4:3"`. The default width is `1280`; FrameSeq derives the height from the ratio unless `height` is provided.
+
+`font` is an optional presentation-wide typography override. Top-level values set body typography; `heading` and `code` configure their respective categories. These settings override the selected theme, while modifiers on an individual object still have the highest priority.
 
 A slide file should call `presentation()` once, before the first slide. Calling it again starts a new document context and abandons the previously active one.
 

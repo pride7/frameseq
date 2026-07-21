@@ -1,5 +1,10 @@
 import katex from "katex";
-import type { DeckDefinition, FrameSeqNode } from "./core";
+import type {
+  DeckDefinition,
+  FrameSeqNode,
+  Length,
+  PresentationFontOptions,
+} from "./core";
 import { themeCssVariables } from "./theme";
 
 function applyStyles(element: HTMLElement, styles: Record<string, string>): void {
@@ -215,6 +220,56 @@ function addThemeChrome(
   canvas.append(footer);
 }
 
+const presentationFontVariables = [
+  "--frameseq-body-font-size",
+  "--frameseq-body-font-weight",
+  "--frameseq-body-line-height",
+  "--frameseq-heading-font-size",
+  "--frameseq-heading-font-weight",
+  "--frameseq-heading-line-height",
+  "--frameseq-code-font-size",
+  "--frameseq-code-font-weight",
+  "--frameseq-code-line-height",
+] as const;
+
+function fontLength(value: Length): string {
+  return typeof value === "number" ? `${value}px` : value;
+}
+
+function applyPresentationFont(font: PresentationFontOptions | undefined): void {
+  const styles = document.documentElement.style;
+  for (const variable of presentationFontVariables) {
+    styles.removeProperty(variable);
+  }
+  if (!font) return;
+
+  if (font.family !== undefined) {
+    styles.setProperty("--frameseq-font-body", font.family);
+    styles.setProperty("--frameseq-font-heading", font.family);
+  }
+  if (font.heading?.family !== undefined) {
+    styles.setProperty("--frameseq-font-heading", font.heading.family);
+  }
+  if (font.code?.family !== undefined) {
+    styles.setProperty("--frameseq-font-mono", font.code.family);
+  }
+
+  const values: Array<[string, string | undefined]> = [
+    ["--frameseq-body-font-size", font.size === undefined ? undefined : fontLength(font.size)],
+    ["--frameseq-body-font-weight", font.weight === undefined ? undefined : String(font.weight)],
+    ["--frameseq-body-line-height", font.lineHeight === undefined ? undefined : String(font.lineHeight)],
+    ["--frameseq-heading-font-size", font.heading?.size === undefined ? undefined : fontLength(font.heading.size)],
+    ["--frameseq-heading-font-weight", font.heading?.weight === undefined ? undefined : String(font.heading.weight)],
+    ["--frameseq-heading-line-height", font.heading?.lineHeight === undefined ? undefined : String(font.heading.lineHeight)],
+    ["--frameseq-code-font-size", font.code?.size === undefined ? undefined : fontLength(font.code.size)],
+    ["--frameseq-code-font-weight", font.code?.weight === undefined ? undefined : String(font.code.weight)],
+    ["--frameseq-code-line-height", font.code?.lineHeight === undefined ? undefined : String(font.code.lineHeight)],
+  ];
+  for (const [name, value] of values) {
+    if (value !== undefined) styles.setProperty(name, value);
+  }
+}
+
 export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.title = deck.title;
   target.replaceChildren();
@@ -230,6 +285,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   for (const [name, value] of Object.entries(themeCssVariables(deck.theme))) {
     document.documentElement.style.setProperty(name, value);
   }
+  applyPresentationFont(deck.font);
 
   if (printMode) {
     const pageStyle = document.createElement("style");

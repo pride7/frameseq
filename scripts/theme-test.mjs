@@ -73,6 +73,12 @@ const minimalAcademicDeck = presentation({
   title: "Minimal Academic Theme",
   subtitle: "A restrained presentation style",
   theme: "minimal-academic",
+  font: {
+    family: "Inter, sans-serif",
+    size: 24,
+    heading: { family: "Georgia, serif", weight: 700 },
+    code: { family: "Consolas, monospace", size: 17 },
+  },
 });
 assert.equal(minimalAcademicDeck.subtitle, "A restrained presentation style");
 assert.equal(minimalAcademicDeck.theme.coverLayout, "academic-left");
@@ -81,5 +87,11 @@ assert.equal(minimalAcademicDeck.theme.colors.error, "#b4322f");
 assert.equal(minimalAcademicDeck.theme.chrome.titleBarStyle, "underline");
 assert.equal(minimalAcademicDeck.theme.chrome.footerLayout, "title");
 assert.equal(minimalAcademicDeck.theme.chrome.autoTitlePage, true);
+assert.equal(minimalAcademicDeck.font?.family, "Inter, sans-serif");
+assert.equal(minimalAcademicDeck.font?.size, 24);
+assert.equal(minimalAcademicDeck.font?.heading?.family, "Georgia, serif");
+assert.equal(minimalAcademicDeck.font?.heading?.weight, 700);
+assert.equal(minimalAcademicDeck.font?.code?.family, "Consolas, monospace");
+assert.equal(minimalAcademicDeck.font?.code?.size, 17);
 
 console.log("Theme test passed: default, built-in, Beamer, custom, metadata, and override behavior.");

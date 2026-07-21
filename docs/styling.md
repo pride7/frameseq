@@ -12,6 +12,36 @@ text("Important")
   .margin(12, 0);
 ```
 
+## Presentation-wide typography
+
+Use the `font` option in `presentation()` when a deck should keep a theme's colors and layout but use different font defaults:
+
+```ts
+presentation({
+  title: "My Slides",
+  theme: "minimal-academic",
+  font: {
+    family: '"Noto Sans SC", sans-serif',
+    size: 24,
+    weight: 400,
+    lineHeight: 1.5,
+    heading: {
+      family: '"Noto Serif SC", serif',
+      size: 40,
+      weight: 700,
+    },
+    code: {
+      family: '"JetBrains Mono", monospace',
+      size: 18,
+    },
+  },
+});
+```
+
+Numbers used as `size` values are pixels. Length helpers and CSS strings are also accepted, such as `pt(20)`, `"1.5rem"`, or `"24px"`. `lineHeight` can be a unitless number or a CSS string.
+
+The precedence is: an individual object's modifier or `.style()` value, then `presentation.font`, then the selected theme. A top-level `family` applies to both body text and headings; code keeps the theme's monospace family unless `code.family` is set.
+
 ## Lengths and units
 
 A number is interpreted as pixels:
