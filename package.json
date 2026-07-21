@@ -1,0 +1,31 @@
+{
+  "name": "frameseq",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "frameseq": "./scripts/frameseq.mjs"
+  },
+  "scripts": {
+    "dev": "node scripts/frameseq.mjs dev slides.ts",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node scripts/smoke-test.mjs",
+    "frameseq": "node scripts/frameseq.mjs",
+    "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf"
+  },
+  "dependencies": {
+    "katex": "^0.16.22"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/node": "^24.0.0",
+    "puppeteer": "^24.16.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}
