@@ -1,10 +1,103 @@
 # FrameSeq
 
-FrameSeq is an experimental TypeScript framework for building presentations like app interfaces.
+**Write slides as an editable TypeScript document—not a tree of presentation markup.**
+
+FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF output. It feels like building an interface, but the source stays as direct and readable as a document.
+
+```ts
+presentation({
+  title: "A Better Way to Write Slides",
+  author: "Ada Lovelace",
+  theme: "minimal-academic",
+});
+
+slide().cover();
+
+slide("Why FrameSeq");
+text("Presentation code should describe ideas, not boilerplate.").lead();
+bullets(
+  "One linear TypeScript file",
+  "Semantic layouts with useful defaults",
+  "Tailwind styling without configuration",
+  "Interactive HTML and PDF from the same source",
+);
+
+slide("Results").grid(3);
+cell(0); metric("12 min", "To first draft");
+cell(1); metric("1 file", "To maintain");
+cell(2); metric("2 formats", "HTML + PDF");
+
+slide("The model");
+text`Every command belongs to the current slide until the next $\operatorname{slide}()$ call.`;
+```
+
+No imports, wrapper components, nested DOM, or export statement are required in a `.slides.ts` entry file.
+
+## Why FrameSeq
+
+### Easier to edit than raw HTML
+
+HTML is an excellent rendering target, but presentation source written directly as HTML quickly mixes content, nesting, layout, and styling. FrameSeq keeps the author's intent visible:
+
+```ts
+slide("Architecture").split("40:60");
+
+image("pipeline.png", "Compiler pipeline");
+
+right();
+text("Three clear stages").lead();
+bullets("Parse the document", "Build the page tree", "Render HTML or PDF");
+```
+
+A slide starts with `slide()`; everything after it belongs to that slide until the next `slide()`. Layout changes are named operations such as `split()`, `grid()`, `right()`, and `cell()`. A local visual change stays attached to the object it affects.
+
+This makes presentation code easier to read, rearrange, diff, and revise than a large hierarchy of generic elements.
+
+### A strong target language for AI
+
+FrameSeq is deliberately small and regular, which makes it well suited to AI-generated presentations:
+
+- The source expresses presentation intent instead of DOM implementation details.
+- Slide boundaries are explicit and require no indentation tree.
+- Semantic commands such as `lead()`, `bullets()`, `metric()`, and `split()` reduce arbitrary design decisions.
+- Local edits usually change a few lines without rebuilding an HTML structure.
+- TypeScript catches misspelled APIs and invalid arguments.
+- Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
+- The FrameSeq runtime owns rendering, navigation, responsive scaling, and PDF output.
+
+An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
+
+### Progressive control
+
+Start with defaults:
+
+```ts
+slide("One idea");
+text("A normal slide already has spacing and typography.");
+bullets("First point", "Second point");
+```
+
+Add a structured layout:
+
+```ts
+slide("Results").grid(3);
+cell(0); metric("42%", "Growth");
+cell(1); metric("18K", "Users");
+cell(2); metric("99.9%", "Uptime");
+```
+
+Style one object:
+
+```ts
+text("Important")
+  .style("text-4xl font-bold tracking-tight text-blue-600");
+```
+
+Or drop down to the explicit object API for a completely custom composition. FrameSeq does not force every slide into the same abstraction level.
 
 ## Quick start
 
-Create a complete presentation project:
+Create a presentation project:
 
 ```bash
 npm create frameseq@latest my-talk
@@ -13,9 +106,18 @@ npm install
 npm run dev
 ```
 
-The generated project includes a `slides.ts` document, editor type support, HTML builds, and PDF export commands.
+The generated project contains:
 
-To add FrameSeq to an existing TypeScript project instead:
+```text
+my-talk/
+├── slides.ts
+├── package.json
+└── tsconfig.json
+```
+
+Edit `slides.ts`; the browser preview updates as the file changes.
+
+To use FrameSeq in an existing TypeScript project:
 
 ```bash
 npm install --save-dev @pride7/frameseq
@@ -23,93 +125,159 @@ npx frameseq new my-talk.slides.ts
 npx frameseq dev my-talk.slides.ts
 ```
 
-## Documentation
-
-- [Getting started](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/getting-started.md)
-- [Document model](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/document-model.md)
-- [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
-- [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
-- [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
-- [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
-- [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
-- [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)
-- [Advanced composition](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/advanced.md)
-
-Start with the document model to understand how `presentation()`, `slide()`, and region selection work in a linear slide file.
-
-## Create one file
-
-After installing or linking the package, create a deck with:
-
-```bash
-frameseq new my-talk.slides.ts
-```
-
-Inside this repository, the equivalent command is:
-
-```bash
-npm run frameseq -- new my-talk.slides.ts
-```
-
-The generated `.slides.ts` file is written from top to bottom like a document:
+## The document model
 
 ```ts
 presentation("My Talk");
 
 slide().cover();
 text("Build slides like apps").hero();
-text("TypeScript → HTML → PDF").subtitle();
-text("Your name").author().size(pt(16));
+text("Keep them as easy to edit as documents").subtitle();
+text("Your name").author();
 
 slide("Why");
 text("Common slides use useful defaults.");
 bullets(
   "No layout boilerplate",
-  "LaTeX-compatible math",
+  "KaTeX-powered formulas",
   "Browser preview and PDF export",
 );
 
 slide("Equation");
-math`E = mc^2`;
+math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
 ```
 
-The FrameSeq document compiler automatically provides the common commands and exports the presentation. A slide document therefore needs no framework import, `deck` variable, or `export default`.
+`presentation()` defines deck-wide metadata and design options. `slide()` starts a page. Content commands add objects to the current page and return chainable builders.
 
-`slide()` starts the current page. Every `text()`, `bullets()`, `code()`, `math()`, or `image()` after it belongs to that page, up to the next `slide()` call. There is no wrapper and no indentation tree.
+The FrameSeq compiler injects the authoring commands and exports the presentation automatically. Ordinary TypeScript imports, variables, URLs, and functions remain available when a deck needs them.
 
-Content functions create real objects, so modifiers remain chainable:
+## Content
+
+### Text roles
 
 ```ts
-text("A smaller note")
-  .style("text-lg font-semibold tracking-tight text-slate-500");
+text("Main title").hero();
+text("Supporting message").subtitle();
+text("SECTION 01").eyebrow();
+text("The important idea").lead();
+text("Source: Example").caption();
+text("A memorable sentence").quote();
 ```
 
-Tailwind CSS utilities passed to `style("...")` work without additional configuration. The object form remains available for inline CSS, and semantic modifiers such as `.size()` and `.color()` are still supported. Font sizes, spacing, and layout have useful defaults, so modifiers are optional.
+Text roles provide consistent, theme-aware styling while remaining individually customizable.
 
-Presentations start with a neutral white `blank` theme. Select a built-in theme or create your own:
+### Formulas
+
+Use a tagged template for display math:
+
+```ts
+math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
+```
+
+Use `$...$` inside a tagged `text` template for inline math:
+
+```ts
+text`Euler's identity is $e^{i\pi} + 1 = 0$.`;
+```
+
+The tagged forms preserve backslashes, so `String.raw` is unnecessary.
+
+### Code, lists, images, and reveals
+
+```ts
+code(`const answer = 42;`, "ts");
+
+bullets("Readable source", "Useful defaults", "Flexible styling");
+
+steps("Introduce the problem", "Reveal the model", "Show the result");
+
+image("diagram.png", "System diagram");
+```
+
+`steps()` reveals items during navigation. In PDF output, all reveal steps remain visible.
+
+## Layout
+
+FrameSeq uses a single-column layout by default. Add structure only where it communicates something useful.
+
+### Split
+
+```ts
+slide("Architecture").split("40:60");
+
+image("diagram.png", "Compiler diagram");
+
+right();
+text("Compiler").lead();
+bullets("TypeScript DSL", "HTML renderer", "PDF export");
+```
+
+### Grid
+
+```ts
+slide("Comparison").grid(3);
+
+cell(0);
+text("Simple").lead();
+text("Useful defaults");
+
+cell(1);
+text("Flexible").lead();
+text("Tailwind or object styles");
+
+cell(2);
+text("Portable").lead();
+text("HTML and PDF");
+```
+
+Other layout tools include `center()`, `fullBleed()`, `left()`, `main()`, and a freeform canvas for absolute placement.
+
+## Styling
+
+### Tailwind, built in
+
+Pass Tailwind utilities directly to `style()`; no Tailwind config is required:
+
+```ts
+text("Designed in the source")
+  .style("rounded-2xl bg-slate-900 px-8 py-5 text-3xl font-semibold text-white");
+```
+
+Arbitrary utilities such as `text-[30px]`, `left-[80px]`, and `bg-[#0f172a]` are supported.
+
+### Chainable modifiers
+
+```ts
+text("A precise annotation")
+  .size(18)
+  .weight(600)
+  .color("#475569")
+  .margin(12, 0);
+```
+
+The object overload of `style()` accepts inline CSS when needed:
+
+```ts
+text("Custom").style({
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+});
+```
+
+## Themes and typography
+
+FrameSeq starts with a neutral `blank` theme. Choose a bundled theme:
 
 ```ts
 presentation({ title: "My Talk", theme: "midnight" });
 ```
 
-Academic themes can generate a title bar, metadata footer, and slide number:
+Academic themes can build title bars, metadata footers, and slide numbers from presentation metadata:
 
 ```ts
 presentation({
-  title: "My Talk",
-  author: "Your Name",
-  institute: "Your Institute",
-  date: "2026",
-  theme: "beamer-madrid",
-});
-```
-
-The bundled `minimal-academic` theme can generate a restrained academic title page from presentation metadata:
-
-```ts
-presentation({
-  title: "My Talk",
-  subtitle: "A concise subtitle",
+  title: "Diffusion Language Models",
+  subtitle: "From iterative recovery to continuous state spaces",
   author: "Your Name",
   institute: "Your Institute",
   date: "2026",
@@ -119,17 +287,7 @@ presentation({
 slide().cover();
 ```
 
-```ts
-const ocean = defineTheme({
-  name: "ocean",
-  colors: { background: "#effcff", accent: "#007c91" },
-});
-presentation({ title: "Ocean Research", theme: ocean });
-```
-
-See [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md) for built-in themes and every customizable token.
-
-Override typography for one presentation without creating a new theme:
+Override presentation-wide typography without creating a theme:
 
 ```ts
 presentation({
@@ -144,86 +302,46 @@ presentation({
 });
 ```
 
-Element modifiers such as `text("Note").size(18)` override these presentation defaults.
-
-LaTeX-style equations use `math` as a template tag, so backslashes need no extra escaping and `String.raw` is unnecessary:
+Or define a reusable design system:
 
 ```ts
-math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
+const ocean = defineTheme({
+  name: "ocean",
+  colors: {
+    background: "#effcff",
+    foreground: "#15343b",
+    accent: "#007c91",
+  },
+});
+
+presentation({ title: "Ocean Research", theme: ocean });
 ```
 
-Inline equations use `$...$` inside a tagged `text` template:
-
-```ts
-text`The identity $e^{i\pi} + 1 = 0$ appears inside this sentence.`;
-```
-
-Plain text without equations can still use `text("...")`.
-
-## Common layouts
-
-Use short region switches for split layouts. Content initially goes into the left region; `right()` changes the destination:
-
-```ts
-slide("Architecture").split("40:60");
-
-image("diagram.png");
-
-right();
-text("Compiler").lead();
-bullets("TypeScript DSL", "HTML renderer", "PDF export");
-```
-
-Use indexed cells for grids:
-
-```ts
-slide("Results").grid(3);
-
-cell(0); metric("42%", "Growth");
-cell(1); metric("18K", "Users");
-cell(2); metric("99.9%", "Uptime");
-```
-
-`left()`, `right()`, and `cell(index)` only change where subsequent content is placed. A new `slide()` resets the destination automatically. Other layout helpers include `center()`, `fullBleed(image)`, and `canvas().place(element, bounds)`.
-
-## Preview
+## Preview, build, and export
 
 ```bash
+# Live browser preview
 frameseq dev my-talk.slides.ts
-```
 
-The browser opens automatically. Changes update immediately. Use Arrow keys, Page Up/Page Down, or Space to navigate.
-
-For the included `slides.ts` example, run `npm run dev`.
-
-## Build HTML
-
-```bash
+# Static interactive website in dist/
 frameseq build my-talk.slides.ts
-```
 
-The static presentation is written to `dist/`. Use `--output path/to/directory` to choose another directory. The result can be hosted on any static web server.
-
-## Export PDF
-
-```bash
+# PDF in output/pdf/
 frameseq pdf my-talk.slides.ts
 ```
 
-The generated file is written to `output/pdf/my-talk.pdf`. Use `--output path/to/file.pdf` to choose another path.
+The static HTML can be hosted on any static web server. Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
-For the included example, `npm run export:pdf` writes `output/pdf/frameseq.pdf`.
+## Advanced object API
 
-## Low-level custom layouts
-
-The original object API and low-level UI components remain available when a slide needs a special composition:
+The linear authoring layer is recommended for most slides. The low-level UI layer is available for special compositions:
 
 ```ts
 import { Column, Image, Row, Slides, Text } from "@pride7/frameseq";
 
-const customDeck = Slides("Custom layouts");
+const deck = Slides("Custom layouts");
 
-customDeck.slide("Architecture").custom(
+deck.slide("Architecture").custom(
   Row(
     Image("diagram.png"),
     Column(
@@ -233,19 +351,29 @@ customDeck.slide("Architecture").custom(
   ).gap(40),
 );
 
-export default customDeck;
+export default deck;
 ```
 
-The low-level layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable style modifiers.
+This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable modifiers.
 
-The explicit import/export form remains supported for ordinary TypeScript modules. Zero-boilerplate injection applies to the entry file passed to `frameseq dev`, `frameseq build`, or `frameseq pdf`.
+## Documentation
 
-## Maintainer release check
+- [Getting started](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/getting-started.md)
+- [Document model](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/document-model.md)
+- [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
+- [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
+- [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
+- [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
+- [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
+- [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)
+- [Advanced composition](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/advanced.md)
 
-Before publishing, run:
+## Development
+
+Before publishing a FrameSeq release:
 
 ```bash
 npm run release:check
 ```
 
-This builds the library and demo, runs the browser smoke test, creates the npm tarballs, installs them in a clean project, checks the generated TypeScript document, and builds static HTML through the installed CLI.
+The release check builds the library and demo, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports a PDF.

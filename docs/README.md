@@ -18,4 +18,4 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 
 Read the getting-started and document-model pages first. Most presentations only need the linear authoring API. Use the layout and styling pages when the defaults are not enough, and treat the low-level component layer as an escape hatch for special slides.
 
-These documents describe FrameSeq 0.3.
+The documentation tracks the latest published FrameSeq release.
