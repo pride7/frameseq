@@ -243,6 +243,37 @@ typstFile(path: string): ElementBuilder
 
 Adds a Typst fragment from a static path relative to the slide document. The file must stay inside the slide document directory. Vite watches it for changes during development.
 
+### `rect(label?)`
+
+```ts
+rect(label?: string): ShapeBuilder
+```
+
+Adds a rectangular diagram node. The optional label supports inline math and is centered by default.
+
+### `circle(label?)`
+
+```ts
+circle(label?: string): ShapeBuilder
+```
+
+Adds a circular diagram node. Set its width to change the diameter while preserving the default square aspect ratio.
+
+### `line(points)`
+
+```ts
+interface LinePoints {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+line(points: LinePoints): LineBuilder
+```
+
+Adds an SVG line whose coordinates are numeric pixels relative to the current canvas region. Lines are intended for slides using `canvas()`.
+
 ### `bullets(...items)`
 
 ```ts
@@ -391,6 +422,24 @@ column(): this
 stack(): this
 center(): this
 ```
+
+Rectangle and circle builders additionally provide:
+
+```ts
+fill(value: string): this
+stroke(value: string): this
+strokeWidth(value: Length): this
+```
+
+Line builders provide:
+
+```ts
+stroke(value: string): this
+strokeWidth(value: Length): this
+arrow(value?: "none" | "start" | "end" | "both"): this
+```
+
+Calling `arrow()` without an argument adds an end arrow. A line has no arrow by default.
 
 ## Unit helpers
 

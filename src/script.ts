@@ -1,10 +1,16 @@
 import {
+  Circle,
   Code,
   Equation,
   Image,
   type DeckOptions,
   ElementBuilder,
+  Line,
+  type LineBuilder,
+  type LinePoints,
   type Length,
+  Rect,
+  type ShapeBuilder,
   Text,
   Typst,
   type SlideOptions,
@@ -178,6 +184,21 @@ export function typstFile(path: string): ElementBuilder {
 /** @internal Used by the build-time Typst transform. */
 export function typstSvg(svg: string, source: string): ElementBuilder {
   return attach(Typst(source, svg).className("frameseq-semantic-typst"));
+}
+
+/** Add a rectangular diagram node, optionally containing a label. */
+export function rect(label = ""): ShapeBuilder {
+  return attach(Rect(label).className("frameseq-semantic-shape"));
+}
+
+/** Add a circular diagram node, optionally containing a label. */
+export function circle(label = ""): ShapeBuilder {
+  return attach(Circle(label).className("frameseq-semantic-shape"));
+}
+
+/** Add a canvas-relative vector line or connector. */
+export function line(points: LinePoints): LineBuilder {
+  return attach(Line(points).className("frameseq-semantic-line"));
 }
 
 export function bullets(...items: string[]): ElementBuilder {

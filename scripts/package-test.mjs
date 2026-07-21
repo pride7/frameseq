@@ -84,7 +84,7 @@ run(
   [
     "--input-type=module",
     "--eval",
-    "import { defineTheme, presentation, slide, text } from '@pride7/frameseq'; const theme = defineTheme({ name: 'test', colors: { accent: '#123456' } }); const deck = presentation({ title: 'Import test', theme }); slide('Ready'); text('Works'); if (deck.theme.colors.accent !== '#123456') throw new Error('Custom theme was not applied');",
+    "import { circle, defineTheme, line, presentation, rect, slide, text } from '@pride7/frameseq'; const theme = defineTheme({ name: 'test', colors: { accent: '#123456' } }); const deck = presentation({ title: 'Import test', theme }); slide({ name: 'Ready' }).canvas(); text('Works'); rect('Input').position({ x: 40, y: 40 }).fill('#fff'); circle('Output').position({ x: 400, y: 40 }); const connector = line({ x1: 200, y1: 100, x2: 400, y2: 100 }).arrow(); if (deck.theme.colors.accent !== '#123456') throw new Error('Custom theme was not applied'); if (connector.node.props.arrow !== 'end') throw new Error('Shape APIs were not exported correctly');",
   ],
   appDirectory,
 );

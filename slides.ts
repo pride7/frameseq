@@ -60,3 +60,43 @@ typst`
 typstFile("./tests/typst-fragment.typ")
   .className("typst-file-smoke")
   .width(460);
+
+slide("Shapes and connectors").canvas();
+
+line({ x1: 320, y1: 200, x2: 460, y2: 200 })
+  .className("shape-line-smoke")
+  .stroke("#38bdf8")
+  .strokeWidth(4)
+  .arrow("end");
+
+line({ x1: 620, y1: 200, x2: 760, y2: 200 })
+  .stroke("#38bdf8")
+  .strokeWidth(4)
+  .arrow("end");
+
+rect("TypeScript")
+  .className("shape-rect-smoke")
+  .position({ x: 80, y: 145 })
+  .width(240)
+  .height(110)
+  .fill("#172554")
+  .stroke("#3b82f6")
+  .strokeWidth(3)
+  .radius(18);
+
+circle("FrameSeq")
+  .className("shape-circle-smoke")
+  .position({ x: 460, y: 120 })
+  .width(160)
+  .fill("#164e63")
+  .stroke("#22d3ee")
+  .strokeWidth(3);
+
+rect("HTML + PDF")
+  .position({ x: 760, y: 145 })
+  .width(240)
+  .height(110)
+  .fill("#14532d")
+  .stroke("#22c55e")
+  .strokeWidth(3)
+  .radius(18);

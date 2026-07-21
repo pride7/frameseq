@@ -37,7 +37,7 @@ try {
     name,
   );
 
-  assert.equal(await count(".frameseq-slide-frame"), 6);
+  assert.equal(await count(".frameseq-slide-frame"), 7);
   assert.equal(await attribute(".frameseq-slide-frame.is-active", "data-index"), "0");
   assert.equal(await count(".katex"), 2);
   assert.equal(await count(".frameseq-inline-math .katex"), 1);
@@ -45,6 +45,72 @@ try {
   assert.equal(await count(".frameseq-layout-split"), 1);
   assert.equal(await count(".frameseq-grid-cell"), 3);
   assert.equal(await count(".frameseq-layout-center"), 2);
+  assert.equal(await count(".frameseq-rect"), 2);
+  assert.equal(await count(".frameseq-circle"), 1);
+  assert.equal(await count(".frameseq-line > svg > line"), 2);
+
+  const shapeGeometry = await page.evaluate(() => {
+    const rect = document.querySelector(".shape-rect-smoke");
+    const circle = document.querySelector(".shape-circle-smoke");
+    const line = document.querySelector(".shape-line-smoke > svg > line");
+    if (!(rect instanceof HTMLElement)
+      || !(circle instanceof HTMLElement)
+      || !(line instanceof SVGLineElement)) {
+      throw new Error("Shape smoke-test elements are missing");
+    }
+    const rectStyle = getComputedStyle(rect);
+    const circleBounds = circle.getBoundingClientRect();
+    return {
+      rect: {
+        left: rectStyle.left,
+        top: rectStyle.top,
+        width: rectStyle.width,
+        height: rectStyle.height,
+        background: rectStyle.backgroundColor,
+        borderWidth: rectStyle.borderWidth,
+        borderRadius: rectStyle.borderRadius,
+      },
+      circle: {
+        width: circleBounds.width,
+        height: circleBounds.height,
+        borderRadius: getComputedStyle(circle).borderRadius,
+      },
+      line: {
+        x1: line.getAttribute("x1"),
+        y1: line.getAttribute("y1"),
+        x2: line.getAttribute("x2"),
+        y2: line.getAttribute("y2"),
+        stroke: line.getAttribute("stroke"),
+        strokeWidth: line.getAttribute("stroke-width"),
+        markerEnd: line.getAttribute("marker-end"),
+      },
+    };
+  });
+  assert.deepEqual(shapeGeometry.rect, {
+    left: "80px",
+    top: "145px",
+    width: "240px",
+    height: "110px",
+    background: "rgb(23, 37, 84)",
+    borderWidth: "3px",
+    borderRadius: "18px",
+  });
+  assert.ok(Math.abs(shapeGeometry.circle.width - shapeGeometry.circle.height) < 1);
+  assert.ok(shapeGeometry.circle.borderRadius === "50%"
+    || shapeGeometry.circle.borderRadius === "9999px");
+  assert.deepEqual(
+    { ...shapeGeometry.line, markerEnd: undefined },
+    {
+      x1: "320",
+      y1: "200",
+      x2: "460",
+      y2: "200",
+      stroke: "#38bdf8",
+      strokeWidth: "4px",
+      markerEnd: undefined,
+    },
+  );
+  assert.match(shapeGeometry.line.markerEnd ?? "", /^url\(#frameseq-arrow-\d+\)$/);
 
   const typstFragments = await page.$$eval(
     ".frameseq-typst > svg",
@@ -151,7 +217,7 @@ try {
 
   await page.goto(`http://127.0.0.1:${address.port}/?print=1`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
-  assert.equal(await count(".frameseq-slide-frame.is-active"), 6);
+  assert.equal(await count(".frameseq-slide-frame.is-active"), 7);
   assert.equal(await count(".frameseq-step.is-visible"), 3);
   const printedTypstGeometry = await page.$$eval(
     ".frameseq-typst > svg",

@@ -281,6 +281,35 @@ image("diagram.png", "Compiler diagram")
 
 Coordinates are relative to the current canvas region. Numbers are pixels in FrameSeq's fixed presentation coordinate system; the default presentation canvas is 1280 x 720, and the runtime scales the finished slide as one unit for interactive HTML and PDF. Prefer structured layouts for most pages, then use `canvas()` with `position()` for diagrams and custom compositions.
 
+### Shapes and connectors
+
+Create editable diagram nodes directly in the slide source. FrameSeq renders boxes and circles as HTML, while lines and arrowheads remain vector SVG:
+
+```ts
+slide({ name: "Pipeline" }).canvas();
+
+line({ x1: 320, y1: 180, x2: 520, y2: 180 })
+  .stroke("#2563eb")
+  .strokeWidth(4)
+  .arrow("end");
+
+rect("TypeScript")
+  .position({ x: 80, y: 125 })
+  .width(240)
+  .height(110)
+  .fill("#dbeafe")
+  .stroke("#2563eb")
+  .radius(18);
+
+circle("FrameSeq")
+  .position({ x: 520, y: 100 })
+  .width(160)
+  .fill("#cffafe")
+  .stroke("#0891b2");
+```
+
+Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md) for arrow directions, layering, and custom SVG assets.
+
 Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 
 ## Styling
@@ -415,6 +444,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
 - [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
 - [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
+- [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md)
 - [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md)
 - [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
 - [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)

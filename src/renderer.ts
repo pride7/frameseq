@@ -42,6 +42,60 @@ function appendTextWithInlineMath(element: HTMLElement, content: string): void {
   ));
 }
 
+const svgNamespace = "http://www.w3.org/2000/svg";
+let lineMarkerSequence = 0;
+
+function renderLine(node: FrameSeqNode): HTMLElement {
+  const element = document.createElement("div");
+  const svg = document.createElementNS(svgNamespace, "svg");
+  const vector = document.createElementNS(svgNamespace, "line");
+  const stroke = String(node.props.stroke ?? "var(--frameseq-accent)");
+  const strokeWidth = String(node.props.strokeWidth ?? "3px");
+  const arrow = node.props.arrow;
+
+  svg.setAttribute("aria-hidden", "true");
+  vector.setAttribute("x1", String(node.props.x1));
+  vector.setAttribute("y1", String(node.props.y1));
+  vector.setAttribute("x2", String(node.props.x2));
+  vector.setAttribute("y2", String(node.props.y2));
+  vector.setAttribute("stroke", stroke);
+  vector.setAttribute("stroke-width", strokeWidth);
+  vector.setAttribute("stroke-linecap", "round");
+
+  if (arrow === "start" || arrow === "end" || arrow === "both") {
+    lineMarkerSequence += 1;
+    const markerId = `frameseq-arrow-${lineMarkerSequence}`;
+    const definitions = document.createElementNS(svgNamespace, "defs");
+    const marker = document.createElementNS(svgNamespace, "marker");
+    const arrowhead = document.createElementNS(svgNamespace, "path");
+
+    marker.id = markerId;
+    marker.setAttribute("viewBox", "0 0 8 8");
+    marker.setAttribute("refX", "7");
+    marker.setAttribute("refY", "4");
+    marker.setAttribute("markerWidth", "8");
+    marker.setAttribute("markerHeight", "8");
+    marker.setAttribute("markerUnits", "strokeWidth");
+    marker.setAttribute("orient", "auto-start-reverse");
+    arrowhead.setAttribute("d", "M 0 0 L 8 4 L 0 8 Z");
+    arrowhead.setAttribute("fill", stroke);
+    marker.append(arrowhead);
+    definitions.append(marker);
+    svg.append(definitions);
+
+    if (arrow === "start" || arrow === "both") {
+      vector.setAttribute("marker-start", `url(#${markerId})`);
+    }
+    if (arrow === "end" || arrow === "both") {
+      vector.setAttribute("marker-end", `url(#${markerId})`);
+    }
+  }
+
+  svg.append(vector);
+  element.append(svg);
+  return element;
+}
+
 function renderNode(node: FrameSeqNode): HTMLElement {
   let element: HTMLElement;
 
@@ -90,6 +144,21 @@ function renderNode(node: FrameSeqNode): HTMLElement {
         element.textContent = "Typst content was not compiled. Use the FrameSeq CLI and install @myriaddreamin/typst-ts-node-compiler.";
         element.classList.add("frameseq-typst-error");
       }
+      break;
+    }
+    case "rect":
+    case "circle": {
+      element = document.createElement("div");
+      const label = node.props.label;
+      if (typeof label === "string" && label) {
+        appendTextWithInlineMath(element, label);
+      } else {
+        element.setAttribute("aria-hidden", "true");
+      }
+      break;
+    }
+    case "line": {
+      element = renderLine(node);
       break;
     }
     default:

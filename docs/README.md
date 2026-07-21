@@ -10,6 +10,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 - [Layout](layout.md) — split pages, grids, regions, centered pages, and freeform composition.
 - [Themes](themes.md) — choose a built-in appearance or define reusable design tokens.
 - [Styling](styling.md) — chainable modifiers, text roles, and units.
+- [Shapes and connectors](shapes.md) — draw editable boxes, circles, lines, and arrows on a canvas.
 - [Typst integration](typst.md) — embed build-time Typst fragments without giving up FrameSeq structure.
 - [API reference](api-reference.md) — signatures and behavior of the public authoring API.
 - [CLI reference](cli.md) — `new`, `dev`, `build`, and `pdf`.

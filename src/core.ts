@@ -13,6 +13,9 @@ export type ComponentType =
   | "code"
   | "equation"
   | "typst"
+  | "rect"
+  | "circle"
+  | "line"
   | "spacer";
 
 export interface FrameSeqNode {
@@ -57,6 +60,15 @@ export interface GridPosition {
   x?: Length;
   y?: Length;
 }
+
+export interface LinePoints {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export type ArrowPlacement = "none" | "start" | "end" | "both";
 
 function length(value: Length): string {
   return typeof value === "number" ? `${value}px` : value;
@@ -267,6 +279,41 @@ export class ContainerBuilder extends ElementBuilder {
   }
 }
 
+export class ShapeBuilder extends ElementBuilder {
+  fill(value: string): this {
+    this.node.styles.background = value;
+    return this;
+  }
+
+  stroke(value: string): this {
+    this.node.styles.borderColor = value;
+    this.node.styles.borderStyle = "solid";
+    return this;
+  }
+
+  strokeWidth(value: Length): this {
+    this.node.styles.borderWidth = length(value);
+    return this;
+  }
+}
+
+export class LineBuilder extends ElementBuilder {
+  stroke(value: string): this {
+    this.node.props.stroke = value;
+    return this;
+  }
+
+  strokeWidth(value: Length): this {
+    this.node.props.strokeWidth = length(value);
+    return this;
+  }
+
+  arrow(value: ArrowPlacement = "end"): this {
+    this.node.props.arrow = value;
+    return this;
+  }
+}
+
 export class SlideBuilder extends ContainerBuilder {}
 
 export class DeckDefinition extends ElementBuilder {
@@ -404,6 +451,23 @@ export function Equation(content: string, displayMode = true): ElementBuilder {
 
 export function Typst(source: string, svg?: string): ElementBuilder {
   return new ElementBuilder(node("typst", { source, svg }));
+}
+
+export function Rect(label = ""): ShapeBuilder {
+  return new ShapeBuilder(node("rect", { label }));
+}
+
+export function Circle(label = ""): ShapeBuilder {
+  return new ShapeBuilder(node("circle", { label }));
+}
+
+export function Line(points: LinePoints): LineBuilder {
+  return new LineBuilder(node("line", {
+    ...points,
+    stroke: "var(--frameseq-accent)",
+    strokeWidth: "3px",
+    arrow: "none",
+  }));
 }
 
 export function Spacer(size = 1): ElementBuilder {

@@ -127,3 +127,5 @@ export default deck;
 ```
 
 Prefer structured layouts for most pages. Use a canvas for diagrams and custom compositions that genuinely need exact placement.
+
+For diagram primitives designed for this canvas, see [Shapes and connectors](shapes.md).
