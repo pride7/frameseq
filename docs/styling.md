@@ -152,9 +152,30 @@ text("Appears second").showAt(2);
 
 Reveal indices start at `1`. In PDF and print mode, all reveal steps are visible.
 
-## Raw CSS and class names
+## Tailwind CSS
 
-Use these as escape hatches:
+Tailwind utilities are built in and require no configuration. Pass a utility string to `style()`:
+
+```ts
+text("A strong statement")
+  .style("text-4xl font-bold tracking-tight text-blue-600");
+
+text("Precisely placed")
+  .style("absolute left-[80px] top-[120px] w-[640px]");
+```
+
+Arbitrary values such as `text-[30px]`, `bg-[#0f172a]`, and `grid-cols-[2fr_3fr]` are supported. Keep dynamically selected utilities as complete strings so Tailwind can detect them:
+
+```ts
+const emphasis = important ? "text-red-600" : "text-slate-500";
+text("Status").style(emphasis);
+```
+
+Avoid constructing fragments such as `` `text-${color}-600` `` because those complete class names do not appear in the source file.
+
+## Inline CSS and class names
+
+The object overload remains available for inline CSS:
 
 ```ts
 text("Custom")
@@ -166,3 +187,5 @@ text("Custom")
 ```
 
 Properties passed to `style()` use JavaScript-style CSS names such as `letterSpacing`.
+
+Inline properties take precedence over Tailwind utilities regardless of call order. `className()` remains available when a class name should be attached without using the `style()` shorthand.

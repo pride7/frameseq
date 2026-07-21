@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Build presentations like interfaces with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -31,6 +31,7 @@
     "public",
     "scripts/frameseq.mjs",
     "src/main.ts",
+    "src/index.css",
     "src/renderer.ts",
     "src/styles.css",
     "src/theme.ts",
@@ -62,8 +63,10 @@
     "prepack": "npm run build:package"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "katex": "^0.16.22",
     "puppeteer": "^24.16.0",
+    "tailwindcss": "^4.3.3",
     "vite": "^7.0.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import "katex/dist/katex.min.css";
-import "./styles.css";
+import "./index.css";
 import deck from "virtual:frameseq-entry";
 import { mountDeck } from "./renderer";
 

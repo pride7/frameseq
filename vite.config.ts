@@ -1,5 +1,6 @@
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, normalizePath } from "vite";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
@@ -8,6 +9,11 @@ const buildDirectory = process.env.FRAMESEQ_BUILD_DIR ?? resolve(packageRoot, "d
 const virtualEntry = "virtual:frameseq-entry";
 const resolvedVirtualEntry = `\0${virtualEntry}`;
 const normalizedEntry = normalizePath(entry);
+const styleEntry = resolve(packageRoot, "src", "index.css");
+const normalizedStyleEntry = normalizePath(styleEntry);
+const tailwindSource = normalizePath(relative(dirname(styleEntry), dirname(entry)));
+const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
+  .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
 
 const documentCommands = [
   "presentation",
@@ -39,6 +45,7 @@ export default defineConfig({
   plugins: [
     {
       name: "frameseq-entry",
+      enforce: "pre",
       resolveId(id) {
         return id === virtualEntry ? resolvedVirtualEntry : undefined;
       },
@@ -47,7 +54,18 @@ export default defineConfig({
         return `export { default } from ${JSON.stringify(normalizedEntry)};`;
       },
       transform(source, id) {
-        if (normalizePath(id.split("?")[0]) !== normalizedEntry) return undefined;
+        const normalizedId = normalizePath(id.split("?")[0]);
+        if (normalizedId === normalizedStyleEntry) {
+          const sourceDirectives = [
+            `@source ${JSON.stringify(tailwindSource)};`,
+            ...tailwindExclusions.map((source) => `@source not ${JSON.stringify(source)};`),
+          ].join("\n");
+          return {
+            code: `${source}\n${sourceDirectives}\n`,
+            map: null,
+          };
+        }
+        if (normalizedId !== normalizedEntry) return undefined;
 
         const importsFramework = /(?:from\s*|import\s*)["']@pride7\/frameseq["']/.test(source);
         if (importsFramework) return undefined;
@@ -58,6 +76,7 @@ export default defineConfig({
         return { code: `${prelude}${source}${postlude}`, map: null };
       },
     },
+    tailwindcss(),
   ],
   server: {
     open: true,

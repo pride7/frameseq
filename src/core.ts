@@ -82,9 +82,13 @@ function justifyValue(
 export class ElementBuilder {
   constructor(readonly node: FrameSeqNode) {}
 
-  style(styles: Record<string, string | number>): this {
-    for (const [property, value] of Object.entries(styles)) {
-      this.node.styles[property] = String(value);
+  style(classes: string): this;
+  style(properties: Record<string, string | number>): this;
+  style(value: string | Record<string, string | number>): this {
+    if (typeof value === "string") return this.className(value);
+
+    for (const [property, propertyValue] of Object.entries(value)) {
+      this.node.styles[property] = String(propertyValue);
     }
     return this;
   }

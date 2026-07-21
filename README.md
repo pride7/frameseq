@@ -81,11 +81,10 @@ Content functions create real objects, so modifiers remain chainable:
 
 ```ts
 text("A smaller note")
-  .size(pt(18))
-  .color("#94a3b8");
+  .style("text-lg font-semibold tracking-tight text-slate-500");
 ```
 
-Font sizes, spacing, and layout have useful defaults, so modifiers are optional.
+Tailwind CSS utilities passed to `style("...")` work without additional configuration. The object form remains available for inline CSS, and semantic modifiers such as `.size()` and `.color()` are still supported. Font sizes, spacing, and layout have useful defaults, so modifiers are optional.
 
 Presentations start with a neutral white `blank` theme. Select a built-in theme or create your own:
 

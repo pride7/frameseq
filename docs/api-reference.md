@@ -332,7 +332,8 @@ Creating unattached elements requires the [explicit object API](advanced.md).
 All content builders inherit these methods:
 
 ```ts
-style(styles: Record<string, string | number>): this
+style(classes: string): this
+style(properties: Record<string, string | number>): this
 width(value: Length): this
 height(value: Length): this
 minWidth(value: Length): this
@@ -361,6 +362,8 @@ rotate(degrees: number): this
 showAt(step: number): this
 className(value: string): this
 ```
+
+The string overload appends zero-configuration Tailwind CSS utility classes. The object overload applies inline CSS properties and therefore takes precedence over utility classes.
 
 Container builders also provide:
 

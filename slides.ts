@@ -5,6 +5,8 @@ text("A UI framework for presentations").eyebrow();
 text("Build slides like building apps.").hero();
 text("ArkUI-style TypeScript → HTML → PDF").subtitle();
 text("One file. Useful defaults. Full control when needed.").author();
+text("Tailwind utilities, without configuration.")
+  .style("tailwind-smoke text-[31px] font-[750] tracking-[2px] text-[#f97316]");
 
 slide("Write one file").split("38:62");
 

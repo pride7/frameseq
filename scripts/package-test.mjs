@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -89,6 +89,17 @@ run(
   appDirectory,
 );
 runNpm(["run", "build"], appDirectory);
+
+const builtAssetDirectory = resolve(appDirectory, "dist", "assets");
+const builtCssFiles = (await readdir(builtAssetDirectory))
+  .filter((file) => file.endsWith(".css"));
+const builtCss = (await Promise.all(
+  builtCssFiles.map((file) => readFile(resolve(builtAssetDirectory, file), "utf8")),
+)).join("\n");
+if (!builtCss.includes("font-size:30px") || !builtCss.includes("#0ea5e9")) {
+  throw new Error("Tailwind utilities from the generated slides were not included in the build");
+}
+
 runNpm(["run", "pdf", "--", "--output", "output/installed-package.pdf"], appDirectory);
 runNpm(["exec", "--", "frameseq", "new", "extra.slides.ts"], appDirectory);
 

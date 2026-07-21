@@ -45,6 +45,22 @@ try {
   assert.equal(await count(".frameseq-grid-cell"), 3);
   assert.equal(await count(".frameseq-layout-center"), 1);
 
+  const tailwindStyle = await page.$eval(".tailwind-smoke", (element) => {
+    const style = getComputedStyle(element);
+    return {
+      className: element.className,
+      color: style.color,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      letterSpacing: style.letterSpacing,
+    };
+  });
+  assert.match(tailwindStyle.className, /text-\[31px\]/);
+  assert.equal(tailwindStyle.color, "rgb(249, 115, 22)");
+  assert.equal(tailwindStyle.fontSize, "31px");
+  assert.equal(tailwindStyle.fontWeight, "750");
+  assert.equal(tailwindStyle.letterSpacing, "2px");
+
   const activeTheme = await page.evaluate(() => ({
     background: getComputedStyle(document.documentElement)
       .getPropertyValue("--frameseq-background").trim(),
