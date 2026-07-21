@@ -25,15 +25,15 @@ npx frameseq dev my-talk.slides.ts
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md)
-- [Document model](docs/document-model.md)
-- [Content](docs/content.md)
-- [Layout](docs/layout.md)
-- [Themes](docs/themes.md)
-- [Styling](docs/styling.md)
-- [API reference](docs/api-reference.md)
-- [CLI reference](docs/cli.md)
-- [Advanced composition](docs/advanced.md)
+- [Getting started](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/getting-started.md)
+- [Document model](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/document-model.md)
+- [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
+- [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
+- [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
+- [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
+- [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
+- [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)
+- [Advanced composition](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/advanced.md)
 
 Start with the document model to understand how `presentation()`, `slide()`, and region selection work in a linear slide file.
 
@@ -101,7 +101,7 @@ const ocean = defineTheme({
 presentation({ title: "Ocean Research", theme: ocean });
 ```
 
-See [Themes](docs/themes.md) for built-in themes and every customizable token.
+See [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md) for built-in themes and every customizable token.
 
 LaTeX-style equations use `math` as a template tag, so backslashes need no extra escaping and `String.raw` is unnecessary:
 
