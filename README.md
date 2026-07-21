@@ -62,6 +62,7 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 - Semantic commands such as `lead()`, `bullets()`, `metric()`, and `split()` reduce arbitrary design decisions.
 - Local edits usually change a few lines without rebuilding an HTML structure.
 - TypeScript catches misspelled APIs and invalid arguments.
+- `frameseq check --json` gives agents measured overflow, clipping, and readability diagnostics they can correct directly.
 - Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
 - The FrameSeq runtime owns rendering, navigation, responsive scaling, and PDF output.
 
@@ -412,6 +413,18 @@ frameseq pdf my-talk.slides.ts
 
 The static HTML can be hosted on any static web server. Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
+## AI-friendly layout checks
+
+FrameSeq can inspect the final browser geometry and return actionable diagnostics instead of asking an AI agent to guess from source code:
+
+```bash
+frameseq check my-talk.slides.ts
+frameseq check my-talk.slides.ts --json
+frameseq check my-talk.slides.ts --strict
+```
+
+The checker reports objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, measured overflow, and suggested corrections. `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout-checks.md).
+
 ## Presenter view
 
 Attach private notes to any slide:
@@ -463,6 +476,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [Document model](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/document-model.md)
 - [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
 - [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
+- [AI-friendly layout checks](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout-checks.md)
 - [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
 - [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
 - [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md)

@@ -10,3 +10,5 @@ npm run dev
 ```
 
 Press `P` in the presentation to open the synchronized presenter view.
+
+Run `npm run check` to validate TypeScript and inspect the rendered deck for overflow, clipped text, and text that is too small.

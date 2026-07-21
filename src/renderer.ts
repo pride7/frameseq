@@ -96,7 +96,7 @@ function renderLine(node: FrameSeqNode): HTMLElement {
   return element;
 }
 
-function renderNode(node: FrameSeqNode): HTMLElement {
+function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
   let element: HTMLElement;
 
   switch (node.type) {
@@ -166,6 +166,8 @@ function renderNode(node: FrameSeqNode): HTMLElement {
   }
 
   element.classList.add(`frameseq-${node.type}`);
+  element.dataset.frameseqNode = node.type;
+  element.dataset.frameseqPath = nodePath;
   const extraClassName = node.props.className;
   if (typeof extraClassName === "string") {
     element.classList.add(...extraClassName.split(/\s+/).filter(Boolean));
@@ -177,8 +179,8 @@ function renderNode(node: FrameSeqNode): HTMLElement {
   }
 
   applyStyles(element, node.styles);
-  for (const child of node.children) {
-    element.append(renderNode(child));
+  for (const [index, child] of node.children.entries()) {
+    element.append(renderNode(child, `${nodePath}.${index}`));
   }
   return element;
 }
@@ -314,13 +316,15 @@ function renderSlideCanvas(
   index: number,
   deck: DeckDefinition,
 ): HTMLElement {
-  const canvas = renderNode(slide);
+  const label = slideLabel(slide, index);
+  const canvas = renderNode(slide, String(index));
   addThemeChrome(canvas, slide, index, deck);
+  canvas.dataset.frameseqSlideLabel = label;
   canvas.setAttribute("role", "group");
   canvas.setAttribute("aria-roledescription", "slide");
   canvas.setAttribute(
     "aria-label",
-    `${index + 1} of ${deck.slides.length}: ${slideLabel(slide, index)}`,
+    `${index + 1} of ${deck.slides.length}: ${label}`,
   );
   return canvas;
 }

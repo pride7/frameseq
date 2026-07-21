@@ -59,6 +59,14 @@ The browser opens automatically and updates when the source file changes. Use Ar
 
 Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output.
 
+Before presenting, check both TypeScript and the final browser geometry:
+
+```bash
+npm run check
+```
+
+Generated projects run [`frameseq check`](layout-checks.md) as part of this command and report slide-specific fixes for overflow, clipping, and small text.
+
 ## Build static HTML
 
 ```bash

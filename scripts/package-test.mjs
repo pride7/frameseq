@@ -111,4 +111,4 @@ for (const expected of [
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }
 
-console.log("Package test passed: packed install, project creation, types, imports, CLI, HTML, and PDF.");
+console.log("Package test passed: packed install, project creation, types, layout checks, imports, CLI, HTML, and PDF.");

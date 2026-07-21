@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.8.0";
+const FRAMESEQ_VERSION = "^0.9.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -43,7 +43,7 @@ try {
       dev: "frameseq dev slides.ts",
       build: "frameseq build slides.ts",
       pdf: "frameseq pdf slides.ts",
-      check: "tsc --noEmit",
+      check: "tsc --noEmit && frameseq check slides.ts",
     },
     devDependencies: {
       "@pride7/frameseq": FRAMESEQ_VERSION,

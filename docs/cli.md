@@ -59,6 +59,22 @@ frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 
 PDF export launches a headless browser, renders all pages and reveal steps, and writes a page-sized PDF with backgrounds included.
 
+## Check the rendered layout
+
+```bash
+frameseq check [file] [--json] [--strict]
+```
+
+The checker renders every slide in a headless browser and detects objects outside the canvas, clipped text, and text that is too small for presentation use.
+
+```bash
+frameseq check talk.slides.ts
+frameseq check talk.slides.ts --json
+frameseq check talk.slides.ts --strict
+```
+
+Errors return a non-zero exit code. Warnings fail only in strict mode. JSON output includes the slide index and label, FrameSeq object type and path, measured geometry, and suggested corrections. See [AI-friendly layout checks](layout-checks.md).
+
 ## Project scripts
 
 A project generated with `npm create frameseq` provides:
@@ -69,5 +85,7 @@ npm run build
 npm run pdf
 npm run check
 ```
+
+`npm run check` validates both TypeScript and the rendered slide layout.
 
 Use `npx frameseq ...` when calling the local executable directly.

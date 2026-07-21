@@ -2,7 +2,7 @@
 
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { basename, dirname, extname, resolve } from "node:path";
+import { basename, dirname, extname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
@@ -18,18 +18,34 @@ Usage:
   frameseq dev [file]                 Preview a deck with hot reload
   frameseq build [file] [--output dir] Build a static HTML presentation
   frameseq pdf [file] [--output path] Export a deck to PDF
+  frameseq check [file] [--json] [--strict]
+                                      Check the rendered layout
   frameseq new [file]                 Create a starter .slides.ts file
 
 Examples:
   frameseq dev talk.slides.ts
   frameseq build talk.slides.ts
   frameseq pdf talk.slides.ts
+  frameseq check talk.slides.ts
   frameseq new quarterly.slides.ts`);
 }
 
 function option(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function positionalFile(args) {
+  const optionsWithValues = new Set(["--output"]);
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (optionsWithValues.has(argument)) {
+      index += 1;
+      continue;
+    }
+    if (!argument.startsWith("-")) return argument;
+  }
+  return "slides.ts";
 }
 
 async function ensureFile(path) {
@@ -158,19 +174,276 @@ async function exportPdf(entry, requestedOutput) {
   }
 }
 
-const [, , command, file = "slides.ts"] = process.argv;
+function printLayoutReport(report) {
+  console.log(`FrameSeq layout check: ${report.file}`);
+  if (report.issues.length === 0) {
+    console.log(`OK ${report.summary.slides} slides checked; no layout issues found.`);
+    return;
+  }
+
+  for (const issue of report.issues) {
+    console.log(`\n${issue.severity.toUpperCase()} Slide ${issue.slide.index} "${issue.slide.label}" [${issue.rule}]`);
+    console.log(`  ${issue.message}`);
+    console.log(`  Object: ${issue.element.type} ${issue.element.path}${issue.element.text ? ` "${issue.element.text}"` : ""}`);
+    for (const suggestion of issue.suggestions) {
+      console.log(`  Suggestion: ${suggestion}`);
+    }
+  }
+
+  console.log(`\nChecked ${report.summary.slides} slides: ${report.summary.errors} errors, ${report.summary.warnings} warnings.`);
+}
+
+async function checkLayout(entry, { json = false, strict = false } = {}) {
+  const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-check");
+  process.env.FRAMESEQ_ENTRY = entry;
+  process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
+
+  await viteBuild({
+    configFile,
+    root: packageRoot,
+    logLevel: "silent",
+  });
+
+  const server = await preview({
+    configFile,
+    root: packageRoot,
+    logLevel: "silent",
+    preview: {
+      host: "127.0.0.1",
+      port: 4173,
+      strictPort: false,
+    },
+  });
+
+  const address = server.httpServer.address();
+  if (!address || typeof address === "string") {
+    await server.close();
+    throw new Error("Could not determine layout-check preview server address");
+  }
+
+  const browser = await puppeteer.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
+      waitUntil: "networkidle0",
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    await page.evaluate(() => document.fonts.ready);
+
+    const results = await page.evaluate(() => {
+      const tolerance = 1;
+      const issues = [];
+      const canvases = Array.from(document.querySelectorAll(".frameseq-slide"));
+      const measurableTypes = new Set([
+        "text",
+        "image",
+        "code",
+        "equation",
+        "typst",
+        "rect",
+        "circle",
+      ]);
+      const textTypes = new Set(["text", "code", "equation", "rect", "circle"]);
+      const clippingValues = new Set(["hidden", "clip"]);
+
+      const rounded = (value) => Math.round(value * 10) / 10;
+      const excerpt = (element) => (element.textContent ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80);
+      const overflow = (inner, outer) => ({
+        left: Math.max(0, outer.left - inner.left),
+        right: Math.max(0, inner.right - outer.right),
+        top: Math.max(0, outer.top - inner.top),
+        bottom: Math.max(0, inner.bottom - outer.bottom),
+      });
+      const hasOverflow = (value) => Object.values(value).some((amount) => amount > tolerance);
+      const contentBounds = (element) => {
+        if (!element.textContent?.trim()) return element.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const bounds = range.getBoundingClientRect();
+        return bounds.width > 0 || bounds.height > 0
+          ? bounds
+          : element.getBoundingClientRect();
+      };
+      const sides = (value) => Object.entries(value)
+        .filter(([, amount]) => amount > tolerance)
+        .map(([side, amount]) => `${rounded(amount)}px on the ${side}`)
+        .join(", ");
+
+      canvases.forEach((canvas, slideIndex) => {
+        const canvasBounds = canvas.getBoundingClientRect();
+        const slide = {
+          index: slideIndex + 1,
+          label: canvas.dataset.frameseqSlideLabel || `Slide ${slideIndex + 1}`,
+        };
+        const nodes = Array.from(canvas.querySelectorAll("[data-frameseq-node]"));
+
+        for (const element of nodes) {
+          const type = element.dataset.frameseqNode ?? "unknown";
+          if (type === "slide" || type === "line" || type === "spacer") continue;
+          const style = getComputedStyle(element);
+          const bounds = element.getBoundingClientRect();
+          if (style.display === "none" || style.visibility === "hidden"
+            || bounds.width === 0 || bounds.height === 0) continue;
+          if (!measurableTypes.has(type) && style.position !== "absolute") continue;
+
+          const text = excerpt(element);
+          const elementInfo = {
+            type,
+            path: element.dataset.frameseqPath ?? "unknown",
+            text,
+          };
+          const visualBounds = textTypes.has(type) && text
+            ? contentBounds(element)
+            : bounds;
+          const combinedBounds = {
+            left: Math.min(bounds.left, visualBounds.left),
+            right: Math.max(bounds.right, visualBounds.right),
+            top: Math.min(bounds.top, visualBounds.top),
+            bottom: Math.max(bounds.bottom, visualBounds.bottom),
+          };
+          const canvasOverflow = overflow(combinedBounds, canvasBounds);
+
+          if (hasOverflow(canvasOverflow)) {
+            issues.push({
+              severity: "error",
+              rule: "canvas-overflow",
+              slide,
+              element: elementInfo,
+              message: `${type === "text" ? "Text" : "Object"} exceeds the slide canvas by ${sides(canvasOverflow)}.`,
+              details: Object.fromEntries(
+                Object.entries(canvasOverflow).map(([side, amount]) => [side, rounded(amount)]),
+              ),
+              suggestions: [
+                "Move the object inward or reduce its width, height, or font size.",
+              ],
+            });
+          }
+
+          if (textTypes.has(type) && text) {
+            let clipping = undefined;
+            let clippingAncestor = element;
+            while (clippingAncestor && clippingAncestor !== canvas) {
+              const clippingStyle = getComputedStyle(clippingAncestor);
+              const clipsX = clippingValues.has(clippingStyle.overflowX);
+              const clipsY = clippingValues.has(clippingStyle.overflowY);
+              if (clipsX || clipsY) {
+                const ancestorBounds = clippingAncestor.getBoundingClientRect();
+                const clipped = overflow(visualBounds, ancestorBounds);
+                const relevant = {
+                  left: clipsX ? clipped.left : 0,
+                  right: clipsX ? clipped.right : 0,
+                  top: clipsY ? clipped.top : 0,
+                  bottom: clipsY ? clipped.bottom : 0,
+                };
+                if (hasOverflow(relevant)) {
+                  clipping = relevant;
+                  break;
+                }
+              }
+              clippingAncestor = clippingAncestor.parentElement;
+            }
+
+            if (clipping) {
+              issues.push({
+                severity: "error",
+                rule: "text-clipped",
+                slide,
+                element: elementInfo,
+                message: `Text is clipped by ${sides(clipping)}.`,
+                details: Object.fromEntries(
+                  Object.entries(clipping).map(([side, amount]) => [side, rounded(amount)]),
+                ),
+                suggestions: [
+                  "Increase the text box size, reduce the font size, or shorten the content.",
+                ],
+              });
+            }
+
+            if (!element.classList.contains("frameseq-list-marker")) {
+              const fontSize = Number.parseFloat(style.fontSize);
+              const heading = element.classList.contains("frameseq-slide-title")
+                || element.classList.contains("frameseq-cover-title");
+              const minimum = heading ? 24 : 14;
+              if (Number.isFinite(fontSize) && fontSize < minimum) {
+                issues.push({
+                  severity: "warning",
+                  rule: "font-too-small",
+                  slide,
+                  element: elementInfo,
+                  message: `Font size ${rounded(fontSize)}px is below the recommended ${minimum}px minimum.`,
+                  details: {
+                    fontSize: rounded(fontSize),
+                    recommendedMinimum: minimum,
+                  },
+                  suggestions: [
+                    `Increase the font size to at least ${minimum}px.`,
+                  ],
+                });
+              }
+            }
+          }
+        }
+      });
+
+      return {
+        canvas: {
+          width: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--slide-width")),
+          height: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--slide-height")),
+        },
+        slides: canvases.length,
+        issues,
+      };
+    });
+
+    const errors = results.issues.filter((issue) => issue.severity === "error").length;
+    const warnings = results.issues.filter((issue) => issue.severity === "warning").length;
+    const report = {
+      version: 1,
+      file: (relative(process.cwd(), entry) || basename(entry)).replaceAll("\\", "/"),
+      canvas: results.canvas,
+      summary: {
+        slides: results.slides,
+        errors,
+        warnings,
+      },
+      issues: results.issues,
+    };
+
+    if (json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      printLayoutReport(report);
+    }
+    if (errors > 0 || (strict && warnings > 0)) process.exitCode = 1;
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+}
+
+const [, , command] = process.argv;
+const file = positionalFile(process.argv.slice(3));
 
 try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
   } else if (command === "new") {
     await createDeckFile(resolve(process.cwd(), file));
-  } else if (command === "dev" || command === "build" || command === "pdf") {
+  } else if (command === "dev" || command === "build" || command === "pdf" || command === "check") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") await startDevelopmentServer(entry);
     if (command === "build") await buildHtml(entry, option("--output"));
     if (command === "pdf") await exportPdf(entry, option("--output"));
+    if (command === "check") {
+      await checkLayout(entry, {
+        json: process.argv.includes("--json"),
+        strict: process.argv.includes("--strict"),
+      });
+    }
   } else {
     help();
     process.exitCode = 1;
