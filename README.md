@@ -56,7 +56,7 @@ The generated `.slides.ts` file is written from top to bottom like a document:
 ```ts
 presentation("My Talk");
 
-slide({ name: "Cover" }).cover();
+slide().cover();
 text("Build slides like apps").hero();
 text("TypeScript → HTML → PDF").subtitle();
 text("Your name").author().size(pt(16));
@@ -91,6 +91,18 @@ Presentations start with a neutral white `blank` theme. Select a built-in theme 
 
 ```ts
 presentation({ title: "My Talk", theme: "midnight" });
+```
+
+Academic themes can generate a title bar, metadata footer, and slide number:
+
+```ts
+presentation({
+  title: "My Talk",
+  author: "Your Name",
+  institute: "Your Institute",
+  date: "2026",
+  theme: "beamer-madrid",
+});
 ```
 
 ```ts

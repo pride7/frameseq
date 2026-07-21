@@ -37,6 +37,14 @@
   --frameseq-radius-medium: 18px;
   --frameseq-radius-large: 24px;
   --frameseq-radius-pill: 999px;
+  --frameseq-title-bar-height: 54px;
+  --frameseq-footer-height: 30px;
+  --frameseq-title-bar-background: #f1f5f9;
+  --frameseq-title-bar-foreground: #111827;
+  --frameseq-footer-background: #f1f5f9;
+  --frameseq-footer-foreground: #4b5563;
+  --frameseq-footer-accent-background: #2563eb;
+  --frameseq-footer-accent-foreground: #ffffff;
 }
 
 * {
@@ -95,6 +103,68 @@ button {
   color: var(--frameseq-foreground);
   background: var(--frameseq-background);
   font-family: var(--frameseq-font-body);
+}
+
+.frameseq-theme-title-bar {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  height: var(--frameseq-title-bar-height);
+  padding: 0 var(--frameseq-slide-x);
+  color: var(--frameseq-title-bar-foreground);
+  background: var(--frameseq-title-bar-background);
+  font-family: var(--frameseq-font-heading);
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.frameseq-has-title-bar > .frameseq-slide-title {
+  display: none;
+}
+
+.frameseq-theme-footer {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  height: var(--frameseq-footer-height);
+  color: var(--frameseq-footer-foreground);
+  background: var(--frameseq-footer-background);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.frameseq-theme-footer > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 18px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.frameseq-theme-footer-author {
+  color: var(--frameseq-footer-accent-foreground);
+  background: var(--frameseq-footer-accent-background);
+  font-weight: 650;
+}
+
+.frameseq-theme-footer-institute {
+  justify-content: center;
+}
+
+.frameseq-theme-footer-details {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
 }
 
 .frameseq-row,
@@ -207,6 +277,38 @@ button {
   font-weight: 600;
 }
 
+[data-frameseq-theme-family="beamer"] .frameseq-cover-slide {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-cover-title {
+  max-width: 1000px;
+  color: var(--frameseq-accent);
+  font-size: 54px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-cover-eyebrow {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-cover-subtitle {
+  color: var(--frameseq-foreground);
+  font-size: 24px;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-cover-author {
+  margin-top: 18px;
+  color: var(--frameseq-muted);
+  font-size: 18px;
+  font-weight: 400;
+}
+
 .frameseq-content-slide {
   gap: var(--frameseq-content-gap);
   padding: var(--frameseq-slide-y) var(--frameseq-slide-x);
@@ -281,6 +383,14 @@ button {
   line-height: 1.08;
 }
 
+[data-frameseq-theme-family="beamer"] .frameseq-slide-title {
+  color: var(--frameseq-accent);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
 .frameseq-slide-lead {
   color: var(--frameseq-foreground);
   font-size: 30px;
@@ -308,6 +418,25 @@ button {
   border: 1px solid var(--frameseq-border);
   border-radius: var(--frameseq-radius-medium);
   background: var(--frameseq-surface);
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-list-item {
+  gap: 14px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-list-marker {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+[data-frameseq-theme-family="beamer"] .frameseq-list-copy {
+  font-size: 21px;
 }
 
 .frameseq-list-marker {

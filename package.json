@@ -54,7 +54,7 @@
     "build:demo": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
-    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs",
+    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs",
     "frameseq": "node scripts/frameseq.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
     "pack:check": "node scripts/package-test.mjs",

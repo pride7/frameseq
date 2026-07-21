@@ -5,7 +5,9 @@ export { defineTheme, themes } from "./theme";
 export type {
   BuiltInThemeName,
   ThemeColors,
+  ThemeChrome,
   ThemeDefinition,
+  ThemeFamily,
   ThemeFonts,
   ThemeInput,
   ThemeOptions,

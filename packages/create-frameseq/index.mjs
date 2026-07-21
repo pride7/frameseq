@@ -65,7 +65,7 @@ try {
 
   const slides = `presentation(${JSON.stringify(presentationTitle(targetDirectory))});
 
-slide({ name: "Cover" }).cover();
+slide().cover();
 text("Build presentations like interfaces").hero();
 text("TypeScript → HTML → PDF").subtitle();
 text("Made with FrameSeq").author();

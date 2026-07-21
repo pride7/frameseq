@@ -23,6 +23,9 @@ export interface FrameSeqNode {
 
 export interface DeckOptions {
   title?: string;
+  author?: string;
+  institute?: string;
+  date?: string;
   ratio?: "16:9" | "4:3";
   width?: number;
   height?: number;
@@ -260,6 +263,18 @@ export class DeckDefinition extends ElementBuilder {
     return this.node.props.title as string;
   }
 
+  get author(): string | undefined {
+    return this.node.props.author as string | undefined;
+  }
+
+  get institute(): string | undefined {
+    return this.node.props.institute as string | undefined;
+  }
+
+  get date(): string | undefined {
+    return this.node.props.date as string | undefined;
+  }
+
   get theme(): ThemeDefinition {
     return this.node.props.theme as ThemeDefinition;
   }
@@ -294,6 +309,9 @@ export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition 
   }
   const root = node("deck", {
     title: options.title ?? "FrameSeq",
+    author: options.author,
+    institute: options.institute,
+    date: options.date,
     ratio,
     width,
     height,

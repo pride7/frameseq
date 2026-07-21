@@ -42,4 +42,31 @@ assert.equal(overriddenDeck.theme.colors.background, "hotpink");
 assert.equal(overriddenDeck.theme.coverBackground, "hotpink");
 assert.equal(themes.paper.colors.background, "#f7f3e8");
 
-console.log("Theme test passed: default, built-in, custom, and background override behavior.");
+const madridDeck = presentation({
+  title: "Academic talk",
+  author: "Ada Lovelace",
+  institute: "Analytical Engine Institute",
+  date: "2026",
+  theme: "beamer-madrid",
+});
+assert.equal(madridDeck.author, "Ada Lovelace");
+assert.equal(madridDeck.institute, "Analytical Engine Institute");
+assert.equal(madridDeck.date, "2026");
+assert.equal(madridDeck.theme.family, "beamer");
+assert.equal(madridDeck.theme.chrome.titleBar, true);
+assert.equal(madridDeck.theme.chrome.footer, true);
+assert.equal(madridDeck.theme.chrome.slideNumber, true);
+
+const quietMadrid = defineTheme({
+  name: "quiet-madrid",
+  extends: "beamer-madrid",
+  chrome: {
+    footer: false,
+  },
+});
+assert.equal(quietMadrid.family, "beamer");
+assert.equal(quietMadrid.chrome.titleBar, true);
+assert.equal(quietMadrid.chrome.footer, false);
+assert.equal(themes["beamer-cambridge-us"].colors.accent, "#8b1e3f");
+
+console.log("Theme test passed: default, built-in, Beamer, custom, metadata, and override behavior.");

@@ -21,11 +21,14 @@ presentation({
 
 ## Built-in themes
 
-FrameSeq includes three themes:
+FrameSeq includes six themes:
 
 - `blank` — neutral white and the default.
 - `midnight` — the original dark FrameSeq appearance with cyan accents.
 - `paper` — a warm, editorial theme with serif typography.
+- `beamer-default` — a clean blue academic style without presentation chrome.
+- `beamer-madrid` — a blue title bar and metadata footer inspired by Beamer Madrid.
+- `beamer-cambridge-us` — a burgundy and cream academic style inspired by Beamer CambridgeUS.
 
 Choose one on the presentation:
 
@@ -37,6 +40,31 @@ presentation({
 ```
 
 The theme applies to every slide in the presentation.
+
+## Beamer-inspired themes
+
+The Madrid and CambridgeUS themes can render a frame title, author and institute footer, date, and automatic slide number. Supply the metadata once on the presentation:
+
+```ts
+presentation({
+  title: "Compiler Architecture",
+  author: "Ada Lovelace",
+  institute: "Analytical Engine Institute",
+  date: "2026",
+  theme: "beamer-madrid",
+});
+
+slide().cover();
+text("Compiler Architecture").hero();
+text("Ada Lovelace").author();
+
+slide("Overview");
+bullets("Parser", "Renderer", "Exporter");
+```
+
+The title bar uses the visible `title` from `slide("Overview")`. A slide created with only `name` metadata does not gain a visible title. Chrome is hidden on cover slides by default.
+
+These themes reproduce the visual language and common frame structure of the Beamer themes in FrameSeq's HTML renderer; they do not execute Beamer or LaTeX theme files.
 
 ## Create a theme
 
@@ -55,6 +83,9 @@ const ocean = defineTheme({
   },
   radii: {
     medium: "8px",
+  },
+  chrome: {
+    slideNumber: true,
   },
 });
 
@@ -101,6 +132,8 @@ const conferenceTheme = defineTheme({
 - `fonts`: `body`, `heading`, and `mono` CSS font stacks.
 - `spacing`: slide padding, layout gaps, and card padding.
 - `radii`: `small`, `medium`, `large`, and `pill` CSS radii.
+- `chrome`: optional title bar, footer, slide numbering, their dimensions, and colors.
+- `family`: `"frameseq"` or `"beamer"`; extending a theme preserves its family automatically.
 - `coverBackground`: a CSS color, gradient, or image used by `.cover()` slides.
 
 See [API reference](api-reference.md#themes) for all token names.

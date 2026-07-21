@@ -16,11 +16,14 @@ Starts a new active presentation. It must be called before `slide()`.
 ```ts
 interface DeckOptions {
   title?: string;
+  author?: string;
+  institute?: string;
+  date?: string;
   ratio?: "16:9" | "4:3";
   width?: number;
   height?: number;
   background?: string;
-  theme?: "blank" | "midnight" | "paper" | ThemeDefinition;
+  theme?: BuiltInThemeName | ThemeDefinition;
 }
 ```
 
@@ -46,14 +49,22 @@ presentation({ title: "Ocean", theme: ocean });
 interface ThemeOptions {
   name: string;
   extends?: BuiltInThemeName | ThemeDefinition;
+  family?: "frameseq" | "beamer";
   colors?: Partial<ThemeColors>;
   fonts?: Partial<ThemeFonts>;
   spacing?: Partial<ThemeSpacing>;
   radii?: Partial<ThemeRadii>;
+  chrome?: Partial<ThemeChrome>;
   coverBackground?: string;
 }
 
-type BuiltInThemeName = "blank" | "midnight" | "paper";
+type BuiltInThemeName =
+  | "blank"
+  | "midnight"
+  | "paper"
+  | "beamer-default"
+  | "beamer-madrid"
+  | "beamer-cambridge-us";
 ```
 
 Color tokens:
@@ -104,11 +115,26 @@ interface ThemeRadii {
   large: string;
   pill: string;
 }
+
+interface ThemeChrome {
+  titleBar: boolean;
+  footer: boolean;
+  slideNumber: boolean;
+  showOnCover: boolean;
+  titleBarHeight: string;
+  footerHeight: string;
+  titleBarBackground: string;
+  titleBarForeground: string;
+  footerBackground: string;
+  footerForeground: string;
+  footerAccentBackground: string;
+  footerAccentForeground: string;
+}
 ```
 
 ### `themes`
 
-An object containing the complete `blank`, `midnight`, and `paper` theme definitions. Theme names are usually more concise when selecting or extending a built-in theme; this export is useful when a complete theme object is needed.
+An object containing all six complete built-in theme definitions. Theme names are usually more concise when selecting or extending a built-in theme; this export is useful when a complete theme object is needed.
 
 ### `slide(nameOrOptions?)`
 

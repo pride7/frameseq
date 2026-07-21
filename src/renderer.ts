@@ -103,6 +103,57 @@ function maxStep(node: FrameSeqNode): number {
   return Math.max(ownStep, ...node.children.map(maxStep), 0);
 }
 
+function hasClass(node: FrameSeqNode, className: string): boolean {
+  const classes = typeof node.props.className === "string"
+    ? node.props.className.split(/\s+/)
+    : [];
+  return classes.includes(className);
+}
+
+function addThemeChrome(
+  canvas: HTMLElement,
+  slide: FrameSeqNode,
+  index: number,
+  deck: DeckDefinition,
+): void {
+  const chrome = deck.theme.chrome;
+  const isCover = hasClass(slide, "frameseq-cover-slide");
+  if (isCover && !chrome.showOnCover) return;
+
+  const title = typeof slide.props.title === "string" ? slide.props.title : undefined;
+  if (chrome.titleBar && title) {
+    const titleBar = document.createElement("header");
+    titleBar.className = "frameseq-theme-title-bar";
+    titleBar.textContent = title;
+    canvas.classList.add("frameseq-has-title-bar");
+    canvas.prepend(titleBar);
+  }
+
+  if (!chrome.footer) return;
+
+  const footer = document.createElement("footer");
+  footer.className = "frameseq-theme-footer";
+
+  const author = document.createElement("span");
+  author.className = "frameseq-theme-footer-author";
+  author.textContent = deck.author ?? deck.title;
+
+  const institute = document.createElement("span");
+  institute.className = "frameseq-theme-footer-institute";
+  institute.textContent = deck.institute ?? "";
+
+  const details = document.createElement("span");
+  details.className = "frameseq-theme-footer-details";
+  details.textContent = [
+    deck.date,
+    chrome.slideNumber ? `${index + 1} / ${deck.slides.length}` : undefined,
+  ].filter(Boolean).join(" · ");
+
+  footer.append(author, institute, details);
+  canvas.classList.add("frameseq-has-footer");
+  canvas.append(footer);
+}
+
 export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.title = deck.title;
   target.replaceChildren();
@@ -112,6 +163,8 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.documentElement.style.setProperty("--slide-width", `${deck.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${deck.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
+  document.documentElement.dataset.frameseqTheme = deck.theme.name;
+  document.documentElement.dataset.frameseqThemeFamily = deck.theme.family;
   for (const [name, value] of Object.entries(themeCssVariables(deck.theme))) {
     document.documentElement.style.setProperty(name, value);
   }
@@ -132,9 +185,18 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     frame.dataset.index = String(index);
 
     const canvas = renderNode(slide);
+    addThemeChrome(canvas, slide, index, deck);
     canvas.setAttribute("role", "group");
     canvas.setAttribute("aria-roledescription", "slide");
-    canvas.setAttribute("aria-label", `${index + 1} of ${deck.slides.length}`);
+    const slideName = typeof slide.props.title === "string"
+      ? slide.props.title
+      : typeof slide.props.name === "string"
+        ? slide.props.name
+        : undefined;
+    canvas.setAttribute(
+      "aria-label",
+      `${index + 1} of ${deck.slides.length}${slideName ? `: ${slideName}` : ""}`,
+    );
     frame.append(canvas);
     root.append(frame);
     return { frame, canvas, maxStep: maxStep(slide) };
