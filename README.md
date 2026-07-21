@@ -18,7 +18,7 @@ The generated project includes a `slides.ts` document, editor type support, HTML
 To add FrameSeq to an existing TypeScript project instead:
 
 ```bash
-npm install --save-dev frameseq
+npm install --save-dev @pride7/frameseq
 npx frameseq new my-talk.slides.ts
 npx frameseq dev my-talk.slides.ts
 ```
@@ -146,7 +146,7 @@ For the included example, `npm run export:pdf` writes `output/pdf/frameseq.pdf`.
 The original object API and low-level UI components remain available when a slide needs a special composition:
 
 ```ts
-import { Column, Image, Row, Slides, Text } from "frameseq";
+import { Column, Image, Row, Slides, Text } from "@pride7/frameseq";
 
 const customDeck = Slides("Custom layouts");
 

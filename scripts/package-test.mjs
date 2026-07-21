@@ -48,7 +48,7 @@ runNpm(
   packageRoot,
 );
 
-const frameSeqTarball = resolve(packDirectory, "frameseq-0.1.0.tgz");
+const frameSeqTarball = resolve(packDirectory, "pride7-frameseq-0.1.0.tgz");
 const creatorTarball = resolve(packDirectory, "create-frameseq-0.1.0.tgz");
 if (!existsSync(frameSeqTarball) || !existsSync(creatorTarball)) {
   throw new Error("Expected npm package tarballs were not created");
@@ -68,7 +68,7 @@ run(
   [
     "--input-type=module",
     "--eval",
-    "import { presentation, slide, text } from 'frameseq'; presentation('Import test'); slide('Ready'); text('Works');",
+    "import { presentation, slide, text } from '@pride7/frameseq'; presentation('Import test'); slide('Ready'); text('Works');",
   ],
   appDirectory,
 );

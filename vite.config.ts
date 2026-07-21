@@ -47,11 +47,11 @@ export default defineConfig({
       transform(source, id) {
         if (normalizePath(id.split("?")[0]) !== normalizedEntry) return undefined;
 
-        const importsFramework = /(?:from\s*|import\s*)["']frameseq["']/.test(source);
+        const importsFramework = /(?:from\s*|import\s*)["']@pride7\/frameseq["']/.test(source);
         if (importsFramework) return undefined;
 
         const hasDefaultExport = /\bexport\s+default\b/.test(source);
-        const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqDeck } from "frameseq";\n`;
+        const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqDeck } from "@pride7/frameseq";\n`;
         const postlude = hasDefaultExport ? "" : "\nexport default __frameSeqDeck();\n";
         return { code: `${prelude}${source}${postlude}`, map: null };
       },

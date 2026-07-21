@@ -46,7 +46,7 @@ try {
       check: "tsc --noEmit",
     },
     devDependencies: {
-      frameseq: FRAMESEQ_VERSION,
+      "@pride7/frameseq": FRAMESEQ_VERSION,
       typescript: "^5.8.3",
     },
   };
@@ -58,7 +58,7 @@ try {
       moduleResolution: "Bundler",
       strict: true,
       noEmit: true,
-      types: ["frameseq/globals"],
+      types: ["@pride7/frameseq/globals"],
     },
     include: ["*.slides.ts", "slides.ts"],
   };
