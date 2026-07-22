@@ -17,7 +17,7 @@ text("Compiler pipeline").lead();
 steps("Parse", "Render", "Export");
 ```
 
-Notes are slide metadata. They never appear in the audience view, static slide content, print mode, or PDF output.
+Notes are slide metadata. They never appear in the audience view, static slide content, print mode, or PDF output. PPTX export stores them as PowerPoint speaker notes.
 
 The object form also accepts notes:
 

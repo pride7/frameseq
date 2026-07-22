@@ -17,4 +17,6 @@ Run `npm run check` to validate TypeScript and inspect the rendered deck for ove
 
 `npm run build` creates a static site in `dist/`. `npm run build:single` creates one self-contained `dist/index.html`.
 
+`npm run pdf` exports a PDF. `npm run pptx` exports an editable hybrid PowerPoint; add `-- --flatten` to render each slide as one image for maximum fidelity.
+
 Every generated project includes `.github/workflows/pages.yml`. Push the project to a GitHub repository, select **GitHub Actions** under **Settings → Pages → Build and deployment**, and each push to `main` or `master` will publish the presentation.

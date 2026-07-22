@@ -57,7 +57,7 @@ npm run dev
 
 The browser opens automatically and updates when the source file changes. Use Arrow keys, Page Up, Page Down, or Space to navigate. Incremental content created with `steps()` or `showAt()` is revealed before navigation continues to the next page.
 
-Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output.
+Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output; PPTX export preserves them as PowerPoint speaker notes.
 
 To present with a phone remote, start the local-network server:
 
@@ -102,6 +102,20 @@ The default output is `output/pdf/slides.pdf`. Choose another path with the CLI 
 ```bash
 npx frameseq pdf slides.ts --output output/my-talk.pdf
 ```
+
+## Export PowerPoint
+
+```bash
+npm run pptx
+```
+
+The default output is `output/pptx/slides.pptx`. Text, code, shapes, connectors, and speaker notes remain editable PowerPoint objects where possible; formulas and Typst use high-resolution image fallbacks. For the closest visual match to the browser, export one image per slide:
+
+```bash
+npx frameseq pptx slides.ts --flatten
+```
+
+See [Export PowerPoint](pptx.md) for details.
 
 ## Add FrameSeq to an existing project
 

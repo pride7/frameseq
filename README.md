@@ -2,7 +2,7 @@
 
 **Write slides as an editable TypeScript document—not a tree of presentation markup.**
 
-FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF output. It feels like building an interface, but the source stays as direct and readable as a document.
+FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF/PPTX output. It feels like building an interface, but the source stays as direct and readable as a document.
 
 ```ts
 presentation({
@@ -19,13 +19,13 @@ bullets(
   "One linear TypeScript file",
   "Semantic layouts with useful defaults",
   "Tailwind styling without configuration",
-  "Interactive HTML and PDF from the same source",
+  "Interactive HTML, PDF, and editable PowerPoint",
 );
 
 slide("Results").grid(3);
 cell(0); metric("12 min", "To first draft");
 cell(1); metric("1 file", "To maintain");
-cell(2); metric("2 formats", "HTML + PDF");
+cell(2); metric("3 formats", "HTML · PDF · PPTX");
 
 slide("The model");
 text`Every command belongs to the current slide until the next $\operatorname{slide}()$ call.`;
@@ -46,7 +46,7 @@ image("pipeline.png", "Compiler pipeline");
 
 right();
 text("Three clear stages").lead();
-bullets("Parse the document", "Build the page tree", "Render HTML or PDF");
+bullets("Parse the document", "Build the page tree", "Render HTML, PDF, or PPTX");
 ```
 
 A slide starts with `slide()`; everything after it belongs to that slide until the next `slide()`. Layout changes are named operations such as `split()`, `grid()`, `right()`, and `cell()`. A local visual change stays attached to the object it affects.
@@ -64,7 +64,7 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 - TypeScript catches misspelled APIs and invalid arguments.
 - `frameseq check --json` gives agents measured overflow, clipping, and readability diagnostics they can correct directly.
 - Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
-- The FrameSeq runtime owns rendering, navigation, responsive scaling, and PDF output.
+- The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, and PPTX output.
 
 An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
 
@@ -212,7 +212,7 @@ typstFile("./figures/architecture.typ")
   .width(percent(100));
 ```
 
-FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout, styling, HTML, and PDF output. See [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md) for the current static-source restrictions.
+FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. In editable PPTX export, the rendered fragment is preserved as a high-resolution image. See [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md) for the current static-source restrictions.
 
 ### Code, lists, images, and reveals
 
@@ -226,7 +226,7 @@ steps("Introduce the problem", "Reveal the model", "Show the result");
 image("diagram.png", "System diagram");
 ```
 
-`steps()` reveals items during navigation. In PDF output, all reveal steps remain visible.
+`steps()` reveals items during navigation. PDF and PPTX export include the fully revealed slide.
 
 ## Layout
 
@@ -280,7 +280,7 @@ image("diagram.png", "Compiler diagram")
   .width(620);
 ```
 
-Coordinates are relative to the current canvas region. Numbers are pixels in FrameSeq's fixed presentation coordinate system; the default presentation canvas is 1280 x 720, and the runtime scales the finished slide as one unit for interactive HTML and PDF. Prefer structured layouts for most pages, then use `canvas()` with `position()` for diagrams and custom compositions.
+Coordinates are relative to the current canvas region. Numbers are pixels in FrameSeq's fixed presentation coordinate system; the default presentation canvas is 1280 x 720, and FrameSeq maps that finished geometry consistently to interactive HTML, PDF, and PPTX. Prefer structured layouts for most pages, then use `canvas()` with `position()` for diagrams and custom compositions.
 
 ### Shapes and connectors
 
@@ -412,9 +412,15 @@ frameseq build my-talk.slides.ts --single-file
 
 # PDF in output/pdf/
 frameseq pdf my-talk.slides.ts
+
+# Editable PowerPoint in output/pptx/
+frameseq pptx my-talk.slides.ts
+
+# Pixel-faithful PowerPoint with one image per slide
+frameseq pptx my-talk.slides.ts --flatten
 ```
 
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md).
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math and Typst; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md) and [Export PowerPoint](https://github.com/pride7/frameseq/blob/main/docs/pptx.md).
 
 Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
@@ -508,4 +514,4 @@ Before publishing a FrameSeq release:
 npm run release:check
 ```
 
-The release check builds the library and demo, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports a PDF.
+The release check builds the library and demo, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.

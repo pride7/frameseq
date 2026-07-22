@@ -104,7 +104,7 @@ image("diagram.png", "Compiler diagram")
   .width(620);
 ```
 
-The `x` and `y` coordinates are relative to the current canvas region. Plain numbers are pixels; unit helpers are also accepted. FrameSeq scales the fixed presentation canvas as one unit, so positioned elements retain their relative placement in interactive HTML and PDF.
+The `x` and `y` coordinates are relative to the current canvas region. Plain numbers are pixels; unit helpers are also accepted. FrameSeq maps the fixed presentation canvas as one unit, so positioned elements retain their relative placement in interactive HTML, PDF, and PPTX.
 
 The explicit object API is also available when an element should be created before it is attached:
 

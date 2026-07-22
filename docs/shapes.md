@@ -10,7 +10,7 @@ Shapes can participate in ordinary layout, but diagrams normally need explicit c
 slide({ name: "Pipeline" }).canvas();
 ```
 
-Coordinates are relative to the slide's current canvas region. FrameSeq scales the finished presentation canvas as a single unit, so the composition keeps the same relative geometry in interactive HTML and PDF.
+Coordinates are relative to the slide's current canvas region. FrameSeq maps the finished presentation canvas as a single unit, so the composition keeps the same relative geometry in interactive HTML, PDF, and PPTX.
 
 ## Rectangles
 
@@ -88,7 +88,7 @@ rect("Second step")
   .showAt(2);
 ```
 
-In interactive mode, `showAt()` follows the slide's reveal steps. Print and PDF output show every step.
+In interactive mode, `showAt()` follows the slide's reveal steps. PDF and PPTX output show every step.
 
 ## Custom SVG artwork
 
@@ -102,4 +102,4 @@ image(artwork, "Custom vector diagram")
   .width(280);
 ```
 
-This keeps the artwork vector-based in the browser and PDF while leaving common boxes and connectors easy to edit in TypeScript.
+This keeps the artwork vector-based in the browser and PDF while leaving common boxes and connectors easy to edit in TypeScript. Editable PPTX export maps rectangles, circles, lines, and arrows to native PowerPoint shapes.

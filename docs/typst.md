@@ -1,6 +1,6 @@
 # Typst integration
 
-FrameSeq owns the presentation structure; Typst owns complex local typesetting. A Typst fragment is a normal FrameSeq content object, so it can participate in slide layouts, receive chainable modifiers, and appear in both interactive HTML and PDF output.
+FrameSeq owns the presentation structure; Typst owns complex local typesetting. A Typst fragment is a normal FrameSeq content object, so it can participate in slide layouts, receive chainable modifiers, and appear in interactive HTML, PDF, and PPTX output.
 
 ## Install the optional compiler
 
@@ -68,10 +68,10 @@ Static Typst source
         ↓ typst.ts during Vite build
 Inline SVG
         ↓ FrameSeq layout and runtime
-Interactive HTML / PDF
+HTML / PDF / PPTX
 ```
 
-The current SVG output keeps complex layout visually consistent across the browser and PDF paths without loading a Typst compiler at runtime.
+The current SVG output keeps complex layout visually consistent across the browser and PDF paths without loading a Typst compiler at runtime. Editable PPTX export captures the rendered fragment as a high-resolution image; `--flatten` captures the complete slide.
 
 ## Current restrictions
 

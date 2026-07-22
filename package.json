@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -41,6 +41,7 @@
     "lib",
     "public",
     "scripts/frameseq.mjs",
+    "scripts/pptx-export.mjs",
     "src/main.ts",
     "src/index.css",
     "src/renderer.ts",
@@ -68,9 +69,11 @@
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "check:layout": "node scripts/frameseq.mjs check slides.ts",
-    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs",
+    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs",
     "frameseq": "node scripts/frameseq.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
+    "pptx": "node scripts/frameseq.mjs pptx slides.ts",
+    "export:pptx": "node scripts/frameseq.mjs pptx slides.ts --output output/pptx/frameseq.pptx",
     "pack:check": "node scripts/package-test.mjs",
     "release:check": "npm test && npm run pack:check",
     "prepack": "npm run build:package"
@@ -78,6 +81,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "katex": "^0.16.22",
+    "pptxgenjs": "^4.0.1",
     "puppeteer": "^24.16.0",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4.3.3",
@@ -88,7 +92,8 @@
     "@myriaddreamin/typst-ts-node-compiler": "^0.7.0",
     "@types/katex": "^0.16.7",
     "@types/node": "^24.0.0",
-    "@types/qrcode": "^1.5.6"
+    "@types/qrcode": "^1.5.6",
+    "jszip": "^3.10.1"
   },
   "peerDependencies": {
     "@myriaddreamin/typst-ts-node-compiler": "^0.7.0"

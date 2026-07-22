@@ -77,6 +77,24 @@ frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 
 PDF export launches a headless browser, renders all pages and reveal steps, and writes a page-sized PDF with backgrounds included.
 
+## Export PowerPoint
+
+```bash
+frameseq pptx [file] [--output path] [--flatten]
+```
+
+The default output is `output/pptx/<entry-name>.pptx`.
+
+```bash
+frameseq pptx quarterly.slides.ts
+frameseq pptx quarterly.slides.ts --output reports/quarterly.pptx
+frameseq pptx quarterly.slides.ts --flatten
+```
+
+The default hybrid export keeps plain text, code, shapes, lines, and arrows as editable PowerPoint objects. Math, Typst, and other complex rendered fragments use high-resolution image objects. Speaker notes are preserved.
+
+`--flatten` exports each complete slide as one high-resolution image. This provides the closest browser-to-PowerPoint appearance, but individual visible objects cannot be edited. See [Export PowerPoint](pptx.md) for the mapping and limitations.
+
 ## Check the rendered layout
 
 ```bash
@@ -103,6 +121,7 @@ npm run present
 npm run build
 npm run build:single
 npm run pdf
+npm run pptx
 npm run check
 ```
 

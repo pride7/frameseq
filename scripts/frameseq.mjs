@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
+import { exportPptx } from "./pptx-export.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -19,6 +20,8 @@ Usage:
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] Export a deck to PDF
+  frameseq pptx [file] [--output path] [--flatten]
+                                      Export an editable or flattened PowerPoint
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
   frameseq new [file]                 Create a starter .slides.ts file
@@ -29,6 +32,8 @@ Examples:
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
+  frameseq pptx talk.slides.ts
+  frameseq pptx talk.slides.ts --flatten
   frameseq check talk.slides.ts
   frameseq new quarterly.slides.ts`);
 }
@@ -577,7 +582,7 @@ try {
     help();
   } else if (command === "new") {
     await createDeckFile(resolve(process.cwd(), file));
-  } else if (command === "dev" || command === "build" || command === "pdf" || command === "check") {
+  } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "check") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") {
@@ -587,6 +592,15 @@ try {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
     }
     if (command === "pdf") await exportPdf(entry, option("--output"));
+    if (command === "pptx") {
+      await exportPptx({
+        entry,
+        requestedOutput: option("--output"),
+        flatten: process.argv.includes("--flatten"),
+        packageRoot,
+        configFile,
+      });
+    }
     if (command === "check") {
       await checkLayout(entry, {
         json: process.argv.includes("--json"),

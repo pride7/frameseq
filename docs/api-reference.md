@@ -183,7 +183,7 @@ The string form sets both `name` and `title`. `name` is metadata; `title` is ren
 notes(content: string): ContentSlideBuilder
 ```
 
-Stores private speaker notes on the current slide. Notes are displayed only in presenter view and are omitted from the audience page and PDF output.
+Stores private speaker notes on the current slide. Notes are displayed in presenter view, omitted from the audience page and PDF, and preserved as PowerPoint speaker notes in PPTX export.
 
 ## Content
 

@@ -620,6 +620,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
   const searchParams = new URLSearchParams(location.search);
   const printMode = searchParams.has("print");
+  const pptxMode = printMode && searchParams.has("pptx");
   const remoteMode = !printMode && searchParams.get("remote") === "1";
   const presenterMode = !printMode && !remoteMode && searchParams.has("presenter");
   document.documentElement.classList.toggle("frameseq-print", printMode);
@@ -652,6 +653,9 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     frame.dataset.index = String(index);
 
     const canvas = renderSlideCanvas(slide, index, deck);
+    if (pptxMode && typeof slide.props.notes === "string") {
+      canvas.dataset.frameseqNotes = slide.props.notes;
+    }
     frame.append(canvas);
     root.append(frame);
     return {

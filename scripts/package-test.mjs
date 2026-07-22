@@ -84,6 +84,9 @@ const generatedPackageJson = JSON.parse(await readFile(
 if (generatedPackageJson.scripts?.present !== "frameseq dev slides.ts --remote") {
   throw new Error("Generated project did not include the local phone-remote script");
 }
+if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
+  throw new Error("Generated project did not include the PPTX export script");
+}
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
 runNpm(["run", "check"], appDirectory);
 run(
@@ -140,6 +143,7 @@ if (!pagesWorkflow.includes("actions/deploy-pages@v4")
 }
 
 runNpm(["run", "pdf", "--", "--output", "output/installed-package.pdf"], appDirectory);
+runNpm(["run", "pptx", "--", "--output", "output/installed-package.pptx"], appDirectory);
 runNpm(["exec", "--", "frameseq", "new", "extra.slides.ts"], appDirectory);
 
 for (const expected of [
@@ -147,9 +151,10 @@ for (const expected of [
   resolve(appDirectory, "single-file", "index.html"),
   resolve(appDirectory, ".github", "workflows", "pages.yml"),
   resolve(appDirectory, "output", "installed-package.pdf"),
+  resolve(appDirectory, "output", "installed-package.pptx"),
   resolve(appDirectory, "extra.slides.ts"),
 ]) {
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }
 
-console.log("Package test passed: packed install, project creation, types, layout checks, imports, portable and single-file HTML, GitHub Pages, and PDF.");
+console.log("Package test passed: packed install, project creation, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, and PPTX.");

@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.11.0";
+const FRAMESEQ_VERSION = "^0.12.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -45,6 +45,7 @@ try {
       build: "frameseq build slides.ts",
       "build:single": "frameseq build slides.ts --single-file",
       pdf: "frameseq pdf slides.ts",
+      pptx: "frameseq pptx slides.ts",
       check: "tsc --noEmit && frameseq check slides.ts",
     },
     devDependencies: {
@@ -69,7 +70,7 @@ try {
 
 slide().cover();
 text("Build presentations like interfaces").hero();
-text("TypeScript → HTML → PDF").subtitle();
+text("TypeScript → HTML → PDF → PPTX").subtitle();
 text("Made with FrameSeq").author();
 
 slide("First idea")
@@ -79,7 +80,7 @@ text("Explain the idea in one clear sentence.")
 bullets(
   "No layout boilerplate",
   "LaTeX-compatible math",
-  "Browser preview and PDF export",
+  "Browser preview, PDF, and PowerPoint export",
 );
 
 slide("Equation");
