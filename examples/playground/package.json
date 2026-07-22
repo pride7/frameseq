@@ -11,7 +11,7 @@
     "pptx": "frameseq pptx slides.ts"
   },
   "devDependencies": {
-    "@pride7/frameseq": "^0.15.0",
+    "@pride7/frameseq": "^0.16.0",
     "typescript": "^5.8.3"
   },
   "stackblitz": {

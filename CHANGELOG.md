@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.16.0] - 2026-07-21
+
 ### Added
 
 - A standalone StackBlitz playground with one-click entry points from the README, documentation, and Gallery.
@@ -140,6 +142,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.16.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.0
 [0.15.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.15.0
 [0.14.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.14.0
 [0.13.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.13.1
