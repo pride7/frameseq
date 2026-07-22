@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const server = await preview({
   preview: {
@@ -16,7 +17,7 @@ if (!address || typeof address === "string") {
   throw new Error("Could not determine preview server address");
 }
 
-const browser = await puppeteer.launch({ headless: true });
+const browser = await puppeteer.launch(puppeteerLaunchOptions());
 const errors = [];
 
 try {

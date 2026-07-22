@@ -4,6 +4,7 @@ import process from "node:process";
 import PptxGenJS from "pptxgenjs";
 import puppeteer from "puppeteer";
 import { build as viteBuild, preview } from "vite";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const cssPixelsPerInch = 96;
 const pointsPerCssPixel = 72 / cssPixelsPerInch;
@@ -469,7 +470,7 @@ export async function exportPptx({
     throw new Error("Could not determine PPTX preview server address");
   }
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch(puppeteerLaunchOptions());
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });

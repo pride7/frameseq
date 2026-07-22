@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { build, preview } from "vite";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.env.FRAMESEQ_ENTRY = resolve(packageRoot, "tests", "minimal-academic.slides.ts");
@@ -19,7 +20,7 @@ const server = await preview({
   },
 });
 
-const browser = await puppeteer.launch({ headless: true });
+const browser = await puppeteer.launch(puppeteerLaunchOptions());
 const errors = [];
 
 try {

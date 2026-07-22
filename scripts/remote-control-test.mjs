@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { createServer } from "vite";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.env.FRAMESEQ_ENTRY = resolve(packageRoot, "slides.ts");
@@ -29,7 +30,7 @@ if (!address || typeof address === "string") {
   throw new Error("Could not determine remote-control test server address");
 }
 
-const browser = await puppeteer.launch({ headless: true });
+const browser = await puppeteer.launch(puppeteerLaunchOptions());
 const errors = [];
 const session = "0123456789abcdef0123456789abcdef";
 

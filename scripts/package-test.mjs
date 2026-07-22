@@ -138,11 +138,12 @@ const pagesWorkflow = await readFile(
   "utf8",
 );
 if (!pagesWorkflow.includes("actions/checkout@v6")
-  || !pagesWorkflow.includes("actions/setup-node@v4")
+  || !pagesWorkflow.includes("actions/setup-node@v7")
   || !pagesWorkflow.includes("cache: npm")
   || !pagesWorkflow.includes("npm ci")
-  || !pagesWorkflow.includes("actions/upload-pages-artifact@v4")
-  || !pagesWorkflow.includes("actions/deploy-pages@v4")
+  || !pagesWorkflow.includes("actions/configure-pages@v6")
+  || !pagesWorkflow.includes("actions/upload-pages-artifact@v5")
+  || !pagesWorkflow.includes("actions/deploy-pages@v5")
   || !pagesWorkflow.includes("path: dist")) {
   throw new Error("Generated project did not include the GitHub Pages workflow");
 }

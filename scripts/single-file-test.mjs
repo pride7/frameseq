@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import puppeteer from "puppeteer";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = resolve(packageRoot, "tmp", "single-file-test");
@@ -33,7 +34,7 @@ assert.match(html, /data:image\/svg\+xml;base64,/);
 assert.doesNotMatch(html, /<script\b[^>]*\bsrc=/i);
 assert.doesNotMatch(html, /<link\b[^>]*\brel=["']stylesheet["']/i);
 
-const browser = await puppeteer.launch({ headless: true });
+const browser = await puppeteer.launch(puppeteerLaunchOptions());
 const errors = [];
 try {
   const page = await browser.newPage();

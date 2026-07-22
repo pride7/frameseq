@@ -4,6 +4,11 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Fixed
+
+- Puppeteer-based tests and exports now launch Chromium correctly on Linux CI and root containers.
+- GitHub workflows now use the current Node 24-based official Actions releases.
+
 ## [0.13.0] - 2026-07-21
 
 ### Added

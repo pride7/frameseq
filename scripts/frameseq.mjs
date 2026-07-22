@@ -8,6 +8,7 @@ import process from "node:process";
 import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
 import { exportPptx } from "./pptx-export.mjs";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -292,7 +293,7 @@ async function exportPdf(entry, requestedOutput) {
   const outputPath = resolve(requestedOutput ?? defaultOutput);
   await mkdir(dirname(outputPath), { recursive: true });
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch(puppeteerLaunchOptions());
   try {
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
@@ -371,7 +372,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
     throw new Error("Could not determine layout-check preview server address");
   }
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch(puppeteerLaunchOptions());
   try {
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
