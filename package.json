@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",

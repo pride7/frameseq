@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.17.0] - 2026-07-21
+
 ### Added
 
 - `frameseq check` now reports an `empty-slide` warning when a rendered slide has no visible content, while `slide().allowEmpty()` explicitly permits intentional blank pages.
@@ -156,6 +158,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.17.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.17.0
 [0.16.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.1
 [0.16.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.0
 [0.15.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.15.0
