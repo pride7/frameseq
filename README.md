@@ -212,7 +212,7 @@ typstFile("./figures/architecture.typ")
   .width(percent(100));
 ```
 
-FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout, styling, HTML, and PDF output. See [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md) for the current static-source restrictions.
+FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout, styling, HTML, and PDF output. See [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md) for the current static-source restrictions.
 
 ### Code, lists, images, and reveals
 
@@ -309,7 +309,7 @@ circle("FrameSeq")
   .stroke("#0891b2");
 ```
 
-Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md) for arrow directions, layering, and custom SVG assets.
+Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://github.com/pride7/frameseq/blob/main/docs/shapes.md) for arrow directions, layering, and custom SVG assets.
 
 Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 
@@ -414,7 +414,7 @@ frameseq build my-talk.slides.ts --single-file
 frameseq pdf my-talk.slides.ts
 ```
 
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. See [Deploy HTML](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/deployment.md).
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md).
 
 Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
@@ -428,7 +428,7 @@ frameseq check my-talk.slides.ts --json
 frameseq check my-talk.slides.ts --strict
 ```
 
-The checker reports objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, measured overflow, and suggested corrections. `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout-checks.md).
+The checker reports objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, measured overflow, and suggested corrections. `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md).
 
 ## Presenter view
 
@@ -449,7 +449,7 @@ http://localhost:5174/?presenter=1
 
 Use the port printed by `npm run dev`; Vite does not always use `5173` when that port is occupied.
 
-Synchronization uses `BroadcastChannel`, so both windows must use the same browser origin and device. See [Presenter view](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/presenter.md).
+Synchronization uses `BroadcastChannel`, so both windows must use the same browser origin and device. See [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md).
 
 ## Advanced object API
 
@@ -477,20 +477,20 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 
 ## Documentation
 
-- [Getting started](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/getting-started.md)
-- [Document model](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/document-model.md)
-- [Content](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/content.md)
-- [Layout](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout.md)
-- [AI-friendly layout checks](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/layout-checks.md)
-- [Deploy HTML](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/deployment.md)
-- [Themes](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/themes.md)
-- [Styling](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/styling.md)
-- [Shapes and connectors](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/shapes.md)
-- [Presenter view](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/presenter.md)
-- [Typst integration](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/typst.md)
-- [API reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/api-reference.md)
-- [CLI reference](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/cli.md)
-- [Advanced composition](https://app.unpkg.com/@pride7/frameseq@latest/files/docs/advanced.md)
+- [Getting started](https://github.com/pride7/frameseq/blob/main/docs/getting-started.md)
+- [Document model](https://github.com/pride7/frameseq/blob/main/docs/document-model.md)
+- [Content](https://github.com/pride7/frameseq/blob/main/docs/content.md)
+- [Layout](https://github.com/pride7/frameseq/blob/main/docs/layout.md)
+- [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md)
+- [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md)
+- [Themes](https://github.com/pride7/frameseq/blob/main/docs/themes.md)
+- [Styling](https://github.com/pride7/frameseq/blob/main/docs/styling.md)
+- [Shapes and connectors](https://github.com/pride7/frameseq/blob/main/docs/shapes.md)
+- [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md)
+- [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md)
+- [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
+- [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
+- [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)
 
 ## Development
 

@@ -9,6 +9,15 @@
     "typescript"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/pride7/frameseq#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pride7/frameseq.git",
+    "directory": "packages/create-frameseq"
+  },
+  "bugs": {
+    "url": "https://github.com/pride7/frameseq/issues"
+  },
   "type": "module",
   "bin": {
     "create-frameseq": "index.mjs"

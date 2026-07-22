@@ -13,6 +13,14 @@
     "dsl"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/pride7/frameseq#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pride7/frameseq.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pride7/frameseq/issues"
+  },
   "type": "module",
   "types": "./lib/index.d.ts",
   "exports": {
