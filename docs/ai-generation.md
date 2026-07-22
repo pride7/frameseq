@@ -148,6 +148,7 @@ Before accepting AI-generated slides, verify that:
 - structured layouts are used for ordinary pages;
 - formulas use tagged templates so LaTeX backslashes survive;
 - Typst fragments are static and used only for local complex typesetting;
+- LaTeX table fragments are static, body-only, and use `latex` or `latexFile()`;
 - Tailwind utility strings are complete and readable;
 - speaker notes carry detail that does not need to be on screen;
 - `npm run check` passes;

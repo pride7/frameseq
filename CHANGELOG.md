@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.18.0] - 2026-07-21
+
+### Added
+
+- Static `latex` and `latexFile()` objects for build-time Tectonic rendering of LaTeX tables, with embedded fonts, content caching, normal FrameSeq modifiers, and HTML/PDF/PPTX support.
+
 ## [0.17.0] - 2026-07-21
 
 ### Added
@@ -158,6 +164,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.18.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.18.0
 [0.17.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.17.0
 [0.16.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.1
 [0.16.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.0

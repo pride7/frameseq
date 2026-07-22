@@ -66,7 +66,7 @@ Presentation: `presentation(options)`
 
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`
 
-Content: `text()`, `bullets()`, `steps()`, `metric()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `rect()`, `circle()`, `line()`
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`
 
 Regions: `main()`, `left()`, `right()`, `cell(index)`, `gap(value)`
 
@@ -110,7 +110,7 @@ text("Compiler")
 
 Plain numeric lengths are pixels on the fixed presentation canvas. The default canvas is 1280 by 720 with a 16:9 ratio.
 
-## Math, Typst, and Tailwind
+## Math, Typst, LaTeX, and Tailwind
 
 Use a tagged `text` template for inline LaTeX math:
 
@@ -135,6 +135,20 @@ typst`
 
 Typst requires the optional `@myriaddreamin/typst-ts-node-compiler` development dependency.
 
+Use static LaTeX fragments when an existing `tabular` table should be preserved. The optional `node-tectonic` dependency is required, and complete LaTeX documents or JavaScript interpolation are not accepted:
+
+```ts
+latex`
+  \begin{tabular}{lr}
+    \toprule
+    Model & Accuracy \\
+    \midrule
+    FrameSeq & \textbf{94.6\%} \\
+    \bottomrule
+  \end{tabular}
+`.width(720);
+```
+
 Tailwind utilities are available through `.style()` without configuration. Keep utility names as complete static strings:
 
 ```ts
@@ -153,6 +167,7 @@ text("Important")
 - Preserve source citations and label illustrative or synthetic data clearly.
 - Use tagged templates for LaTeX so backslashes remain intact.
 - Never interpolate dynamic values into `typst` templates.
+- Keep `latex` templates static and body-only; use `latexFile()` for larger table fragments.
 - Do not construct Tailwind class names from fragments.
 - After generation, run the type and rendered-layout checks, then correct every error and unintended warning.
 

@@ -9,6 +9,8 @@ declare global {
   const math: typeof import("./script").math;
   const typst: typeof import("./script").typst;
   const typstFile: typeof import("./script").typstFile;
+  const latex: typeof import("./script").latex;
+  const latexFile: typeof import("./script").latexFile;
   const rect: typeof import("./script").rect;
   const circle: typeof import("./script").circle;
   const line: typeof import("./script").line;

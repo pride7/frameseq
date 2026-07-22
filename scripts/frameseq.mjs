@@ -393,6 +393,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
         "code",
         "equation",
         "typst",
+        "latex",
         "rect",
         "circle",
       ]);
@@ -481,7 +482,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
             message: "Slide has no visible content.",
             details: { visibleObjects: 0 },
             suggestions: [
-              "Add text(), image(), code(), math, Typst, or a shape before the next slide() call.",
+              "Add text(), image(), code(), math, Typst, LaTeX, or a shape before the next slide() call.",
               "If the blank slide is intentional, call slide().allowEmpty().",
             ],
           });

@@ -50,6 +50,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
 - [Content](#content)
   - [Formulas](#formulas)
   - [Typst for complex typesetting](#typst-for-complex-typesetting)
+  - [LaTeX tables](#latex-tables)
   - [Code, lists, images, and reveals](#code-lists-images-and-reveals)
 - [Layout](#layout)
   - [Split](#split)
@@ -254,6 +255,35 @@ typstFile("./figures/architecture.typ")
 ```
 
 FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. In editable PPTX export, the rendered fragment is preserved as a high-resolution image. See [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md) for the current static-source restrictions.
+
+### LaTeX tables
+
+Keep KaTeX for ordinary formulas and use the optional Tectonic backend when a slide needs a real LaTeX table. Install it locally:
+
+```bash
+npm install --save-dev node-tectonic
+```
+
+Then place the table like any other FrameSeq object:
+
+```ts
+slide("Results");
+
+latex`
+  \begin{tabular}{lrr}
+    \toprule
+    Model & Accuracy & Latency \\
+    \midrule
+    Baseline & 91.2\% & 18 ms \\
+    FrameSeq & \textbf{94.6\%} & 12 ms \\
+    \bottomrule
+  \end{tabular}
+`
+  .width(820)
+  .position({ x: 180, y: 210 });
+```
+
+`latexFile("./tables/results.tex")` keeps larger fragments in their own files. FrameSeq compiles static fragments at build time, embeds the generated fonts, caches the result by content, and preserves it across HTML, PDF, and PPTX export. See [LaTeX integration](https://github.com/pride7/frameseq/blob/main/docs/latex.md) for supported packages and restrictions.
 
 ### Code, lists, images, and reveals
 
@@ -461,7 +491,7 @@ frameseq pptx my-talk.slides.ts
 frameseq pptx my-talk.slides.ts --flatten
 ```
 
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math and Typst; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md) and [Export PowerPoint](https://github.com/pride7/frameseq/blob/main/docs/pptx.md).
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md) and [Export PowerPoint](https://github.com/pride7/frameseq/blob/main/docs/pptx.md).
 
 Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
@@ -545,6 +575,7 @@ This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Im
 - [Shapes and connectors](https://github.com/pride7/frameseq/blob/main/docs/shapes.md)
 - [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md)
 - [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md)
+- [LaTeX integration](https://github.com/pride7/frameseq/blob/main/docs/latex.md)
 - [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
 - [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
 - [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)

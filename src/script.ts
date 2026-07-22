@@ -3,6 +3,7 @@ import {
   Code,
   Equation,
   Image,
+  Latex,
   type SlidesOptions,
   ElementBuilder,
   Line,
@@ -184,6 +185,28 @@ export function typstFile(path: string): ElementBuilder {
 /** @internal Used by the build-time Typst transform. */
 export function typstSvg(svg: string, source: string): ElementBuilder {
   return attach(Typst(source, svg).className("frameseq-semantic-typst"));
+}
+
+/** Add a static LaTeX fragment. The FrameSeq Vite pipeline compiles it at build time. */
+export function latex(content: string): ElementBuilder;
+export function latex(strings: TemplateStringsArray): ElementBuilder;
+export function latex(contentOrStrings: string | TemplateStringsArray): ElementBuilder {
+  const content = typeof contentOrStrings === "string"
+    ? contentOrStrings
+    : String.raw(contentOrStrings);
+  return attach(Latex(content).className("frameseq-semantic-latex"));
+}
+
+/** Add a LaTeX fragment from a file relative to the slide document. */
+export function latexFile(path: string): ElementBuilder {
+  const element = Latex("").className("frameseq-semantic-latex");
+  element.node.props.file = path;
+  return attach(element);
+}
+
+/** @internal Used by the build-time LaTeX transform. */
+export function latexSvg(svg: string, source: string): ElementBuilder {
+  return attach(Latex(source, svg).className("frameseq-semantic-latex"));
 }
 
 /** Add a rectangular diagram node, optionally containing a label. */

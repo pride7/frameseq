@@ -273,6 +273,7 @@ async function captureSlides(page) {
       '[data-frameseq-node="code"]',
       '[data-frameseq-node="equation"]',
       '[data-frameseq-node="typst"]',
+      '[data-frameseq-node="latex"]',
       '[data-frameseq-node="rect"]',
       '[data-frameseq-node="circle"]',
       '[data-frameseq-node="line"]',
@@ -360,7 +361,7 @@ async function captureSlides(page) {
         if (listMarker) kind = "marker";
         else if (nodeType === "line") kind = "line";
         else if (nodeType === "rect" || nodeType === "circle") kind = "shape";
-        else if (["image", "equation", "typst"].includes(nodeType)) kind = "raster";
+        else if (["image", "equation", "typst", "latex"].includes(nodeType)) kind = "raster";
         else if (nodeType === "text" || nodeType === "code"
           || element.matches(".frameseq-theme-title-bar, .frameseq-theme-footer-author, .frameseq-theme-footer-institute, .frameseq-theme-footer-title, .frameseq-theme-footer-details, .frameseq-auto-title-page > .frameseq-text")) {
           kind = element.querySelector(".frameseq-inline-math") ? "raster" : "text";

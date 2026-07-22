@@ -61,7 +61,7 @@ try {
   assert.equal(await remote.$$eval(".frameseq-presenter", (elements) => elements.length), 0);
   assert.equal(
     await remote.$eval(".frameseq-counter", (element) => element.textContent),
-    "1/7",
+    "1/8",
   );
 
   await remote.click(".frameseq-remote-controls [data-action='next']");
@@ -70,7 +70,7 @@ try {
   );
   assert.equal(
     await remote.$eval(".frameseq-counter", (element) => element.textContent),
-    "2/7",
+    "2/8",
   );
 
   await remote.click("[data-action='laser-toggle']");
@@ -124,7 +124,7 @@ try {
   assert.equal(presenterUrl.searchParams.has("remote"), false);
   assert.equal(
     await remote.$eval(".frameseq-counter", (element) => element.textContent),
-    "2/7",
+    "2/8",
   );
   assert.equal(
     await remote.$eval(".frameseq-presenter-notes", (element) => element.textContent?.trim()),
@@ -198,7 +198,7 @@ try {
   assert.equal(returnedRemoteUrl.searchParams.has("presenter"), false);
   assert.match(
     await remote.$eval(".frameseq-counter", (element) => element.textContent ?? ""),
-    /^3\/7 · 0\/3$/,
+    /^3\/8 · 0\/3$/,
   );
   assert.deepEqual(errors, []);
 

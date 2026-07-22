@@ -294,6 +294,25 @@ button {
   font-size: 16px;
 }
 
+.frameseq-latex {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--frameseq-foreground);
+}
+
+.frameseq-latex > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: inherit;
+}
+
+.frameseq-latex-error {
+  color: var(--frameseq-error);
+  font-size: 16px;
+}
+
 .frameseq-rect,
 .frameseq-circle {
   box-sizing: border-box;

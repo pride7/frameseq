@@ -44,7 +44,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
-  assert.equal(await page.$$eval(".frameseq-slide-frame", (slides) => slides.length), 7);
+  assert.equal(await page.$$eval(".frameseq-slide-frame", (slides) => slides.length), 8);
   assert.equal(await page.$$eval(".katex", (formulas) => formulas.length), 2);
   assert.deepEqual(errors, []);
 } finally {

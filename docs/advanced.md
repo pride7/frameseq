@@ -44,6 +44,7 @@ Image(src, alt?)
 Code(content, language?)
 Equation(content, displayMode?)
 Typst(source, svg?)
+Latex(source, svg?)
 Rect(label?)
 Circle(label?)
 Line({ x1, y1, x2, y2 })
@@ -53,7 +54,7 @@ Spacer(size?)
 - `SlidesRoot` and `Slide` provide the minimal structural layer.
 - `Slides` adds presentation-aware slide layouts and defaults.
 - `Row`, `Column`, and `Stack` create containers.
-- `Text`, `Image`, `Code`, `Equation`, and `Typst` create unattached content elements.
+- `Text`, `Image`, `Code`, `Equation`, `Typst`, and `Latex` create unattached content elements.
 - `Rect`, `Circle`, and `Line` create unattached diagram elements.
 - `Spacer` consumes available flex space.
 

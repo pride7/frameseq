@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -8,6 +8,7 @@
     "typescript",
     "ai",
     "typst",
+    "latex",
     "html",
     "pdf",
     "dsl"
@@ -99,13 +100,18 @@
     "@types/katex": "^0.16.7",
     "@types/node": "^24.0.0",
     "@types/qrcode": "^1.5.6",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "node-tectonic": "^1.0.1"
   },
   "peerDependencies": {
-    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0"
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0",
+    "node-tectonic": "^1.0.1"
   },
   "peerDependenciesMeta": {
     "@myriaddreamin/typst-ts-node-compiler": {
+      "optional": true
+    },
+    "node-tectonic": {
       "optional": true
     }
   }

@@ -113,7 +113,7 @@ npx frameseq pdf slides.ts --output output/my-talk.pdf
 npm run pptx
 ```
 
-The default output is `output/pptx/slides.pptx`. Text, code, shapes, connectors, and speaker notes remain editable PowerPoint objects where possible; formulas and Typst use high-resolution image fallbacks. For the closest visual match to the browser, export one image per slide:
+The default output is `output/pptx/slides.pptx`. Text, code, shapes, connectors, and speaker notes remain editable PowerPoint objects where possible; formulas, Typst, and compiled LaTeX fragments use high-resolution image fallbacks. For the closest visual match to the browser, export one image per slide:
 
 ```bash
 npx frameseq pptx slides.ts --flatten

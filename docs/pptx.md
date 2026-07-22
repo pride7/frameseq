@@ -27,7 +27,7 @@ Editable export uses a hybrid mapping:
 | Rectangles and circles | Editable PowerPoint shapes |
 | Lines and arrows | Editable PowerPoint lines |
 | Images | PowerPoint image objects |
-| LaTeX math, inline math, and Typst | High-resolution image objects |
+| LaTeX math, inline math, Typst, and compiled LaTeX fragments | High-resolution image objects |
 | Speaker notes | PowerPoint speaker notes |
 
 Structured layouts and `position()` use the final browser geometry, so the PowerPoint coordinates follow the same `split()`, `grid()`, `canvas()`, and theme layout used by HTML and PDF.
@@ -48,7 +48,7 @@ Flattened mode is recommended for slides that rely heavily on gradients, shadows
 
 Editable PowerPoint text uses the font family reported by the browser. Install the same fonts on the computer opening the `.pptx`; otherwise PowerPoint may substitute another font and change line wrapping. Use `--flatten` when the recipient cannot install the presentation fonts.
 
-CSS layout and coordinates are preserved, but not every browser visual effect has a native PowerPoint equivalent. Solid fills, borders, typography, basic shapes, and connectors map directly. Formula and Typst fragments remain visually stable as high-resolution images.
+CSS layout and coordinates are preserved, but not every browser visual effect has a native PowerPoint equivalent. Solid fills, borders, typography, basic shapes, and connectors map directly. Formula, Typst, and compiled LaTeX fragments remain visually stable as high-resolution images.
 
 ## Reveal steps
 

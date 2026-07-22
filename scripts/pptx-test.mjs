@@ -49,13 +49,14 @@ const flattened = await JSZip.loadAsync(flattenedBuffer);
 const slidePattern = /^ppt\/slides\/slide\d+\.xml$/;
 const editableSlides = Object.keys(editable.files).filter((name) => slidePattern.test(name));
 const flattenedSlides = Object.keys(flattened.files).filter((name) => slidePattern.test(name));
-assert.equal(editableSlides.length, 7);
-assert.equal(flattenedSlides.length, 7);
+assert.equal(editableSlides.length, 8);
+assert.equal(flattenedSlides.length, 8);
 
 const firstSlide = await slideXml(editable, 1);
 const secondSlide = await slideXml(editable, 2);
 const thirdSlide = await slideXml(editable, 3);
-const shapeSlide = await slideXml(editable, 7);
+const latexSlide = await slideXml(editable, 7);
+const shapeSlide = await slideXml(editable, 8);
 assert.match(firstSlide, /Build slides like building apps/);
 assert.match(secondSlide, /Useful defaults/);
 assert.match(secondSlide, /FrameSeq bullet/);
@@ -63,6 +64,8 @@ assert.doesNotMatch(secondSlide, />•</);
 assert.match(thirdSlide, /FrameSeq marker/);
 assert.match(thirdSlide, /algn="ctr"/);
 assert.match(thirdSlide, /anchor="ctr"/);
+assert.match(latexSlide, /FrameSeq latex/);
+assert.match(latexSlide, /<p:pic>/);
 assert.match(shapeSlide, /FrameSeq line/);
 assert.match(shapeSlide, /prst="line"/);
 assert.match(shapeSlide, /prst="ellipse"/);
@@ -88,6 +91,6 @@ for (let index = 1; index <= flattenedSlides.length; index += 1) {
 assert.doesNotMatch(await slideXml(flattened, 1), /Build slides like building apps/);
 const flattenedMedia = Object.keys(flattened.files)
   .filter((name) => /^ppt\/media\/image-\d+-\d+\.png$/.test(name));
-assert.equal(flattenedMedia.length, 7);
+assert.equal(flattenedMedia.length, 8);
 
 console.log("PPTX test passed: editable objects, centered bullets, speaker notes, 16:9 sizing, and flattened slides.");

@@ -261,6 +261,23 @@ typstFile(path: string): ElementBuilder
 
 Adds a Typst fragment from a static path relative to the slide document. The file must stay inside the slide document directory. Vite watches it for changes during development.
 
+### `latex(content)`
+
+```ts
+latex(content: string): ElementBuilder
+latex(strings: TemplateStringsArray): ElementBuilder
+```
+
+Adds a static LaTeX body fragment to the current region. The Vite build uses the optional `node-tectonic` compiler and embeds the typeset result and its fonts. JavaScript interpolation is not supported. Complete documents with `\documentclass` or `\begin{document}` are rejected.
+
+### `latexFile(path)`
+
+```ts
+latexFile(path: string): ElementBuilder
+```
+
+Adds a LaTeX body fragment from a static path relative to the slide document. The file must stay inside that directory and is watched by Vite. Install `node-tectonic` before using either LaTeX command.
+
 ### `rect(label?)`
 
 ```ts

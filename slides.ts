@@ -66,6 +66,22 @@ typstFile("./tests/typst-fragment.typ")
   .className("typst-file-smoke")
   .width(460);
 
+slide("LaTeX tables as objects").center();
+text("Use real tabular, booktabs, and math while FrameSeq keeps control of placement.").lead();
+latex`
+  \begin{tabular}{lrr}
+    \toprule
+    Model & Accuracy & Latency \\
+    \midrule
+    Baseline & 91.2\% & 18 ms \\
+    FrameSeq & \textbf{94.6\%} & 12 ms \\
+    \bottomrule
+  \end{tabular}
+`
+  .className("latex-inline-smoke")
+  .width(640);
+text("Compiled by Tectonic at build time · cached and embedded with its fonts").caption();
+
 slide("Shapes and connectors")
   .canvas()
   .notes("Explain that nodes are HTML while connectors and arrowheads remain vector SVG.");

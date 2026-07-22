@@ -38,14 +38,15 @@ try {
     name,
   );
 
-  assert.equal(await count(".frameseq-slide-frame"), 7);
+  assert.equal(await count(".frameseq-slide-frame"), 8);
   assert.equal(await attribute(".frameseq-slide-frame.is-active", "data-index"), "0");
   assert.equal(await count(".katex"), 2);
   assert.equal(await count(".frameseq-inline-math .katex"), 1);
   assert.equal(await count(".frameseq-typst > svg"), 2);
+  assert.equal(await count(".frameseq-latex > svg"), 1);
   assert.equal(await count(".frameseq-layout-split"), 1);
   assert.equal(await count(".frameseq-grid-cell"), 3);
-  assert.equal(await count(".frameseq-layout-center"), 2);
+  assert.equal(await count(".frameseq-layout-center"), 3);
   assert.equal(await count(".frameseq-rect"), 2);
   assert.equal(await count(".frameseq-circle"), 1);
   assert.equal(await count(".frameseq-line > svg > line"), 2);
@@ -123,6 +124,20 @@ try {
   );
   assert.ok(typstFragments.every((fragment) => fragment.viewBox));
 
+  const latexFragment = await page.$eval(
+    ".frameseq-latex > svg",
+    (element) => ({
+      viewBox: element.getAttribute("viewBox"),
+      configuredWidth: element.parentElement?.getAttribute("style"),
+      hasForeignObject: Boolean(element.querySelector("foreignObject")),
+      hasEmbeddedFont: element.querySelector("style")?.textContent?.includes("data:font/") ?? false,
+    }),
+  );
+  assert.match(latexFragment.viewBox ?? "", /^0 0 [\d.]+ [\d.]+$/);
+  assert.match(latexFragment.configuredWidth ?? "", /width:\s*640px/);
+  assert.equal(latexFragment.hasForeignObject, true);
+  assert.equal(latexFragment.hasEmbeddedFont, true);
+
   const tailwindStyle = await page.$eval(".tailwind-smoke", (element) => {
     const style = getComputedStyle(element);
     return {
@@ -167,7 +182,7 @@ try {
   );
   assert.equal(new URL(presenterPage.url()).searchParams.get("presenter"), "1");
   await presenterPage.waitForFunction(
-    () => document.querySelector(".frameseq-counter")?.textContent?.startsWith("1/7"),
+    () => document.querySelector(".frameseq-counter")?.textContent?.startsWith("1/8"),
   );
 
   assert.equal(
@@ -342,7 +357,7 @@ try {
 
   await page.goto(`http://127.0.0.1:${address.port}/?print=1`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
-  assert.equal(await count(".frameseq-slide-frame.is-active"), 7);
+  assert.equal(await count(".frameseq-slide-frame.is-active"), 8);
   assert.equal(await count(".frameseq-step.is-visible"), 3);
   const printedTypstGeometry = await page.$$eval(
     ".frameseq-typst > svg",
@@ -352,6 +367,14 @@ try {
     }),
   );
   assert.ok(printedTypstGeometry.every((fragment) => fragment.width > 0 && fragment.height > 0));
+  const printedLatexGeometry = await page.$eval(
+    ".frameseq-latex > svg",
+    (element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    },
+  );
+  assert.ok(printedLatexGeometry.width > 0 && printedLatexGeometry.height > 0);
 
   const splitRects = await page.$$eval(
     ".frameseq-layout-split > .frameseq-region",
@@ -375,7 +398,7 @@ try {
   assert.ok(gridRects[0].x < gridRects[1].x && gridRects[1].x < gridRects[2].x);
   assert.deepEqual(errors, []);
 
-  console.log("Smoke test passed: theme, rendering, navigation, presenter laser, reveals, math, and print mode.");
+  console.log("Smoke test passed: theme, rendering, navigation, presenter laser, reveals, math, Typst, LaTeX, and print mode.");
 } finally {
   await browser.close();
   await server.close();

@@ -150,6 +150,17 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
       }
       break;
     }
+    case "latex": {
+      element = document.createElement("div");
+      const svg = node.props.svg;
+      if (typeof svg === "string" && svg.trim()) {
+        element.innerHTML = svg;
+      } else {
+        element.textContent = "LaTeX content was not compiled. Use the FrameSeq CLI and install node-tectonic.";
+        element.classList.add("frameseq-latex-error");
+      }
+      break;
+    }
     case "rect":
     case "circle": {
       element = document.createElement("div");

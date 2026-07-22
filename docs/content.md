@@ -53,7 +53,7 @@ math("\\frac{a}{b}");
 
 FrameSeq renders formulas with KaTeX. Unsupported LaTeX commands are displayed as an equation error rather than stopping the whole presentation.
 
-For tables, diagrams, theorem blocks, or other content that benefits from Typst's layout engine, see [Typst integration](typst.md).
+For complex local typesetting, see [Typst integration](typst.md). To reuse a LaTeX `tabular` fragment directly, see [LaTeX integration](latex.md).
 
 ## Code
 

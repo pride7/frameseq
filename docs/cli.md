@@ -99,7 +99,7 @@ frameseq pptx quarterly.slides.ts --output reports/quarterly.pptx
 frameseq pptx quarterly.slides.ts --flatten
 ```
 
-The default hybrid export keeps plain text, code, shapes, lines, and arrows as editable PowerPoint objects. Math, Typst, and other complex rendered fragments use high-resolution image objects. Speaker notes are preserved.
+The default hybrid export keeps plain text, code, shapes, lines, and arrows as editable PowerPoint objects. Math, Typst, compiled LaTeX, and other complex rendered fragments use high-resolution image objects. Speaker notes are preserved.
 
 `--flatten` exports each complete slide as one high-resolution image. This provides the closest browser-to-PowerPoint appearance, but individual visible objects cannot be edited. See [Export PowerPoint](pptx.md) for the mapping and limitations.
 

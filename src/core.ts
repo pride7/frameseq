@@ -13,6 +13,7 @@ export type ComponentType =
   | "code"
   | "equation"
   | "typst"
+  | "latex"
   | "rect"
   | "circle"
   | "line"
@@ -463,6 +464,10 @@ export function Equation(content: string, displayMode = true): ElementBuilder {
 
 export function Typst(source: string, svg?: string): ElementBuilder {
   return new ElementBuilder(node("typst", { source, svg }));
+}
+
+export function Latex(source: string, svg?: string): ElementBuilder {
+  return new ElementBuilder(node("latex", { source, svg }));
 }
 
 export function Rect(label = ""): ShapeBuilder {
