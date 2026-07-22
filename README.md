@@ -4,6 +4,11 @@
 
 FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF/PPTX output. It feels like building an interface, but the source stays as direct and readable as a document.
 
+[![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
+[![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
+
+[Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://github.com/pride7/frameseq/tree/main/docs) · [See what changed](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
+
 ```ts
 presentation({
   title: "A Better Way to Write Slides",
@@ -35,6 +40,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
 
 ## Table of contents
 
+- [Live Gallery](#live-gallery)
 - [Why FrameSeq](#why-frameseq)
   - [Easier to edit than raw HTML](#easier-to-edit-than-raw-html)
   - [A strong target language for AI](#a-strong-target-language-for-ai)
@@ -57,7 +63,12 @@ No imports, wrapper components, nested DOM, or export statement are required in 
 - [Presenter view](#presenter-view)
 - [Advanced object API](#advanced-object-api)
 - [Documentation](#documentation)
+- [Continuous integration and changelog](#continuous-integration-and-changelog)
 - [Development](#development)
+
+## Live Gallery
+
+The [FrameSeq Gallery](https://pride7.github.io/frameseq/) contains live, clickable presentations built from this repository. Compare the Midnight product tour, Minimal Academic research style, and Beamer Madrid lecture theme without installing anything. The previews are compiled FrameSeq pages rather than screenshots, so they always track the current runtime and themes.
 
 ## Why FrameSeq
 
@@ -517,6 +528,7 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 
 ## Documentation
 
+- [Live Gallery](https://pride7.github.io/frameseq/)
 - [Getting started](https://github.com/pride7/frameseq/blob/main/docs/getting-started.md)
 - [Document model](https://github.com/pride7/frameseq/blob/main/docs/document-model.md)
 - [Content](https://github.com/pride7/frameseq/blob/main/docs/content.md)
@@ -531,6 +543,13 @@ This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, 
 - [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
 - [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
 - [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)
+- [Version changelog](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
+
+## Continuous integration and changelog
+
+Every push and pull request runs the complete `release:check` suite on GitHub Actions: types, themes, desktop and mobile browser behavior, layout diagnostics, remote control, Gallery, static and single-file HTML, PDF, editable and flattened PPTX, and installation from packed npm tarballs. A separate least-privilege workflow builds the live Gallery and deploys it to GitHub Pages only from `main`.
+
+User-visible changes are recorded in [CHANGELOG.md](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md). Add new work under **Unreleased**, then move it into a dated semantic-version section when publishing.
 
 ## Development
 
@@ -540,4 +559,4 @@ Before publishing a FrameSeq release:
 npm run release:check
 ```
 
-The release check builds the library and demo, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.
+The release check builds the library, demo, and Gallery, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.

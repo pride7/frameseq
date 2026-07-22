@@ -25,6 +25,16 @@ For a repository named `my-talk`, the usual URL is `https://<user>.github.io/my-
 
 The GitHub source page and its **Raw** link are not presentation hosting. Use the Pages URL produced by the deployment job.
 
+## Build a multi-deck Gallery
+
+The FrameSeq repository includes a Gallery builder and a dedicated Pages workflow. Run it locally with:
+
+```bash
+npm run build:gallery
+```
+
+This creates `dist/gallery/`, containing a static landing page and three independently navigable example presentations. `.github/workflows/gallery.yml` uploads that directory with the official Pages artifact action and deploys it only from `main`. The same pattern can be adapted to publish several related decks from one repository.
+
 ## Build one self-contained HTML file
 
 ```bash

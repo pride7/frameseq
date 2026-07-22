@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111f" />
+    <meta
+      name="description"
+      content="Explore interactive presentations built with FrameSeq's editable TypeScript slide framework."
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>FrameSeq Gallery</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="FrameSeq Gallery home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        FrameSeq
+      </a>
+      <nav aria-label="Project links">
+        <a href="https://github.com/pride7/frameseq">GitHub</a>
+        <a href="https://www.npmjs.com/package/@pride7/frameseq">npm</a>
+        <a href="https://github.com/pride7/frameseq/tree/main/docs">Docs</a>
+        <a href="https://github.com/pride7/frameseq/blob/main/CHANGELOG.md">Changelog</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="gallery-title">
+        <p class="eyebrow">Editable TypeScript presentations</p>
+        <h1 id="gallery-title">Write the deck once.<br />Present it anywhere.</h1>
+        <p class="hero-copy">
+          Explore real FrameSeq presentations. Every preview below is compiled from a linear
+          <code>.slides.ts</code> document and remains interactive when opened.
+        </p>
+        <div class="hero-actions">
+          <a class="primary-action" href="https://github.com/pride7/frameseq#quick-start">Start building</a>
+          <a class="secondary-action" href="https://github.com/pride7/frameseq">View source</a>
+        </div>
+      </section>
+
+      <section class="gallery" aria-labelledby="examples-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Live examples</p>
+            <h2 id="examples-title">Three styles, one document model</h2>
+          </div>
+          <p>Open a deck and use the arrow keys or Space to navigate.</p>
+        </div>
+
+        <div class="gallery-grid">
+          <article class="deck-card deck-card-featured">
+            <a class="deck-preview" href="./examples/midnight/" aria-label="Open the Midnight product tour">
+              <iframe src="./examples/midnight/#1" title="Midnight product tour preview" tabindex="-1"></iframe>
+            </a>
+            <div class="deck-copy">
+              <div class="deck-meta"><span>Product tour</span><span>Midnight</span></div>
+              <h3>FrameSeq in seven slides</h3>
+              <p>Layouts, formulas, Typst, Tailwind, shapes, and export in one compact tour.</p>
+              <a class="open-deck" href="./examples/midnight/">Open presentation <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+
+          <article class="deck-card">
+            <a class="deck-preview" href="./examples/minimal-academic/" aria-label="Open the Minimal Academic example">
+              <iframe src="./examples/minimal-academic/#1" title="Minimal Academic presentation preview" tabindex="-1"></iframe>
+            </a>
+            <div class="deck-copy">
+              <div class="deck-meta"><span>Research talk</span><span>Minimal Academic</span></div>
+              <h3>Quiet structure for serious ideas</h3>
+              <p>A restrained theme with strong typography, fine rules, and a minimal footline.</p>
+              <a class="open-deck" href="./examples/minimal-academic/">Open presentation <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+
+          <article class="deck-card">
+            <a class="deck-preview" href="./examples/beamer-madrid/" aria-label="Open the Beamer Madrid example">
+              <iframe src="./examples/beamer-madrid/#1" title="Beamer Madrid presentation preview" tabindex="-1"></iframe>
+            </a>
+            <div class="deck-copy">
+              <div class="deck-meta"><span>Classic lecture</span><span>Beamer Madrid</span></div>
+              <h3>Familiar academic chrome</h3>
+              <p>Beamer-inspired title bars, presentation metadata, and automatic slide numbering.</p>
+              <a class="open-deck" href="./examples/beamer-madrid/">Open presentation <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="format-strip" aria-label="FrameSeq output formats">
+        <p>One source document</p>
+        <div aria-hidden="true"></div>
+        <ul>
+          <li>Interactive HTML</li>
+          <li>PDF</li>
+          <li>Editable PPTX</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>FrameSeq is open source and available under the MIT license.</p>
+      <a href="https://github.com/pride7/frameseq">Build your next deck in TypeScript →</a>
+    </footer>
+  </body>
+</html>

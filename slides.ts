@@ -5,7 +5,7 @@ slide({ name: "Cover" })
   .notes("Welcome the audience and introduce FrameSeq as a UI-style presentation framework.");
 text("A UI framework for presentations").eyebrow();
 text("Build slides like building apps.").hero();
-text("ArkUI-style TypeScript → HTML → PDF").subtitle();
+text("ArkUI-style TypeScript → HTML → PDF → PPTX").subtitle();
 text("One file. Useful defaults. Full control when needed.").author();
 text("Tailwind utilities, without configuration.")
   .style("tailwind-smoke text-[31px] font-[750] tracking-[2px] text-[#f97316]");

@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -51,6 +51,7 @@
     "index.html",
     "vite.config.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
@@ -66,10 +67,12 @@
     "build": "npm run build:package && npm run build:demo",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.publish.json",
     "build:demo": "tsc --noEmit && vite build",
+    "build:gallery": "node scripts/gallery-build.mjs",
+    "gallery:check": "npm run build:gallery && node scripts/gallery-test.mjs",
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "check:layout": "node scripts/frameseq.mjs check slides.ts",
-    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs",
+    "test": "npm run build && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && npm run gallery:check",
     "frameseq": "node scripts/frameseq.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
     "pptx": "node scripts/frameseq.mjs pptx slides.ts",

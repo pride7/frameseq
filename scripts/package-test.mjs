@@ -137,7 +137,12 @@ const pagesWorkflow = await readFile(
   resolve(appDirectory, ".github", "workflows", "pages.yml"),
   "utf8",
 );
-if (!pagesWorkflow.includes("actions/deploy-pages@v4")
+if (!pagesWorkflow.includes("actions/checkout@v6")
+  || !pagesWorkflow.includes("actions/setup-node@v4")
+  || !pagesWorkflow.includes("cache: npm")
+  || !pagesWorkflow.includes("npm ci")
+  || !pagesWorkflow.includes("actions/upload-pages-artifact@v4")
+  || !pagesWorkflow.includes("actions/deploy-pages@v4")
   || !pagesWorkflow.includes("path: dist")) {
   throw new Error("Generated project did not include the GitHub Pages workflow");
 }

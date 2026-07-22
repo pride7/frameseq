@@ -4,6 +4,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 
 ## Start here
 
+- [Live Gallery](https://pride7.github.io/frameseq/) — open real Midnight, Minimal Academic, and Beamer Madrid presentations in the browser.
 - [Getting started](getting-started.md) — create, preview, build, and export a presentation.
 - [Document model](document-model.md) — understand `presentation()`, `slide()`, and content ownership.
 - [Content](content.md) — text, formulas, code, images, lists, and metrics.
@@ -19,6 +20,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 - [API reference](api-reference.md) — signatures and behavior of the public authoring API.
 - [CLI reference](cli.md) — `new`, `dev`, local phone remote, `build`, single-file HTML, `pdf`, `pptx`, and `check`.
 - [Advanced composition](advanced.md) — the explicit object API and low-level components.
+- [Version changelog](../CHANGELOG.md) — follow user-visible changes across FrameSeq releases.
 
 ## Recommended learning path
 
