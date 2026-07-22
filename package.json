@@ -68,7 +68,7 @@
     "build": "npm run build:package && npm run build:demo",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.publish.json",
     "build:demo": "tsc --noEmit && vite build",
-    "build:gallery": "node scripts/gallery-build.mjs",
+    "build:gallery": "npm run build:package && node scripts/gallery-build.mjs",
     "gallery:check": "npm run build:gallery && node scripts/gallery-test.mjs",
     "preview": "vite preview",
     "check": "tsc --noEmit",
