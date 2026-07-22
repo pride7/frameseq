@@ -33,6 +33,32 @@ text`Every command belongs to the current slide until the next $\operatorname{sl
 
 No imports, wrapper components, nested DOM, or export statement are required in a `.slides.ts` entry file.
 
+## Table of contents
+
+- [Why FrameSeq](#why-frameseq)
+  - [Easier to edit than raw HTML](#easier-to-edit-than-raw-html)
+  - [A strong target language for AI](#a-strong-target-language-for-ai)
+  - [Progressive control](#progressive-control)
+- [Quick start](#quick-start)
+- [The document model](#the-document-model)
+- [Content](#content)
+  - [Formulas](#formulas)
+  - [Typst for complex typesetting](#typst-for-complex-typesetting)
+  - [Code, lists, images, and reveals](#code-lists-images-and-reveals)
+- [Layout](#layout)
+  - [Split](#split)
+  - [Grid](#grid)
+  - [Freeform positioning](#freeform-positioning)
+  - [Shapes and connectors](#shapes-and-connectors)
+- [Styling](#styling)
+- [Themes and typography](#themes-and-typography)
+- [Preview, build, and export](#preview-build-and-export)
+- [AI-friendly layout checks](#ai-friendly-layout-checks)
+- [Presenter view](#presenter-view)
+- [Advanced object API](#advanced-object-api)
+- [Documentation](#documentation)
+- [Development](#development)
+
 ## Why FrameSeq
 
 ### Easier to edit than raw HTML
