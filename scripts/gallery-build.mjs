@@ -11,6 +11,7 @@ const galleryOutput = resolve(distRoot, "gallery");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
+  { slug: "language", entry: resolve(packageRoot, "gallery", "decks", "language.slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
   { slug: "blank", entry: resolve(packageRoot, "gallery", "decks", "blank.slides.ts") },

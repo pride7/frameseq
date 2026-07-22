@@ -119,47 +119,78 @@
           <p>FrameSeq uses source order as document structure. There is no wrapper around every page and no deeply nested layout markup.</p>
         </div>
 
-        <div class="language-principles">
-          <article class="principle principle-flow">
-            <div class="principle-number">01</div>
-            <div>
-              <h3>Slide boundaries are visible</h3>
-              <p>Everything after one <code>slide()</code> call belongs to that slide until the next <code>slide()</code> call.</p>
+        <div class="language-stage">
+          <article class="language-source-panel">
+            <div class="panel-bar">
+              <span><i aria-hidden="true"></i>slides.ts</span>
+              <span>source · slide 02</span>
             </div>
-            <div class="source-flow" aria-label="Linear slide document structure">
-              <div class="flow-slide"><span>slide</span><b>Problem</b></div>
-              <div class="flow-object">text</div>
-              <div class="flow-object">bullets</div>
-              <div class="flow-slide"><span>slide</span><b>Solution</b></div>
-              <div class="flow-object">text</div>
-              <div class="flow-object">math</div>
+            <div class="source-boundary"><span>New slide</span><b>Everything below belongs here</b></div>
+            <pre><code><span class="syntax-call">slide</span>(<span class="syntax-string">"A clear argument"</span>)
+  .<span class="syntax-method">split</span>(<span class="syntax-string">"42:58"</span>);
+
+<span class="source-object"><span class="syntax-call">text</span>(<span class="syntax-string">"42%"</span>)</span>
+  .<span class="syntax-method">hero</span>()
+  .<span class="syntax-method">color</span>(<span class="syntax-string">"#b45309"</span>);
+<span class="syntax-call">text</span>(<span class="syntax-string">"faster to revise"</span>).<span class="syntax-method">lead</span>();
+<span class="syntax-call">bullets</span>(
+  <span class="syntax-string">"Linear source order"</span>,
+  <span class="syntax-string">"Named layout regions"</span>,
+  <span class="syntax-string">"Controllable objects"</span>,
+);
+
+<span class="source-region"><span class="syntax-call">right</span>();</span>
+<span class="syntax-call">text</span>(<span class="syntax-string">"One source, three destinations"</span>)
+  .<span class="syntax-method">eyebrow</span>();
+<span class="syntax-call">code</span>(<span class="syntax-string">`npm run build
+npm run pdf
+npm run pptx`</span>);</code></pre>
+            <div class="source-key">
+              <span><i class="key-slide"></i>slide boundary</span>
+              <span><i class="key-object"></i>content object</span>
+              <span><i class="key-region"></i>layout region</span>
             </div>
           </article>
 
-          <article class="principle">
-            <div class="principle-number">02</div>
-            <div>
-              <h3>Every object remains yours</h3>
-              <p>Create content first, then control it with predictable, chainable properties.</p>
+          <article class="language-output-panel">
+            <div class="panel-bar panel-bar-light">
+              <span><i aria-hidden="true"></i>Rendered result</span>
+              <a href="./examples/language/">Open live <b aria-hidden="true">↗</b></a>
             </div>
-            <pre class="mini-code"><code><span class="syntax-call">text</span>(<span class="syntax-string">"Key result"</span>)
-  .<span class="syntax-method">size</span>(<span class="syntax-number">32</span>)
-  .<span class="syntax-method">bold</span>()
-  .<span class="syntax-method">position</span>({ x: <span class="syntax-number">80</span>, y: <span class="syntax-number">120</span> });</code></pre>
+            <a class="language-preview" href="./examples/language/" aria-label="Open the live design language example">
+              <iframe src="./examples/language/#1" title="FrameSeq source result preview" tabindex="-1"></iframe>
+            </a>
+            <div class="result-caption">
+              <div><strong>Same reading order</strong><span>Source order becomes visual order</span></div>
+              <div><strong>Real FrameSeq output</strong><span>This is not a mockup or screenshot</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="language-mappings">
+          <article class="mapping-card boundary-card">
+            <div class="mapping-heading"><span>01</span><div><h3>Visible page boundaries</h3><p>The next <code>slide()</code> starts the next page. Nothing is hidden inside wrappers.</p></div></div>
+            <div class="boundary-sequence" aria-label="Two linear slide blocks">
+              <div class="boundary-slide"><b>slide("Problem")</b><span>text</span><span>bullets</span></div>
+              <i aria-hidden="true">↓</i>
+              <div class="boundary-slide boundary-slide-next"><b>slide("Solution")</b><span>text</span><span>math</span></div>
+            </div>
           </article>
 
-          <article class="principle">
-            <div class="principle-number">03</div>
-            <div>
-              <h3>Layout speaks in slide concepts</h3>
-              <p>Use named regions for the common case, then switch to a canvas when exact placement matters.</p>
+          <article class="mapping-card layout-map-card">
+            <div class="mapping-heading"><span>02</span><div><h3>Layout without CSS first</h3><p>Choose a slide concept; FrameSeq creates and routes its named regions.</p></div></div>
+            <div class="layout-gallery" aria-label="Split, grid, and canvas layout diagrams">
+              <div><figure class="layout-split"><i></i><i></i></figure><code>.split()</code></div>
+              <div><figure class="layout-grid-demo"><i></i><i></i><i></i></figure><code>.grid(3)</code></div>
+              <div><figure class="layout-canvas-demo"><i></i><i></i><i></i></figure><code>.canvas()</code></div>
             </div>
-            <div class="layout-pills" aria-label="FrameSeq layout commands">
-              <span>.split("40:60")</span>
-              <span>.grid(3)</span>
-              <span>.center()</span>
-              <span>.canvas()</span>
-              <span>.position({ x, y })</span>
+          </article>
+
+          <article class="mapping-card object-map-card">
+            <div class="mapping-heading"><span>03</span><div><h3>Objects stay controllable</h3><p>Every builder returns the same object, ready for semantic or low-level modifiers.</p></div></div>
+            <div class="object-control-demo">
+              <div class="controlled-object"><span>text object</span><strong>42%</strong></div>
+              <div class="modifier-list"><code>.hero()</code><code>.color()</code><code>.position()</code><code>.style()</code></div>
             </div>
           </article>
         </div>

@@ -25,7 +25,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => {
     const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.length === 8
+    return frames.length === 9
       && frames.every((frame) => frame.contentDocument?.querySelector(".frameseq-slide"));
   });
 
@@ -43,7 +43,7 @@ try {
   assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
   assert.equal(desktop.themeCards, 7);
   assert.equal(desktop.capabilityCards, 4);
-  assert.equal(desktop.frames, 8);
+  assert.equal(desktop.frames, 9);
   assert.ok(desktop.overflow <= 0);
   assert.match(desktop.languageHeading ?? "", /top to bottom/i);
   assert.match(desktop.outputHeading ?? "", /web/i);
