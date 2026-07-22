@@ -20,6 +20,10 @@ const creatorJson = JSON.parse(await readFile(
   "utf8",
 ));
 
+if (!packageJson.scripts?.["build:gallery"]?.startsWith("npm run build:package &&")) {
+  throw new Error("Gallery build must create the package entry before building examples");
+}
+
 function tarballName(name, version) {
   return `${name.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`;
 }
