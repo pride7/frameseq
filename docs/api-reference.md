@@ -1,6 +1,6 @@
 # API reference
 
-This page describes the supported FrameSeq authoring API. Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
+This page lists the complete types and the lower-level object API. For Typst-style entries that combine a definition, minimal example, signature, parameters, and return value, start with the [Function reference](function-guide.md). Lowercase functions belong to the linear document API. Uppercase functions belong to the explicit object API.
 
 ## Document
 

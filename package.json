@@ -72,12 +72,14 @@
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.publish.json",
     "build:demo": "tsc --noEmit && vite build",
     "build:gallery": "npm run build:package && node scripts/gallery-build.mjs",
+    "preview:gallery": "npm run build:gallery && vite preview --outDir dist/gallery --open",
     "gallery:check": "npm run build:gallery && node scripts/gallery-test.mjs",
     "preview": "vite preview --open",
     "check": "tsc --noEmit",
     "check:layout": "node scripts/frameseq.mjs check slides.ts",
-    "test": "npm run build && node scripts/section-layout-test.mjs && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && npm run gallery:check",
+    "test": "npm run build && npm run docs:check && node scripts/section-layout-test.mjs && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && npm run gallery:check",
     "frameseq": "node scripts/frameseq.mjs",
+    "docs:check": "node scripts/docs-test.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
     "pptx": "node scripts/frameseq.mjs pptx slides.ts",
     "export:pptx": "node scripts/frameseq.mjs pptx slides.ts --output output/pptx/frameseq.pptx",
@@ -104,6 +106,7 @@
     "@types/node": "^24.0.0",
     "@types/qrcode": "^1.5.6",
     "jszip": "^3.10.1",
+    "marked": "^18.0.7",
     "node-tectonic": "^1.0.1"
   },
   "peerDependencies": {

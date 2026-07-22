@@ -4,6 +4,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Documentation
+
+- Add a Typst-inspired function reference that documents each common authoring function with a one-sentence definition, minimal example, readable signature, parameters, return value, and relevant behavior.
+- Replace the flat documentation list with a task-based index for getting started, slide authoring, presenting and export, AI and typesetting, editor tooling, and maintainer reference.
+- Build the Markdown documentation into the Gallery as responsive static pages with categorized navigation, readable code and tables, working internal links, and GitHub edit links.
+- Add `npm run preview:gallery` to rebuild and open the complete Gallery and documentation site locally before committing or publishing.
+
 ## [0.20.0] - 2026-07-22
 
 ### Added

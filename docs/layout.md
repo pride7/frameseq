@@ -2,6 +2,8 @@
 
 FrameSeq starts with useful single-column defaults. Add a layout only when a page needs a meaningful composition.
 
+For the signature, parameters, behavior, and a compact example of every layout function, see the [Function reference](function-guide.md).
+
 ## Standard page
 
 ```ts

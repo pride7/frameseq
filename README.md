@@ -7,7 +7,7 @@ FrameSeq is an AI-friendly presentation framework with a linear authoring model,
 [![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
 [![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
 
-[Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://github.com/pride7/frameseq/tree/main/docs) · [See what changed](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
+[Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://pride7.github.io/frameseq/docs/) · [See what changed](https://pride7.github.io/frameseq/docs/changelog.html)
 
 ```ts
 presentation({
@@ -108,7 +108,7 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 
 An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
 
-Give a coding agent the compact [`llms.txt`](https://github.com/pride7/frameseq/blob/main/llms.txt) contract, then use the [AI generation guide](https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md) for prompting, validation, and correction loops. The Gallery includes a [complete AI-oriented research example](https://pride7.github.io/frameseq/examples/ai-research/) and its [editable source](https://github.com/pride7/frameseq/blob/main/gallery/slides/ai-research.slides.ts).
+Give a coding agent the compact [`llms.txt`](https://github.com/pride7/frameseq/blob/main/llms.txt) contract, then use the [AI generation guide](https://pride7.github.io/frameseq/docs/ai-generation.html) for prompting, validation, and correction loops. The Gallery includes a [complete AI-oriented research example](https://pride7.github.io/frameseq/examples/ai-research/) and its [editable source](https://github.com/pride7/frameseq/blob/main/gallery/slides/ai-research.slides.ts).
 
 ### Progressive control
 
@@ -256,7 +256,7 @@ typstFile("./figures/architecture.typ")
   .width(percent(100));
 ```
 
-FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. In editable PPTX export, the rendered fragment is preserved as a high-resolution image. See [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md) for the current static-source restrictions.
+FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. In editable PPTX export, the rendered fragment is preserved as a high-resolution image. See [Typst integration](https://pride7.github.io/frameseq/docs/typst.html) for the current static-source restrictions.
 
 ### LaTeX tables
 
@@ -285,7 +285,7 @@ latex`
   .position({ x: 180, y: 210 });
 ```
 
-`latexFile("./tables/results.tex")` keeps larger fragments in their own files. FrameSeq compiles static fragments at build time, embeds the generated fonts, caches the result by content, and preserves it across HTML, PDF, and PPTX export. See [LaTeX integration](https://github.com/pride7/frameseq/blob/main/docs/latex.md) for supported packages and restrictions.
+`latexFile("./tables/results.tex")` keeps larger fragments in their own files. FrameSeq compiles static fragments at build time, embeds the generated fonts, caches the result by content, and preserves it across HTML, PDF, and PPTX export. See [LaTeX integration](https://pride7.github.io/frameseq/docs/latex.html) for supported packages and restrictions.
 
 ### Code, lists, images, and reveals
 
@@ -417,7 +417,7 @@ circle("FrameSeq")
   .stroke("#0891b2");
 ```
 
-Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://github.com/pride7/frameseq/blob/main/docs/shapes.md) for arrow directions, layering, and custom SVG assets.
+Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for arrow directions, layering, and custom SVG assets.
 
 Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 
@@ -517,7 +517,7 @@ npm run vscode:package
 code --install-extension output/vscode/frameseq-vscode.vsix
 ```
 
-The extension lives in `packages/vscode-frameseq` and the complete setup guide is in [Visual Studio Code extension](https://github.com/pride7/frameseq/blob/main/docs/vscode.md).
+The extension lives in `packages/vscode-frameseq` and the complete setup guide is in [Visual Studio Code extension](https://pride7.github.io/frameseq/docs/vscode.html).
 
 ## Preview, build, and export
 
@@ -541,7 +541,7 @@ frameseq pptx my-talk.slides.ts
 frameseq pptx my-talk.slides.ts --flatten
 ```
 
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md) and [Export PowerPoint](https://github.com/pride7/frameseq/blob/main/docs/pptx.md).
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://pride7.github.io/frameseq/docs/deployment.html) and [Export PowerPoint](https://pride7.github.io/frameseq/docs/pptx.html).
 
 Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 
@@ -555,7 +555,7 @@ frameseq check my-talk.slides.ts --json
 frameseq check my-talk.slides.ts --strict
 ```
 
-The checker reports empty slides, objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, relevant measurements, and suggested corrections. Mark a deliberate blank page with `slide().allowEmpty()`; `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md).
+The checker reports empty slides, objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, relevant measurements, and suggested corrections. Mark a deliberate blank page with `slide().allowEmpty()`; `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://pride7.github.io/frameseq/docs/layout-checks.html).
 
 ## Presenter view
 
@@ -584,7 +584,7 @@ http://localhost:5174/?presenter=1
 
 Use the port printed by `npm run dev`; Vite does not always use `5173` when that port is occupied.
 
-Same-device synchronization uses `BroadcastChannel`; phone pairing uses a local WebSocket only while `npm run present` is active. See [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md).
+Same-device synchronization uses `BroadcastChannel`; phone pairing uses a local WebSocket only while `npm run present` is active. See [Presenter view](https://pride7.github.io/frameseq/docs/presenter.html).
 
 ## Advanced object API
 
@@ -613,24 +613,9 @@ This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Im
 ## Documentation
 
 - [Live Gallery](https://pride7.github.io/frameseq/)
-- [Getting started](https://github.com/pride7/frameseq/blob/main/docs/getting-started.md)
-- [Document model](https://github.com/pride7/frameseq/blob/main/docs/document-model.md)
-- [Content](https://github.com/pride7/frameseq/blob/main/docs/content.md)
-- [Layout](https://github.com/pride7/frameseq/blob/main/docs/layout.md)
-- [Generate presentations with AI](https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md)
-- [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md)
-- [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md)
-- [Themes](https://github.com/pride7/frameseq/blob/main/docs/themes.md)
-- [Styling](https://github.com/pride7/frameseq/blob/main/docs/styling.md)
-- [Shapes and connectors](https://github.com/pride7/frameseq/blob/main/docs/shapes.md)
-- [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md)
-- [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md)
-- [LaTeX integration](https://github.com/pride7/frameseq/blob/main/docs/latex.md)
-- [Visual Studio Code extension](https://github.com/pride7/frameseq/blob/main/docs/vscode.md)
-- [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
-- [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
-- [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)
-- [Release automation](https://github.com/pride7/frameseq/blob/main/docs/releasing.md)
+- [Getting started](https://pride7.github.io/frameseq/docs/getting-started.html)
+- [Function reference](https://pride7.github.io/frameseq/docs/function-guide.html)
+- [Categorized documentation](https://pride7.github.io/frameseq/docs/)
 - [Version changelog](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
 
 ## Continuous integration and changelog
@@ -649,4 +634,4 @@ npm run release:check
 
 The release check builds the library, demo, and Gallery, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.
 
-Maintainers can instead publish both npm packages from a matching version tag through GitHub OIDC. See [Release FrameSeq](https://github.com/pride7/frameseq/blob/main/docs/releasing.md) for the one-time Trusted Publisher configuration and tag workflow.
+Maintainers can instead publish both npm packages from a matching version tag through GitHub OIDC. See [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html) for the one-time Trusted Publisher configuration and tag workflow.

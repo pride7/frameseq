@@ -2,6 +2,8 @@
 
 Every content command adds an object to the current slide region and returns a chainable builder.
 
+For a definition, signature, parameters, return value, and focused example for every common command, see the [Function reference](function-guide.md).
+
 ## Text
 
 ```ts
@@ -131,11 +133,15 @@ image(diagram, "Diagram").showAt(2);
 
 ## Metrics
 
+`metric(value, label)` creates a small data-emphasis object. The first argument is displayed as the large primary value; the second is a smaller label that explains the value.
+
 ```ts
 metric("42%", "Growth");
 ```
 
-Metrics are most useful inside a grid:
+This produces the visual idea “**42%** — Growth.” FrameSeq displays the supplied strings; it does not calculate or format the data. Use a metric for a short number-label pair, not for a sentence or paragraph.
+
+Metrics are most useful when several comparable facts share a grid:
 
 ```ts
 slide("Results").grid(3);
@@ -159,3 +165,34 @@ gridSection(
 
 text("All targets were exceeded.");
 ```
+
+`metric()` returns the metric object, so it can be styled or turned into a standard card:
+
+```ts
+metric("42%", "Revenue growth")
+  .card()
+  .background("#eff6ff");
+```
+
+## Cards
+
+`card(title, content?)` creates a bordered title-and-copy surface for a short feature, option, or summary.
+
+```ts
+card("Portable", "Export HTML, PDF, and editable PPTX.");
+```
+
+Use `text()` for a normal paragraph and `metric()` for a key value. Use `card()` when the title and supporting sentence should read as one contained item.
+
+## Groups
+
+`group(...items)` combines multiple objects into one vertical object. It is useful when one grid cell needs children with different text roles or styles.
+
+```ts
+group(
+  text("Revenue").bold(),
+  text("$1.2M").size(42),
+).card();
+```
+
+The child objects are created normally, then `group()` makes them one movable and styleable unit. See the [Function reference](function-guide.md) for a concise explanation and example of every common authoring function.
