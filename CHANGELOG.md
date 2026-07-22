@@ -4,10 +4,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.13.1] - 2026-07-21
+
 ### Fixed
 
 - Puppeteer-based tests and exports now launch Chromium correctly on Linux CI and root containers.
 - Gallery builds now compile the local package first, so they work from a clean checkout without a pre-existing `lib/` directory.
+- Release checks no longer open browser tabs for each programmatic Vite preview.
 - GitHub workflows now use the current Node 24-based official Actions releases.
 
 ## [0.13.0] - 2026-07-21
@@ -116,6 +119,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.13.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.13.1
 [0.13.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.13.0
 [0.12.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.12.0
 [0.11.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.11.0

@@ -280,6 +280,9 @@ export default defineConfig({
       allow: [packageRoot, dirname(entry)],
     },
   },
+  preview: {
+    open: false,
+  },
   build: {
     outDir: buildDirectory,
     emptyOutDir: true,

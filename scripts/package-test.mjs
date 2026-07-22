@@ -15,6 +15,7 @@ const appDirectory = resolve(harnessDirectory, "app");
 const npmCli = process.env.npm_execpath;
 
 const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+const viteConfig = await readFile(resolve(packageRoot, "vite.config.ts"), "utf8");
 const creatorJson = JSON.parse(await readFile(
   resolve(packageRoot, "packages", "create-frameseq", "package.json"),
   "utf8",
@@ -22,6 +23,10 @@ const creatorJson = JSON.parse(await readFile(
 
 if (!packageJson.scripts?.["build:gallery"]?.startsWith("npm run build:package &&")) {
   throw new Error("Gallery build must create the package entry before building examples");
+}
+if (packageJson.scripts?.preview !== "vite preview --open"
+  || !/preview:\s*\{\s*open:\s*false\s*,?\s*\}/.test(viteConfig)) {
+  throw new Error("Automated Vite previews must stay headless while npm run preview remains interactive");
 }
 
 function tarballName(name, version) {
