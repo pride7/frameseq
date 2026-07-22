@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.14.0";
+const FRAMESEQ_VERSION = "^0.15.0";
 
 function projectName(directory) {
   const name = basename(directory)

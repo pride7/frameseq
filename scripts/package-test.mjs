@@ -21,6 +21,10 @@ const creatorJson = JSON.parse(await readFile(
   "utf8",
 ));
 
+if (!packageJson.files?.includes("llms.txt")) {
+  throw new Error("The npm package must include the FrameSeq AI authoring contract");
+}
+
 if (!packageJson.scripts?.["build:gallery"]?.startsWith("npm run build:package &&")) {
   throw new Error("Gallery build must create the package entry before building examples");
 }
@@ -97,6 +101,13 @@ if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
   throw new Error("Generated project did not include the PPTX export script");
 }
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
+const installedLlms = await readFile(
+  resolve(appDirectory, "node_modules", "@pride7", "frameseq", "llms.txt"),
+  "utf8",
+);
+if (!installedLlms.includes("## Authoring model") || !installedLlms.includes("frameseq check slides.ts --json")) {
+  throw new Error("Packed FrameSeq package did not include a complete llms.txt contract");
+}
 runNpm(["run", "check"], appDirectory);
 run(
   process.execPath,

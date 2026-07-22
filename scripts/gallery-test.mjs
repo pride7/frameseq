@@ -18,6 +18,10 @@ const server = await preview({
 const url = server.resolvedUrls?.local[0];
 if (!url) throw new Error("Gallery preview did not expose a local URL");
 
+const llmsResponse = await fetch(new URL("llms.txt", url));
+assert.equal(llmsResponse.status, 200);
+assert.match(await llmsResponse.text(), /# FrameSeq[\s\S]+## Authoring model/);
+
 const browser = await puppeteer.launch(puppeteerLaunchOptions());
 try {
   const page = await browser.newPage();
@@ -25,7 +29,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => {
     const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.length === 9
+    return frames.length === 10
       && frames.every((frame) => frame.contentDocument?.querySelector(".frameseq-slide"));
   });
 
@@ -43,10 +47,14 @@ try {
   assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
   assert.equal(desktop.themeCards, 7);
   assert.equal(desktop.capabilityCards, 4);
-  assert.equal(desktop.frames, 9);
+  assert.equal(desktop.frames, 10);
   assert.ok(desktop.overflow <= 0);
   assert.match(desktop.languageHeading ?? "", /top to bottom/i);
   assert.match(desktop.outputHeading ?? "", /web/i);
+  assert.equal(
+    await page.$eval(".ai-example-preview iframe", (frame) => frame.getAttribute("src")),
+    "./examples/ai-research/#2",
+  );
   assert.deepEqual(desktop.themeLinks, [
     "./examples/blank/",
     "./examples/midnight/",
@@ -70,4 +78,4 @@ try {
   await server.close();
 }
 
-console.log("Gallery test passed: the product story, seven themes, and live examples fit desktop and mobile viewports.");
+console.log("Gallery test passed: the product story, AI example, seven themes, and live presentations fit desktop and mobile viewports.");

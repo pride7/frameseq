@@ -4,11 +4,12 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 
 ## Start here
 
-- [Live Gallery](https://pride7.github.io/frameseq/) — open real Midnight, Minimal Academic, and Beamer Madrid presentations in the browser.
+- [Live Gallery](https://pride7.github.io/frameseq/) — open the product tour, AI-oriented research example, and all seven built-in themes in the browser.
 - [Getting started](getting-started.md) — create, preview, build, and export a presentation.
 - [Document model](document-model.md) — understand `presentation()`, `slide()`, and content ownership.
 - [Content](content.md) — text, formulas, code, images, lists, and metrics.
 - [Layout](layout.md) — split pages, grids, regions, centered pages, and freeform composition.
+- [Generate presentations with AI](ai-generation.md) — give an agent the FrameSeq contract, write a useful brief, and iterate with rendered-layout diagnostics.
 - [AI-friendly layout checks](layout-checks.md) — detect overflow, clipped text, and unreadably small type with human or JSON diagnostics.
 - [Deploy HTML](deployment.md) — publish to GitHub Pages or create a portable single-file presentation.
 - [Export PowerPoint](pptx.md) — create editable hybrid PPTX files or pixel-faithful flattened slides.

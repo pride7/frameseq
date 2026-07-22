@@ -68,7 +68,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
 
 ## Live Gallery
 
-The [FrameSeq Gallery](https://pride7.github.io/frameseq/) contains live, clickable presentations built from this repository. Compare the Midnight product tour, Minimal Academic research style, and Beamer Madrid lecture theme without installing anything. The previews are compiled FrameSeq pages rather than screenshots, so they always track the current runtime and themes.
+The [FrameSeq Gallery](https://pride7.github.io/frameseq/) contains live, clickable presentations built from this repository: a product tour, a complete AI-oriented research example, and previews of all seven built-in themes. The previews are compiled FrameSeq pages rather than screenshots, so they always track the current runtime and themes.
 
 ## Why FrameSeq
 
@@ -104,6 +104,8 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 - The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, and PPTX output.
 
 An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
+
+Give a coding agent the compact [`llms.txt`](https://github.com/pride7/frameseq/blob/main/llms.txt) contract, then use the [AI generation guide](https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md) for prompting, validation, and correction loops. The Gallery includes a [complete AI-oriented research example](https://pride7.github.io/frameseq/examples/ai-research/) and its [editable source](https://github.com/pride7/frameseq/blob/main/gallery/slides/ai-research.slides.ts).
 
 ### Progressive control
 
@@ -533,6 +535,7 @@ This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Im
 - [Document model](https://github.com/pride7/frameseq/blob/main/docs/document-model.md)
 - [Content](https://github.com/pride7/frameseq/blob/main/docs/content.md)
 - [Layout](https://github.com/pride7/frameseq/blob/main/docs/layout.md)
+- [Generate presentations with AI](https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md)
 - [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md)
 - [Deploy HTML](https://github.com/pride7/frameseq/blob/main/docs/deployment.md)
 - [Themes](https://github.com/pride7/frameseq/blob/main/docs/themes.md)

@@ -1136,7 +1136,7 @@ h1 {
   grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.75fr);
   gap: clamp(40px, 7vw, 90px);
   align-items: center;
-  min-height: 440px;
+  min-height: 680px;
   color: #fff;
   background: #db633d;
 }
@@ -1162,6 +1162,26 @@ h1 {
   border-top: 1px solid rgb(255 255 255 / 0.28);
 }
 
+.ai-guide-link {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 28px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ai-guide-link:hover {
+  text-decoration: underline;
+}
+
+.ai-demo-column {
+  display: grid;
+  gap: 18px;
+}
+
 .prompt-card {
   padding: 28px;
   border: 1px solid rgb(255 255 255 / 0.24);
@@ -1170,6 +1190,96 @@ h1 {
   background: #fff8f1;
   box-shadow: 14px 14px 0 rgb(70 26 14 / 0.15);
   transform: rotate(1.5deg);
+}
+
+.ai-example-card {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 14px;
+  color: var(--ink);
+  background: #fff8f1;
+  box-shadow: 14px 14px 0 rgb(70 26 14 / 0.15);
+}
+
+.ai-example-preview {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid #e8d5c9;
+  background: #e7e5df;
+}
+
+.ai-example-preview::after {
+  position: absolute;
+  content: "";
+  inset: 0;
+}
+
+.ai-example-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+
+.ai-example-preview > span {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgb(21 37 28 / 0.86);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.ai-example-copy {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.ai-example-copy > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.ai-example-copy span {
+  margin-bottom: 5px;
+  color: var(--orange);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ai-example-copy strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-example-links {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-example-links a {
+  padding: 7px 9px;
+  border: 1px solid #dfcbbf;
+  border-radius: 999px;
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .prompt-card > span {

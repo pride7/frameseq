@@ -4,6 +4,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.15.0] - 2026-07-21
+
+### Added
+
+- A root `llms.txt` contract and practical AI generation guide for coding agents.
+- A complete AI-oriented research presentation with a live Gallery preview and editable source.
+
 ## [0.14.0] - 2026-07-21
 
 ### Changed
@@ -127,6 +134,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.15.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.15.0
+[0.14.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.14.0
 [0.13.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.13.1
 [0.13.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.13.0
 [0.12.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.12.0

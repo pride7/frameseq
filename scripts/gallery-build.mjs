@@ -12,6 +12,7 @@ const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
+  { slug: "ai-research", entry: resolve(packageRoot, "gallery", "slides", "ai-research.slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
   { slug: "blank", entry: resolve(packageRoot, "gallery", "slides", "blank.slides.ts") },
@@ -48,6 +49,7 @@ await Promise.all([
   copyFile(resolve(packageRoot, "gallery", "index.html"), resolve(galleryOutput, "index.html")),
   copyFile(resolve(packageRoot, "gallery", "styles.css"), resolve(galleryOutput, "styles.css")),
   copyFile(resolve(packageRoot, "public", "favicon.svg"), resolve(galleryOutput, "favicon.svg")),
+  copyFile(resolve(packageRoot, "llms.txt"), resolve(galleryOutput, "llms.txt")),
   writeFile(resolve(galleryOutput, ".nojekyll"), "", "utf8"),
 ]);
 

@@ -1,0 +1,188 @@
+# FrameSeq
+
+> FrameSeq is a declarative TypeScript framework for creating editable presentations. A linear `.slides.ts` source renders to interactive HTML and exports to PDF and editable PPTX.
+
+Canonical documentation: https://github.com/pride7/frameseq/tree/main/docs
+AI generation guide: https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md
+API reference: https://github.com/pride7/frameseq/blob/main/docs/api-reference.md
+Live Gallery: https://pride7.github.io/frameseq/
+
+## Create a project
+
+```bash
+npm create frameseq@latest my-talk
+cd my-talk
+npm install
+npm run dev
+```
+
+The main source file is `slides.ts`. In a generated project, authoring functions are global: do not add imports, wrapper components, callbacks, or an export statement.
+
+## Minimal valid source
+
+```ts
+presentation({
+  title: "My presentation",
+  author: "Your name",
+  theme: "minimal-academic",
+});
+
+slide().cover();
+
+slide("One clear idea");
+text("State the idea in one sentence.").lead();
+bullets(
+  "First supporting point",
+  "Second supporting point",
+  "Third supporting point",
+);
+```
+
+## Authoring model
+
+- Call `presentation()` once before any slide.
+- Each `slide()` call starts a new slide.
+- Every command after `slide()` belongs to that slide until the next `slide()` call.
+- Content functions create objects. Chain modifiers on the returned object to control it.
+- Prefer semantic layouts and roles first. Use low-level styling or exact positioning only when the composition requires it.
+- Keep the source linear. Do not recreate HTML nesting in TypeScript.
+
+```ts
+slide("Architecture").split("40:60");
+
+text("Input").lead();
+bullets("Readable source", "Typed API");
+
+right();
+text("Output")
+  .size(32)
+  .bold()
+  .color("#2563eb");
+```
+
+## Core API
+
+Presentation: `presentation(options)`
+
+Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`
+
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `rect()`, `circle()`, `line()`
+
+Regions: `main()`, `left()`, `right()`, `cell(index)`, `gap(value)`
+
+Common modifiers: `.hero()`, `.subtitle()`, `.lead()`, `.caption()`, `.quote()`, `.size()`, `.weight()`, `.bold()`, `.color()`, `.background()`, `.width()`, `.height()`, `.padding()`, `.margin()`, `.position()`, `.style()`, `.showAt()`
+
+Built-in themes: `blank`, `midnight`, `paper`, `beamer-default`, `beamer-madrid`, `beamer-cambridge-us`, `minimal-academic`
+
+## Layout patterns
+
+Use a split for comparison or text beside a visual:
+
+```ts
+slide("Comparison").split("45:55");
+text("Before").lead();
+bullets("Slow", "Manual");
+
+right();
+text("After").lead();
+bullets("Fast", "Repeatable");
+```
+
+Use a grid for parallel facts:
+
+```ts
+slide("Results").grid(3);
+cell(0); metric("42%", "Faster");
+cell(1); metric("18K", "Samples");
+cell(2); metric("3", "Outputs");
+```
+
+Use a canvas only for diagrams or deliberate freeform composition:
+
+```ts
+slide({ name: "System map" }).canvas();
+text("Compiler")
+  .position({ x: 80, y: 90 })
+  .width(320)
+  .size(32)
+  .bold();
+```
+
+Plain numeric lengths are pixels on the fixed presentation canvas. The default canvas is 1280 by 720 with a 16:9 ratio.
+
+## Math, Typst, and Tailwind
+
+Use a tagged `text` template for inline LaTeX math:
+
+```ts
+text`Euler's identity is $e^{i\pi} + 1 = 0$.`;
+```
+
+Use the `math` tag for a standalone equation:
+
+```ts
+math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
+```
+
+Use Typst only for a complex local fragment while FrameSeq keeps control of slide structure. Static Typst templates do not support JavaScript interpolation:
+
+```ts
+typst`
+  #set text(size: 22pt)
+  $ min_theta sum_(i=1)^n loss(f_theta(x_i), y_i) $
+`.width(720);
+```
+
+Typst requires the optional `@myriaddreamin/typst-ts-node-compiler` development dependency.
+
+Tailwind utilities are available through `.style()` without configuration. Keep utility names as complete static strings:
+
+```ts
+text("Important")
+  .style("rounded-2xl bg-slate-900 px-8 py-5 text-3xl font-semibold text-white");
+```
+
+## Generation rules
+
+- Give every slide one primary message.
+- Use short visible copy; move delivery detail into `.notes()`.
+- Prefer `split()`, `grid()`, and `center()` over coordinates.
+- Use `canvas()` and `.position()` for diagrams, not ordinary text pages.
+- Use text roles and a built-in theme before adding local style overrides.
+- Do not invent image paths. Use supplied assets or omit the image.
+- Preserve source citations and label illustrative or synthetic data clearly.
+- Use tagged templates for LaTeX so backslashes remain intact.
+- Never interpolate dynamic values into `typst` templates.
+- Do not construct Tailwind class names from fragments.
+- After generation, run the type and rendered-layout checks, then correct every error.
+
+## Validate and export
+
+Generated projects provide these commands:
+
+```bash
+npm run check
+npm run build
+npm run pdf
+npm run pptx
+```
+
+For a machine-readable layout report:
+
+```bash
+npx frameseq check slides.ts --json
+```
+
+Fix `canvas-overflow` and `text-clipped` errors. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further.
+
+## Suggested agent workflow
+
+1. Read this file and the user's brief.
+2. Choose a single visual theme and outline one message per slide.
+3. Write the complete `slides.ts` with semantic layouts and speaker notes.
+4. Run `npm run check`.
+5. Revise the source using the reported slide label, object path, and measured overflow.
+6. Repeat until the check passes.
+7. Build or export only after validation succeeds.
+
+Full workflow and reusable prompts: https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md
