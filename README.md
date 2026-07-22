@@ -59,6 +59,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
   - [Shapes and connectors](#shapes-and-connectors)
 - [Styling](#styling)
 - [Themes and typography](#themes-and-typography)
+- [Visual Studio Code extension](#visual-studio-code-extension)
 - [Preview, build, and export](#preview-build-and-export)
 - [AI-friendly layout checks](#ai-friendly-layout-checks)
 - [Presenter view](#presenter-view)
@@ -469,6 +470,19 @@ const ocean = defineTheme({
 presentation({ title: "Ocean Research", theme: ocean });
 ```
 
+## Visual Studio Code extension
+
+FrameSeq includes a companion VS Code extension that keeps `slides.ts` on the left and a live preview on the right. It also provides a slide outline with source-and-preview synchronization, current/previous/next slide navigation, a current-slide status item, slide insertion, TypeScript snippets, Problems-panel layout diagnostics, and HTML/PDF/PPTX export commands. It consumes the same local FrameSeq CLI as the terminal workflow, so there is only one rendering and validation implementation.
+
+Build the current extension from this repository:
+
+```bash
+npm run vscode:package
+code --install-extension output/vscode/frameseq-vscode.vsix
+```
+
+The extension lives in `packages/vscode-frameseq` and the complete setup guide is in [Visual Studio Code extension](https://github.com/pride7/frameseq/blob/main/docs/vscode.md).
+
 ## Preview, build, and export
 
 ```bash
@@ -576,6 +590,7 @@ This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Im
 - [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md)
 - [Typst integration](https://github.com/pride7/frameseq/blob/main/docs/typst.md)
 - [LaTeX integration](https://github.com/pride7/frameseq/blob/main/docs/latex.md)
+- [Visual Studio Code extension](https://github.com/pride7/frameseq/blob/main/docs/vscode.md)
 - [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
 - [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
 - [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)

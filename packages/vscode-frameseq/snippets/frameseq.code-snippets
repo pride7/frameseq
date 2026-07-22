@@ -1,0 +1,88 @@
+{
+  "FrameSeq presentation": {
+    "prefix": "frameseq-presentation",
+    "description": "Create a FrameSeq presentation and cover slide",
+    "body": [
+      "presentation({ title: \"${1:My presentation}\", theme: \"${2:minimal-academic}\" });",
+      "",
+      "slide({ name: \"Cover\" }).cover();",
+      "text(\"${1:My presentation}\").hero();",
+      "text(\"${3:A concise subtitle}\").subtitle();",
+      "text(\"${4:Your name}\").author();"
+    ]
+  },
+  "FrameSeq slide": {
+    "prefix": "slide",
+    "description": "Insert a FrameSeq slide",
+    "body": [
+      "slide(\"${1:Slide title}\");",
+      "text(\"${2:Start with one clear idea.}\");"
+    ]
+  },
+  "FrameSeq split slide": {
+    "prefix": "slide-split",
+    "description": "Insert a two-column FrameSeq slide",
+    "body": [
+      "slide(\"${1:Slide title}\").split(\"${2:40:60}\");",
+      "text(\"${3:Left column}\");",
+      "",
+      "right();",
+      "text(\"${4:Right column}\");"
+    ]
+  },
+  "FrameSeq grid slide": {
+    "prefix": "slide-grid",
+    "description": "Insert a FrameSeq grid slide",
+    "body": [
+      "slide(\"${1:Slide title}\").grid(${2:3});",
+      "",
+      "cell(0);",
+      "text(\"${3:First cell}\");",
+      "cell(1);",
+      "text(\"${4:Second cell}\");",
+      "cell(2);",
+      "text(\"${5:Third cell}\");"
+    ]
+  },
+  "FrameSeq canvas slide": {
+    "prefix": "slide-canvas",
+    "description": "Insert an absolute-positioned FrameSeq canvas slide",
+    "body": [
+      "slide(\"${1:Slide title}\").canvas();",
+      "text(\"${2:Positioned object}\")",
+      "  .position({ x: ${3:80}, y: ${4:120} })",
+      "  .width(${5:420});"
+    ]
+  },
+  "FrameSeq bullets": {
+    "prefix": "bullets",
+    "description": "Insert FrameSeq bullet points",
+    "body": [
+      "bullets(",
+      "  \"${1:First point}\",",
+      "  \"${2:Second point}\",",
+      "  \"${3:Third point}\",",
+      ");"
+    ]
+  },
+  "FrameSeq LaTeX": {
+    "prefix": "latex",
+    "description": "Insert a compiled LaTeX fragment",
+    "body": [
+      "latex`",
+      "  ${1:\\\\begin{tabular}{lr}}",
+      "  ${2:Label & Value \\\\\\\\}",
+      "  ${3:\\\\end{tabular}}",
+      "`;"
+    ]
+  },
+  "FrameSeq Typst": {
+    "prefix": "typst",
+    "description": "Insert a compiled Typst fragment",
+    "body": [
+      "typst`",
+      "  ${1:$ integral_0^1 x^2 dif x = 1/3 $}",
+      "`;"
+    ]
+  }
+}

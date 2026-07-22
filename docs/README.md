@@ -20,6 +20,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 - [Presenter view and phone remote](presenter.md) — use private notes, a timer, synchronized controls, or QR-based LAN control.
 - [Typst integration](typst.md) — embed build-time Typst fragments without giving up FrameSeq structure.
 - [LaTeX integration](latex.md) — compile real LaTeX tables into controllable FrameSeq objects.
+- [Visual Studio Code extension](vscode.md) — edit source and live preview side by side, navigate slides, validate layouts, and export from the editor.
 - [API reference](api-reference.md) — signatures and behavior of the public authoring API.
 - [CLI reference](cli.md) — `new`, `dev`, local phone remote, `build`, single-file HTML, `pdf`, `pptx`, and `check`.
 - [Advanced composition](advanced.md) — the explicit object API and low-level components.

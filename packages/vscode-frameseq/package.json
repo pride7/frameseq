@@ -1,0 +1,239 @@
+{
+  "name": "frameseq",
+  "displayName": "FrameSeq",
+  "description": "Edit FrameSeq presentations with a split live preview, slide navigation, validation, snippets, and exports.",
+  "version": "0.2.1",
+  "publisher": "pride7",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pride7/frameseq.git",
+    "directory": "packages/vscode-frameseq"
+  },
+  "homepage": "https://github.com/pride7/frameseq#readme",
+  "bugs": {
+    "url": "https://github.com/pride7/frameseq/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "slides",
+    "presentation",
+    "typescript",
+    "frameseq"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/slides.ts",
+    "workspaceContains:**/*.slides.ts"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "FrameSeq commands execute the presentation project's local CLI."
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "frameseq",
+          "title": "FrameSeq",
+          "icon": "resources/frameseq.svg"
+        }
+      ]
+    },
+    "views": {
+      "frameseq": [
+        {
+          "id": "frameseq.slides",
+          "name": "Slides"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "frameseq.slides",
+        "contents": "Open a FrameSeq `slides.ts` or `*.slides.ts` document.\n[Refresh slides](command:frameseq.refresh)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "frameseq.refresh",
+        "title": "FrameSeq: Refresh Slides",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "frameseq.openSlide",
+        "title": "FrameSeq: Open Slide"
+      },
+      {
+        "command": "frameseq.preview",
+        "title": "FrameSeq: Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "frameseq.previewCurrentSlide",
+        "title": "FrameSeq: Preview Current Slide"
+      },
+      {
+        "command": "frameseq.previousSlide",
+        "title": "FrameSeq: Previous Slide",
+        "icon": "$(arrow-left)"
+      },
+      {
+        "command": "frameseq.nextSlide",
+        "title": "FrameSeq: Next Slide",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "frameseq.insertSlide",
+        "title": "FrameSeq: Insert Slide After Current",
+        "icon": "$(add)"
+      },
+      {
+        "command": "frameseq.stopPreview",
+        "title": "FrameSeq: Stop Preview",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "frameseq.check",
+        "title": "FrameSeq: Check Layout",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "frameseq.export",
+        "title": "FrameSeq: Export…",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "frameseq.exportHtml",
+        "title": "FrameSeq: Export HTML"
+      },
+      {
+        "command": "frameseq.exportPdf",
+        "title": "FrameSeq: Export PDF"
+      },
+      {
+        "command": "frameseq.exportPptx",
+        "title": "FrameSeq: Export PPTX"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "frameseq.preview",
+          "when": "view == frameseq.slides && !frameseq.previewRunning",
+          "group": "navigation@1"
+        },
+        {
+          "command": "frameseq.stopPreview",
+          "when": "view == frameseq.slides && frameseq.previewRunning",
+          "group": "navigation@1"
+        },
+        {
+          "command": "frameseq.check",
+          "when": "view == frameseq.slides",
+          "group": "navigation@2"
+        },
+        {
+          "command": "frameseq.refresh",
+          "when": "view == frameseq.slides",
+          "group": "navigation@3"
+        },
+        {
+          "command": "frameseq.insertSlide",
+          "when": "view == frameseq.slides",
+          "group": "navigation@4"
+        },
+        {
+          "command": "frameseq.export",
+          "when": "view == frameseq.slides",
+          "group": "navigation@5"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "frameseq.preview",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "frameseq.openSlide",
+          "when": "view == frameseq.slides && viewItem == frameseqSlide",
+          "group": "inline@1"
+        },
+        {
+          "command": "frameseq.preview",
+          "when": "view == frameseq.slides && viewItem == frameseqSlide",
+          "group": "navigation@1"
+        },
+        {
+          "command": "frameseq.check",
+          "when": "view == frameseq.slides && viewItem == frameseqSlide",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "FrameSeq",
+      "properties": {
+        "frameseq.entry": {
+          "type": "string",
+          "default": "slides.ts",
+          "description": "FrameSeq entry file relative to the workspace folder. An active *.slides.ts editor takes precedence."
+        },
+        "frameseq.previewUrl": {
+          "type": "string",
+          "default": "http://localhost:5173",
+          "description": "Fallback preview URL used until the FrameSeq development server reports its address."
+        },
+        "frameseq.previewBeside": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the FrameSeq entry on the left and open the live preview in the editor group to its right."
+        },
+        "frameseq.followOutline": {
+          "type": "boolean",
+          "default": true,
+          "description": "Navigate the live preview when a slide is opened from the FrameSeq outline."
+        },
+        "frameseq.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh the slide outline whenever the entry document is saved."
+        }
+      }
+    },
+    "snippets": [
+      {
+        "language": "typescript",
+        "path": "./snippets/frameseq.code-snippets"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "prepackage": "node -e \"require('node:fs').mkdirSync('../../output/vscode', { recursive: true })\"",
+    "compile": "tsc -p .",
+    "check": "tsc -p . --noEmit",
+    "package": "npm run compile && vsce package --no-dependencies --out ../../output/vscode/frameseq-vscode.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.8.3"
+  }
+}

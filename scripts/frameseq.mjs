@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
+import { inspectSlides } from "./frameseq-inspect.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
@@ -17,7 +18,7 @@ function help() {
   console.log(`FrameSeq
 
 Usage:
-  frameseq dev [file] [--host] [--remote]
+  frameseq dev [file] [--host] [--remote] [--no-open]
                                       Preview slides with hot reload
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
@@ -26,6 +27,7 @@ Usage:
                                       Export an editable or flattened PowerPoint
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
+  frameseq inspect [file] [--json]     Inspect slides and source locations
   frameseq new [file]                 Create a starter .slides.ts file
 
 Examples:
@@ -38,6 +40,7 @@ Examples:
   frameseq pptx talk.slides.ts
   frameseq pptx talk.slides.ts --flatten
   frameseq check talk.slides.ts
+  frameseq inspect talk.slides.ts --json
   frameseq new quarterly.slides.ts`);
 }
 
@@ -100,8 +103,12 @@ bullets(
   console.log(`Created ${target}`);
 }
 
-async function startDevelopmentServer(entry, { hostEnabled = false, remoteEnabled = false } = {}) {
+async function startDevelopmentServer(
+  entry,
+  { hostEnabled = false, remoteEnabled = false, openBrowser = true } = {},
+) {
   process.env.FRAMESEQ_ENTRY = entry;
+  process.env.FRAMESEQ_OPEN_BROWSER = openBrowser ? "1" : "0";
   if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
   else delete process.env.FRAMESEQ_REMOTE;
   const server = await createServer({
@@ -640,13 +647,14 @@ try {
     help();
   } else if (command === "new") {
     await createSlidesFile(resolve(process.cwd(), file));
-  } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "check") {
+  } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "check" || command === "inspect") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") {
       const remoteEnabled = process.argv.includes("--remote");
       const hostEnabled = process.argv.includes("--host") || remoteEnabled;
-      await startDevelopmentServer(entry, { hostEnabled, remoteEnabled });
+      const openBrowser = !process.argv.includes("--no-open");
+      await startDevelopmentServer(entry, { hostEnabled, remoteEnabled, openBrowser });
     }
     if (command === "build") {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
@@ -666,6 +674,16 @@ try {
         json: process.argv.includes("--json"),
         strict: process.argv.includes("--strict"),
       });
+    }
+    if (command === "inspect") {
+      const report = await inspectSlides(entry);
+      if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
+      else {
+        console.log(`${report.presentation.title} — ${report.summary.slides} slides`);
+        for (const slide of report.slides) {
+          console.log(`${slide.index}. ${slide.label} [${slide.layout}] line ${slide.source.line} · ${slide.objectCount} objects`);
+        }
+      }
     }
   } else {
     help();

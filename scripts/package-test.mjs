@@ -137,11 +137,36 @@ if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
   throw new Error("Generated project did not include the PPTX export script");
 }
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
+const installedCli = resolve(
+  appDirectory,
+  "node_modules",
+  "@pride7",
+  "frameseq",
+  "scripts",
+  "frameseq.mjs",
+);
+const inspectResult = spawnSync(
+  process.execPath,
+  [installedCli, "inspect", "slides.ts", "--json"],
+  { cwd: appDirectory, encoding: "utf8" },
+);
+if (inspectResult.error) throw inspectResult.error;
+if (inspectResult.status !== 0) {
+  throw new Error(`Packed FrameSeq inspect failed: ${inspectResult.stderr}`);
+}
+const inspectReport = JSON.parse(inspectResult.stdout);
+if (inspectReport.summary?.slides !== 3
+  || inspectReport.slides?.[0]?.layout !== "cover"
+  || inspectReport.slides?.[1]?.source?.line !== 8) {
+  throw new Error("Packed FrameSeq inspect did not return the generated slide outline");
+}
 const installedLlms = await readFile(
   resolve(appDirectory, "node_modules", "@pride7", "frameseq", "llms.txt"),
   "utf8",
 );
-if (!installedLlms.includes("## Authoring model") || !installedLlms.includes("frameseq check slides.ts --json")) {
+if (!installedLlms.includes("## Authoring model")
+  || !installedLlms.includes("frameseq check slides.ts --json")
+  || !installedLlms.includes("frameseq inspect slides.ts --json")) {
   throw new Error("Packed FrameSeq package did not include a complete llms.txt contract");
 }
 runNpm(["run", "check"], appDirectory);

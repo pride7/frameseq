@@ -17,10 +17,17 @@ const resolvedVirtualEntry = `\0${virtualEntry}`;
 const normalizedEntry = normalizePath(entry);
 const styleEntry = resolve(packageRoot, "src", "index.css");
 const normalizedStyleEntry = normalizePath(styleEntry);
+const pathKey = (path: string): string => {
+  const normalized = normalizePath(path);
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+};
+const entryPathKey = pathKey(normalizedEntry);
+const styleEntryPathKey = pathKey(normalizedStyleEntry);
 const tailwindSource = normalizePath(relative(dirname(styleEntry), dirname(entry)));
 const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
   .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
 const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
+const openBrowser = process.env.FRAMESEQ_OPEN_BROWSER !== "0";
 const remoteSyncEvent = "frameseq:remote-sync";
 
 function networkOrigins(port: number, protocol: "http" | "https"): string[] {
@@ -448,7 +455,8 @@ export default defineConfig({
       },
       async transform(source, id) {
         const normalizedId = normalizePath(id.split("?")[0]);
-        if (normalizedId === normalizedStyleEntry) {
+        const idPathKey = pathKey(normalizedId);
+        if (idPathKey === styleEntryPathKey) {
           const sourceDirectives = [
             `@source ${JSON.stringify(tailwindSource)};`,
             ...tailwindExclusions.map((source) => `@source not ${JSON.stringify(source)};`),
@@ -458,7 +466,7 @@ export default defineConfig({
             map: null,
           };
         }
-        if (normalizedId !== normalizedEntry) return undefined;
+        if (idPathKey !== entryPathKey) return undefined;
 
         const typstSourceReplacements = typstReplacements(source);
         const latexSourceReplacements = latexReplacements(source);
@@ -544,7 +552,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    open: true,
+    open: openBrowser,
     fs: {
       allow: [packageRoot, dirname(entry)],
     },

@@ -4,6 +4,18 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.19.0] - 2026-07-22
+
+### Added
+
+- A companion VS Code extension with a native slide outline, side-by-side live editing, source-and-preview synchronization, slide navigation and insertion, snippets, layout diagnostics, and HTML/PDF/PPTX export commands.
+- `frameseq inspect [file] --json` for fast static slide metadata and source locations shared by editor and future AI integrations.
+
+### Fixed
+
+- Make development entry matching insensitive to Windows drive-letter casing so VS Code previews render correctly.
+- Allow editor integrations to start Vite without opening a competing system-browser window.
+
 ## [0.18.0] - 2026-07-21
 
 ### Added
@@ -164,6 +176,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.19.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.19.0
 [0.18.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.18.0
 [0.17.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.17.0
 [0.16.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.1

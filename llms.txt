@@ -188,6 +188,14 @@ For a machine-readable layout report:
 npx frameseq check slides.ts --json
 ```
 
+For a fast source outline without starting a browser:
+
+```bash
+npx frameseq inspect slides.ts --json
+```
+
+The inspect report includes slide labels, layouts, object types, notes, and source locations. Use it to navigate or plan edits; use `check --json` for measured rendered-layout validation.
+
 Fix `canvas-overflow` and `text-clipped` errors. Add visible content when `empty-slide` appears; use `slide().allowEmpty()` only for an intentional blank page. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further.
 
 ## Suggested agent workflow

@@ -119,6 +119,21 @@ frameseq check talk.slides.ts --strict
 
 Errors return a non-zero exit code. Warnings fail only in strict mode. JSON output includes the slide index and label, FrameSeq object type and path, measured geometry, and suggested corrections. See [AI-friendly layout checks](layout-checks.md).
 
+## Inspect the source document
+
+```bash
+frameseq inspect [file] [--json]
+```
+
+Inspection parses the TypeScript source without starting a browser. It reports slide order, labels, layouts, speaker-note presence, object types, and source locations.
+
+```bash
+frameseq inspect talk.slides.ts
+frameseq inspect talk.slides.ts --json
+```
+
+The stable JSON form is intended for editor integrations and coding agents. The FrameSeq VS Code extension uses it to build its slide outline and navigate directly to `slide()` calls.
+
 ## Project scripts
 
 A project generated with `npm create frameseq` provides:
