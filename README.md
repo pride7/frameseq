@@ -55,6 +55,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
 - [Layout](#layout)
   - [Split](#split)
   - [Grid](#grid)
+  - [Local grid section](#local-grid-section)
   - [Freeform positioning](#freeform-positioning)
   - [Shapes and connectors](#shapes-and-connectors)
 - [Styling](#styling)
@@ -333,6 +334,41 @@ cell(2);
 text("Portable").lead();
 text("HTML and PDF");
 ```
+
+### Local grid section
+
+Keep the slide in its normal top-to-bottom flow and arrange only one group of objects as a grid. Each object passed to `gridSection()` becomes one cell:
+
+```ts
+slide("Results");
+
+text("Performance this quarter");
+
+gridSection(
+  3,
+  metric("42%", "Growth"),
+  metric("18K", "Users"),
+  metric("99.9%", "Uptime"),
+).gap(20);
+
+text("All targets were exceeded.");
+```
+
+Use `card()` for a common title-and-copy cell, or `group()` when one cell needs several independently styled objects:
+
+```ts
+gridSection(
+  3,
+  card("Declarative", "Readable source code"),
+  card("Portable", "HTML, PDF and PPTX"),
+  group(
+    text("AI-friendly").bold(),
+    text("Easy to generate and revise"),
+  ).card(),
+);
+```
+
+Unlike `slide().grid(3)`, a local grid does not take over the whole slide body. Content before and after it remains in the ordinary document flow.
 
 ### Freeform positioning
 

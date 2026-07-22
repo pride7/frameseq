@@ -144,3 +144,18 @@ cell(0); metric("42%", "Growth");
 cell(1); metric("18K", "Users");
 cell(2); metric("99.9%", "Uptime");
 ```
+
+When the grid should occupy only part of the slide, pass metric objects directly to `gridSection()`:
+
+```ts
+text("Quarterly results");
+
+gridSection(
+  3,
+  metric("42%", "Growth"),
+  metric("18K", "Users"),
+  metric("99.9%", "Uptime"),
+);
+
+text("All targets were exceeded.");
+```

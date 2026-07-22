@@ -62,6 +62,46 @@ metric("99.9%", "Uptime");
 
 Grid indices start at zero. A grid accepts 1–12 columns. Content written before `grid()` moves into cell `0`.
 
+## Local grid section
+
+Use `gridSection()` when only part of a slide should use a grid. Each supplied object becomes one cell, and the section stays between the normal content written before and after it:
+
+```ts
+slide("Results");
+text("Performance this quarter");
+
+gridSection(
+  3,
+  metric("42%", "Growth"),
+  metric("18K", "Users"),
+  metric("99.9%", "Uptime"),
+).gap(20);
+
+text("All targets were exceeded.");
+```
+
+Cells are filled in source order and wrap into additional rows when there are more items than columns. A string template supports unequal columns:
+
+```ts
+gridSection(
+  "1fr 2fr",
+  card("Context", "A compact supporting point"),
+  card("Main result", "Give the primary result more room"),
+);
+```
+
+For a cell made from multiple objects, use `group()`:
+
+```ts
+gridSection(
+  2,
+  group(text("Revenue").bold(), text("$1.2M").size(42)).card(),
+  group(text("Users").bold(), text("18K").size(42)).card(),
+);
+```
+
+`gridSection()` expresses a local parent-child relationship without requiring manual cell selection. Prefer it over a canvas for card rows, metrics, feature comparisons, and other regular two-dimensional arrangements.
+
 ## Return to the primary region
 
 ```ts

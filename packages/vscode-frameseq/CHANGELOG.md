@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add a local `gridSection()` card-grid snippet.
+
 ## 0.2.1
 
 - Add a visible export button to the Slides view with HTML, PDF, and PPTX choices.

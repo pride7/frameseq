@@ -66,7 +66,7 @@ Presentation: `presentation(options)`
 
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`
 
-Content: `text()`, `bullets()`, `steps()`, `metric()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`
 
 Regions: `main()`, `left()`, `right()`, `cell(index)`, `gap(value)`
 
@@ -96,6 +96,21 @@ cell(0); metric("42%", "Faster");
 cell(1); metric("18K", "Samples");
 cell(2); metric("3", "Outputs");
 ```
+
+Use a local grid when normal content should remain above and below a grid. Each supplied object becomes one cell; do not manually select cells:
+
+```ts
+text("Quarterly results");
+gridSection(
+  3,
+  metric("42%", "Faster"),
+  metric("18K", "Samples"),
+  metric("3", "Outputs"),
+).gap(20);
+text("All targets were exceeded.");
+```
+
+Use `card(title, content)` for a common card and `group(...items).card()` when one cell needs multiple styled objects.
 
 Use a canvas only for diagrams or deliberate freeform composition:
 
@@ -160,7 +175,7 @@ text("Important")
 
 - Give every slide one primary message.
 - Use short visible copy; move delivery detail into `.notes()`.
-- Prefer `split()`, `grid()`, and `center()` over coordinates.
+- Prefer `split()`, `grid()`, `gridSection()`, and `center()` over coordinates.
 - Use `canvas()` and `.position()` for diagrams, not ordinary text pages.
 - Use text roles and a built-in theme before adding local style overrides.
 - Do not invent image paths. Use supplied assets or omit the image.

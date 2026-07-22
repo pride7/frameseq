@@ -44,6 +44,18 @@
       "text(\"${5:Third cell}\");"
     ]
   },
+  "FrameSeq local grid section": {
+    "prefix": "grid-section",
+    "description": "Insert a local FrameSeq grid in the normal slide flow",
+    "body": [
+      "gridSection(",
+      "  ${1:3},",
+      "  card(\"${2:First title}\", \"${3:First description}\"),",
+      "  card(\"${4:Second title}\", \"${5:Second description}\"),",
+      "  card(\"${6:Third title}\", \"${7:Third description}\"),",
+      ").gap(${8:20});"
+    ]
+  },
   "FrameSeq canvas slide": {
     "prefix": "slide-canvas",
     "description": "Insert an absolute-positioned FrameSeq canvas slide",

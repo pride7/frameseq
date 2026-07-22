@@ -67,6 +67,16 @@ metric("42%", "Growth");
 
 No indentation or callback establishes ownership. Source order does.
 
+Local layout functions keep that rule. `gridSection()` receives content objects directly, moves them into one local grid in argument order, and then returns authoring to the surrounding slide flow:
+
+```ts
+text("Before");
+gridSection(3, card("A", "First"), card("B", "Second"), card("C", "Third"));
+text("After");
+```
+
+Use `group(...items)` only when several independently styled objects need to become one grid item. The rendered document still has a parent-child tree, but ordinary slide source does not need to manage that tree manually.
+
 ## Slide name and visible title
 
 The string form sets both the internal page name and visible title:

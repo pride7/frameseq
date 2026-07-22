@@ -89,6 +89,22 @@ bullets(
 
 This keeps the content and its intent visible. Add exact positions only for a diagram that genuinely needs them.
 
+When a grid occupies only one part of a page, generate its items directly instead of switching regions manually:
+
+```ts
+slide("Operating profile");
+text("Three measurements summarize the run.");
+gridSection(
+  3,
+  metric("118 ms", "Latency"),
+  metric("72%", "Inputs kept local"),
+  metric("−0.6 pt", "Accuracy change"),
+);
+text("Values are illustrative.").caption();
+```
+
+Each argument is one cell. Use `card()` for a title-and-copy item and `group()` only when a cell needs multiple independently styled objects.
+
 ### 3. Put delivery detail in speaker notes
 
 Visible text should help the audience scan the slide. Explanations, transitions, caveats, and reminders belong in notes:

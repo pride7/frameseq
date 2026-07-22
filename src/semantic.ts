@@ -25,6 +25,7 @@ export interface PlaceBounds {
 }
 
 export type SplitRatio = `${number}:${number}` | number | [number, number];
+export type GridColumns = number | string;
 
 function List(items: string[], ordered: boolean, reveal: boolean): ElementBuilder {
   const list = Column().className("frameseq-list");
@@ -71,6 +72,67 @@ export function Bullets(...items: string[]): ElementBuilder {
 
 export function Steps(...items: string[]): ElementBuilder {
   return List(items, true, true).className("frameseq-steps");
+}
+
+function gridTemplate(columns: GridColumns): string {
+  if (typeof columns === "number") {
+    if (!Number.isInteger(columns) || columns < 1 || columns > 12) {
+      throw new Error("Grid columns must be an integer from 1 to 12");
+    }
+    return `repeat(${columns}, minmax(0, 1fr))`;
+  }
+
+  if (!columns.trim()) throw new Error("Grid columns cannot be empty");
+  return columns;
+}
+
+export class GroupBuilder extends ContainerBuilder {
+  card(): this {
+    return this.className("frameseq-card");
+  }
+}
+
+export class GridSectionBuilder extends ContainerBuilder {
+  columns(value: GridColumns): this {
+    this.node.styles.gridTemplateColumns = gridTemplate(value);
+    return this;
+  }
+}
+
+/** Create a detached vertical group for use inside another layout object. */
+export function Group(...items: ElementBuilder[]): GroupBuilder {
+  return new GroupBuilder(
+    Column(...items).className("frameseq-group").node,
+  );
+}
+
+/** Create a detached semantic card with a title and optional supporting copy. */
+export function Card(title: string, content?: string): GroupBuilder {
+  const children = [Text(title).className("frameseq-card-title")];
+  if (content) children.push(Text(content).className("frameseq-card-copy"));
+  return Group(...children).card();
+}
+
+/** Create a detached metric object. */
+export function Metric(value: string, label: string): GroupBuilder {
+  return Group(
+    Text(value).className("frameseq-metric-value"),
+    Text(label).className("frameseq-metric-label"),
+  ).className("frameseq-metric");
+}
+
+/** Create a detached grid that treats each supplied object as one cell. */
+export function GridSection(
+  columns: GridColumns,
+  ...items: ElementBuilder[]
+): GridSectionBuilder {
+  if (items.length === 0) throw new Error("GridSection() requires at least one item");
+  const section = new GridSectionBuilder(
+    Column(...items).className("frameseq-grid-section").node,
+  );
+  return section
+    .style({ display: "grid" })
+    .columns(columns);
 }
 
 export class RegionBuilder extends ContainerBuilder {
@@ -120,12 +182,7 @@ export class RegionBuilder extends ContainerBuilder {
   }
 
   metric(value: string, label: string): this {
-    this.add(
-      Column(
-        Text(value).className("frameseq-metric-value"),
-        Text(label).className("frameseq-metric-label"),
-      ).className("frameseq-metric"),
-    );
+    this.add(Metric(value, label));
     return this;
   }
 

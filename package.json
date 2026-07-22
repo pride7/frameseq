@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -76,7 +76,7 @@
     "preview": "vite preview --open",
     "check": "tsc --noEmit",
     "check:layout": "node scripts/frameseq.mjs check slides.ts",
-    "test": "npm run build && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && npm run gallery:check",
+    "test": "npm run build && node scripts/section-layout-test.mjs && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && npm run gallery:check",
     "frameseq": "node scripts/frameseq.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
     "pptx": "node scripts/frameseq.mjs pptx slides.ts",

@@ -510,13 +510,43 @@ button {
   align-items: stretch;
 }
 
+.frameseq-grid-section {
+  width: 100%;
+  gap: var(--frameseq-grid-gap);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.frameseq-grid-section > * {
+  min-width: 0;
+}
+
+.frameseq-group {
+  gap: var(--frameseq-region-gap);
+  min-width: 0;
+}
+
 .frameseq-grid-cell,
-.frameseq-region-card {
+.frameseq-region-card,
+.frameseq-card {
   justify-content: center;
   padding: var(--frameseq-card-padding);
   border: 1px solid var(--frameseq-border);
   border-radius: var(--frameseq-radius-medium);
   background: var(--frameseq-surface);
+}
+
+.frameseq-card-title {
+  color: var(--frameseq-foreground);
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.frameseq-card-copy {
+  color: var(--frameseq-muted);
+  font-size: var(--frameseq-body-font-size, 21px);
+  line-height: var(--frameseq-body-line-height, 1.55);
 }
 
 .frameseq-layout-center {

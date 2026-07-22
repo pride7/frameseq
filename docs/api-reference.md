@@ -328,10 +328,35 @@ Adds a numbered list revealed one item at a time.
 ### `metric(value, label)`
 
 ```ts
-metric(value: string, label: string): RegionBuilder
+metric(value: string, label: string): GroupBuilder
 ```
 
-Adds a large value and smaller label to the current region.
+Adds a large value and smaller label to the current region and returns the metric object. The returned object can be styled or passed directly to `gridSection()`.
+
+### `card(title, content?)`
+
+```ts
+card(title: string, content?: string): GroupBuilder
+```
+
+Adds a semantic title-and-copy card to the current flow.
+
+### `group(...items)`
+
+```ts
+group(...items: ElementBuilder[]): GroupBuilder
+```
+
+Combines adjacent content objects into one vertical object. Chain `.card()` when the group should receive the standard card surface.
+
+### `gridSection(columns, ...items)`
+
+```ts
+type GridColumns = number | string;
+gridSection(columns: GridColumns, ...items: ElementBuilder[]): GridSectionBuilder
+```
+
+Places a local grid in the current document flow. Every supplied object becomes one grid cell. Numeric columns accept integers from 1 through 12; a CSS grid-template string such as `"1fr 2fr"` creates unequal columns. Use `.gap(value)` to change spacing or `.columns(value)` to replace the template.
 
 ## Region selection
 
@@ -386,6 +411,8 @@ Creates left and right regions. The default is `"1:1"`.
 ### `grid(columns, gap?)`
 
 Creates 1–12 equal-width regions.
+
+This method controls the whole slide body. Use `gridSection()` when only one portion of the slide should form a grid.
 
 ### `center()`
 

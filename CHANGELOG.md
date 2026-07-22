@@ -4,6 +4,17 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.20.0] - 2026-07-22
+
+### Added
+
+- `gridSection(columns, ...items)` for placing a local grid inside the normal slide flow without manually selecting cells.
+- `group(...items)` and `card(title, content?)` for composing grid items while keeping slide source content-first and linear.
+
+### Changed
+
+- `metric()` now returns the metric object it creates, so it can be passed directly to `gridSection()` and styled independently.
+
 ## [0.19.0] - 2026-07-22
 
 ### Added
@@ -176,6 +187,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.20.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.20.0
 [0.19.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.19.0
 [0.18.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.18.0
 [0.17.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.17.0

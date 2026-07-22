@@ -17,8 +17,15 @@ import {
   type SlideOptions,
 } from "./core";
 import {
+  Card,
   Bullets,
   type ContentSlideBuilder,
+  GridSection,
+  type GridColumns,
+  type GridSectionBuilder,
+  Group,
+  type GroupBuilder,
+  Metric,
   type RegionBuilder,
   Slides,
   type SlidesDefinition,
@@ -55,6 +62,34 @@ function currentRegion(): RegionBuilder {
 function attach<T extends ElementBuilder>(element: T): T {
   currentRegion().add(element);
   return element;
+}
+
+function regroup<T extends ElementBuilder>(
+  container: T,
+  items: ElementBuilder[],
+  command: string,
+): T {
+  if (items.length === 0) throw new Error(`${command} requires at least one item`);
+
+  const parent = currentRegion().node;
+  const nodes = items.map((item) => item.node);
+  if (new Set(nodes).size !== nodes.length) {
+    throw new Error(`${command} cannot contain the same object more than once`);
+  }
+
+  const selected = new Set(nodes);
+  const firstAttachedIndex = parent.children.findIndex((child) => selected.has(child));
+  const remaining = parent.children.filter((child) => !selected.has(child));
+  const insertionIndex = firstAttachedIndex < 0
+    ? remaining.length
+    : parent.children
+      .slice(0, firstAttachedIndex)
+      .filter((child) => !selected.has(child))
+      .length;
+
+  parent.children = remaining;
+  parent.children.splice(insertionIndex, 0, container.node);
+  return container;
 }
 
 export class TextBoxBuilder extends ElementBuilder {
@@ -232,8 +267,26 @@ export function steps(...items: string[]): ElementBuilder {
   return attach(Steps(...items));
 }
 
-export function metric(value: string, label: string): RegionBuilder {
-  return currentRegion().metric(value, label);
+export function metric(value: string, label: string): GroupBuilder {
+  return attach(Metric(value, label));
+}
+
+/** Combine adjacent content objects into one vertical object. */
+export function group(...items: ElementBuilder[]): GroupBuilder {
+  return regroup(Group(...items), items, "group()");
+}
+
+/** Add a semantic title-and-copy card to the current document flow. */
+export function card(title: string, content?: string): GroupBuilder {
+  return attach(Card(title, content));
+}
+
+/** Arrange the supplied content objects as a local grid in the current document flow. */
+export function gridSection(
+  columns: GridColumns,
+  ...items: ElementBuilder[]
+): GridSectionBuilder {
+  return regroup(GridSection(columns, ...items), items, "gridSection()");
 }
 
 /** Return automatic content placement to the slide's primary region. */

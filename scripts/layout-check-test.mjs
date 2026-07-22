@@ -75,4 +75,12 @@ assert.deepEqual(automaticCover.report.summary, {
   warnings: 0,
 });
 
-console.log("Layout check test passed: overflow, clipping, font size, empty slides, automatic covers, JSON, and strict mode.");
+const localGrid = runCheck("layout-section.slides.ts", "--strict");
+assert.equal(localGrid.status, 0);
+assert.deepEqual(localGrid.report.summary, {
+  slides: 1,
+  errors: 0,
+  warnings: 0,
+});
+
+console.log("Layout check test passed: overflow, clipping, font size, empty slides, automatic covers, local grids, JSON, and strict mode.");
