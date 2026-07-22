@@ -59,6 +59,14 @@ The browser opens automatically and updates when the source file changes. Use Ar
 
 Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output.
 
+To present with a phone remote, start the local-network server:
+
+```bash
+npm run present
+```
+
+Open the presentation on the computer, select the `R` control, and scan the displayed QR code from a phone on the same Wi-Fi. The phone can navigate slides and reveal steps or control the synchronized laser pointer.
+
 Before presenting, check both TypeScript and the final browser geometry:
 
 ```bash

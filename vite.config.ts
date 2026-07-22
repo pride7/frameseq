@@ -1,4 +1,5 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 import type { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import tailwindcss from "@tailwindcss/vite";
@@ -16,6 +17,19 @@ const normalizedStyleEntry = normalizePath(styleEntry);
 const tailwindSource = normalizePath(relative(dirname(styleEntry), dirname(entry)));
 const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
   .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
+const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
+const remoteSyncEvent = "frameseq:remote-sync";
+
+function networkOrigins(port: number, protocol: "http" | "https"): string[] {
+  const origins = new Set<string>();
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const address of addresses ?? []) {
+      if (String(address.family) !== "IPv4" || address.internal) continue;
+      origins.add(`${protocol}://${address.address}:${port}`);
+    }
+  }
+  return [...origins].sort();
+}
 
 const documentCommands = [
   "presentation",
@@ -144,6 +158,9 @@ function typstError(error: unknown, label: string): Error {
 export default defineConfig({
   root: packageRoot,
   base: "./",
+  define: {
+    __FRAMESEQ_REMOTE_ENABLED__: JSON.stringify(remoteServerEnabled),
+  },
   plugins: [
     {
       name: "frameseq-entry",
@@ -154,6 +171,39 @@ export default defineConfig({
       load(id) {
         if (id !== resolvedVirtualEntry) return undefined;
         return `export { default } from ${JSON.stringify(normalizedEntry)};`;
+      },
+      configureServer(server) {
+        if (!remoteServerEnabled) return;
+
+        server.middlewares.use("/__frameseq/remote-info", (request, response, next) => {
+          if (request.method !== "GET") {
+            next();
+            return;
+          }
+          const address = server.httpServer?.address();
+          const port = address && typeof address !== "string"
+            ? address.port
+            : (server.config.server.port ?? 5173);
+          const protocol = server.config.server.https ? "https" : "http";
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "application/json; charset=utf-8");
+          response.setHeader("Cache-Control", "no-store");
+          response.end(JSON.stringify({ origins: networkOrigins(port, protocol) }));
+        });
+
+        server.ws.on(remoteSyncEvent, (payload) => {
+          if (!payload || typeof payload !== "object") return;
+          const envelope = payload as { session?: unknown; sender?: unknown; message?: unknown };
+          if (typeof envelope.session !== "string"
+            || envelope.session.length < 16
+            || envelope.session.length > 128
+            || typeof envelope.sender !== "string"
+            || envelope.sender.length < 16
+            || envelope.sender.length > 128
+            || !envelope.message
+            || typeof envelope.message !== "object") return;
+          server.ws.send(remoteSyncEvent, payload);
+        });
       },
       async transform(source, id) {
         const normalizedId = normalizePath(id.split("?")[0]);

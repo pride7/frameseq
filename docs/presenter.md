@@ -56,7 +56,31 @@ Navigation is synchronized in both directions. The following actions update the 
 - Incremental `steps()` and `showAt()` reveals.
 - The presenter page selector.
 
-Synchronization uses the browser's `BroadcastChannel` API. The windows must use the same origin, browser profile, and device. Cross-device remote control requires a separate network transport and is not part of the current presenter mode.
+Same-device synchronization uses the browser's `BroadcastChannel` API. The windows must use the same origin and browser profile.
+
+## Pair a phone remote
+
+Start FrameSeq with its local-network transport enabled:
+
+```bash
+npm run present
+```
+
+The generated `present` script runs `frameseq dev slides.ts --remote`. In this mode FrameSeq listens on the computer's local network interface and adds an `R` control to the audience page plus a **Phone remote** control to presenter view.
+
+1. Connect the phone and presentation computer to the same Wi-Fi or local network.
+2. Open the presentation on the computer.
+3. Select `R` or **Phone remote**.
+4. Scan the QR code with the phone.
+5. If the computer has several network adapters, select another address in the pairing dialog when the first one is not reachable from the phone.
+
+The QR code contains a random session identifier and a local IP address. It is generated in the browser and is not sent to a third-party QR service. The phone initially opens a compact remote with large Previous and Next buttons, the current slide and page number, and a touch-friendly laser control. Enable the laser and drag across the slide preview to place the pointer on the audience screen.
+
+Select **Presenter view** at the top of the phone remote to see the complete presenter interface, including the next-slide preview, speaker notes, elapsed timer, slide selector, and navigation controls. On a narrow phone screen, the current slide stays visible while **Notes** and **Next slide** share a switchable panel; long notes scroll inside that panel instead of moving the current slide off screen. Select **Simple remote** to return to the touch-friendly controller. Both layouts keep the same pairing session and stay synchronized with the audience screen.
+
+Navigation, reveal steps, and pointer coordinates travel through a WebSocket relay inside the running FrameSeq development server. No account, internet connection, or FrameSeq cloud service is involved. The server also bridges phone commands to any presenter window open on the computer.
+
+The operating system may ask whether Node.js can accept connections on private networks; allow private-network access for phone pairing. Guest Wi-Fi networks with client isolation can prevent devices from reaching each other even when they show the same network name.
 
 ## Timer
 
@@ -78,8 +102,10 @@ Move outside the current-slide preview to hide the dot. Press `Ctrl+L` again to 
 
 Presenter view works without an audience window, which makes it useful for rehearsal. Below 900 pixels wide, the interface changes to a vertical layout containing the current slide, next slide, notes, and controls.
 
-The responsive layout makes the panel readable on a small device, but navigation synchronization still requires the audience and presenter pages to run on the same device.
+The responsive layout makes the panel readable on a small device. The QR-paired phone page lets you switch between this complete layout and the dedicated remote with larger controls.
 
 ## Static HTML
 
 Presenter view is included in `frameseq build` output. After hosting the generated `dist/` directory, open the regular page and press `P`, or append `?presenter=1` to its URL. No presenter server is required for same-device synchronization.
+
+Phone remote pairing is intentionally local-server only. A static GitHub Pages deployment has no WebSocket relay, so it does not show the remote-pairing control. Run `npm run present` on the presentation computer when a phone remote is needed.

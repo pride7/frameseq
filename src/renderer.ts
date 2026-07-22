@@ -1,4 +1,5 @@
 import katex from "katex";
+import QRCode from "qrcode";
 import type {
   DeckDefinition,
   FrameSeqNode,
@@ -6,6 +7,9 @@ import type {
   PresentationFontOptions,
 } from "./core";
 import { themeCssVariables } from "./theme";
+
+const remoteSyncEvent = "frameseq:remote-sync";
+const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
 
 function applyStyles(element: HTMLElement, styles: Record<string, string>): void {
   Object.assign(element.style, styles);
@@ -353,13 +357,46 @@ interface PresenterElements {
   controls: HTMLElement;
 }
 
+interface RemoteElements {
+  shell: HTMLElement;
+  currentHost: HTMLElement;
+  currentLabel: HTMLElement;
+  counter: HTMLElement;
+  status: HTMLElement;
+  laserToggle: HTMLButtonElement;
+  controls: HTMLElement;
+}
+
+type SyncMessage = {
+  type: "request-state";
+} | {
+  type: "navigation";
+  slide: number;
+  step: number;
+} | {
+  type: "pointer";
+  slide: number;
+  x: number;
+  y: number;
+  visible: boolean;
+};
+
+interface RemoteEnvelope {
+  session: string;
+  sender: string;
+  message: SyncMessage;
+}
+
 function createPresenterView(
   target: HTMLElement,
   root: HTMLElement,
   deck: DeckDefinition,
 ): PresenterElements {
+  const pairedRemote = localRemoteAvailable
+    && Boolean(new URLSearchParams(location.search).get("session"));
   const shell = document.createElement("main");
   shell.className = "frameseq-presenter";
+  shell.dataset.mobilePanel = "notes";
   shell.innerHTML = `
     <header class="frameseq-presenter-header">
       <div>
@@ -375,6 +412,10 @@ function createPresenterView(
     </header>
     <section class="frameseq-presenter-current" aria-label="Current slide"></section>
     <aside class="frameseq-presenter-side">
+      <div class="frameseq-presenter-mobile-tabs" role="tablist" aria-label="Presenter detail">
+        <button type="button" role="tab" data-action="mobile-panel" data-panel="notes" aria-selected="true">Notes</button>
+        <button type="button" role="tab" data-action="mobile-panel" data-panel="next" aria-selected="false">Next slide</button>
+      </div>
       <section class="frameseq-presenter-next">
         <div class="frameseq-presenter-section-heading">
           <span>Next</span>
@@ -395,6 +436,9 @@ function createPresenterView(
         <span>Go to</span>
         <select class="frameseq-presenter-page-select" aria-label="Go to slide"></select>
       </label>
+      ${localRemoteAvailable
+        ? `<button type="button" data-action="${pairedRemote ? "remote-here" : "remote-pair"}">${pairedRemote ? "Simple remote" : "Phone remote"}</button>`
+        : ""}
       <button type="button" data-action="audience">Open audience view</button>
     </nav>
   `;
@@ -431,6 +475,83 @@ function createPresenterView(
     laserToggle: required<HTMLButtonElement>("[data-action='laser-toggle']"),
     controls: required<HTMLElement>(".frameseq-presenter-controls"),
   };
+}
+
+function createRemoteView(
+  target: HTMLElement,
+  root: HTMLElement,
+  deck: DeckDefinition,
+): RemoteElements {
+  const shell = document.createElement("main");
+  shell.className = "frameseq-remote";
+  shell.innerHTML = `
+    <header class="frameseq-remote-header">
+      <div>
+        <div class="frameseq-remote-kicker">Phone remote</div>
+        <div class="frameseq-remote-title"></div>
+      </div>
+      <div class="frameseq-remote-header-actions">
+        <div class="frameseq-remote-status is-waiting">Connecting…</div>
+        <button type="button" data-action="presenter-here">Presenter view</button>
+      </div>
+    </header>
+    <section class="frameseq-remote-current" aria-label="Current slide"></section>
+    <div class="frameseq-remote-slide-label"></div>
+    <nav class="frameseq-remote-controls" aria-label="Remote controls">
+      <button type="button" data-action="previous">← Previous</button>
+      <span class="frameseq-counter"></span>
+      <button type="button" data-action="next">Next →</button>
+      <button type="button" class="frameseq-remote-laser" data-action="laser-toggle" aria-pressed="false">Laser: Off</button>
+    </nav>
+    <p class="frameseq-remote-hint">Enable the laser, then drag across the slide preview.</p>
+  `;
+
+  const required = <T extends Element>(selector: string): T => {
+    const element = shell.querySelector<T>(selector);
+    if (!element) throw new Error(`Phone remote is missing ${selector}`);
+    return element;
+  };
+
+  required<HTMLElement>(".frameseq-remote-title").textContent = deck.title;
+  const currentHost = required<HTMLElement>(".frameseq-remote-current");
+  currentHost.append(root);
+  target.append(shell);
+
+  return {
+    shell,
+    currentHost,
+    currentLabel: required<HTMLElement>(".frameseq-remote-slide-label"),
+    counter: required<HTMLElement>(".frameseq-counter"),
+    status: required<HTMLElement>(".frameseq-remote-status"),
+    laserToggle: required<HTMLButtonElement>("[data-action='laser-toggle']"),
+    controls: required<HTMLElement>(".frameseq-remote-controls"),
+  };
+}
+
+function createRemoteSession(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "::1"
+    || hostname === "[::1]";
+}
+
+function controllerUrl(origin: string, session: string): string {
+  const source = new URL(location.href);
+  const networkOrigin = new URL(origin);
+  source.protocol = networkOrigin.protocol;
+  source.host = networkOrigin.host;
+  source.searchParams.delete("presenter");
+  source.searchParams.delete("print");
+  source.searchParams.set("remote", "1");
+  source.searchParams.set("session", session);
+  source.hash = "";
+  return source.href;
 }
 
 function formatDuration(milliseconds: number): string {
@@ -499,9 +620,11 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
   const searchParams = new URLSearchParams(location.search);
   const printMode = searchParams.has("print");
-  const presenterMode = !printMode && searchParams.has("presenter");
+  const remoteMode = !printMode && searchParams.get("remote") === "1";
+  const presenterMode = !printMode && !remoteMode && searchParams.has("presenter");
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
+  document.documentElement.classList.toggle("frameseq-remote-mode", remoteMode);
   document.documentElement.style.setProperty("--slide-width", `${deck.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${deck.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
@@ -564,8 +687,11 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   const presenter = presenterMode
     ? createPresenterView(target, root, deck)
     : undefined;
-  const controls = presenter?.controls ?? document.createElement("nav");
-  if (!presenter) {
+  const remote = remoteMode
+    ? createRemoteView(target, root, deck)
+    : undefined;
+  const controls = presenter?.controls ?? remote?.controls ?? document.createElement("nav");
+  if (!presenter && !remote) {
     target.append(root);
     controls.className = "frameseq-controls";
     controls.setAttribute("aria-label", "Slide navigation");
@@ -573,6 +699,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       <button type="button" data-action="previous" aria-label="Previous slide">←</button>
       <span class="frameseq-counter"></span>
       <button type="button" data-action="next" aria-label="Next slide">→</button>
+      ${localRemoteAvailable ? '<button type="button" data-action="remote-pair" aria-label="Pair phone remote" title="Pair phone remote">R</button>' : ""}
       <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
     `;
     target.append(controls);
@@ -580,6 +707,8 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
   let currentSlide = 0;
   let currentStep = 0;
+  let remoteSession = searchParams.get("session")?.trim() ?? "";
+  const syncClientId = createRemoteSession();
   let nextCanvas: HTMLElement | undefined;
   let pointerState = {
     slide: 0,
@@ -630,9 +759,24 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     requestAnimationFrame(updateNextScale);
   }
 
+  function updateRemote(): void {
+    if (!remote) return;
+    remote.currentLabel.textContent = `${currentSlide + 1}. ${slides[currentSlide].label}`;
+  }
+
   const syncChannel = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(`frameseq-navigation:${location.pathname}`)
     : undefined;
+
+  function postSyncMessage(message: SyncMessage): void {
+    syncChannel?.postMessage(message);
+    if (!remoteSession || !localRemoteAvailable) return;
+    import.meta.hot?.send(remoteSyncEvent, {
+      session: remoteSession,
+      sender: syncClientId,
+      message,
+    } satisfies RemoteEnvelope);
+  }
 
   function renderLaserPointer(): void {
     laserPointers.forEach((pointer, index) => {
@@ -647,7 +791,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   }
 
   function broadcastPointer(): void {
-    syncChannel?.postMessage({
+    postSyncMessage({
       type: "pointer",
       ...pointerState,
     });
@@ -675,7 +819,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   }
 
   function broadcastNavigation(): void {
-    syncChannel?.postMessage({
+    postSyncMessage({
       type: "navigation",
       slide: currentSlide,
       step: currentStep,
@@ -695,6 +839,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     });
 
     const counter = presenter?.counter
+      ?? remote?.counter
       ?? controls.querySelector<HTMLElement>(".frameseq-counter");
     if (counter) {
       const stepSuffix = slides[currentSlide].maxStep > 0
@@ -704,6 +849,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     }
     history.replaceState(null, "", `#${currentSlide + 1}`);
     updatePresenter();
+    updateRemote();
     if (shouldBroadcast) broadcastNavigation();
     requestAnimationFrame(updateScale);
   }
@@ -734,16 +880,132 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     update();
   }
 
-  function openMode(mode: "audience" | "presenter"): void {
+  function modeUrl(mode: "audience" | "presenter" | "remote"): URL {
     const url = new URL(location.href);
     url.searchParams.delete("print");
     if (mode === "presenter") {
       url.searchParams.set("presenter", "1");
+      url.searchParams.delete("remote");
+    } else if (mode === "remote") {
+      url.searchParams.set("remote", "1");
+      url.searchParams.delete("presenter");
     } else {
       url.searchParams.delete("presenter");
+      url.searchParams.delete("remote");
     }
     url.hash = String(currentSlide + 1);
+    return url;
+  }
+
+  function openMode(mode: "audience" | "presenter"): void {
+    const url = modeUrl(mode);
     window.open(url.href, `frameseq-${mode}`);
+  }
+
+  function switchMode(mode: "presenter" | "remote"): void {
+    location.assign(modeUrl(mode));
+  }
+
+  async function openRemotePairing(): Promise<void> {
+    if (!localRemoteAvailable) return;
+    if (!remoteSession) remoteSession = createRemoteSession();
+
+    const currentUrl = new URL(location.href);
+    currentUrl.searchParams.set("session", remoteSession);
+    history.replaceState(null, "", currentUrl);
+
+    const dialog = document.createElement("dialog");
+    dialog.className = "frameseq-remote-dialog";
+    dialog.innerHTML = `
+      <div class="frameseq-remote-dialog-header">
+        <div>
+          <div class="frameseq-remote-dialog-kicker">Local network</div>
+          <h2>Pair a phone remote</h2>
+        </div>
+        <button type="button" data-action="close" aria-label="Close">×</button>
+      </div>
+      <p>Connect the phone and this computer to the same Wi-Fi, then scan the code.</p>
+      <div class="frameseq-remote-qr" aria-live="polite">Preparing local address…</div>
+      <label class="frameseq-remote-address-picker">
+        <span>Network address</span>
+        <select></select>
+      </label>
+      <code class="frameseq-remote-url"></code>
+      <div class="frameseq-remote-dialog-actions">
+        <button type="button" data-action="copy">Copy link</button>
+        <button type="button" data-action="close">Done</button>
+      </div>
+      <p class="frameseq-remote-dialog-note">Keep the presentation server and this browser page open while presenting.</p>
+    `;
+    target.append(dialog);
+
+    const qr = dialog.querySelector<HTMLElement>(".frameseq-remote-qr");
+    const picker = dialog.querySelector<HTMLSelectElement>("select");
+    const urlLabel = dialog.querySelector<HTMLElement>(".frameseq-remote-url");
+    const copyButton = dialog.querySelector<HTMLButtonElement>("[data-action='copy']");
+    if (!qr || !picker || !urlLabel || !copyButton) {
+      dialog.remove();
+      throw new Error("Phone remote dialog is incomplete");
+    }
+
+    const renderCode = async (origin: string) => {
+      const url = controllerUrl(origin, remoteSession);
+      qr.innerHTML = await QRCode.toString(url, {
+        type: "svg",
+        width: 280,
+        margin: 1,
+        errorCorrectionLevel: "M",
+        color: { dark: "#020617", light: "#ffffff" },
+      });
+      urlLabel.textContent = url;
+    };
+
+    try {
+      const response = await fetch("/__frameseq/remote-info", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { origins?: unknown };
+      const origins = Array.isArray(data.origins)
+        ? data.origins.filter((origin): origin is string => typeof origin === "string")
+        : [];
+      if (!isLoopbackHostname(location.hostname)) origins.unshift(location.origin);
+      const uniqueOrigins = [...new Set(origins)];
+      if (uniqueOrigins.length === 0) {
+        throw new Error("No local-network address was found");
+      }
+      uniqueOrigins.forEach((origin) => {
+        const option = document.createElement("option");
+        option.value = origin;
+        option.textContent = origin;
+        picker.append(option);
+      });
+      await renderCode(uniqueOrigins[0]);
+      picker.addEventListener("change", () => void renderCode(picker.value));
+    } catch (error) {
+      qr.textContent = error instanceof Error
+        ? `Could not create a phone link: ${error.message}`
+        : "Could not create a phone link.";
+      picker.closest("label")?.remove();
+      urlLabel.remove();
+      copyButton.remove();
+    }
+
+    dialog.addEventListener("click", (event) => {
+      const action = (event.target as HTMLElement).closest<HTMLButtonElement>("button")?.dataset.action;
+      if (action === "close") dialog.close();
+      if (action === "copy" && urlLabel.textContent) {
+        if (!navigator.clipboard) {
+          copyButton.textContent = "Copy unavailable";
+          return;
+        }
+        void navigator.clipboard.writeText(urlLabel.textContent).then(() => {
+          copyButton.textContent = "Copied";
+        }).catch(() => {
+          copyButton.textContent = "Copy failed";
+        });
+      }
+    });
+    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    dialog.showModal();
   }
 
   controls.addEventListener("click", (event) => {
@@ -752,6 +1014,13 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     if (button?.dataset.action === "previous") previous();
     if (button?.dataset.action === "presenter") openMode("presenter");
     if (button?.dataset.action === "audience") openMode("audience");
+    if (button?.dataset.action === "remote-pair") void openRemotePairing();
+    if (button?.dataset.action === "remote-here") switchMode("remote");
+  });
+
+  remote?.shell.addEventListener("click", (event) => {
+    const action = (event.target as HTMLElement).closest<HTMLButtonElement>("button")?.dataset.action;
+    if (action === "presenter-here") switchMode("presenter");
   });
 
   presenter?.pageSelect.addEventListener("change", () => {
@@ -762,9 +1031,6 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     let timerElapsed = 0;
     let timerStarted = performance.now();
     let timerRunning = true;
-    let laserEnabled = false;
-    let pointerFrame = 0;
-    let pendingPointer: typeof pointerState | undefined;
 
     const updateTimer = () => {
       const elapsed = timerElapsed + (timerRunning ? performance.now() - timerStarted : 0);
@@ -772,56 +1038,19 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       presenter.timerToggle.textContent = timerRunning ? "Pause" : "Resume";
     };
 
-    const flushPointer = () => {
-      pointerFrame = 0;
-      if (!pendingPointer) return;
-      const nextPointer = pendingPointer;
-      pendingPointer = undefined;
-      setPointer(nextPointer);
-    };
-
-    const queuePointer = (state: typeof pointerState) => {
-      pendingPointer = state;
-      if (!pointerFrame) pointerFrame = requestAnimationFrame(flushPointer);
-    };
-
-    const setLaserEnabled = (enabled: boolean) => {
-      laserEnabled = enabled;
-      presenter.laserToggle.textContent = enabled ? "Laser: On" : "Laser: Off";
-      presenter.laserToggle.setAttribute("aria-pressed", String(enabled));
-      presenter.currentHost.classList.toggle("is-laser-active", enabled);
-      if (!enabled) queuePointer({ ...pointerState, visible: false });
-    };
-
-    const toggleLaser = () => setLaserEnabled(!laserEnabled);
-
-    presenter.currentHost.addEventListener("pointermove", (event) => {
-      if (!laserEnabled) return;
-      const canvas = slides[currentSlide].canvas;
-      const bounds = canvas.getBoundingClientRect();
-      const x = (event.clientX - bounds.left) / bounds.width;
-      const y = (event.clientY - bounds.top) / bounds.height;
-      const visible = x >= 0 && x <= 1 && y >= 0 && y <= 1;
-      queuePointer({ slide: currentSlide, x, y, visible });
-    });
-
-    presenter.currentHost.addEventListener("pointerleave", () => {
-      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
-    });
-
-    presenter.currentHost.addEventListener("pointerup", (event) => {
-      if (laserEnabled && event.pointerType === "touch") {
-        queuePointer({ ...pointerState, visible: false });
-      }
-    });
-
-    presenter.currentHost.addEventListener("pointercancel", () => {
-      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
-    });
-
     presenter.shell.addEventListener("click", (event) => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
-      if (button?.dataset.action === "laser-toggle") toggleLaser();
+      if (button?.dataset.action === "mobile-panel") {
+        const panel = button.dataset.panel;
+        if (panel === "notes" || panel === "next") {
+          presenter.shell.dataset.mobilePanel = panel;
+          presenter.shell
+            .querySelectorAll<HTMLButtonElement>("[data-action='mobile-panel']")
+            .forEach((candidate) => {
+              candidate.setAttribute("aria-selected", String(candidate.dataset.panel === panel));
+            });
+        }
+      }
       if (button?.dataset.action === "timer-toggle") {
         if (timerRunning) {
           timerElapsed += performance.now() - timerStarted;
@@ -842,8 +1071,66 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     window.setInterval(updateTimer, 250);
   }
 
-  syncChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
-    const message = event.data;
+  const laserHost = presenter?.currentHost ?? remote?.currentHost;
+  const laserToggle = presenter?.laserToggle ?? remote?.laserToggle;
+  if (laserHost && laserToggle) {
+    let laserEnabled = false;
+    let pointerFrame = 0;
+    let pendingPointer: typeof pointerState | undefined;
+
+    const flushPointer = () => {
+      pointerFrame = 0;
+      if (!pendingPointer) return;
+      const nextPointer = pendingPointer;
+      pendingPointer = undefined;
+      setPointer(nextPointer);
+    };
+
+    const queuePointer = (state: typeof pointerState) => {
+      pendingPointer = state;
+      if (!pointerFrame) pointerFrame = requestAnimationFrame(flushPointer);
+    };
+
+    const setLaserEnabled = (enabled: boolean) => {
+      laserEnabled = enabled;
+      laserToggle.textContent = enabled ? "Laser: On" : "Laser: Off";
+      laserToggle.setAttribute("aria-pressed", String(enabled));
+      laserHost.classList.toggle("is-laser-active", enabled);
+      if (!enabled) queuePointer({ ...pointerState, visible: false });
+    };
+
+    laserToggle.addEventListener("click", () => setLaserEnabled(!laserEnabled));
+    laserHost.addEventListener("pointermove", (event) => {
+      if (!laserEnabled) return;
+      const canvas = slides[currentSlide].canvas;
+      const bounds = canvas.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width;
+      const y = (event.clientY - bounds.top) / bounds.height;
+      const visible = x >= 0 && x <= 1 && y >= 0 && y <= 1;
+      queuePointer({ slide: currentSlide, x, y, visible });
+    });
+    laserHost.addEventListener("pointerleave", () => {
+      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
+    });
+    laserHost.addEventListener("pointerup", (event) => {
+      if (laserEnabled && event.pointerType === "touch") {
+        queuePointer({ ...pointerState, visible: false });
+      }
+    });
+    laserHost.addEventListener("pointercancel", () => {
+      if (laserEnabled) queuePointer({ ...pointerState, visible: false });
+    });
+  }
+
+  function setRemoteConnection(label: string, state: "waiting" | "connected" | "disconnected"): void {
+    if (!remote) return;
+    remote.status.textContent = label;
+    remote.status.classList.toggle("is-waiting", state === "waiting");
+    remote.status.classList.toggle("is-connected", state === "connected");
+    remote.status.classList.toggle("is-disconnected", state === "disconnected");
+  }
+
+  function handleSyncMessage(message: unknown, source: "broadcast" | "remote"): void {
     if (!message || typeof message !== "object") return;
     const data = message as {
       type?: unknown;
@@ -854,8 +1141,10 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       visible?: unknown;
     };
     if (data.type === "request-state") {
-      broadcastNavigation();
-      if (presenter) broadcastPointer();
+      if (!remote) {
+        broadcastNavigation();
+        broadcastPointer();
+      }
       return;
     }
     if (data.type === "pointer"
@@ -869,6 +1158,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
         y: data.y,
         visible: data.visible,
       }, false);
+      if (source === "remote") syncChannel?.postMessage(data);
       return;
     }
     if (data.type !== "navigation"
@@ -881,7 +1171,40 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       slides[currentSlide].maxStep,
     );
     update(false);
+    if (source === "remote") syncChannel?.postMessage(data);
+    if (remote) setRemoteConnection("Connected", "connected");
+  }
+
+  syncChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
+    handleSyncMessage(event.data, "broadcast");
   });
+
+  import.meta.hot?.on(remoteSyncEvent, (payload: unknown) => {
+    if (!payload || typeof payload !== "object") return;
+    const envelope = payload as { session?: unknown; sender?: unknown; message?: unknown };
+    if (!remoteSession
+      || envelope.session !== remoteSession
+      || envelope.sender === syncClientId) return;
+    handleSyncMessage(envelope.message, "remote");
+  });
+  import.meta.hot?.on("vite:ws:connect", () => {
+    if (!remote || !remoteSession) return;
+    setRemoteConnection("Waiting for presentation…", "waiting");
+    postSyncMessage({ type: "request-state" });
+  });
+  import.meta.hot?.on("vite:ws:disconnect", () => {
+    if (remote) setRemoteConnection("Disconnected", "disconnected");
+  });
+
+  if (remote) {
+    if (!localRemoteAvailable) {
+      setRemoteConnection("Local remote unavailable", "disconnected");
+    } else if (!remoteSession) {
+      setRemoteConnection("Invalid pairing link", "disconnected");
+    } else {
+      setRemoteConnection("Waiting for presentation…", "waiting");
+    }
+  }
 
   addEventListener("keydown", (event) => {
     const modified = event.ctrlKey || event.altKey || event.metaKey;
@@ -893,11 +1216,11 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       event.preventDefault();
       previous();
     }
-    if (!presenterMode && event.code === "KeyP" && !modified && !event.repeat) {
+    if (!presenterMode && !remoteMode && event.code === "KeyP" && !modified && !event.repeat) {
       event.preventDefault();
       openMode("presenter");
     }
-    if (presenterMode
+    if ((presenterMode || remoteMode)
       && event.code === "KeyL"
       && event.ctrlKey
       && !event.altKey
@@ -905,7 +1228,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
       && !event.shiftKey
       && !event.repeat) {
       event.preventDefault();
-      presenter?.laserToggle.click();
+      (presenter?.laserToggle ?? remote?.laserToggle)?.click();
     }
   });
 
@@ -918,9 +1241,9 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
     updateScale();
     updateNextScale();
   });
-  resizeObserver.observe(presenter?.currentHost ?? root);
+  resizeObserver.observe(presenter?.currentHost ?? remote?.currentHost ?? root);
   if (presenter) resizeObserver.observe(presenter.nextFrame);
   update(false);
-  syncChannel?.postMessage({ type: "request-state" });
+  postSyncMessage({ type: "request-state" });
   document.documentElement.dataset.ready = "true";
 }

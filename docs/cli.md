@@ -19,7 +19,7 @@ The command refuses to overwrite an existing file.
 ## Start the development server
 
 ```bash
-frameseq dev [file]
+frameseq dev [file] [--remote]
 ```
 
 The default entry is `slides.ts`.
@@ -31,6 +31,14 @@ frameseq dev talk.slides.ts
 The browser opens automatically and the presentation updates after source changes.
 
 Press `P` in the audience page to open presenter view, or add `?presenter=1` to the preview URL. Both windows stay synchronized while they share the same origin and browser device.
+
+Add `--remote` when presenting to expose the server on the local network and enable QR-code phone pairing:
+
+```bash
+frameseq dev talk.slides.ts --remote
+```
+
+The phone and presentation computer must be on the same local network. This mode enables a local WebSocket relay for slide navigation, reveal steps, and the laser pointer; it does not use a FrameSeq cloud service.
 
 ## Build static HTML
 
@@ -91,6 +99,7 @@ A project generated with `npm create frameseq` provides:
 
 ```bash
 npm run dev
+npm run present
 npm run build
 npm run build:single
 npm run pdf

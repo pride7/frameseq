@@ -441,6 +441,14 @@ slide("Architecture")
 
 While viewing the presentation, press `P` or use the `P` button to open presenter view in a second window. It shows the current slide, next slide, speaker notes, timer, page selector, navigation controls, and a synchronized virtual laser pointer. Press `Ctrl+L` in presenter view to toggle the laser. The audience and presenter windows stay synchronized in both directions without a server.
 
+For a phone remote on the same Wi-Fi, run:
+
+```bash
+npm run present
+```
+
+Select the `R` control and scan the QR code. The phone starts with large navigation controls, a current-slide preview, and a touch laser surface. Select **Presenter view** on the phone to see speaker notes, the next-slide preview, timer, and page selector; **Simple remote** returns to the touch-friendly controller without losing the pairing session. FrameSeq relays navigation, reveal steps, and pointer coordinates through the local presentation server—no account, internet connection, or cloud service is required.
+
 You can also append `?presenter=1` to the audience page's current URL. For example, if the audience page is running on port `5174`:
 
 ```text
@@ -449,7 +457,7 @@ http://localhost:5174/?presenter=1
 
 Use the port printed by `npm run dev`; Vite does not always use `5173` when that port is occupied.
 
-Synchronization uses `BroadcastChannel`, so both windows must use the same browser origin and device. See [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md).
+Same-device synchronization uses `BroadcastChannel`; phone pairing uses a local WebSocket only while `npm run present` is active. See [Presenter view](https://github.com/pride7/frameseq/blob/main/docs/presenter.md).
 
 ## Advanced object API
 

@@ -77,6 +77,13 @@ run(
   [resolve(harnessDirectory, "node_modules", "create-frameseq", "index.mjs"), "app"],
   harnessDirectory,
 );
+const generatedPackageJson = JSON.parse(await readFile(
+  resolve(appDirectory, "package.json"),
+  "utf8",
+));
+if (generatedPackageJson.scripts?.present !== "frameseq dev slides.ts --remote") {
+  throw new Error("Generated project did not include the local phone-remote script");
+}
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
 runNpm(["run", "check"], appDirectory);
 run(

@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.10.0";
+const FRAMESEQ_VERSION = "^0.11.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -41,6 +41,7 @@ try {
     type: "module",
     scripts: {
       dev: "frameseq dev slides.ts",
+      present: "frameseq dev slides.ts --remote",
       build: "frameseq build slides.ts",
       "build:single": "frameseq build slides.ts --single-file",
       pdf: "frameseq pdf slides.ts",

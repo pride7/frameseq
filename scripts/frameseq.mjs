@@ -15,7 +15,7 @@ function help() {
   console.log(`FrameSeq
 
 Usage:
-  frameseq dev [file]                 Preview a deck with hot reload
+  frameseq dev [file] [--remote]      Preview a deck with hot reload
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] Export a deck to PDF
@@ -25,6 +25,7 @@ Usage:
 
 Examples:
   frameseq dev talk.slides.ts
+  frameseq dev talk.slides.ts --remote
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
@@ -91,11 +92,14 @@ bullets(
   console.log(`Created ${target}`);
 }
 
-async function startDevelopmentServer(entry) {
+async function startDevelopmentServer(entry, remoteEnabled = false) {
   process.env.FRAMESEQ_ENTRY = entry;
+  if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
+  else delete process.env.FRAMESEQ_REMOTE;
   const server = await createServer({
     configFile,
     root: packageRoot,
+    server: remoteEnabled ? { host: true } : undefined,
   });
   await server.listen();
   server.printUrls();
@@ -576,7 +580,9 @@ try {
   } else if (command === "dev" || command === "build" || command === "pdf" || command === "check") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
-    if (command === "dev") await startDevelopmentServer(entry);
+    if (command === "dev") {
+      await startDevelopmentServer(entry, process.argv.includes("--remote"));
+    }
     if (command === "build") {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
     }

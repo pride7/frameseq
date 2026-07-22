@@ -151,6 +151,7 @@ try {
 
   assert.equal(await count(".frameseq-presenter"), 0);
   assert.equal(await count(".frameseq-presenter-notes"), 0);
+  assert.equal(await count("[data-action='remote-pair']"), 0);
 
   const presenterPopup = new Promise((resolve) => page.once("popup", resolve));
   await page.click("[data-action='presenter']");
