@@ -20,9 +20,36 @@ const creatorJson = JSON.parse(await readFile(
   resolve(packageRoot, "packages", "create-frameseq", "package.json"),
   "utf8",
 ));
+const publishWorkflow = await readFile(
+  resolve(packageRoot, ".github", "workflows", "publish.yml"),
+  "utf8",
+);
+const playgroundJson = JSON.parse(await readFile(
+  resolve(packageRoot, "examples", "playground", "package.json"),
+  "utf8",
+));
+const playgroundSlides = await readFile(
+  resolve(packageRoot, "examples", "playground", "slides.ts"),
+  "utf8",
+);
 
 if (!packageJson.files?.includes("llms.txt")) {
   throw new Error("The npm package must include the FrameSeq AI authoring contract");
+}
+if (playgroundJson.devDependencies?.["@pride7/frameseq"] !== `^${packageJson.version}`
+  || playgroundJson.stackblitz?.startCommand !== "npm run dev"
+  || !playgroundSlides.includes("presentation({")
+  || !playgroundSlides.includes("slide(")) {
+  throw new Error("The standalone StackBlitz playground is incomplete or uses the wrong FrameSeq version");
+}
+if (!publishWorkflow.includes("tags:")
+  || !publishWorkflow.includes('"v*"')
+  || !publishWorkflow.includes("id-token: write")
+  || !publishWorkflow.includes("npm run release:check")
+  || !publishWorkflow.includes("npm publish --access=public")
+  || !publishWorkflow.includes("working-directory: packages/create-frameseq")
+  || publishWorkflow.includes("NODE_AUTH_TOKEN")) {
+  throw new Error("Trusted Publishing workflow is missing a required tag, OIDC, check, or package publish setting");
 }
 
 if (!packageJson.scripts?.["build:gallery"]?.startsWith("npm run build:package &&")) {

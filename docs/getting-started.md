@@ -1,5 +1,9 @@
 # Getting started
 
+## Try it online
+
+Open the [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) to edit `slides.ts` and use the live preview entirely in the browser. StackBlitz creates a personal fork when you save, so the repository example remains unchanged.
+
 ## Create a project
 
 ```bash

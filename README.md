@@ -7,7 +7,7 @@ FrameSeq is an AI-friendly presentation framework with a linear authoring model,
 [![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
 [![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
 
-[Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://github.com/pride7/frameseq/tree/main/docs) · [See what changed](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
+[Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://github.com/pride7/frameseq/tree/main/docs) · [See what changed](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
 
 ```ts
 presentation({
@@ -136,6 +136,8 @@ text("Important")
 Or drop down to the explicit object API for a completely custom composition. FrameSeq does not force every slide into the same abstraction level.
 
 ## Quick start
+
+Open the editable [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) to change `slides.ts` and see the live presentation without installing anything.
 
 Create a presentation project:
 
@@ -546,6 +548,7 @@ This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Im
 - [API reference](https://github.com/pride7/frameseq/blob/main/docs/api-reference.md)
 - [CLI reference](https://github.com/pride7/frameseq/blob/main/docs/cli.md)
 - [Advanced composition](https://github.com/pride7/frameseq/blob/main/docs/advanced.md)
+- [Release automation](https://github.com/pride7/frameseq/blob/main/docs/releasing.md)
 - [Version changelog](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
 
 ## Continuous integration and changelog
@@ -556,10 +559,12 @@ User-visible changes are recorded in [CHANGELOG.md](https://github.com/pride7/fr
 
 ## Development
 
-Before publishing a FrameSeq release:
+Before publishing a FrameSeq release locally:
 
 ```bash
 npm run release:check
 ```
 
 The release check builds the library, demo, and Gallery, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.
+
+Maintainers can instead publish both npm packages from a matching version tag through GitHub OIDC. See [Release FrameSeq](https://github.com/pride7/frameseq/blob/main/docs/releasing.md) for the one-time Trusted Publisher configuration and tag workflow.

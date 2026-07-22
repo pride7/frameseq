@@ -80,6 +80,7 @@
     "pptx": "node scripts/frameseq.mjs pptx slides.ts",
     "export:pptx": "node scripts/frameseq.mjs pptx slides.ts --output output/pptx/frameseq.pptx",
     "pack:check": "node scripts/package-test.mjs",
+    "release:tag-check": "node scripts/release-tag-test.mjs",
     "release:check": "npm test && npm run pack:check",
     "prepack": "npm run build:package"
   },

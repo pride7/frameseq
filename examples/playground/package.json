@@ -1,0 +1,20 @@
+{
+  "name": "frameseq-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "frameseq dev slides.ts",
+    "check": "tsc --noEmit && frameseq check slides.ts",
+    "build": "frameseq build slides.ts",
+    "pdf": "frameseq pdf slides.ts",
+    "pptx": "frameseq pptx slides.ts"
+  },
+  "devDependencies": {
+    "@pride7/frameseq": "^0.15.0",
+    "typescript": "^5.8.3"
+  },
+  "stackblitz": {
+    "startCommand": "npm run dev"
+  }
+}

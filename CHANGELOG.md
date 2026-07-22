@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- A standalone StackBlitz playground with one-click entry points from the README, documentation, and Gallery.
+- Tag-based Trusted Publishing for both npm packages through GitHub Actions and OIDC.
+- A release guide and automated checks that keep tags, package versions, the creator template, and playground dependency aligned.
+
 ## [0.15.0] - 2026-07-21
 
 ### Added

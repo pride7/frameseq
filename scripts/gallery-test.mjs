@@ -43,6 +43,7 @@ try {
       .map((link) => link.getAttribute("href")),
     languageHeading: document.querySelector("#language-title")?.textContent,
     outputHeading: document.querySelector("#outputs-title")?.textContent,
+    onlineAction: document.querySelector(".online-action")?.getAttribute("href"),
   }));
   assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
   assert.equal(desktop.themeCards, 7);
@@ -51,6 +52,10 @@ try {
   assert.ok(desktop.overflow <= 0);
   assert.match(desktop.languageHeading ?? "", /top to bottom/i);
   assert.match(desktop.outputHeading ?? "", /web/i);
+  assert.equal(
+    desktop.onlineAction,
+    "https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground",
+  );
   assert.equal(
     await page.$eval(".ai-example-preview iframe", (frame) => frame.getAttribute("src")),
     "./examples/ai-research/#2",

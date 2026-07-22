@@ -1,0 +1,72 @@
+name: Publish npm packages
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@^11.5.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify release tag and package versions
+        run: npm run release:tag-check -- "${{ github.ref_name }}"
+      - name: Run release checks
+        run: npm run release:check
+
+  publish-frameseq:
+    needs: release-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@^11.5.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Publish FrameSeq
+        run: npm publish --access=public
+
+  publish-create-frameseq:
+    needs: release-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@^11.5.1
+      - name: Publish project creator
+        working-directory: packages/create-frameseq
+        run: npm publish --access=public
