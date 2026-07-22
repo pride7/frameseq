@@ -3,7 +3,7 @@ import {
   Code,
   Equation,
   Image,
-  type DeckOptions,
+  type SlidesOptions,
   ElementBuilder,
   Line,
   type LineBuilder,
@@ -24,7 +24,7 @@ import {
   Steps,
 } from "./semantic";
 
-let activeDeck: SlidesDefinition | undefined;
+let activeSlides: SlidesDefinition | undefined;
 let activeSlide: ContentSlideBuilder | undefined;
 let activeRegion: RegionBuilder | undefined;
 
@@ -107,27 +107,27 @@ export class TextBoxBuilder extends ElementBuilder {
 }
 
 /** Start a new linear slide document. Calling this resets the authoring context. */
-export function presentation(titleOrOptions: string | DeckOptions = {}): SlidesDefinition {
-  activeDeck = Slides(titleOrOptions);
+export function presentation(titleOrOptions: string | SlidesOptions = {}): SlidesDefinition {
+  activeSlides = Slides(titleOrOptions);
   activeSlide = undefined;
   activeRegion = undefined;
-  return activeDeck;
+  return activeSlides;
 }
 
 /** Used by the document compiler to export a zero-boilerplate slide file. */
 export function getActivePresentation(): SlidesDefinition {
-  if (!activeDeck) {
+  if (!activeSlides) {
     throw new Error("This slide document must begin with presentation()");
   }
-  return activeDeck;
+  return activeSlides;
 }
 
 /** Start a slide. Content commands belong to it until the next slide() call. */
 export function slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBuilder {
-  if (!activeDeck) {
+  if (!activeSlides) {
     throw new Error("Create a presentation with presentation() before calling slide()");
   }
-  activeSlide = activeDeck.slide(nameOrOptions);
+  activeSlide = activeSlides.slide(nameOrOptions);
   activeRegion = undefined;
   return activeSlide;
 }

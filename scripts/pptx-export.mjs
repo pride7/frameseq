@@ -260,7 +260,7 @@ async function screenshotData(page, selector) {
   return `data:image/png;base64,${data}`;
 }
 
-async function captureDeck(page) {
+async function captureSlides(page) {
   return page.evaluate(() => {
     const slideElements = Array.from(document.querySelectorAll(".frameseq-slide-frame > .frameseq-slide"));
     let exportSequence = 0;
@@ -481,28 +481,28 @@ export async function exportPptx({
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
 
-    let deck = await captureDeck(page);
+    let slides = await captureSlides(page);
     await page.setViewport({
-      width: Math.ceil(deck.width),
-      height: Math.ceil(deck.height),
+      width: Math.ceil(slides.width),
+      height: Math.ceil(slides.height),
       deviceScaleFactor: 2,
     });
     await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame))));
-    deck = await captureDeck(page);
+    slides = await captureSlides(page);
 
     const pptx = new PptxGenJS();
     const layoutName = "FRAMESEQ";
-    const width = deck.width / cssPixelsPerInch;
-    const height = deck.height / cssPixelsPerInch;
+    const width = slides.width / cssPixelsPerInch;
+    const height = slides.height / cssPixelsPerInch;
     pptx.defineLayout({ name: layoutName, width, height });
     pptx.layout = layoutName;
-    pptx.title = deck.title;
+    pptx.title = slides.title;
     pptx.subject = `Exported from FrameSeq (${flatten ? "flattened" : "editable"})`;
     pptx.author = "FrameSeq";
     pptx.company = "FrameSeq";
     pptx.lang = "en-US";
 
-    for (const slideData of deck.slides) {
+    for (const slideData of slides.slides) {
       const slide = pptx.addSlide();
       const background = cssColor(slideData.backgroundColor);
       if (background && background.transparency < 100) {

@@ -267,8 +267,8 @@ export default defineConfig({
         }
 
         const hasDefaultExport = /\bexport\s+default\b/.test(source);
-        const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqDeck } from "@pride7/frameseq";\n`;
-        const postlude = hasDefaultExport ? "" : "\nexport default __frameSeqDeck();\n";
+        const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqSlides } from "@pride7/frameseq";\n`;
+        const postlude = hasDefaultExport ? "" : "\nexport default __frameSeqSlides();\n";
         return { code: `${typstImport}${prelude}${transformedSource}${postlude}`, map: null };
       },
     },

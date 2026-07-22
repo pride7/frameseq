@@ -8,13 +8,13 @@ This page describes the supported FrameSeq authoring API. Lowercase functions be
 
 ```ts
 presentation(title?: string): SlidesDefinition
-presentation(options?: DeckOptions): SlidesDefinition
+presentation(options?: SlidesOptions): SlidesDefinition
 ```
 
 Starts a new active presentation. It must be called before `slide()`.
 
 ```ts
-interface DeckOptions {
+interface SlidesOptions {
   title?: string;
   subtitle?: string;
   author?: string;

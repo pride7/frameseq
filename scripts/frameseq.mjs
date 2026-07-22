@@ -17,10 +17,10 @@ function help() {
   console.log(`FrameSeq
 
 Usage:
-  frameseq dev [file] [--remote]      Preview a deck with hot reload
+  frameseq dev [file] [--remote]      Preview slides with hot reload
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
-  frameseq pdf [file] [--output path] Export a deck to PDF
+  frameseq pdf [file] [--output path] Export slides to PDF
   frameseq pptx [file] [--output path] [--flatten]
                                       Export an editable or flattened PowerPoint
   frameseq check [file] [--json] [--strict]
@@ -70,7 +70,7 @@ function pdfName(entry) {
   return `${file.replace(/\.slides$/, "")}.pdf`;
 }
 
-async function createDeckFile(target) {
+async function createSlidesFile(target) {
   try {
     await access(target, constants.F_OK);
     throw new Error(`Refusing to overwrite existing file: ${target}`);
@@ -582,7 +582,7 @@ try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
   } else if (command === "new") {
-    await createDeckFile(resolve(process.cwd(), file));
+    await createSlidesFile(resolve(process.cwd(), file));
   } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "check") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);

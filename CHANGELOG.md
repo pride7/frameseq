@@ -4,6 +4,14 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.14.0] - 2026-07-21
+
+### Changed
+
+- Standardized project terminology on “slides” across the public API, runtime, CLI, tests, documentation, and Gallery.
+- The low-level structural API now uses `SlidesRoot`, `SlidesRootDefinition`, and `SlidesOptions`; the browser renderer now mounts presentations with `mountSlides()`.
+- Gallery presentation sources now live in `gallery/slides/`.
+
 ## [0.13.1] - 2026-07-21
 
 ### Fixed

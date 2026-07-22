@@ -1,7 +1,7 @@
 import katex from "katex";
 import QRCode from "qrcode";
 import type {
-  DeckDefinition,
+  SlidesRootDefinition,
   FrameSeqNode,
   Length,
   PresentationFontOptions,
@@ -208,7 +208,7 @@ function titlePageItem(className: string, content: string): HTMLElement {
   return element;
 }
 
-function addAutomaticTitlePage(canvas: HTMLElement, deck: DeckDefinition): void {
+function addAutomaticTitlePage(canvas: HTMLElement, slides: SlidesRootDefinition): void {
   const hasManualContent = Array.from(canvas.children).some((child) => {
     const isEmptyBody = child.classList.contains("frameseq-slide-body")
       && child.children.length === 0
@@ -221,23 +221,23 @@ function addAutomaticTitlePage(canvas: HTMLElement, deck: DeckDefinition): void 
 
   const titlePage = document.createElement("section");
   titlePage.className = "frameseq-auto-title-page";
-  titlePage.append(titlePageItem("frameseq-cover-title", deck.title));
-  if (deck.subtitle) {
-    titlePage.append(titlePageItem("frameseq-cover-subtitle", deck.subtitle));
+  titlePage.append(titlePageItem("frameseq-cover-title", slides.title));
+  if (slides.subtitle) {
+    titlePage.append(titlePageItem("frameseq-cover-subtitle", slides.subtitle));
   }
 
   const rule = document.createElement("div");
   rule.className = "frameseq-cover-rule";
   titlePage.append(rule);
 
-  if (deck.author) {
-    titlePage.append(titlePageItem("frameseq-cover-author", deck.author));
+  if (slides.author) {
+    titlePage.append(titlePageItem("frameseq-cover-author", slides.author));
   }
-  if (deck.institute) {
-    titlePage.append(titlePageItem("frameseq-cover-institute", deck.institute));
+  if (slides.institute) {
+    titlePage.append(titlePageItem("frameseq-cover-institute", slides.institute));
   }
-  if (deck.date) {
-    titlePage.append(titlePageItem("frameseq-cover-date", deck.date));
+  if (slides.date) {
+    titlePage.append(titlePageItem("frameseq-cover-date", slides.date));
   }
   canvas.append(titlePage);
 }
@@ -246,12 +246,12 @@ function addThemeChrome(
   canvas: HTMLElement,
   slide: FrameSeqNode,
   index: number,
-  deck: DeckDefinition,
+  slides: SlidesRootDefinition,
 ): void {
-  const chrome = deck.theme.chrome;
+  const chrome = slides.theme.chrome;
   const isCover = hasClass(slide, "frameseq-cover-slide");
   if (isCover && chrome.autoTitlePage) {
-    addAutomaticTitlePage(canvas, deck);
+    addAutomaticTitlePage(canvas, slides);
   }
   if (isCover && !chrome.showOnCover) return;
 
@@ -274,11 +274,11 @@ function addThemeChrome(
 
     const title = document.createElement("span");
     title.className = "frameseq-theme-footer-title";
-    title.textContent = deck.title;
+    title.textContent = slides.title;
 
     const number = document.createElement("span");
     number.className = "frameseq-theme-footer-details";
-    number.textContent = chrome.slideNumber ? `${index + 1} / ${deck.slides.length}` : "";
+    number.textContent = chrome.slideNumber ? `${index + 1} / ${slides.slides.length}` : "";
 
     footer.append(title, number);
     canvas.classList.add("frameseq-has-footer");
@@ -288,17 +288,17 @@ function addThemeChrome(
 
   const author = document.createElement("span");
   author.className = "frameseq-theme-footer-author";
-  author.textContent = deck.author ?? deck.title;
+  author.textContent = slides.author ?? slides.title;
 
   const institute = document.createElement("span");
   institute.className = "frameseq-theme-footer-institute";
-  institute.textContent = deck.institute ?? "";
+  institute.textContent = slides.institute ?? "";
 
   const details = document.createElement("span");
   details.className = "frameseq-theme-footer-details";
   details.textContent = [
-    deck.date,
-    chrome.slideNumber ? `${index + 1} / ${deck.slides.length}` : undefined,
+    slides.date,
+    chrome.slideNumber ? `${index + 1} / ${slides.slides.length}` : undefined,
   ].filter(Boolean).join(" · ");
 
   footer.append(author, institute, details);
@@ -318,27 +318,27 @@ function slideLabel(slide: FrameSeqNode, index: number): string {
 function renderSlideCanvas(
   slide: FrameSeqNode,
   index: number,
-  deck: DeckDefinition,
+  slides: SlidesRootDefinition,
 ): HTMLElement {
   const label = slideLabel(slide, index);
   const canvas = renderNode(slide, String(index));
-  addThemeChrome(canvas, slide, index, deck);
+  addThemeChrome(canvas, slide, index, slides);
   canvas.dataset.frameseqSlideLabel = label;
   canvas.setAttribute("role", "group");
   canvas.setAttribute("aria-roledescription", "slide");
   canvas.setAttribute(
     "aria-label",
-    `${index + 1} of ${deck.slides.length}: ${label}`,
+    `${index + 1} of ${slides.slides.length}: ${label}`,
   );
   return canvas;
 }
 
-function scaleCanvas(canvas: HTMLElement, frame: HTMLElement, deck: DeckDefinition): void {
+function scaleCanvas(canvas: HTMLElement, frame: HTMLElement, slides: SlidesRootDefinition): void {
   const frameWidth = frame.clientWidth;
   const frameHeight = frame.clientHeight;
-  const scale = Math.min(frameWidth / deck.canvasWidth, frameHeight / deck.canvasHeight);
-  canvas.style.left = `${(frameWidth - deck.canvasWidth) / 2}px`;
-  canvas.style.top = `${(frameHeight - deck.canvasHeight) / 2}px`;
+  const scale = Math.min(frameWidth / slides.canvasWidth, frameHeight / slides.canvasHeight);
+  canvas.style.left = `${(frameWidth - slides.canvasWidth) / 2}px`;
+  canvas.style.top = `${(frameHeight - slides.canvasHeight) / 2}px`;
   canvas.style.transform = `scale(${scale})`;
 }
 
@@ -390,7 +390,7 @@ interface RemoteEnvelope {
 function createPresenterView(
   target: HTMLElement,
   root: HTMLElement,
-  deck: DeckDefinition,
+  slides: SlidesRootDefinition,
 ): PresenterElements {
   const pairedRemote = localRemoteAvailable
     && Boolean(new URLSearchParams(location.search).get("session"));
@@ -449,11 +449,11 @@ function createPresenterView(
     return element;
   };
 
-  required<HTMLElement>(".frameseq-presenter-title").textContent = deck.title;
+  required<HTMLElement>(".frameseq-presenter-title").textContent = slides.title;
   const currentHost = required<HTMLElement>(".frameseq-presenter-current");
   currentHost.append(root);
   const pageSelect = required<HTMLSelectElement>(".frameseq-presenter-page-select");
-  deck.slides.forEach((slide, index) => {
+  slides.slides.forEach((slide, index) => {
     const option = document.createElement("option");
     option.value = String(index);
     option.textContent = `${index + 1}. ${slideLabel(slide, index)}`;
@@ -480,7 +480,7 @@ function createPresenterView(
 function createRemoteView(
   target: HTMLElement,
   root: HTMLElement,
-  deck: DeckDefinition,
+  slides: SlidesRootDefinition,
 ): RemoteElements {
   const shell = document.createElement("main");
   shell.className = "frameseq-remote";
@@ -512,7 +512,7 @@ function createRemoteView(
     return element;
   };
 
-  required<HTMLElement>(".frameseq-remote-title").textContent = deck.title;
+  required<HTMLElement>(".frameseq-remote-title").textContent = slides.title;
   const currentHost = required<HTMLElement>(".frameseq-remote-current");
   currentHost.append(root);
   target.append(shell);
@@ -614,8 +614,8 @@ function applyPresentationFont(font: PresentationFontOptions | undefined): void 
   }
 }
 
-export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
-  document.title = deck.title;
+export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
+  document.title = slidesDocument.title;
   target.replaceChildren();
 
   const searchParams = new URLSearchParams(location.search);
@@ -626,33 +626,33 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
   document.documentElement.classList.toggle("frameseq-remote-mode", remoteMode);
-  document.documentElement.style.setProperty("--slide-width", `${deck.canvasWidth}px`);
-  document.documentElement.style.setProperty("--slide-height", `${deck.canvasHeight}px`);
-  document.documentElement.style.setProperty("--slide-ratio", `${deck.canvasWidth} / ${deck.canvasHeight}`);
-  document.documentElement.dataset.frameseqTheme = deck.theme.name;
-  document.documentElement.dataset.frameseqThemeFamily = deck.theme.family;
-  document.documentElement.dataset.frameseqCoverLayout = deck.theme.coverLayout;
-  for (const [name, value] of Object.entries(themeCssVariables(deck.theme))) {
+  document.documentElement.style.setProperty("--slide-width", `${slidesDocument.canvasWidth}px`);
+  document.documentElement.style.setProperty("--slide-height", `${slidesDocument.canvasHeight}px`);
+  document.documentElement.style.setProperty("--slide-ratio", `${slidesDocument.canvasWidth} / ${slidesDocument.canvasHeight}`);
+  document.documentElement.dataset.frameseqTheme = slidesDocument.theme.name;
+  document.documentElement.dataset.frameseqThemeFamily = slidesDocument.theme.family;
+  document.documentElement.dataset.frameseqCoverLayout = slidesDocument.theme.coverLayout;
+  for (const [name, value] of Object.entries(themeCssVariables(slidesDocument.theme))) {
     document.documentElement.style.setProperty(name, value);
   }
-  applyPresentationFont(deck.font);
+  applyPresentationFont(slidesDocument.font);
 
   if (printMode) {
     const pageStyle = document.createElement("style");
-    pageStyle.textContent = `@page { size: ${deck.canvasWidth / 96}in ${deck.canvasHeight / 96}in; margin: 0; }`;
+    pageStyle.textContent = `@page { size: ${slidesDocument.canvasWidth / 96}in ${slidesDocument.canvasHeight / 96}in; margin: 0; }`;
     document.head.append(pageStyle);
   }
 
   const root = document.createElement("main");
-  root.className = "frameseq-deck";
-  applyStyles(root, deck.node.styles);
+  root.className = "frameseq-slides";
+  applyStyles(root, slidesDocument.node.styles);
 
-  const slides = deck.slides.map((slide, index) => {
+  const slides = slidesDocument.slides.map((slide, index) => {
     const frame = document.createElement("section");
     frame.className = "frameseq-slide-frame";
     frame.dataset.index = String(index);
 
-    const canvas = renderSlideCanvas(slide, index, deck);
+    const canvas = renderSlideCanvas(slide, index, slidesDocument);
     if (pptxMode && typeof slide.props.notes === "string") {
       canvas.dataset.frameseqNotes = slide.props.notes;
     }
@@ -689,10 +689,10 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
   });
 
   const presenter = presenterMode
-    ? createPresenterView(target, root, deck)
+    ? createPresenterView(target, root, slidesDocument)
     : undefined;
   const remote = remoteMode
-    ? createRemoteView(target, root, deck)
+    ? createRemoteView(target, root, slidesDocument)
     : undefined;
   const controls = presenter?.controls ?? remote?.controls ?? document.createElement("nav");
   if (!presenter && !remote) {
@@ -723,13 +723,13 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
   function updateNextScale(): void {
     if (presenter && nextCanvas) {
-      scaleCanvas(nextCanvas, presenter.nextFrame, deck);
+      scaleCanvas(nextCanvas, presenter.nextFrame, slidesDocument);
     }
   }
 
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
-    scaleCanvas(canvas, frame, deck);
+    scaleCanvas(canvas, frame, slidesDocument);
   }
 
   function updatePresenter(): void {
@@ -755,7 +755,7 @@ export function mountDeck(deck: DeckDefinition, target: HTMLElement): void {
 
     presenter.nextFrame.classList.remove("is-empty");
     presenter.nextLabel.textContent = `${nextIndex + 1}. ${slides[nextIndex].label}`;
-    nextCanvas = renderSlideCanvas(slides[nextIndex].node, nextIndex, deck);
+    nextCanvas = renderSlideCanvas(slides[nextIndex].node, nextIndex, slidesDocument);
     nextCanvas.querySelectorAll<HTMLElement>(".frameseq-step").forEach((element) => {
       element.classList.toggle("is-visible", Number(element.dataset.step ?? 0) <= 0);
     });

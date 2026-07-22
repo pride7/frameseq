@@ -14,7 +14,7 @@ text("Important")
 
 ## Presentation-wide typography
 
-Use the `font` option in `presentation()` when a deck should keep a theme's colors and layout but use different font defaults:
+Use the `font` option in `presentation()` when slides should keep a theme's colors and layout but use different font defaults:
 
 ```ts
 presentation({

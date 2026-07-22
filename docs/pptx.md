@@ -1,6 +1,6 @@
 # Export PowerPoint
 
-FrameSeq can export a deck as a `.pptx` file without requiring Microsoft PowerPoint. The exporter asks the browser to complete the normal FrameSeq layout, then maps the measured slide objects into PowerPoint coordinates.
+FrameSeq can export slides as a `.pptx` file without requiring Microsoft PowerPoint. The exporter asks the browser to complete the normal FrameSeq layout, then maps the measured slide objects into PowerPoint coordinates.
 
 ## Editable export
 
@@ -42,7 +42,7 @@ npx frameseq pptx slides.ts --flatten
 
 Each slide becomes one high-resolution image filling the PowerPoint page. Speaker notes are still preserved, but the visible slide content is not editable as separate objects.
 
-Flattened mode is recommended for decks that rely heavily on gradients, shadows, filters, complex arbitrary HTML, or CSS effects that PowerPoint cannot represent directly.
+Flattened mode is recommended for slides that rely heavily on gradients, shadows, filters, complex arbitrary HTML, or CSS effects that PowerPoint cannot represent directly.
 
 ## Fonts and visual differences
 

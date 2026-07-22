@@ -11,15 +11,15 @@ const galleryOutput = resolve(distRoot, "gallery");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
-  { slug: "language", entry: resolve(packageRoot, "gallery", "decks", "language.slides.ts") },
+  { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
-  { slug: "blank", entry: resolve(packageRoot, "gallery", "decks", "blank.slides.ts") },
-  { slug: "paper", entry: resolve(packageRoot, "gallery", "decks", "paper.slides.ts") },
-  { slug: "beamer-default", entry: resolve(packageRoot, "gallery", "decks", "beamer-default.slides.ts") },
+  { slug: "blank", entry: resolve(packageRoot, "gallery", "slides", "blank.slides.ts") },
+  { slug: "paper", entry: resolve(packageRoot, "gallery", "slides", "paper.slides.ts") },
+  { slug: "beamer-default", entry: resolve(packageRoot, "gallery", "slides", "beamer-default.slides.ts") },
   {
     slug: "beamer-cambridge-us",
-    entry: resolve(packageRoot, "gallery", "decks", "beamer-cambridge-us.slides.ts"),
+    entry: resolve(packageRoot, "gallery", "slides", "beamer-cambridge-us.slides.ts"),
   },
 ];
 

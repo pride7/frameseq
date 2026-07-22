@@ -111,8 +111,8 @@ The explicit object API is also available when an element should be created befo
 ```ts
 import { Slides, Text, Image, px } from "@pride7/frameseq";
 
-const deck = Slides("Diagram");
-const page = deck.slide({ name: "Canvas" }).canvas();
+const slides = Slides("Diagram");
+const page = slides.slide({ name: "Canvas" }).canvas();
 
 page.place(
   Text("Compiler").size(32).bold(),
@@ -123,7 +123,7 @@ page.place(
   { x: px(520), y: px(120), width: px(620) },
 );
 
-export default deck;
+export default slides;
 ```
 
 Prefer structured layouts for most pages. Use a canvas for diagrams and custom compositions that genuinely need exact placement.

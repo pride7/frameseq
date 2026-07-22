@@ -1,9 +1,9 @@
 import "katex/dist/katex.min.css";
 import "./index.css";
-import deck from "virtual:frameseq-entry";
-import { mountDeck } from "./renderer";
+import slides from "virtual:frameseq-entry";
+import { mountSlides } from "./renderer";
 
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) throw new Error("Missing #app element");
 
-mountDeck(deck, app);
+mountSlides(slides, app);

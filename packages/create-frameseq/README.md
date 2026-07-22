@@ -13,7 +13,7 @@ Press `P` in the presentation to open the synchronized presenter view.
 
 Run `npm run present`, select `R`, and scan the QR code to control navigation and the laser pointer from a phone on the same Wi-Fi.
 
-Run `npm run check` to validate TypeScript and inspect the rendered deck for overflow, clipped text, and text that is too small.
+Run `npm run check` to validate TypeScript and inspect the rendered slides for overflow, clipped text, and text that is too small.
 
 `npm run build` creates a static site in `dist/`. `npm run build:single` creates one self-contained `dist/index.html`.
 

@@ -6,7 +6,7 @@ FrameSeq can inspect the final browser layout and return concrete diagnostics th
 frameseq check slides.ts
 ```
 
-The checker builds the deck, opens it in a headless browser at its native canvas size, waits for fonts, and inspects every slide. It currently detects:
+The checker builds the slides, opens them in a headless browser at their native canvas size, waits for fonts, and inspects every slide. It currently detects:
 
 - `canvas-overflow` — a rendered object extends beyond the slide canvas.
 - `text-clipped` — text is hidden by a clipped text box or ancestor.
@@ -23,7 +23,7 @@ ERROR Slide 4 "Architecture" [text-clipped]
   Suggestion: Increase the text box size, reduce the font size, or shorten the content.
 ```
 
-The object path identifies the rendered FrameSeq node within the deck. It remains more useful to an automated editor than a generated CSS selector and does not depend on browser-generated class names.
+The object path identifies the rendered FrameSeq node within the slides. It remains more useful to an automated editor than a generated CSS selector and does not depend on browser-generated class names.
 
 ## JSON output for agents
 
@@ -69,7 +69,7 @@ By default, the command exits with a non-zero status when it finds an error. War
 frameseq check slides.ts --strict
 ```
 
-Strict mode also returns a non-zero status for warnings. It is useful in CI or before publishing a deck.
+Strict mode also returns a non-zero status for warnings. It is useful in CI or before publishing slides.
 
 ## Generated projects
 

@@ -2,7 +2,7 @@
 
 The linear API is optimized for ordinary presentation authoring. The explicit object API is available when a page needs nested components, reusable factories, or freeform placement.
 
-## Explicit deck
+## Explicit slides
 
 ```ts
 import {
@@ -13,9 +13,9 @@ import {
   Text,
 } from "@pride7/frameseq";
 
-const deck = Slides("Custom layouts");
+const slides = Slides("Custom layouts");
 
-deck.slide("Architecture").custom(
+slides.slide("Architecture").custom(
   Row(
     Image("https://example.com/diagram.png", "Architecture diagram"),
     Column(
@@ -25,15 +25,15 @@ deck.slide("Architecture").custom(
   ).gap(40),
 );
 
-export default deck;
+export default slides;
 ```
 
-An explicitly imported entry must export its deck. It does not use the zero-boilerplate global command injection.
+An explicitly imported entry must export its slides. It does not use the zero-boilerplate global command injection.
 
 ## Component constructors
 
 ```ts
-Deck(options?)
+SlidesRoot(options?)
 Slides(options?)
 Slide(options?)
 Row(...children)
@@ -50,7 +50,7 @@ Line({ x1, y1, x2, y2 })
 Spacer(size?)
 ```
 
-- `Deck` and `Slide` provide the minimal structural layer.
+- `SlidesRoot` and `Slide` provide the minimal structural layer.
 - `Slides` adds presentation-aware slide layouts and defaults.
 - `Row`, `Column`, and `Stack` create containers.
 - `Text`, `Image`, `Code`, `Equation`, and `Typst` create unattached content elements.
@@ -99,8 +99,8 @@ Split and grid regions expose the same content helpers.
 ```ts
 import { Slides, Text } from "@pride7/frameseq";
 
-const deck = Slides("Canvas");
-const page = deck.slide({ name: "Diagram" }).canvas();
+const slides = Slides("Canvas");
+const page = slides.slide({ name: "Diagram" }).canvas();
 
 page.place(Text("Input").size(24), {
   x: 80,
@@ -114,7 +114,7 @@ page.place(Text("Output").size(24), {
   width: 240,
 });
 
-export default deck;
+export default slides;
 ```
 
 ## Raw styles

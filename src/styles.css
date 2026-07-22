@@ -71,7 +71,7 @@ button {
   font: inherit;
 }
 
-.frameseq-deck {
+.frameseq-slides {
   width: 100%;
   height: 100%;
 }
@@ -1021,7 +1021,7 @@ button {
   touch-action: none;
 }
 
-.frameseq-remote-current .frameseq-deck {
+.frameseq-remote-current .frameseq-slides {
   position: absolute;
   inset: 0;
 }
@@ -1207,7 +1207,7 @@ button {
   touch-action: none;
 }
 
-.frameseq-presenter-current .frameseq-deck {
+.frameseq-presenter-current .frameseq-slides {
   position: absolute;
   inset: 0;
 }
@@ -1487,7 +1487,7 @@ button {
   background: var(--frameseq-background);
 }
 
-.frameseq-print .frameseq-deck {
+.frameseq-print .frameseq-slides {
   width: var(--slide-width);
   height: auto;
 }

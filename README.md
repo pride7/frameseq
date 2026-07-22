@@ -185,9 +185,9 @@ slide("Equation");
 math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
 ```
 
-`presentation()` defines deck-wide metadata and design options. `slide()` starts a page. Content commands add objects to the current page and return chainable builders.
+`presentation()` defines presentation-wide metadata and design options. `slide()` starts a page. Content commands add objects to the current page and return chainable builders.
 
-The FrameSeq compiler injects the authoring commands and exports the presentation automatically. Ordinary TypeScript imports, variables, URLs, and functions remain available when a deck needs them.
+The FrameSeq compiler injects the authoring commands and exports the presentation automatically. Ordinary TypeScript imports, variables, URLs, and functions remain available when the slides need them.
 
 ## Content
 
@@ -509,9 +509,9 @@ The linear authoring layer is recommended for most slides. The low-level UI laye
 ```ts
 import { Column, Image, Row, Slides, Text } from "@pride7/frameseq";
 
-const deck = Slides("Custom layouts");
+const slides = Slides("Custom layouts");
 
-deck.slide("Architecture").custom(
+slides.slide("Architecture").custom(
   Row(
     Image("diagram.png"),
     Column(
@@ -521,10 +521,10 @@ deck.slide("Architecture").custom(
   ).gap(40),
 );
 
-export default deck;
+export default slides;
 ```
 
-This layer includes `Deck`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable modifiers.
+This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable modifiers.
 
 ## Documentation
 

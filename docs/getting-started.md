@@ -45,7 +45,7 @@ math`\int_0^\infty e^{-x}\,dx = 1`;
 
 This starts with the neutral white `blank` theme. You can select a built-in theme with `presentation({ title: "My Talk", theme: "midnight" })`; see [Themes](themes.md) for custom themes.
 
-The file needs no framework import, deck variable, wrapper, or default export. FrameSeq injects the common document commands into the entry file and exports the active presentation.
+The file needs no framework import, slides variable, wrapper, or default export. FrameSeq injects the common document commands into the entry file and exports the active presentation.
 
 Tailwind CSS utilities passed to `style("...")` work without installing or configuring Tailwind in the generated project. See [Styling](styling.md) for arbitrary values, inline CSS, and modifier precedence.
 

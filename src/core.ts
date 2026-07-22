@@ -3,7 +3,7 @@ import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
 export type Length = number | string;
 
 export type ComponentType =
-  | "deck"
+  | "slides"
   | "slide"
   | "row"
   | "column"
@@ -37,7 +37,7 @@ export interface PresentationFontOptions extends FontStyleOptions {
   code?: FontStyleOptions;
 }
 
-export interface DeckOptions {
+export interface SlidesOptions {
   title?: string;
   subtitle?: string;
   author?: string;
@@ -322,7 +322,7 @@ export class SlideBuilder extends ContainerBuilder {
   }
 }
 
-export class DeckDefinition extends ElementBuilder {
+export class SlidesRootDefinition extends ElementBuilder {
   get canvasWidth(): number {
     return this.node.props.width as number;
   }
@@ -375,7 +375,7 @@ export class DeckDefinition extends ElementBuilder {
   }
 }
 
-export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition {
+export function SlidesRoot(titleOrOptions: string | SlidesOptions = {}): SlidesRootDefinition {
   const options = typeof titleOrOptions === "string"
     ? { title: titleOrOptions }
     : titleOrOptions;
@@ -387,7 +387,7 @@ export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition 
     theme.colors.background = options.background;
     theme.coverBackground = options.background;
   }
-  const root = node("deck", {
+  const root = node("slides", {
     title: options.title ?? "FrameSeq",
     subtitle: options.subtitle,
     author: options.author,
@@ -405,7 +405,7 @@ export function Deck(titleOrOptions: string | DeckOptions = {}): DeckDefinition 
       }
       : undefined,
   });
-  return new DeckDefinition(root);
+  return new SlidesRootDefinition(root);
 }
 
 export function Slide(nameOrOptions: string | SlideOptions = {}): SlideBuilder {

@@ -2,9 +2,9 @@ import {
   Code,
   Column,
   ContainerBuilder,
-  Deck,
-  DeckDefinition,
-  type DeckOptions,
+  SlidesRoot,
+  SlidesRootDefinition,
+  type SlidesOptions,
   type ElementBuilder,
   Equation,
   type FrameSeqNode,
@@ -335,7 +335,7 @@ export class CoverSlideBuilder extends RegionBuilder {
   }
 }
 
-export class SlidesDefinition extends DeckDefinition {
+export class SlidesDefinition extends SlidesRootDefinition {
   cover(title: string): CoverSlideBuilder {
     const slide = new CoverSlideBuilder(Slide({ name: "Cover", title }).node)
       .className("frameseq-cover-slide");
@@ -359,9 +359,9 @@ export class SlidesDefinition extends DeckDefinition {
   }
 }
 
-export function Slides(titleOrOptions: string | DeckOptions = {}): SlidesDefinition {
-  const options: DeckOptions = typeof titleOrOptions === "string"
+export function Slides(titleOrOptions: string | SlidesOptions = {}): SlidesDefinition {
+  const options: SlidesOptions = typeof titleOrOptions === "string"
     ? { title: titleOrOptions }
     : { ...titleOrOptions };
-  return new SlidesDefinition(Deck(options).node);
+  return new SlidesDefinition(SlidesRoot(options).node);
 }
