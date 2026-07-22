@@ -8,6 +8,9 @@ presentation({
 slide()
   .cover()
   .notes("Welcome to the FrameSeq online playground. Change any text and save the file.");
+text("FrameSeq Playground").hero();
+text("Edit this file and watch the presentation update").subtitle();
+text("Your name").author();
 
 slide("Create an object, then control it").split("42:58");
 

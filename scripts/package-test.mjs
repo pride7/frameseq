@@ -41,7 +41,10 @@ if (playgroundJson.devDependencies?.["@pride7/frameseq"] !== `^${packageJson.ver
   || playgroundJson.scripts?.dev !== "frameseq dev slides.ts --host"
   || playgroundJson.stackblitz?.startCommand !== "npm run dev"
   || !playgroundSlides.includes("presentation({")
-  || !playgroundSlides.includes("slide(")) {
+  || !playgroundSlides.includes("slide(")
+  || !playgroundSlides.includes(".hero()")
+  || !playgroundSlides.includes(".subtitle()")
+  || !playgroundSlides.includes(".author()")) {
   throw new Error("The standalone StackBlitz playground is incomplete or uses the wrong FrameSeq version");
 }
 if (!cliSource.includes('const hostEnabled = process.argv.includes("--host") || remoteEnabled;')

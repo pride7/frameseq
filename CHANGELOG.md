@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Fixed
+
+- The online Playground cover now includes visible title, subtitle, and author objects instead of opening on an empty themed canvas.
+
 ## [0.16.1] - 2026-07-21
 
 ### Fixed
