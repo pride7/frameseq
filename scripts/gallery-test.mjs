@@ -25,32 +25,42 @@ try {
   await page.goto(url, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => {
     const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.length === 3
+    return frames.length === 8
       && frames.every((frame) => frame.contentDocument?.querySelector(".frameseq-slide"));
   });
 
   const desktop = await page.evaluate(() => ({
     title: document.title,
-    cards: document.querySelectorAll(".deck-card").length,
+    themeCards: document.querySelectorAll(".theme-card").length,
+    capabilityCards: document.querySelectorAll(".capability-card").length,
     frames: document.querySelectorAll("iframe").length,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
-    exampleLinks: Array.from(document.querySelectorAll(".open-deck"))
+    themeLinks: Array.from(document.querySelectorAll(".theme-copy > a"))
       .map((link) => link.getAttribute("href")),
+    languageHeading: document.querySelector("#language-title")?.textContent,
+    outputHeading: document.querySelector("#outputs-title")?.textContent,
   }));
-  assert.equal(desktop.title, "FrameSeq Gallery");
-  assert.equal(desktop.cards, 3);
-  assert.equal(desktop.frames, 3);
+  assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
+  assert.equal(desktop.themeCards, 7);
+  assert.equal(desktop.capabilityCards, 4);
+  assert.equal(desktop.frames, 8);
   assert.ok(desktop.overflow <= 0);
-  assert.deepEqual(desktop.exampleLinks, [
+  assert.match(desktop.languageHeading ?? "", /top to bottom/i);
+  assert.match(desktop.outputHeading ?? "", /web/i);
+  assert.deepEqual(desktop.themeLinks, [
+    "./examples/blank/",
     "./examples/midnight/",
-    "./examples/minimal-academic/",
+    "./examples/paper/",
+    "./examples/beamer-default/",
     "./examples/beamer-madrid/",
+    "./examples/beamer-cambridge-us/",
+    "./examples/minimal-academic/",
   ]);
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await page.reload({ waitUntil: "networkidle0" });
   const mobile = await page.evaluate(() => ({
-    columns: getComputedStyle(document.querySelector(".gallery-grid")).gridTemplateColumns,
+    columns: getComputedStyle(document.querySelector(".theme-grid")).gridTemplateColumns,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
   }));
   assert.ok(mobile.overflow <= 0);
@@ -60,4 +70,4 @@ try {
   await server.close();
 }
 
-console.log("Gallery test passed: live examples load and the landing page fits desktop and mobile viewports.");
+console.log("Gallery test passed: the product story, seven themes, and live examples fit desktop and mobile viewports.");

@@ -3,105 +3,324 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07111f" />
+    <meta name="theme-color" content="#f5f2ea" />
     <meta
       name="description"
-      content="Explore interactive presentations built with FrameSeq's editable TypeScript slide framework."
+      content="FrameSeq is a declarative TypeScript language for editable, AI-friendly presentations that export to HTML, PDF, and PowerPoint."
     />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
-    <title>FrameSeq Gallery</title>
+    <title>FrameSeq — Declarative presentations in TypeScript</title>
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="./" aria-label="FrameSeq Gallery home">
         <span class="brand-mark" aria-hidden="true"></span>
-        FrameSeq
+        <span>FrameSeq</span>
       </a>
-      <nav aria-label="Project links">
-        <a href="https://github.com/pride7/frameseq">GitHub</a>
-        <a href="https://www.npmjs.com/package/@pride7/frameseq">npm</a>
+      <nav aria-label="Gallery navigation">
+        <a href="#language">Language</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#themes">Themes</a>
         <a href="https://github.com/pride7/frameseq/tree/main/docs">Docs</a>
-        <a href="https://github.com/pride7/frameseq/blob/main/CHANGELOG.md">Changelog</a>
       </nav>
+      <a class="header-action" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="gallery-title">
-        <p class="eyebrow">Editable TypeScript presentations</p>
-        <h1 id="gallery-title">Write the deck once.<br />Present it anywhere.</h1>
-        <p class="hero-copy">
-          Explore real FrameSeq presentations. Every preview below is compiled from a linear
-          <code>.slides.ts</code> document and remains interactive when opened.
-        </p>
-        <div class="hero-actions">
-          <a class="primary-action" href="https://github.com/pride7/frameseq#quick-start">Start building</a>
-          <a class="secondary-action" href="https://github.com/pride7/frameseq">View source</a>
+        <div class="hero-copy-block">
+          <p class="eyebrow">A declarative language for slides</p>
+          <h1 id="gallery-title">Write slides the way you think.</h1>
+          <p class="hero-copy">
+            Create an object, then set its properties. Keep every slide as a clear, linear block.
+            FrameSeq turns readable TypeScript into interactive HTML, PDF, and editable PowerPoint.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-action" href="https://github.com/pride7/frameseq#quick-start">Create a deck</a>
+            <a class="secondary-action" href="#tour">See it live</a>
+          </div>
+          <div class="install-command" aria-label="FrameSeq installation command">
+            <span aria-hidden="true">$</span>
+            <code>npm create frameseq@latest my-talk</code>
+          </div>
+        </div>
+
+        <div class="hero-code" aria-label="Example FrameSeq source code">
+          <div class="window-bar">
+            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span>slides.ts</span>
+            <span>01 / 06</span>
+          </div>
+          <pre><code><span class="syntax-call">presentation</span>({
+  title: <span class="syntax-string">"My talk"</span>,
+  theme: <span class="syntax-string">"minimal-academic"</span>,
+});
+
+<span class="syntax-comment">// Everything below belongs to this slide</span>
+<span class="syntax-call">slide</span>(<span class="syntax-string">"One clear idea"</span>).<span class="syntax-method">split</span>(<span class="syntax-string">"42:58"</span>);
+
+<span class="syntax-call">text</span>(<span class="syntax-string">"A controllable object"</span>)
+  .<span class="syntax-method">size</span>(<span class="syntax-number">30</span>)
+  .<span class="syntax-method">color</span>(<span class="syntax-string">"#24528b"</span>);
+
+<span class="syntax-call">right</span>();
+<span class="syntax-call">math</span><span class="syntax-string">`E = mc^2`</span>;
+
+<span class="syntax-comment">// A new slide begins here</span>
+<span class="syntax-call">slide</span>(<span class="syntax-string">"The next idea"</span>);</code></pre>
+          <div class="code-legend">
+            <span><i class="legend-create"></i>Create an object</span>
+            <span><i class="legend-control"></i>Set its properties</span>
+          </div>
         </div>
       </section>
 
-      <section class="gallery" aria-labelledby="examples-title">
+      <section class="proof-strip" aria-label="FrameSeq highlights">
+        <p><strong>Linear source</strong><span>No nested page tree</span></p>
+        <p><strong>Object control</strong><span>Chainable modifiers</span></p>
+        <p><strong>Rich typesetting</strong><span>LaTeX + Typst</span></p>
+        <p><strong>Three outputs</strong><span>HTML · PDF · PPTX</span></p>
+      </section>
+
+      <section class="tour section" id="tour" aria-labelledby="tour-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Live examples</p>
-            <h2 id="examples-title">Three styles, one document model</h2>
+            <p class="eyebrow">Live product tour</p>
+            <h2 id="tour-title">The framework, presented by itself.</h2>
           </div>
-          <p>Open a deck and use the arrow keys or Space to navigate.</p>
+          <p>Open the deck and use Arrow keys or Space. It is the same static HTML you can deploy anywhere.</p>
+        </div>
+        <article class="tour-card">
+          <a class="tour-preview" href="./examples/midnight/" aria-label="Open the FrameSeq product tour">
+            <iframe src="./examples/midnight/#1" title="Interactive FrameSeq product tour" tabindex="-1"></iframe>
+            <span class="preview-action">Open interactive deck <b aria-hidden="true">↗</b></span>
+          </a>
+          <div class="tour-copy">
+            <p class="tour-label">Built with FrameSeq</p>
+            <h3>Seven slides. The whole workflow.</h3>
+            <p>See named layouts, progressive steps, math, Typst fragments, Tailwind utilities, shapes, and connectors in a real presentation.</p>
+            <ul class="check-list">
+              <li>Source stays short and editable</li>
+              <li>Preview stays interactive</li>
+              <li>The same deck exports everywhere</li>
+            </ul>
+            <a class="text-link" href="https://github.com/pride7/frameseq/blob/main/slides.ts">Read its source <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+      </section>
+
+      <section class="language section" id="language" aria-labelledby="language-title">
+        <div class="section-heading narrow-heading">
+          <div>
+            <p class="eyebrow">The design language</p>
+            <h2 id="language-title">A deck that reads from top to bottom.</h2>
+          </div>
+          <p>FrameSeq uses source order as document structure. There is no wrapper around every page and no deeply nested layout markup.</p>
         </div>
 
-        <div class="gallery-grid">
-          <article class="deck-card deck-card-featured">
-            <a class="deck-preview" href="./examples/midnight/" aria-label="Open the Midnight product tour">
-              <iframe src="./examples/midnight/#1" title="Midnight product tour preview" tabindex="-1"></iframe>
-            </a>
-            <div class="deck-copy">
-              <div class="deck-meta"><span>Product tour</span><span>Midnight</span></div>
-              <h3>FrameSeq in seven slides</h3>
-              <p>Layouts, formulas, Typst, Tailwind, shapes, and export in one compact tour.</p>
-              <a class="open-deck" href="./examples/midnight/">Open presentation <span aria-hidden="true">→</span></a>
+        <div class="language-principles">
+          <article class="principle principle-flow">
+            <div class="principle-number">01</div>
+            <div>
+              <h3>Slide boundaries are visible</h3>
+              <p>Everything after one <code>slide()</code> call belongs to that slide until the next <code>slide()</code> call.</p>
+            </div>
+            <div class="source-flow" aria-label="Linear slide document structure">
+              <div class="flow-slide"><span>slide</span><b>Problem</b></div>
+              <div class="flow-object">text</div>
+              <div class="flow-object">bullets</div>
+              <div class="flow-slide"><span>slide</span><b>Solution</b></div>
+              <div class="flow-object">text</div>
+              <div class="flow-object">math</div>
             </div>
           </article>
 
-          <article class="deck-card">
-            <a class="deck-preview" href="./examples/minimal-academic/" aria-label="Open the Minimal Academic example">
-              <iframe src="./examples/minimal-academic/#1" title="Minimal Academic presentation preview" tabindex="-1"></iframe>
-            </a>
-            <div class="deck-copy">
-              <div class="deck-meta"><span>Research talk</span><span>Minimal Academic</span></div>
-              <h3>Quiet structure for serious ideas</h3>
-              <p>A restrained theme with strong typography, fine rules, and a minimal footline.</p>
-              <a class="open-deck" href="./examples/minimal-academic/">Open presentation <span aria-hidden="true">→</span></a>
+          <article class="principle">
+            <div class="principle-number">02</div>
+            <div>
+              <h3>Every object remains yours</h3>
+              <p>Create content first, then control it with predictable, chainable properties.</p>
             </div>
+            <pre class="mini-code"><code><span class="syntax-call">text</span>(<span class="syntax-string">"Key result"</span>)
+  .<span class="syntax-method">size</span>(<span class="syntax-number">32</span>)
+  .<span class="syntax-method">bold</span>()
+  .<span class="syntax-method">position</span>({ x: <span class="syntax-number">80</span>, y: <span class="syntax-number">120</span> });</code></pre>
           </article>
 
-          <article class="deck-card">
-            <a class="deck-preview" href="./examples/beamer-madrid/" aria-label="Open the Beamer Madrid example">
-              <iframe src="./examples/beamer-madrid/#1" title="Beamer Madrid presentation preview" tabindex="-1"></iframe>
-            </a>
-            <div class="deck-copy">
-              <div class="deck-meta"><span>Classic lecture</span><span>Beamer Madrid</span></div>
-              <h3>Familiar academic chrome</h3>
-              <p>Beamer-inspired title bars, presentation metadata, and automatic slide numbering.</p>
-              <a class="open-deck" href="./examples/beamer-madrid/">Open presentation <span aria-hidden="true">→</span></a>
+          <article class="principle">
+            <div class="principle-number">03</div>
+            <div>
+              <h3>Layout speaks in slide concepts</h3>
+              <p>Use named regions for the common case, then switch to a canvas when exact placement matters.</p>
+            </div>
+            <div class="layout-pills" aria-label="FrameSeq layout commands">
+              <span>.split("40:60")</span>
+              <span>.grid(3)</span>
+              <span>.center()</span>
+              <span>.canvas()</span>
+              <span>.position({ x, y })</span>
             </div>
           </article>
         </div>
       </section>
 
-      <section class="format-strip" aria-label="FrameSeq output formats">
-        <p>One source document</p>
-        <div aria-hidden="true"></div>
-        <ul>
-          <li>Interactive HTML</li>
-          <li>PDF</li>
-          <li>Editable PPTX</li>
-        </ul>
+      <section class="capabilities section" id="capabilities" aria-labelledby="capabilities-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Built for real presentation work</p>
+            <h2 id="capabilities-title">Simple structure. Serious capabilities.</h2>
+          </div>
+          <p>Start with semantic defaults. Reach for the full web platform only when you need it.</p>
+        </div>
+
+        <div class="capability-grid">
+          <article class="capability-card typesetting-card">
+            <p class="card-kicker">Typesetting</p>
+            <h3>LaTeX math and Typst fragments</h3>
+            <p>Write inline or display equations with familiar LaTeX syntax. Embed Typst when a table, diagram, or technical fragment needs richer typesetting.</p>
+            <div class="formula-stage" aria-label="Mathematical typesetting example">
+              <span>∫<sub>−∞</sub><sup>∞</sup> e<sup>−x²</sup> dx = √π</span>
+              <code>math`\int e^{-x^2} dx`</code>
+            </div>
+            <pre class="capability-code"><code><span class="syntax-call">typst</span><span class="syntax-string">`
+  #table(columns: 3, ...)
+`</span>.<span class="syntax-method">width</span>(<span class="syntax-number">720</span>);</code></pre>
+          </article>
+
+          <article class="capability-card layout-card">
+            <p class="card-kicker">Layout</p>
+            <h3>Structured when possible. Precise when needed.</h3>
+            <p>Split, grid, and named regions cover everyday composition. Canvas positioning, shapes, SVG connectors, and transforms cover diagrams.</p>
+            <div class="layout-demo" aria-hidden="true">
+              <div class="demo-left"><span>left()</span></div>
+              <div class="demo-right"><span>right()</span><i></i><i></i></div>
+            </div>
+          </article>
+
+          <article class="capability-card tailwind-card">
+            <p class="card-kicker">Web-native styling</p>
+            <h3>Tailwind is an escape hatch, not a requirement.</h3>
+            <p>Familiar with frontend work? Pass Tailwind utilities directly to any object. Arbitrary values work without a separate setup.</p>
+            <pre class="capability-code"><code><span class="syntax-call">text</span>(<span class="syntax-string">"Signal"</span>)
+  .<span class="syntax-method">style</span>(<span class="syntax-string">"text-4xl font-bold
+          tracking-tight text-blue-600"</span>);</code></pre>
+          </article>
+
+          <article class="capability-card ai-card">
+            <div>
+              <p class="card-kicker">AI-native authoring</p>
+              <h3>Easy for AI to generate. Easy for you to revise.</h3>
+              <p>A linear DSL gives models fewer ways to create tangled markup. Semantic commands produce good defaults; explicit modifiers make every generated object understandable and adjustable.</p>
+              <ul class="signal-list">
+                <li>Small, regular API</li>
+                <li>Readable source order</li>
+                <li>Stable semantic layouts</li>
+                <li>Built-in layout diagnostics</li>
+              </ul>
+            </div>
+            <div class="prompt-card">
+              <span>Prompt</span>
+              <p>“Create a six-slide research talk in FrameSeq. Use a split layout for the comparison, render the objective as math, and add speaker notes.”</p>
+              <div class="prompt-result"><i></i><code>slides.ts</code><b>editable</b></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="themes section" id="themes" aria-labelledby="themes-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">All built-in themes</p>
+            <h2 id="themes-title">Seven starting points. One API.</h2>
+          </div>
+          <p>Theme changes never change the authoring model. Choose a baseline, override global tokens, or define your own theme.</p>
+        </div>
+
+        <div class="theme-grid">
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/blank/" aria-label="Open the Blank theme example">
+              <iframe src="./examples/blank/#1" title="Blank theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Neutral</span><h3>Blank</h3></div><a href="./examples/blank/" aria-label="Open Blank theme">↗</a></div>
+          </article>
+
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/midnight/" aria-label="Open the Midnight theme example">
+              <iframe src="./examples/midnight/#1" title="Midnight theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>High contrast</span><h3>Midnight</h3></div><a href="./examples/midnight/" aria-label="Open Midnight theme">↗</a></div>
+          </article>
+
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/paper/" aria-label="Open the Paper theme example">
+              <iframe src="./examples/paper/#1" title="Paper theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Editorial</span><h3>Paper</h3></div><a href="./examples/paper/" aria-label="Open Paper theme">↗</a></div>
+          </article>
+
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/beamer-default/" aria-label="Open the Beamer Default theme example">
+              <iframe src="./examples/beamer-default/#1" title="Beamer Default theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Classic</span><h3>Beamer Default</h3></div><a href="./examples/beamer-default/" aria-label="Open Beamer Default theme">↗</a></div>
+          </article>
+
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/beamer-madrid/" aria-label="Open the Beamer Madrid theme example">
+              <iframe src="./examples/beamer-madrid/#2" title="Beamer Madrid theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Structured</span><h3>Beamer Madrid</h3></div><a href="./examples/beamer-madrid/" aria-label="Open Beamer Madrid theme">↗</a></div>
+          </article>
+
+          <article class="theme-card">
+            <a class="theme-preview" href="./examples/beamer-cambridge-us/" aria-label="Open the Beamer Cambridge US theme example">
+              <iframe src="./examples/beamer-cambridge-us/#1" title="Beamer Cambridge US theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Warm academic</span><h3>Cambridge US</h3></div><a href="./examples/beamer-cambridge-us/" aria-label="Open Cambridge US theme">↗</a></div>
+          </article>
+
+          <article class="theme-card theme-card-wide">
+            <a class="theme-preview" href="./examples/minimal-academic/" aria-label="Open the Minimal Academic theme example">
+              <iframe src="./examples/minimal-academic/#2" title="Minimal Academic theme preview" tabindex="-1"></iframe>
+            </a>
+            <div class="theme-copy"><div><span>Research</span><h3>Minimal Academic</h3></div><a href="./examples/minimal-academic/" aria-label="Open Minimal Academic theme">↗</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="outputs section" id="outputs" aria-labelledby="outputs-title">
+        <div class="output-copy">
+          <p class="eyebrow">One source, three destinations</p>
+          <h2 id="outputs-title">Present on the web. Submit a PDF. Hand off a PowerPoint.</h2>
+          <p>FrameSeq owns the presentation structure while the browser provides the rendering engine. Export without maintaining three separate versions of the same deck.</p>
+          <a class="primary-action" href="https://github.com/pride7/frameseq/blob/main/docs/getting-started.md">Read the export guide</a>
+        </div>
+        <div class="output-pipeline" aria-label="FrameSeq output pipeline">
+          <div class="source-node"><span>Source</span><strong>slides.ts</strong><code>declarative + editable</code></div>
+          <div class="pipeline-line" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="output-nodes">
+            <div><span>01</span><strong>HTML</strong><small>interactive · deployable</small></div>
+            <div><span>02</span><strong>PDF</strong><small>portable · faithful</small></div>
+            <div><span>03</span><strong>PPTX</strong><small>editable · shareable</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta">
+        <p class="eyebrow">Your next deck is a TypeScript file</p>
+        <h2>Build slides like building an interface.</h2>
+        <div class="hero-actions">
+          <a class="primary-action" href="https://github.com/pride7/frameseq#quick-start">Get started</a>
+          <a class="secondary-action" href="https://www.npmjs.com/package/@pride7/frameseq">View on npm</a>
+        </div>
       </section>
     </main>
 
     <footer>
-      <p>FrameSeq is open source and available under the MIT license.</p>
-      <a href="https://github.com/pride7/frameseq">Build your next deck in TypeScript →</a>
+      <a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"></span><span>FrameSeq</span></a>
+      <p>Declarative, editable, AI-friendly presentations.</p>
+      <div><a href="https://github.com/pride7/frameseq">GitHub</a><a href="https://github.com/pride7/frameseq/tree/main/docs">Docs</a><a href="https://github.com/pride7/frameseq/blob/main/CHANGELOG.md">Changelog</a></div>
     </footer>
   </body>
 </html>

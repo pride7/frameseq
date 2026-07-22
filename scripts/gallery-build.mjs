@@ -13,6 +13,13 @@ const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
+  { slug: "blank", entry: resolve(packageRoot, "gallery", "decks", "blank.slides.ts") },
+  { slug: "paper", entry: resolve(packageRoot, "gallery", "decks", "paper.slides.ts") },
+  { slug: "beamer-default", entry: resolve(packageRoot, "gallery", "decks", "beamer-default.slides.ts") },
+  {
+    slug: "beamer-cambridge-us",
+    entry: resolve(packageRoot, "gallery", "decks", "beamer-cambridge-us.slides.ts"),
+  },
 ];
 
 const relativeOutput = relative(distRoot, galleryOutput);
