@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- `frameseq check` now reports an `empty-slide` warning when a rendered slide has no visible content, while `slide().allowEmpty()` explicitly permits intentional blank pages.
+
 ### Fixed
 
 - The online Playground cover now includes visible title, subtitle, and author objects instead of opening on an empty themed canvas.

@@ -154,7 +154,7 @@ text("Important")
 - Use tagged templates for LaTeX so backslashes remain intact.
 - Never interpolate dynamic values into `typst` templates.
 - Do not construct Tailwind class names from fragments.
-- After generation, run the type and rendered-layout checks, then correct every error.
+- After generation, run the type and rendered-layout checks, then correct every error and unintended warning.
 
 ## Validate and export
 
@@ -173,7 +173,7 @@ For a machine-readable layout report:
 npx frameseq check slides.ts --json
 ```
 
-Fix `canvas-overflow` and `text-clipped` errors. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further.
+Fix `canvas-overflow` and `text-clipped` errors. Add visible content when `empty-slide` appears; use `slide().allowEmpty()` only for an intentional blank page. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further.
 
 ## Suggested agent workflow
 

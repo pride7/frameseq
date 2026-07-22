@@ -11,7 +11,7 @@ FrameSeq is a TypeScript framework for writing presentations as a linear documen
 - [Content](content.md) — text, formulas, code, images, lists, and metrics.
 - [Layout](layout.md) — split pages, grids, regions, centered pages, and freeform composition.
 - [Generate presentations with AI](ai-generation.md) — give an agent the FrameSeq contract, write a useful brief, and iterate with rendered-layout diagnostics.
-- [AI-friendly layout checks](layout-checks.md) — detect overflow, clipped text, and unreadably small type with human or JSON diagnostics.
+- [AI-friendly layout checks](layout-checks.md) — detect empty pages, overflow, clipped text, and unreadably small type with human or JSON diagnostics.
 - [Deploy HTML](deployment.md) — publish to GitHub Pages or create a portable single-file presentation.
 - [Export PowerPoint](pptx.md) — create editable hybrid PPTX files or pixel-faithful flattened slides.
 - [Themes](themes.md) — choose a built-in appearance or define reusable design tokens.

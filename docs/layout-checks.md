@@ -8,11 +8,20 @@ frameseq check slides.ts
 
 The checker builds the slides, opens them in a headless browser at their native canvas size, waits for fonts, and inspects every slide. It currently detects:
 
+- `empty-slide` — a slide has no visible content and was not explicitly marked as intentionally blank.
 - `canvas-overflow` — a rendered object extends beyond the slide canvas.
 - `text-clipped` — text is hidden by a clipped text box or ancestor.
 - `font-too-small` — body or code text is below 14px, or a slide heading is below 24px.
 
-Canvas overflow and clipped text are errors. Small text is a warning.
+Canvas overflow and clipped text are errors. Empty slides and small text are warnings. Strict mode fails for either warning.
+
+An automatic title page generated from presentation metadata counts as visible content. If a blank page is deliberate, mark that intent in the source:
+
+```ts
+slide({ name: "Pause" }).allowEmpty();
+```
+
+Use `allowEmpty: true` in `SlideOptions` when the option-object form is more convenient. Avoid silencing an empty slide until you have confirmed that it is intentional.
 
 ## Human-readable output
 

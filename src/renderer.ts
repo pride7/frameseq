@@ -324,6 +324,9 @@ function renderSlideCanvas(
   const canvas = renderNode(slide, String(index));
   addThemeChrome(canvas, slide, index, slides);
   canvas.dataset.frameseqSlideLabel = label;
+  if (slide.props.allowEmpty === true) {
+    canvas.dataset.frameseqAllowEmpty = "true";
+  }
   canvas.setAttribute("role", "group");
   canvas.setAttribute("aria-roledescription", "slide");
   canvas.setAttribute(

@@ -172,6 +172,7 @@ interface SlideOptions {
   name?: string;
   title?: string;
   notes?: string;
+  allowEmpty?: boolean;
 }
 ```
 
@@ -184,6 +185,14 @@ notes(content: string): ContentSlideBuilder
 ```
 
 Stores private speaker notes on the current slide. Notes are displayed in presenter view, omitted from the audience page and PDF, and preserved as PowerPoint speaker notes in PPTX export.
+
+### `allowEmpty(enabled?)`
+
+```ts
+allowEmpty(enabled?: boolean): ContentSlideBuilder
+```
+
+Marks the current slide as intentionally blank so `frameseq check` does not report `empty-slide`. Prefer adding visible content unless the blank page is part of the presentation's pacing.
 
 ## Content
 

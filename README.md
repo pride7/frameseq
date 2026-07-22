@@ -99,7 +99,7 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 - Semantic commands such as `lead()`, `bullets()`, `metric()`, and `split()` reduce arbitrary design decisions.
 - Local edits usually change a few lines without rebuilding an HTML structure.
 - TypeScript catches misspelled APIs and invalid arguments.
-- `frameseq check --json` gives agents measured overflow, clipping, and readability diagnostics they can correct directly.
+- `frameseq check --json` gives agents empty-slide, measured overflow, clipping, and readability diagnostics they can correct directly.
 - Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
 - The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, and PPTX output.
 
@@ -475,7 +475,7 @@ frameseq check my-talk.slides.ts --json
 frameseq check my-talk.slides.ts --strict
 ```
 
-The checker reports objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, measured overflow, and suggested corrections. `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md).
+The checker reports empty slides, objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, relevant measurements, and suggested corrections. Mark a deliberate blank page with `slide().allowEmpty()`; `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://github.com/pride7/frameseq/blob/main/docs/layout-checks.md).
 
 ## Presenter view
 

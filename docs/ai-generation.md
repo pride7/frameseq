@@ -113,7 +113,7 @@ An agent can request structured diagnostics directly:
 npx frameseq check slides.ts --json
 ```
 
-The JSON report identifies the slide, object type, object path, measured overflow, and suggested corrections. Prefer shortening copy or changing the layout before making text smaller.
+The JSON report identifies empty pages and gives each geometry issue a slide, object type, object path, measurements, and suggested corrections. Add real visible content when `empty-slide` appears; use `.allowEmpty()` only when a blank page is intentional. Prefer shortening copy or changing the layout before making text smaller.
 
 ### 5. Export from the validated source
 

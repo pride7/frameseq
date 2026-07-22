@@ -397,6 +397,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
         "circle",
       ]);
       const textTypes = new Set(["text", "code", "equation", "rect", "circle"]);
+      const containerTypes = new Set(["row", "column", "stack"]);
       const clippingValues = new Set(["hidden", "clip"]);
 
       const rounded = (value) => Math.round(value * 10) / 10;
@@ -404,6 +405,30 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 80);
+      const visible = (element, type) => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        const hasArea = type === "line"
+          ? bounds.width > 0 || bounds.height > 0
+          : bounds.width > 0 && bounds.height > 0;
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number.parseFloat(style.opacity || "1") > 0
+          && hasArea;
+      };
+      const decoratedContainer = (element) => {
+        const style = getComputedStyle(element);
+        const background = style.backgroundColor.replace(/\s+/g, "");
+        const hasBackground = style.backgroundImage !== "none"
+          || (background !== "transparent" && background !== "rgba(0,0,0,0)");
+        const hasBorder = [
+          style.borderTopWidth,
+          style.borderRightWidth,
+          style.borderBottomWidth,
+          style.borderLeftWidth,
+        ].some((width) => Number.parseFloat(width) > 0);
+        return hasBackground || hasBorder || style.boxShadow !== "none";
+      };
       const overflow = (inner, outer) => ({
         left: Math.max(0, outer.left - inner.left),
         right: Math.max(0, inner.right - outer.right),
@@ -432,6 +457,35 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
           label: canvas.dataset.frameseqSlideLabel || `Slide ${slideIndex + 1}`,
         };
         const nodes = Array.from(canvas.querySelectorAll("[data-frameseq-node]"));
+        const hasAutomaticTitlePage = Boolean(canvas.querySelector(".frameseq-auto-title-page"));
+        const hasVisibleContent = nodes.some((element) => {
+          const type = element.dataset.frameseqNode ?? "unknown";
+          if (type === "slide" || type === "spacer" || !visible(element, type)) return false;
+          if (type === "text" || type === "code") return excerpt(element).length > 0;
+          if (containerTypes.has(type)) return decoratedContainer(element);
+          return true;
+        });
+
+        if (canvas.dataset.frameseqAllowEmpty !== "true"
+          && !hasAutomaticTitlePage
+          && !hasVisibleContent) {
+          issues.push({
+            severity: "warning",
+            rule: "empty-slide",
+            slide,
+            element: {
+              type: "slide",
+              path: canvas.dataset.frameseqPath ?? String(slideIndex),
+              text: "",
+            },
+            message: "Slide has no visible content.",
+            details: { visibleObjects: 0 },
+            suggestions: [
+              "Add text(), image(), code(), math, Typst, or a shape before the next slide() call.",
+              "If the blank slide is intentional, call slide().allowEmpty().",
+            ],
+          });
+        }
 
         for (const element of nodes) {
           const type = element.dataset.frameseqNode ?? "unknown";

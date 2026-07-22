@@ -109,7 +109,7 @@ The default hybrid export keeps plain text, code, shapes, lines, and arrows as e
 frameseq check [file] [--json] [--strict]
 ```
 
-The checker renders every slide in a headless browser and detects objects outside the canvas, clipped text, and text that is too small for presentation use.
+The checker renders every slide in a headless browser and detects empty slides, objects outside the canvas, clipped text, and text that is too small for presentation use.
 
 ```bash
 frameseq check talk.slides.ts
