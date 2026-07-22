@@ -17,7 +17,8 @@ function help() {
   console.log(`FrameSeq
 
 Usage:
-  frameseq dev [file] [--remote]      Preview slides with hot reload
+  frameseq dev [file] [--host] [--remote]
+                                      Preview slides with hot reload
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] Export slides to PDF
@@ -29,6 +30,7 @@ Usage:
 
 Examples:
   frameseq dev talk.slides.ts
+  frameseq dev talk.slides.ts --host
   frameseq dev talk.slides.ts --remote
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
@@ -98,14 +100,14 @@ bullets(
   console.log(`Created ${target}`);
 }
 
-async function startDevelopmentServer(entry, remoteEnabled = false) {
+async function startDevelopmentServer(entry, { hostEnabled = false, remoteEnabled = false } = {}) {
   process.env.FRAMESEQ_ENTRY = entry;
   if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
   else delete process.env.FRAMESEQ_REMOTE;
   const server = await createServer({
     configFile,
     root: packageRoot,
-    server: remoteEnabled ? { host: true } : undefined,
+    server: hostEnabled ? { host: true } : undefined,
   });
   await server.listen();
   server.printUrls();
@@ -587,7 +589,9 @@ try {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") {
-      await startDevelopmentServer(entry, process.argv.includes("--remote"));
+      const remoteEnabled = process.argv.includes("--remote");
+      const hostEnabled = process.argv.includes("--host") || remoteEnabled;
+      await startDevelopmentServer(entry, { hostEnabled, remoteEnabled });
     }
     if (command === "build") {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));

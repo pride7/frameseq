@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.16.1] - 2026-07-21
+
+### Fixed
+
+- StackBlitz and other container previews can use the new `frameseq dev --host` option to expose Vite without enabling phone-remote mode; the online Playground now uses it by default.
+
 ## [0.16.0] - 2026-07-21
 
 ### Added
@@ -142,6 +148,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.16.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.1
 [0.16.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.16.0
 [0.15.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.15.0
 [0.14.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.14.0

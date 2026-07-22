@@ -19,7 +19,7 @@ The command refuses to overwrite an existing file.
 ## Start the development server
 
 ```bash
-frameseq dev [file] [--remote]
+frameseq dev [file] [--host] [--remote]
 ```
 
 The default entry is `slides.ts`.
@@ -32,13 +32,21 @@ The browser opens automatically and the presentation updates after source change
 
 Press `P` in the audience page to open presenter view, or add `?presenter=1` to the preview URL. Both windows stay synchronized while they share the same origin and browser device.
 
+Add `--host` when the preview must be reached through a container or browser IDE such as StackBlitz:
+
+```bash
+frameseq dev talk.slides.ts --host
+```
+
+This exposes the Vite development server without enabling FrameSeq's phone-remote interface. The default command remains bound to localhost.
+
 Add `--remote` when presenting to expose the server on the local network and enable QR-code phone pairing:
 
 ```bash
 frameseq dev talk.slides.ts --remote
 ```
 
-The phone and presentation computer must be on the same local network. This mode enables a local WebSocket relay for slide navigation, reveal steps, and the laser pointer; it does not use a FrameSeq cloud service.
+The phone and presentation computer must be on the same local network. This mode includes the behavior of `--host` and enables a local WebSocket relay for slide navigation, reveal steps, and the laser pointer; it does not use a FrameSeq cloud service.
 
 ## Build static HTML
 

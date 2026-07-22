@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "frameseq dev slides.ts",
+    "dev": "frameseq dev slides.ts --host",
     "check": "tsc --noEmit && frameseq check slides.ts",
     "build": "frameseq build slides.ts",
     "pdf": "frameseq pdf slides.ts",
     "pptx": "frameseq pptx slides.ts"
   },
   "devDependencies": {
-    "@pride7/frameseq": "^0.16.0",
+    "@pride7/frameseq": "^0.16.1",
     "typescript": "^5.8.3"
   },
   "stackblitz": {

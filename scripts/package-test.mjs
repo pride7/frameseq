@@ -15,6 +15,7 @@ const appDirectory = resolve(harnessDirectory, "app");
 const npmCli = process.env.npm_execpath;
 
 const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+const cliSource = await readFile(resolve(packageRoot, "scripts", "frameseq.mjs"), "utf8");
 const viteConfig = await readFile(resolve(packageRoot, "vite.config.ts"), "utf8");
 const creatorJson = JSON.parse(await readFile(
   resolve(packageRoot, "packages", "create-frameseq", "package.json"),
@@ -37,10 +38,15 @@ if (!packageJson.files?.includes("llms.txt")) {
   throw new Error("The npm package must include the FrameSeq AI authoring contract");
 }
 if (playgroundJson.devDependencies?.["@pride7/frameseq"] !== `^${packageJson.version}`
+  || playgroundJson.scripts?.dev !== "frameseq dev slides.ts --host"
   || playgroundJson.stackblitz?.startCommand !== "npm run dev"
   || !playgroundSlides.includes("presentation({")
   || !playgroundSlides.includes("slide(")) {
   throw new Error("The standalone StackBlitz playground is incomplete or uses the wrong FrameSeq version");
+}
+if (!cliSource.includes('const hostEnabled = process.argv.includes("--host") || remoteEnabled;')
+  || !cliSource.includes("server: hostEnabled ? { host: true } : undefined")) {
+  throw new Error("FrameSeq dev must expose container previews with --host while preserving --remote behavior");
 }
 if (!publishWorkflow.includes("tags:")
   || !publishWorkflow.includes('"v*"')
