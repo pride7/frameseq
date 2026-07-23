@@ -31,6 +31,7 @@ import {
   type SlidesDefinition,
   Steps,
 } from "./semantic";
+import { attachNode, detachNode, nodeParent } from "./node-tree";
 
 let activeSlides: SlidesDefinition | undefined;
 let activeSlide: ContentSlideBuilder | undefined;
@@ -77,18 +78,16 @@ function regroup<T extends ElementBuilder>(
     throw new Error(`${command} cannot contain the same object more than once`);
   }
 
+  if (nodes.some((node) => nodeParent(node) !== parent)) {
+    throw new Error(`${command} objects must belong to the current layout region`);
+  }
+
   const selected = new Set(nodes);
   const firstAttachedIndex = parent.children.findIndex((child) => selected.has(child));
-  const remaining = parent.children.filter((child) => !selected.has(child));
-  const insertionIndex = firstAttachedIndex < 0
-    ? remaining.length
-    : parent.children
-      .slice(0, firstAttachedIndex)
-      .filter((child) => !selected.has(child))
-      .length;
-
-  parent.children = remaining;
-  parent.children.splice(insertionIndex, 0, container.node);
+  const insertionIndex = firstAttachedIndex < 0 ? parent.children.length : firstAttachedIndex;
+  for (const node of nodes) detachNode(node);
+  for (const node of nodes) attachNode(container.node, node);
+  attachNode(parent, container.node, insertionIndex);
   return container;
 }
 
@@ -271,9 +270,12 @@ export function metric(value: string, label: string): GroupBuilder {
   return attach(Metric(value, label));
 }
 
-/** Combine adjacent content objects into one vertical object. */
+/** Create a vertical container, optionally regrouping adjacent content objects into it. */
 export function group(...items: ElementBuilder[]): GroupBuilder {
-  return regroup(Group(...items), items, "group()");
+  const container = Group();
+  return items.length === 0
+    ? attach(container)
+    : regroup(container, items, "group()");
 }
 
 /** Add a semantic title-and-copy card to the current document flow. */
@@ -281,12 +283,15 @@ export function card(title: string, content?: string): GroupBuilder {
   return attach(Card(title, content));
 }
 
-/** Arrange the supplied content objects as a local grid in the current document flow. */
+/** Create a local grid, optionally regrouping supplied content objects into it. */
 export function gridSection(
   columns: GridColumns,
   ...items: ElementBuilder[]
 ): GridSectionBuilder {
-  return regroup(GridSection(columns, ...items), items, "gridSection()");
+  const section = GridSection(columns);
+  return items.length === 0
+    ? attach(section)
+    : regroup(section, items, "gridSection()");
 }
 
 /** Return automatic content placement to the slide's primary region. */

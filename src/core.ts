@@ -1,4 +1,5 @@
 import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
+import { attachNode } from "./node-tree";
 
 export type Length = number | string;
 
@@ -97,6 +98,21 @@ function justifyValue(
 
 export class ElementBuilder {
   constructor(readonly node: FrameSeqNode) {}
+
+  /** Move this object below another content object in the rendered hierarchy. */
+  parent(parent: ElementBuilder): this {
+    if (this.node.type === "slides" || this.node.type === "slide") {
+      throw new Error("Only content objects can use parent()");
+    }
+    if (parent.node.type === "slides" || parent.node.type === "slide") {
+      throw new Error("parent() expects a content object, group(), or gridSection()");
+    }
+    if (!parent.node.styles.position || parent.node.styles.position === "static") {
+      parent.node.styles.position = "relative";
+    }
+    attachNode(parent.node, this.node);
+    return this;
+  }
 
   style(classes: string): this;
   style(properties: Record<string, string | number>): this;
@@ -225,6 +241,12 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Clip child content to this object's bounds. */
+  clip(enabled = true): this {
+    this.node.styles.overflow = enabled ? "hidden" : "visible";
+    return this;
+  }
+
   position({ x = 0, y = 0 }: GridPosition): this {
     this.node.styles.position = "absolute";
     this.node.styles.left = length(x);
@@ -254,7 +276,7 @@ export class ElementBuilder {
 
 export class ContainerBuilder extends ElementBuilder {
   add(...children: ElementBuilder[]): this {
-    this.node.children.push(...children.map((child) => child.node));
+    for (const child of children) attachNode(this.node, child.node);
     return this;
   }
 
@@ -271,6 +293,15 @@ export class ContainerBuilder extends ElementBuilder {
   }
 
   stack(): this {
+    this.node.styles.display = "block";
+    return this;
+  }
+
+  /** Use this container as a local positioned coordinate system. */
+  canvas(): this {
+    if (!this.node.styles.position || this.node.styles.position === "static") {
+      this.node.styles.position = "relative";
+    }
     this.node.styles.display = "block";
     return this;
   }
@@ -372,12 +403,12 @@ export class SlidesRootDefinition extends ElementBuilder {
 
   slide(nameOrOptions: string | SlideOptions = {}): SlideBuilder {
     const slide = Slide(nameOrOptions);
-    this.node.children.push(slide.node);
+    attachNode(this.node, slide.node);
     return slide;
   }
 
   add(...slides: SlideBuilder[]): this {
-    this.node.children.push(...slides.map((slide) => slide.node));
+    for (const slide of slides) attachNode(this.node, slide.node);
     return this;
   }
 }

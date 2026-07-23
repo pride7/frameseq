@@ -2,6 +2,21 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.22.0] - 2026-07-22
+
+### Added
+
+- Add incremental parent-child composition: create an empty `group()` or `gridSection()`, then move later objects into it with `.parent(container)`.
+- Add container `.canvas()` for local positioned coordinate systems and `.clip()` for controlling child overflow.
+
+### Changed
+
+- Track object ownership centrally so regrouping and reparenting preserve source order without duplicates while rejecting cycles and cross-slide moves.
+
+### Documentation
+
+- Document both direct and incremental container forms in the README, layout guide, styling guide, function guide, and API reference.
+
 ## [0.21.2] - 2026-07-22
 
 ### Fixed
@@ -212,6 +227,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.22.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.22.0
 [0.21.2]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.2
 [0.21.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.1
 [0.21.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.0

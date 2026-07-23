@@ -467,6 +467,8 @@ justify(value: "start" | "center" | "end" | "space-between" | "space-around"): t
 grow(value?: number): this
 wrap(enabled?: boolean): this
 opacity(value: number): this
+clip(enabled?: boolean): this
+parent(parent: ElementBuilder): this
 position(position: { x?: Length; y?: Length }): this
 rotate(degrees: number): this
 showAt(step: number): this
@@ -482,6 +484,7 @@ add(...children: ElementBuilder[]): this
 row(): this
 column(): this
 stack(): this
+canvas(): this
 center(): this
 ```
 

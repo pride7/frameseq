@@ -143,6 +143,18 @@ Container components support:
 
 `position()` uses absolute positioning and is intended for a canvas or another deliberately positioned parent.
 
+For a positioned region inside an ordinary flow layout, create a container and make it a local canvas:
+
+```ts
+const panel = group().canvas().width(600).height(260).clip();
+
+text("Local coordinates")
+  .parent(panel)
+  .position({ x: 32, y: 24 });
+```
+
+`.parent(panel)` moves the object into `panel`. The container's `.canvas()` makes its children's coordinates local, while `.clip()` keeps them inside the panel. Pass `false` to `.clip(false)` to restore visible overflow.
+
 ## Reveals
 
 ```ts

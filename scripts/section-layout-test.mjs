@@ -53,4 +53,44 @@ assert.throws(
   /same object more than once/,
 );
 
-console.log("Section layout test passed: content regrouping, cards, groups, metrics, columns, ordering, and validation.");
+slide("Incremental parent-child layout");
+
+const panel = group()
+  .card()
+  .canvas()
+  .width(520)
+  .height(220)
+  .clip();
+const panelTitle = text("Local canvas")
+  .parent(panel)
+  .position({ x: 24, y: 20 });
+const panelMetric = metric("63+", "papers")
+  .parent(panel)
+  .position({ x: 24, y: 82 });
+
+const incrementalGrid = gridSection(2).gap(16);
+const gridCardA = card("A", "First").parent(incrementalGrid);
+const gridCardB = card("B", "Second").parent(incrementalGrid);
+
+const nestedPage = slides.slides[1];
+const nestedBody = nestedPage.children.find((node) =>
+  classes(node).includes("frameseq-slide-body"));
+assert.ok(nestedBody, "The nested slide body should exist");
+assert.deepEqual(nestedBody.children, [panel.node, incrementalGrid.node]);
+assert.deepEqual(panel.node.children, [panelTitle.node, panelMetric.node]);
+assert.equal(panel.node.styles.position, "relative");
+assert.equal(panel.node.styles.display, "block");
+assert.equal(panel.node.styles.overflow, "hidden");
+assert.equal(panelTitle.node.styles.position, "absolute");
+assert.deepEqual(incrementalGrid.node.children, [gridCardA.node, gridCardB.node]);
+
+const outer = group();
+const inner = group().parent(outer);
+assert.throws(() => outer.parent(inner), /cycle/);
+
+const foreignSlide = slide("Different slide");
+const foreignObject = text("Cannot move across slides");
+assert.throws(() => foreignObject.parent(panel), /same slide/);
+assert.throws(() => foreignSlide.parent(panel), /Only content objects/);
+
+console.log("Section layout test passed: regrouping, incremental parents, local canvases, clipping, ordering, and validation.");

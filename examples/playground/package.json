@@ -12,7 +12,7 @@
     "typst": "frameseq typst slides.ts"
   },
   "devDependencies": {
-    "@pride7/frameseq": "^0.21.2",
+    "@pride7/frameseq": "^0.22.0",
     "typescript": "^5.8.3"
   },
   "stackblitz": {

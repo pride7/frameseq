@@ -257,15 +257,23 @@ group(
 ).card();
 ```
 
-**Signature** `group(...items) → GroupBuilder`
+**Signature** `group(...items?) → GroupBuilder`
 
 **Parameters**
 
-- `items` — `ElementBuilder[]`, required. One or more FrameSeq objects, in vertical order.
+- `items` — `ElementBuilder[]`, optional. Existing FrameSeq objects, in vertical order.
 
 **Returns** `GroupBuilder`.
 
 The child objects are removed from the current region and inserted once inside the group. This keeps the linear syntax: create the children first, then define their parent.
+
+With no items, `group()` creates an empty container in the current flow. Subsequent objects can select it explicitly:
+
+```ts
+const panel = group().card().padding(24);
+text("Revenue").bold().parent(panel);
+text("$1.2M").size(42).parent(panel);
+```
 
 ### `gridSection()`
 
@@ -289,11 +297,15 @@ gridSection(columns, ...items) → GridSectionBuilder
 **Parameters**
 
 - `columns` — `number | string`, required. An integer from `1` to `12` creates equal columns. A CSS grid-template string creates custom tracks, for example `"1fr 2fr"`.
-- `items` — `ElementBuilder[]`, required. Every following object becomes one cell, in source order.
+- `items` — `ElementBuilder[]`, optional. Every supplied object becomes one cell, in source order.
+
+In the direct form, every following object becomes one cell. Omitting all objects creates the incremental form described below.
 
 **Returns** `GridSectionBuilder`, with `.columns()` and container modifiers such as `.gap()`, `.align()`, and `.padding()`.
 
 Content written before and after `gridSection()` stays in the ordinary slide flow. Use `slide().grid()` when the entire slide body should be divided into regions.
+
+Calling `gridSection(columns)` without items creates an empty grid. Add later objects with `.parent(section)` when naming the parent makes the source easier to follow.
 
 ## Media and typesetting
 
@@ -733,13 +745,15 @@ Content functions return the object they create. These methods change that objec
 | `.lineHeight(value)` | `value: number \| string` | Set text line height. |
 | `.textAlign(value)` | `value: left \| center \| right` | Set text alignment. |
 | `.opacity(value)` | `value: number` | Set opacity, normally from `0` to `1`. |
+| `.clip(enabled)` | `enabled: boolean`, optional | Clip children to this object's bounds; defaults to `true`. |
+| `.parent(container)` | `container: ElementBuilder` | Move the object below another object in the rendered hierarchy. |
 | `.position(bounds)` | `bounds: { x?: Length; y?: Length }` | Use absolute canvas coordinates. |
 | `.rotate(degrees)` | `degrees: number` | Rotate the object. |
 | `.style(classes)` | `classes: string` | Add Tailwind utility classes. |
 | `.style(properties)` | `properties: CSS values` | Add inline CSS properties. |
 | `.className(value)` | `value: string` | Add one or more CSS classes. |
 
-All methods in this table return the same object. Container builders also provide `.align()`, `.justify()`, `.grow()`, and `.wrap()`. See [Styling](styling.md) for accepted values and precedence rules.
+All methods in this table return the same object. Container builders also provide `.align()`, `.justify()`, `.grow()`, `.wrap()`, and `.canvas()`. See [Styling](styling.md) for accepted values and precedence rules.
 
 ## Length helpers
 

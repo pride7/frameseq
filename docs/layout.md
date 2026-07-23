@@ -104,6 +104,34 @@ gridSection(
 
 `gridSection()` expresses a local parent-child relationship without requiring manual cell selection. Prefer it over a canvas for card rows, metrics, feature comparisons, and other regular two-dimensional arrangements.
 
+## Incremental parent-child layout
+
+When a container should be named before its contents, create it empty and assign each later object with `.parent()`:
+
+```ts
+const results = gridSection(2).gap(20);
+
+card("Quality", "Higher is better").parent(results);
+metric("94.8%", "Accuracy").card().parent(results);
+```
+
+The child is first created by the normal linear command, then moved into `results`; it is never rendered twice. A parent and child must belong to the same slide, and FrameSeq rejects cycles.
+
+An empty `group()` can also be a local positioned container:
+
+```ts
+const diagram = group()
+  .canvas()
+  .width(640)
+  .height(280)
+  .clip();
+
+rect("Input").parent(diagram).position({ x: 40, y: 80 });
+circle("Model").parent(diagram).position({ x: 360, y: 60 });
+```
+
+Container `.canvas()` establishes a local coordinate system, so child `.position()` values are relative to that container instead of the whole slide. `.clip(false)` allows positioned children to extend beyond its bounds.
+
 ## Return to the primary region
 
 ```ts

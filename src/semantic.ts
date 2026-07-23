@@ -16,6 +16,7 @@ import {
   type SlideOptions,
   Text,
 } from "./core";
+import { attachNode, takeNodeChildren } from "./node-tree";
 
 export interface PlaceBounds {
   x: Length;
@@ -126,7 +127,6 @@ export function GridSection(
   columns: GridColumns,
   ...items: ElementBuilder[]
 ): GridSectionBuilder {
-  if (items.length === 0) throw new Error("GridSection() requires at least one item");
   const section = new GridSectionBuilder(
     Column(...items).className("frameseq-grid-section").node,
   );
@@ -218,7 +218,7 @@ export class ContentSlideBuilder extends SlideBuilder {
       throw new Error(`Slide already uses the ${this.structuredLayout} layout`);
     }
     this.structuredLayout = layout;
-    return this.content.node.children.splice(0);
+    return takeNodeChildren(this.content.node);
   }
 
   private defaultRegion(): RegionBuilder {
@@ -298,7 +298,7 @@ export class ContentSlideBuilder extends SlideBuilder {
     const existing = this.takeExistingContent("split");
     const left = region("frameseq-region-left");
     const right = region("frameseq-region-right");
-    left.node.children.push(...existing);
+    for (const child of existing) attachNode(left.node, child);
     this.content
       .className("frameseq-layout-split")
       .style({ display: "grid", gridTemplateColumns: columnsForRatio(ratio) })
@@ -324,7 +324,7 @@ export class ContentSlideBuilder extends SlideBuilder {
     const existing = this.takeExistingContent("grid");
     const cells = Array.from({ length: columns }, (_, index) =>
       region(`frameseq-grid-cell frameseq-grid-cell-${index}`));
-    cells[0].node.children.push(...existing);
+    for (const child of existing) attachNode(cells[0].node, child);
     this.content
       .className("frameseq-layout-grid")
       .style({
@@ -397,7 +397,7 @@ export class SlidesDefinition extends SlidesRootDefinition {
     const slide = new CoverSlideBuilder(Slide({ name: "Cover", title }).node)
       .className("frameseq-cover-slide");
     slide.add(Text(title).className("frameseq-cover-title"));
-    this.node.children.push(slide.node);
+    attachNode(this.node, slide.node);
     return slide;
   }
 
@@ -411,7 +411,7 @@ export class SlidesDefinition extends SlidesRootDefinition {
     const slide = new ContentSlideBuilder(rawSlide.node, body);
     if (title) slide.add(Text(title).className("frameseq-slide-title"));
     slide.add(body);
-    this.node.children.push(slide.node);
+    attachNode(this.node, slide.node);
     return slide;
   }
 }
