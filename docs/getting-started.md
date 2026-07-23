@@ -13,19 +13,31 @@ npm install
 npm run dev
 ```
 
-The generated project contains a `slides.ts` document and TypeScript configuration for FrameSeq's global authoring commands.
+The generated project keeps the slide sequence in `slides.ts` and reusable project code in two small component modules.
 
 ```text
 my-talk/
+├─ components/
+│  ├─ content.ts
+│  └─ theme.ts
 ├─ package.json
 ├─ slides.ts
 └─ tsconfig.json
 ```
 
+- `slides.ts` describes the presentation and its slide sequence.
+- `components/content.ts` contains reusable content functions such as project-specific cards or callouts.
+- `components/theme.ts` contains the project's theme, colors, fonts, and other design defaults.
+
+There is deliberately no `components/index.ts`; `slides.ts` imports the two modules directly so each dependency stays visible.
+
 ## Write the presentation
 
 ```ts
-presentation("My Talk");
+import { featureCard } from "./components/content";
+import { projectTheme } from "./components/theme";
+
+presentation({ title: "My Talk", theme: projectTheme });
 
 slide({ name: "Cover" }).cover();
 text("Build presentations like interfaces").hero();
@@ -36,10 +48,11 @@ slide("First idea")
   .notes("Introduce the main idea and pause before the three supporting points.");
 text("Explain one idea per page.")
   .style("text-3xl font-semibold tracking-tight text-blue-600");
-bullets(
-  "Linear source code",
-  "UI-style modifiers",
-  "Browser preview and PDF export",
+gridSection(
+  3,
+  featureCard("Readable", "Linear source code"),
+  featureCard("Controllable", "UI-style modifiers"),
+  featureCard("Portable", "Browser preview and PDF export"),
 );
 
 slide("Equation");
@@ -49,7 +62,7 @@ math`\int_0^\infty e^{-x}\,dx = 1`;
 
 This starts with the neutral white `blank` theme. You can select a built-in theme with `presentation({ title: "My Talk", theme: "midnight" })`; see [Themes](themes.md) for custom themes.
 
-The file needs no framework import, slides variable, wrapper, or default export. FrameSeq injects the common document commands into the entry file and exports the active presentation.
+The entry needs no FrameSeq framework import, slides variable, wrapper, or default export. FrameSeq injects the common document commands into `slides.ts` and exports the active presentation. Ordinary `.ts` component modules import the specific FrameSeq functions they use.
 
 Tailwind CSS utilities passed to `style("...")` work without installing or configuring Tailwind in the generated project. See [Styling](styling.md) for arbitrary values, inline CSS, and modifier precedence.
 

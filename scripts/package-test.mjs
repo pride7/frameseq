@@ -133,6 +133,19 @@ const generatedPackageJson = JSON.parse(await readFile(
   resolve(appDirectory, "package.json"),
   "utf8",
 ));
+const generatedTsconfig = JSON.parse(await readFile(
+  resolve(appDirectory, "tsconfig.json"),
+  "utf8",
+));
+const generatedSlides = await readFile(resolve(appDirectory, "slides.ts"), "utf8");
+const generatedContent = await readFile(
+  resolve(appDirectory, "components", "content.ts"),
+  "utf8",
+);
+const generatedTheme = await readFile(
+  resolve(appDirectory, "components", "theme.ts"),
+  "utf8",
+);
 if (generatedPackageJson.scripts?.present !== "frameseq dev slides.ts --remote") {
   throw new Error("Generated project did not include the local phone-remote script");
 }
@@ -141,6 +154,18 @@ if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
 }
 if (generatedPackageJson.scripts?.typst !== "frameseq typst slides.ts") {
   throw new Error("Generated project did not include the Typst export script");
+}
+if (!generatedTsconfig.include?.includes("components/**/*.ts")
+  || !generatedSlides.includes('from "./components/content"')
+  || !generatedSlides.includes('from "./components/theme"')
+  || !generatedSlides.includes("featureCard(")
+  || !generatedSlides.includes("theme: projectTheme")
+  || !generatedContent.includes('from "@pride7/frameseq"')
+  || !generatedContent.includes("export function featureCard")
+  || !generatedTheme.includes('from "@pride7/frameseq"')
+  || !generatedTheme.includes("export const projectTheme")
+  || existsSync(resolve(appDirectory, "components", "index.ts"))) {
+  throw new Error("Generated project did not include the direct theme.ts and content.ts component structure");
 }
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
 const installedCli = resolve(
@@ -163,7 +188,7 @@ if (inspectResult.status !== 0) {
 const inspectReport = JSON.parse(inspectResult.stdout);
 if (inspectReport.summary?.slides !== 3
   || inspectReport.slides?.[0]?.layout !== "cover"
-  || inspectReport.slides?.[1]?.source?.line !== 8) {
+  || inspectReport.slides?.[1]?.source?.line !== 14) {
   throw new Error("Packed FrameSeq inspect did not return the generated slide outline");
 }
 const installedLlms = await readFile(
@@ -252,4 +277,4 @@ for (const expected of [
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }
 
-console.log("Package test passed: packed install, project creation, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, PPTX, and Typst.");
+console.log("Package test passed: project components, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, PPTX, and Typst.");

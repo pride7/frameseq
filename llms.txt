@@ -16,7 +16,9 @@ npm install
 npm run dev
 ```
 
-The main source file is `slides.ts`. In a generated project, authoring functions are global: do not add imports, wrapper components, callbacks, or an export statement.
+The main source file is `slides.ts`. Generated projects also contain `components/content.ts` for reusable content functions and `components/theme.ts` for project design settings. The entry imports those two local modules directly; there is no `components/index.ts`.
+
+FrameSeq authoring functions are global inside `slides.ts`: do not import FrameSeq itself, add wrapper callbacks, or add an export statement there. Ordinary component modules must explicitly import the FrameSeq functions they use from `@pride7/frameseq`.
 
 ## Minimal valid source
 

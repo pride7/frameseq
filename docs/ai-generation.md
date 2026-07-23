@@ -17,6 +17,8 @@ Brief:
 [paste the audience, purpose, source material, constraints, and desired length]
 ```
 
+In a generated project, keep slide order and page-specific content in `slides.ts`. Put reusable content factories in `components/content.ts` and shared visual settings in `components/theme.ts`. This separation lets an agent revise the presentation without repeatedly rewriting its design system.
+
 For an installed package, the same reference is available at:
 
 ```text

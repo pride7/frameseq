@@ -4,7 +4,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
 
-const FRAMESEQ_VERSION = "^0.22.0";
+const FRAMESEQ_VERSION = "^0.22.1";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -64,10 +64,16 @@ try {
       noEmit: true,
       types: ["@pride7/frameseq/globals"],
     },
-    include: ["*.slides.ts", "slides.ts"],
+    include: ["*.slides.ts", "slides.ts", "components/**/*.ts"],
   };
 
-  const slides = `presentation(${JSON.stringify(presentationTitle(targetDirectory))});
+  const slides = `import { featureCard } from "./components/content";
+import { projectTheme } from "./components/theme";
+
+presentation({
+  title: ${JSON.stringify(presentationTitle(targetDirectory))},
+  theme: projectTheme,
+});
 
 slide().cover();
 text("Build presentations like interfaces").hero();
@@ -78,15 +84,37 @@ slide("First idea")
   .notes("Introduce the main idea and pause before the supporting points.");
 text("Explain the idea in one clear sentence.")
   .style("text-[30px] font-semibold tracking-tight text-[#0ea5e9]");
-bullets(
-  "No layout boilerplate",
-  "LaTeX-compatible math",
-  "Browser preview, PDF, PowerPoint, and Typst export",
-);
+gridSection(
+  3,
+  featureCard("Readable", "No layout boilerplate"),
+  featureCard("Typeset", "LaTeX-compatible math"),
+  featureCard("Portable", "HTML, PDF, PowerPoint, and Typst"),
+).gap(20);
 
 slide("Equation");
 text\`Inline math works: $E = mc^2$\`;
 math\`\\int_0^\\infty e^{-x}\\,dx = 1\`;
+`;
+
+  const content = `import { group, text } from "@pride7/frameseq";
+
+export function featureCard(title: string, content: string) {
+  return group(
+    text(title).bold(),
+    text(content),
+  ).card();
+}
+`;
+
+  const theme = `import { defineTheme } from "@pride7/frameseq";
+
+export const projectTheme = defineTheme({
+  name: "project",
+  extends: "blank",
+  colors: {
+    accent: "#0ea5e9",
+  },
+});
 `;
 
   const pagesWorkflow = `name: Deploy FrameSeq presentation
@@ -135,6 +163,7 @@ jobs:
 `;
 
   await mkdir(resolve(targetDirectory, ".github", "workflows"), { recursive: true });
+  await mkdir(resolve(targetDirectory, "components"), { recursive: true });
 
   await Promise.all([
     writeFile(
@@ -148,6 +177,8 @@ jobs:
       "utf8",
     ),
     writeFile(resolve(targetDirectory, "slides.ts"), slides, "utf8"),
+    writeFile(resolve(targetDirectory, "components", "content.ts"), content, "utf8"),
+    writeFile(resolve(targetDirectory, "components", "theme.ts"), theme, "utf8"),
     writeFile(
       resolve(targetDirectory, ".github", "workflows", "pages.yml"),
       pagesWorkflow,

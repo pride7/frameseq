@@ -9,6 +9,17 @@ npm install
 npm run dev
 ```
 
+Generated projects keep the slide document focused and place reusable project code in two direct modules:
+
+```text
+components/
+├─ content.ts
+└─ theme.ts
+slides.ts
+```
+
+Use `content.ts` for reusable presentation objects and `theme.ts` for project-wide colors, fonts, and theme settings. No `index.ts` barrel is generated; import each module directly from `slides.ts`.
+
 Press `P` in the presentation to open the synchronized presenter view.
 
 Run `npm run present`, select `R`, and scan the QR code to control navigation and the laser pointer from a phone on the same Wi-Fi.

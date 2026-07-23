@@ -2,6 +2,12 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.22.1] - 2026-07-22
+
+### Changed
+
+- Generate `components/content.ts` and `components/theme.ts` in new projects so `slides.ts` stays focused on presentation structure, with direct imports and no barrel `index.ts`.
+
 ## [0.22.0] - 2026-07-22
 
 ### Added
@@ -227,6 +233,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.22.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.22.1
 [0.22.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.22.0
 [0.21.2]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.2
 [0.21.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.1
