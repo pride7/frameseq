@@ -51,7 +51,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Publish FrameSeq
-        run: npm publish --access=public
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "@pride7/frameseq@$VERSION" version >/dev/null 2>&1; then
+            echo "@pride7/frameseq@$VERSION is already published; skipping."
+          else
+            npm publish --access=public
+          fi
 
   publish-create-frameseq:
     needs: release-check
@@ -69,4 +75,10 @@ jobs:
         run: npm install --global npm@^11.5.1
       - name: Publish project creator
         working-directory: packages/create-frameseq
-        run: npm publish --access=public
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "create-frameseq@$VERSION" version >/dev/null 2>&1; then
+            echo "create-frameseq@$VERSION is already published; skipping."
+          else
+            npm publish --access=public
+          fi
