@@ -13,7 +13,7 @@ The FrameSeq extension adds presentation-aware navigation and commands to Visual
 - An insert-slide command and TypeScript snippets for common FrameSeq structures.
 - Start and stop controls for the live FrameSeq preview.
 - Layout-check results in the VS Code Problems panel.
-- A visible export button in the Slides-view toolbar with HTML, PDF, and PPTX choices.
+- A visible export button in the Slides-view toolbar with HTML, PDF, PPTX, and editable Typst choices.
 
 The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the project's installed FrameSeq CLI. It does not bundle another copy of the rendering runtime.
 
@@ -69,6 +69,7 @@ Open the Command Palette and run:
 - `FrameSeq: Export HTML`
 - `FrameSeq: Export PDF`
 - `FrameSeq: Export PPTX`
+- `FrameSeq: Export Typst`
 
 Saving the active slide document refreshes the outline by default. Disable `frameseq.autoRefresh` if another tool rewrites the source frequently.
 

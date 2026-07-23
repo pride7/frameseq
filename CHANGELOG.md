@@ -2,7 +2,13 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.21.0] - 2026-07-22
+
+### Added
+
+- Add `frameseq typst` and `npm run typst` to export a complete presentation as editable `.typ` source with native Typst pages, grids, text, positioning, shapes, images, and MiTeX-powered inline and display LaTeX math.
+- Convert common LaTeX `tabular`, `tabular*`, and `tabularx` fragments into editable native Typst tables, using MiTeX text mode for cell formatting.
+- Preserve native `typst` fragments directly in the exported source, use MiTeX text mode for basic LaTeX prose, and retain explicit SVG fallbacks plus conversion notes for unsupported LaTeX or CSS features.
 
 ### Documentation
 
@@ -194,6 +200,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.21.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.0
 [0.20.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.20.0
 [0.19.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.19.0
 [0.18.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.18.0

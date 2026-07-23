@@ -37,6 +37,9 @@ const playgroundSlides = await readFile(
 if (!packageJson.files?.includes("llms.txt")) {
   throw new Error("The npm package must include the FrameSeq AI authoring contract");
 }
+if (!packageJson.files?.includes("scripts/typst-export.mjs")) {
+  throw new Error("The npm package must include the Typst exporter");
+}
 if (playgroundJson.devDependencies?.["@pride7/frameseq"] !== `^${packageJson.version}`
   || playgroundJson.scripts?.dev !== "frameseq dev slides.ts --host"
   || playgroundJson.stackblitz?.startCommand !== "npm run dev"
@@ -136,6 +139,9 @@ if (generatedPackageJson.scripts?.present !== "frameseq dev slides.ts --remote")
 if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
   throw new Error("Generated project did not include the PPTX export script");
 }
+if (generatedPackageJson.scripts?.typst !== "frameseq typst slides.ts") {
+  throw new Error("Generated project did not include the Typst export script");
+}
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
 const installedCli = resolve(
   appDirectory,
@@ -231,6 +237,7 @@ if (!pagesWorkflow.includes("actions/checkout@v6")
 
 runNpm(["run", "pdf", "--", "--output", "output/installed-package.pdf"], appDirectory);
 runNpm(["run", "pptx", "--", "--output", "output/installed-package.pptx"], appDirectory);
+runNpm(["run", "typst", "--", "--output", "output/installed-package.typ"], appDirectory);
 runNpm(["exec", "--", "frameseq", "new", "extra.slides.ts"], appDirectory);
 
 for (const expected of [
@@ -239,9 +246,10 @@ for (const expected of [
   resolve(appDirectory, ".github", "workflows", "pages.yml"),
   resolve(appDirectory, "output", "installed-package.pdf"),
   resolve(appDirectory, "output", "installed-package.pptx"),
+  resolve(appDirectory, "output", "installed-package.typ"),
   resolve(appDirectory, "extra.slides.ts"),
 ]) {
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }
 
-console.log("Package test passed: packed install, project creation, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, and PPTX.");
+console.log("Package test passed: packed install, project creation, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, PPTX, and Typst.");

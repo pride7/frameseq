@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add a local `gridSection()` card-grid snippet.
+- Add editable Typst export to the Slides view export menu.
 
 ## 0.2.1
 

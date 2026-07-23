@@ -137,9 +137,10 @@ The JSON report identifies empty pages and gives each geometry issue a slide, ob
 npm run build   # deployable interactive HTML
 npm run pdf     # portable PDF
 npm run pptx    # editable PowerPoint
+npm run typst   # editable Typst source
 ```
 
-One source remains responsible for all three outputs.
+One source remains responsible for every output.
 
 ## Correction prompt
 

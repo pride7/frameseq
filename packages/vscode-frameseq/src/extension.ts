@@ -645,7 +645,7 @@ async function checkLayout(
 async function exportPresentation(
   provider: SlidesProvider,
   output: vscode.OutputChannel,
-  format: "html" | "pdf" | "pptx",
+  format: "html" | "pdf" | "pptx" | "typst",
 ): Promise<void> {
   const entry = provider.entry ?? await resolveEntry();
   if (!entry) {
@@ -678,6 +678,7 @@ async function chooseExportFormat(
     { label: "$(globe) HTML", description: "Static website", format: "html" as const },
     { label: "$(file-pdf) PDF", description: "Portable document", format: "pdf" as const },
     { label: "$(file-binary) PPTX", description: "Editable PowerPoint", format: "pptx" as const },
+    { label: "$(code) Typst", description: "Editable Typst source", format: "typst" as const },
   ], {
     placeHolder: "Choose a FrameSeq export format",
     title: "Export presentation",
@@ -779,6 +780,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     async () => {
       try {
         await exportPresentation(provider, output, "pptx");
+      } catch (error) {
+        void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
+      }
+    },
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "frameseq.exportTypst",
+    async () => {
+      try {
+        await exportPresentation(provider, output, "typst");
       } catch (error) {
         void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
       }

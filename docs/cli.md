@@ -103,6 +103,21 @@ The default hybrid export keeps plain text, code, shapes, lines, and arrows as e
 
 `--flatten` exports each complete slide as one high-resolution image. This provides the closest browser-to-PowerPoint appearance, but individual visible objects cannot be edited. See [Export PowerPoint](pptx.md) for the mapping and limitations.
 
+## Export Typst
+
+```bash
+frameseq typst [file] [--output path]
+```
+
+The default output is `output/typst/<entry-name>.typ`.
+
+```bash
+frameseq typst quarterly.slides.ts
+frameseq typst quarterly.slides.ts --output reports/quarterly.typ
+```
+
+The exporter writes editable Typst pages, maps LaTeX formulas and basic text through MiTeX, and converts common LaTeX `tabular` fragments into native Typst tables. Native Typst fragments remain source; unsupported LaTeX and CSS features use documented fallbacks or conversion notes. See [Typst integration](typst.md).
+
 ## Check the rendered layout
 
 ```bash
@@ -145,6 +160,7 @@ npm run build
 npm run build:single
 npm run pdf
 npm run pptx
+npm run typst
 npm run check
 ```
 

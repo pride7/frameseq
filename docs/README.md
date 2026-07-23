@@ -23,12 +23,12 @@ You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or e
 - [Presenter view and phone remote](presenter.md) — notes, next-slide preview, timer, synchronized controls, and a LAN phone remote.
 - [Deploy HTML](deployment.md) — publish a static presentation, use GitHub Pages, or build one self-contained HTML file.
 - [Export PowerPoint](pptx.md) — choose editable hybrid PPTX or pixel-faithful flattened slides.
+- [Typst integration and export](typst.md) — embed Typst fragments or export the complete presentation as editable `.typ` source.
 
 ## AI and advanced typesetting
 
 - [Generate presentations with AI](ai-generation.md) — give an agent the FrameSeq contract and iterate from layout diagnostics.
 - [AI-friendly layout checks](layout-checks.md) — detect empty pages, overflow, clipped text, and unreadably small type.
-- [Typst integration](typst.md) — embed build-time Typst fragments while FrameSeq controls slide structure.
 - [LaTeX integration](latex.md) — compile existing LaTeX tables and typeset fragments into FrameSeq objects.
 
 ## Editor and tooling

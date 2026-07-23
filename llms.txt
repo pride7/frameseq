@@ -195,7 +195,10 @@ npm run check
 npm run build
 npm run pdf
 npm run pptx
+npm run typst
 ```
+
+`npm run typst` emits editable `.typ` source. Inline `$...$` formulas become MiTeX `mi()` calls, display `math()` becomes `mitex()`, basic LaTeX text uses `mitext()`, common LaTeX `tabular` fragments become native Typst tables, and native Typst fragments remain source objects.
 
 For a machine-readable layout report:
 

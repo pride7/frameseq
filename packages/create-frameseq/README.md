@@ -17,6 +17,6 @@ Run `npm run check` to validate TypeScript and inspect the rendered slides for o
 
 `npm run build` creates a static site in `dist/`. `npm run build:single` creates one self-contained `dist/index.html`.
 
-`npm run pdf` exports a PDF. `npm run pptx` exports an editable hybrid PowerPoint; add `-- --flatten` to render each slide as one image for maximum fidelity.
+`npm run pdf` exports a PDF. `npm run pptx` exports an editable hybrid PowerPoint; add `-- --flatten` to render each slide as one image for maximum fidelity. `npm run typst` creates editable Typst source, maps LaTeX formulas and basic text through MiTeX, and converts common LaTeX tables to native Typst tables.
 
 Every generated project includes `.github/workflows/pages.yml`. Push the project to a GitHub repository, select **GitHub Actions** under **Settings → Pages → Build and deployment**, and each push to `main` or `master` will publish the presentation.

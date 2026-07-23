@@ -8,10 +8,11 @@
     "check": "tsc --noEmit && frameseq check slides.ts",
     "build": "frameseq build slides.ts",
     "pdf": "frameseq pdf slides.ts",
-    "pptx": "frameseq pptx slides.ts"
+    "pptx": "frameseq pptx slides.ts",
+    "typst": "frameseq typst slides.ts"
   },
   "devDependencies": {
-    "@pride7/frameseq": "^0.20.0",
+    "@pride7/frameseq": "^0.21.0",
     "typescript": "^5.8.3"
   },
   "stackblitz": {

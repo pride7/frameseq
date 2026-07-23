@@ -2,7 +2,7 @@
 
 **Write slides as an editable TypeScript document—not a tree of presentation markup.**
 
-FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF/PPTX output. It feels like building an interface, but the source stays as direct and readable as a document.
+FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF/PPTX/Typst output. It feels like building an interface, but the source stays as direct and readable as a document.
 
 [![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
 [![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
@@ -24,7 +24,7 @@ bullets(
   "One linear TypeScript file",
   "Semantic layouts with useful defaults",
   "Tailwind styling without configuration",
-  "Interactive HTML, PDF, and editable PowerPoint",
+  "Interactive HTML, PDF, editable PowerPoint, and Typst",
 );
 
 slide("Results").grid(3);
@@ -104,7 +104,7 @@ FrameSeq is deliberately small and regular, which makes it well suited to AI-gen
 - TypeScript catches misspelled APIs and invalid arguments.
 - `frameseq check --json` gives agents empty-slide, measured overflow, clipping, and readability diagnostics they can correct directly.
 - Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
-- The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, and PPTX output.
+- The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, PPTX, and Typst output.
 
 An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
 
@@ -256,7 +256,7 @@ typstFile("./figures/architecture.typ")
   .width(percent(100));
 ```
 
-FrameSeq compiles Typst to an inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. In editable PPTX export, the rendered fragment is preserved as a high-resolution image. See [Typst integration](https://pride7.github.io/frameseq/docs/typst.html) for the current static-source restrictions.
+FrameSeq compiles embedded Typst to inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. FrameSeq can also export the whole presentation as editable `.typ` source; native Typst fragments remain source, LaTeX formulas and basic text use MiTeX, and common LaTeX tables become native Typst tables. See [Typst integration and export](https://pride7.github.io/frameseq/docs/typst.html).
 
 ### LaTeX tables
 
@@ -508,7 +508,7 @@ presentation({ title: "Ocean Research", theme: ocean });
 
 ## Visual Studio Code extension
 
-FrameSeq includes a companion VS Code extension that keeps `slides.ts` on the left and a live preview on the right. It also provides a slide outline with source-and-preview synchronization, current/previous/next slide navigation, a current-slide status item, slide insertion, TypeScript snippets, Problems-panel layout diagnostics, and HTML/PDF/PPTX export commands. It consumes the same local FrameSeq CLI as the terminal workflow, so there is only one rendering and validation implementation.
+FrameSeq includes a companion VS Code extension that keeps `slides.ts` on the left and a live preview on the right. It also provides a slide outline with source-and-preview synchronization, current/previous/next slide navigation, a current-slide status item, slide insertion, TypeScript snippets, Problems-panel layout diagnostics, and HTML/PDF/PPTX/Typst export commands. It consumes the same local FrameSeq CLI as the terminal workflow, so there is only one rendering and validation implementation.
 
 Build the current extension from this repository:
 
@@ -539,9 +539,12 @@ frameseq pptx my-talk.slides.ts
 
 # Pixel-faithful PowerPoint with one image per slide
 frameseq pptx my-talk.slides.ts --flatten
+
+# Editable Typst source in output/typst/
+frameseq typst my-talk.slides.ts
 ```
 
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. See [Deploy HTML](https://pride7.github.io/frameseq/docs/deployment.html) and [Export PowerPoint](https://pride7.github.io/frameseq/docs/pptx.html).
+The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. Typst export keeps pages, grids, text, code, shapes, and positions editable, uses MiTeX for LaTeX math and basic text, and maps common LaTeX tables to native Typst tables. See [Deploy HTML](https://pride7.github.io/frameseq/docs/deployment.html), [Export PowerPoint](https://pride7.github.io/frameseq/docs/pptx.html), and [Typst integration and export](https://pride7.github.io/frameseq/docs/typst.html).
 
 Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
 

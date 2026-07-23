@@ -10,6 +10,7 @@ import { build as viteBuild, createServer, preview } from "vite";
 import { inspectSlides } from "./frameseq-inspect.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { exportTypst } from "./typst-export.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -25,6 +26,8 @@ Usage:
   frameseq pdf [file] [--output path] Export slides to PDF
   frameseq pptx [file] [--output path] [--flatten]
                                       Export an editable or flattened PowerPoint
+  frameseq typst [file] [--output path]
+                                      Export an editable Typst presentation
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
   frameseq inspect [file] [--json]     Inspect slides and source locations
@@ -39,6 +42,7 @@ Examples:
   frameseq pdf talk.slides.ts
   frameseq pptx talk.slides.ts
   frameseq pptx talk.slides.ts --flatten
+  frameseq typst talk.slides.ts
   frameseq check talk.slides.ts
   frameseq inspect talk.slides.ts --json
   frameseq new quarterly.slides.ts`);
@@ -647,7 +651,7 @@ try {
     help();
   } else if (command === "new") {
     await createSlidesFile(resolve(process.cwd(), file));
-  } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "check" || command === "inspect") {
+  } else if (command === "dev" || command === "build" || command === "pdf" || command === "pptx" || command === "typst" || command === "check" || command === "inspect") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") {
@@ -665,6 +669,14 @@ try {
         entry,
         requestedOutput: option("--output"),
         flatten: process.argv.includes("--flatten"),
+        packageRoot,
+        configFile,
+      });
+    }
+    if (command === "typst") {
+      await exportTypst({
+        entry,
+        requestedOutput: option("--output"),
         packageRoot,
         configFile,
       });

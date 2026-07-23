@@ -126,6 +126,10 @@
       {
         "command": "frameseq.exportPptx",
         "title": "FrameSeq: Export PPTX"
+      },
+      {
+        "command": "frameseq.exportTypst",
+        "title": "FrameSeq: Export Typst"
       }
     ],
     "menus": {

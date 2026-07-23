@@ -1,6 +1,32 @@
 # Typst integration
 
-FrameSeq owns the presentation structure; Typst owns complex local typesetting. A Typst fragment is a normal FrameSeq content object, so it can participate in slide layouts, receive chainable modifiers, and appear in interactive HTML, PDF, and PPTX output.
+FrameSeq owns the presentation structure; Typst owns complex typesetting. You can embed a Typst fragment as a normal FrameSeq object, or export the complete presentation as editable `.typ` source.
+
+## Export the complete presentation
+
+```bash
+npm run typst
+```
+
+The default output is `output/typst/slides.typ`. To choose another path:
+
+```bash
+npx frameseq typst slides.ts --output reports/talk.typ
+```
+
+FrameSeq converts each slide into a fixed-size Typst `page`. Text, code, grids, split layouts, local grids, canvas positions, rectangles, circles, connectors, and local images remain native, editable Typst objects. Native `typst` and `typstFile()` fragments are placed directly into the generated source.
+
+Inline `$...$` formulas use MiTeX's `mi()` function, while `math()` and equation-like `latex` fragments use `mitex()`. Basic LaTeX text fragments use MiTeX's experimental `mitext()` mode. The generated file imports `@preview/mitex:0.2.7` and can be compiled with:
+
+```bash
+typst compile output/typst/slides.typ
+```
+
+LaTeX `tabular`, `tabular*`, and `tabularx` fragments are converted to native Typst `table` objects. FrameSeq preserves `l`, `c`, and `r` alignment, fixed-width and expanding columns, common `booktabs` rules, `\multicolumn`, and LaTeX formatting inside cells through `mitext()`. Tables that depend on unsupported structures such as `\multirow`, nested tables, or package-specific commands keep their compiled SVG as a fidelity fallback.
+
+MiTeX is not a complete TeX engine: its text mode supports common document text but does not implement arbitrary packages or every LaTeX environment. CSS and Typst also have different layout models. Tailwind classes, gradients, arrowheads, unsupported LaTeX structures, and other properties without a safe semantic mapping are therefore listed as conversion notes at the top of the `.typ` file.
+
+## Embed Typst inside FrameSeq
 
 ## Install the optional compiler
 
@@ -73,10 +99,10 @@ HTML / PDF / PPTX
 
 The current SVG output keeps complex layout visually consistent across the browser and PDF paths without loading a Typst compiler at runtime. Editable PPTX export captures the rendered fragment as a high-resolution image; `--flatten` captures the complete slide.
 
-## Current restrictions
+## Embedded-fragment restrictions
 
 - Tagged templates must be static. JavaScript interpolation is not supported yet.
 - `typstFile()` requires a static string path.
 - Typst is currently rendered as SVG rather than semantic HTML or MathML.
 - FrameSeq themes do not automatically change styles inside a Typst fragment.
-- Whole-slide Typst documents are intentionally outside the first integration: FrameSeq remains responsible for slide structure, navigation, themes, and responsive scaling.
+- FrameSeq themes style the exported presentation structure, while declarations inside native Typst fragments remain under the fragment author's control.

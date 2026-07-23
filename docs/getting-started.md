@@ -121,6 +121,20 @@ npx frameseq pptx slides.ts --flatten
 
 See [Export PowerPoint](pptx.md) for details.
 
+## Export Typst
+
+```bash
+npm run typst
+```
+
+The default output is `output/typst/slides.typ`. The file is editable Typst source: slide pages, text, grids, positions, shapes, and code remain native objects, LaTeX formulas and basic text use MiTeX, and common LaTeX `tabular` fragments become native Typst tables.
+
+```bash
+typst compile output/typst/slides.typ
+```
+
+See [Typst integration](typst.md) for the mapping and conversion notes.
+
 ## Add FrameSeq to an existing project
 
 ```bash

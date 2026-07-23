@@ -31,6 +31,7 @@ for (const command of [
   "frameseq.exportHtml",
   "frameseq.exportPdf",
   "frameseq.exportPptx",
+  "frameseq.exportTypst",
 ]) {
   assert.ok(commandIds.has(command), `Missing VS Code command: ${command}`);
   assert.ok(source.includes(`"${command}"`), `VS Code command is not registered: ${command}`);
