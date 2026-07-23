@@ -174,6 +174,23 @@ function shapeType(pptx, item) {
     : pptx.ShapeType.rect;
 }
 
+function verticalAlignment(style) {
+  const display = style.display ?? "";
+  let alignment = "";
+
+  if (display.includes("flex")) {
+    alignment = style.flexDirection?.startsWith("column")
+      ? style.justifyContent
+      : style.alignItems;
+  } else if (display.includes("grid")) {
+    alignment = style.alignItems;
+  }
+
+  if (alignment === "center") return "mid";
+  if (alignment === "end" || alignment === "flex-end") return "bottom";
+  return "top";
+}
+
 function textOptions(item, box = item.contentBox) {
   const color = cssColor(item.style.color, item.style.opacity) ?? {
     color: "000000",
@@ -198,9 +215,7 @@ function textOptions(item, box = item.contentBox) {
       : item.style.textAlign === "right" || item.style.textAlign === "end"
         ? "right"
         : "left",
-    valign: item.style.display.includes("flex") && item.style.alignItems === "center"
-      ? "mid"
-      : "top",
+    valign: verticalAlignment(item.style),
     breakLine: false,
     fit: "shrink",
     paraSpaceAfter: 0,
@@ -365,6 +380,7 @@ async function captureSlides(page) {
       borderRadius: style.borderTopLeftRadius,
       color: style.color,
       display: style.display,
+      flexDirection: style.flexDirection,
       fontFamily: style.fontFamily,
       fontSize: style.fontSize,
       fontStyle: style.fontStyle,
@@ -376,6 +392,7 @@ async function captureSlides(page) {
       paddingRight: style.paddingRight,
       paddingBottom: style.paddingBottom,
       paddingLeft: style.paddingLeft,
+      justifyContent: style.justifyContent,
       textAlign: style.textAlign,
       textDecorationLine: style.textDecorationLine,
       transform: style.transform,

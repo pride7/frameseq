@@ -34,6 +34,16 @@ async function slideXml(zip, index) {
   return zip.file(`ppt/slides/slide${index}.xml`)?.async("string") ?? "";
 }
 
+function shapeXmlByName(xml, name) {
+  const nameIndex = xml.indexOf(`name="${name}"`);
+  assert.notEqual(nameIndex, -1, `Missing PowerPoint object ${name}`);
+  const start = xml.lastIndexOf("<p:sp>", nameIndex);
+  const end = xml.indexOf("</p:sp>", nameIndex);
+  assert.notEqual(start, -1, `Missing start tag for PowerPoint object ${name}`);
+  assert.notEqual(end, -1, `Missing end tag for PowerPoint object ${name}`);
+  return xml.slice(start, end + "</p:sp>".length);
+}
+
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(outputRoot, { recursive: true });
 
@@ -85,6 +95,7 @@ assert.match(partialBorderSlide, /Underline title/);
 assert.match(partialBorderSlide, /FrameSeq border-bottom/);
 assert.match(partialBorderSlide, /FrameSeq border-top/);
 assert.match(partialBorderSlide, /prst="line"/);
+assert.match(shapeXmlByName(partialBorderSlide, "FrameSeq chrome 1"), /anchor="b"/);
 
 const notes = await Promise.all(
   Object.keys(editable.files)

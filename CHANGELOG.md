@@ -2,6 +2,12 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.21.2] - 2026-07-22
+
+### Fixed
+
+- Preserve bottom-aligned CSS flex text in editable PPTX export so underline-style theme titles remain visually close to their rule.
+
 ## [0.21.1] - 2026-07-22
 
 ### Fixed
@@ -206,6 +212,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.21.2]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.2
 [0.21.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.1
 [0.21.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.0
 [0.20.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.20.0
