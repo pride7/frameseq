@@ -26,6 +26,8 @@ Editable export uses a hybrid mapping:
 | Plain text, lists, and code | Editable text boxes |
 | Rectangles and circles | Editable PowerPoint shapes |
 | Lines and arrows | Editable PowerPoint lines |
+| Complete borders | Native PowerPoint shape borders |
+| Partial borders such as `border-bottom` | Editable line objects on the corresponding edges |
 | Images | PowerPoint image objects |
 | LaTeX math, inline math, Typst, and compiled LaTeX fragments | High-resolution image objects |
 | Speaker notes | PowerPoint speaker notes |
@@ -48,7 +50,7 @@ Flattened mode is recommended for slides that rely heavily on gradients, shadows
 
 Editable PowerPoint text uses the font family reported by the browser. Install the same fonts on the computer opening the `.pptx`; otherwise PowerPoint may substitute another font and change line wrapping. Use `--flatten` when the recipient cannot install the presentation fonts.
 
-CSS layout and coordinates are preserved, but not every browser visual effect has a native PowerPoint equivalent. Solid fills, borders, typography, basic shapes, and connectors map directly. Formula, Typst, and compiled LaTeX fragments remain visually stable as high-resolution images.
+CSS layout and coordinates are preserved, but not every browser visual effect has a native PowerPoint equivalent. Solid fills, typography, basic shapes, and connectors map directly. When all four CSS borders match, FrameSeq uses a native PowerPoint shape border. When only some edges are visible or the edges differ, it emits separate editable line objects for those edges. Formula, Typst, and compiled LaTeX fragments remain visually stable as high-resolution images.
 
 ## Reveal steps
 

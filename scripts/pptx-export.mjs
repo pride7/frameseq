@@ -83,28 +83,84 @@ function fill(style) {
     : { type: "none" };
 }
 
+function emptyLine() {
+  return { color: "000000", transparency: 100, width: 0 };
+}
+
+function dashType(style) {
+  return style === "dashed" ? "dash" : style === "dotted" ? "sysDot" : "solid";
+}
+
+function borderSides(style) {
+  return ["top", "right", "bottom", "left"].map((side) => {
+    const suffix = `${side[0].toUpperCase()}${side.slice(1)}`;
+    const width = number(style[`border${suffix}Width`]);
+    const borderStyle = style[`border${suffix}Style`];
+    const color = cssColor(style[`border${suffix}Color`], style.opacity);
+    return {
+      side,
+      width,
+      style: borderStyle,
+      color,
+      visible: width > 0
+        && borderStyle !== "none"
+        && borderStyle !== "hidden"
+        && Boolean(color)
+        && color.transparency < 100,
+    };
+  });
+}
+
+function sameBorder(first, second) {
+  return first.visible && second.visible
+    && Math.abs(first.width - second.width) < 0.001
+    && first.style === second.style
+    && first.color.color === second.color.color
+    && first.color.transparency === second.color.transparency;
+}
+
+function uniformBorder(style) {
+  const sides = borderSides(style);
+  if (!sides.every((side) => sameBorder(sides[0], side))) return undefined;
+  return sides[0];
+}
+
 function border(style) {
-  const widths = [
-    style.borderTopWidth,
-    style.borderRightWidth,
-    style.borderBottomWidth,
-    style.borderLeftWidth,
-  ].map((value) => number(value));
-  const width = Math.max(...widths);
-  const color = cssColor(style.borderColor, style.opacity);
-  if (width <= 0 || !color || color.transparency >= 100 || style.borderStyle === "none") {
-    return { color: "000000", transparency: 100, width: 0 };
-  }
+  const side = uniformBorder(style);
+  if (!side) return emptyLine();
   return {
-    color: color.color,
-    transparency: color.transparency,
-    width: Math.max(width * pointsPerCssPixel, 0.1),
-    dashType: style.borderStyle === "dashed"
-      ? "dash"
-      : style.borderStyle === "dotted"
-        ? "sysDot"
-        : "solid",
+    color: side.color.color,
+    transparency: side.color.transparency,
+    width: Math.max(side.width * pointsPerCssPixel, 0.1),
+    dashType: dashType(side.style),
   };
+}
+
+function addPartialBorders(pptx, slide, item) {
+  if (uniformBorder(item.style)) return;
+  for (const side of borderSides(item.style).filter((candidate) => candidate.visible)) {
+    const half = side.width / 2;
+    const horizontal = side.side === "top" || side.side === "bottom";
+    const x = side.side === "right"
+      ? item.box.x + item.box.width - half
+      : item.box.x + (side.side === "left" ? half : 0);
+    const y = side.side === "bottom"
+      ? item.box.y + item.box.height - half
+      : item.box.y + (side.side === "top" ? half : 0);
+    slide.addShape(pptx.ShapeType.line, {
+      x: x / cssPixelsPerInch,
+      y: y / cssPixelsPerInch,
+      w: horizontal ? Math.max(item.box.width / cssPixelsPerInch, 0.001) : 0,
+      h: horizontal ? 0 : Math.max(item.box.height / cssPixelsPerInch, 0.001),
+      line: {
+        color: side.color.color,
+        transparency: side.color.transparency,
+        width: Math.max(side.width * pointsPerCssPixel, 0.1),
+        dashType: dashType(side.style),
+      },
+      objectName: `FrameSeq border-${side.side} ${item.id}`,
+    });
+  }
 }
 
 function shapeType(pptx, item) {
@@ -162,13 +218,15 @@ function textOptions(item, box = item.contentBox) {
 function addDecoration(pptx, slide, item) {
   const itemFill = fill(item.style);
   const itemLine = border(item.style);
-  if (itemFill.type === "none" && itemLine.transparency === 100) return;
-  slide.addShape(shapeType(pptx, item), {
-    ...position(item.box),
-    fill: itemFill,
-    line: itemLine,
-    objectName: `FrameSeq decoration ${item.id}`,
-  });
+  if (itemFill.type !== "none" || itemLine.transparency < 100) {
+    slide.addShape(shapeType(pptx, item), {
+      ...position(item.box),
+      fill: itemFill,
+      line: itemLine,
+      objectName: `FrameSeq decoration ${item.id}`,
+    });
+  }
+  addPartialBorders(pptx, slide, item);
 }
 
 function addText(pptx, slide, item) {
@@ -225,6 +283,7 @@ function addShape(pptx, slide, item) {
     valign: "mid",
     objectName: `FrameSeq ${item.nodeType} ${item.id}`,
   });
+  addPartialBorders(pptx, slide, item);
 }
 
 function addLine(pptx, slide, item) {
@@ -291,8 +350,14 @@ async function captureSlides(page) {
     const styleSnapshot = (style) => ({
       alignItems: style.alignItems,
       backgroundColor: style.backgroundColor,
-      borderColor: style.borderTopColor,
-      borderStyle: style.borderTopStyle,
+      borderTopColor: style.borderTopColor,
+      borderRightColor: style.borderRightColor,
+      borderBottomColor: style.borderBottomColor,
+      borderLeftColor: style.borderLeftColor,
+      borderTopStyle: style.borderTopStyle,
+      borderRightStyle: style.borderRightStyle,
+      borderBottomStyle: style.borderBottomStyle,
+      borderLeftStyle: style.borderLeftStyle,
       borderTopWidth: style.borderTopWidth,
       borderRightWidth: style.borderRightWidth,
       borderBottomWidth: style.borderBottomWidth,

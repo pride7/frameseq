@@ -2,6 +2,12 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.21.1] - 2026-07-22
+
+### Fixed
+
+- Preserve partial CSS borders in editable PPTX export by emitting separate PowerPoint line objects for the visible top, right, bottom, or left edges instead of expanding the largest edge into a full rectangular border.
+
 ## [0.21.0] - 2026-07-22
 
 ### Added
@@ -200,6 +206,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Initial linear TypeScript slide document, browser runtime, layouts, formulas, and PDF export.
 
+[0.21.1]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.1
 [0.21.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.21.0
 [0.20.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.20.0
 [0.19.0]: https://www.npmjs.com/package/@pride7/frameseq/v/0.19.0

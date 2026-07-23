@@ -11,6 +11,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputRoot = resolve(packageRoot, "tmp", "pptx-test");
 const editablePath = resolve(outputRoot, "editable.pptx");
 const flattenedPath = resolve(outputRoot, "flattened.pptx");
+const partialBorderPath = resolve(outputRoot, "partial-border.pptx");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 
 if (!outputRoot.startsWith(resolve(packageRoot, "tmp"))) {
@@ -38,14 +39,23 @@ await mkdir(outputRoot, { recursive: true });
 
 run(["pptx", "slides.ts", "--output", editablePath]);
 run(["pptx", "slides.ts", "--flatten", "--output", flattenedPath]);
+run([
+  "pptx",
+  "scripts/fixtures/pptx-partial-border.slides.ts",
+  "--output",
+  partialBorderPath,
+]);
 
 const editableBuffer = await readFile(editablePath);
 const flattenedBuffer = await readFile(flattenedPath);
+const partialBorderBuffer = await readFile(partialBorderPath);
 assert.equal(editableBuffer.subarray(0, 2).toString(), "PK");
 assert.equal(flattenedBuffer.subarray(0, 2).toString(), "PK");
+assert.equal(partialBorderBuffer.subarray(0, 2).toString(), "PK");
 
 const editable = await JSZip.loadAsync(editableBuffer);
 const flattened = await JSZip.loadAsync(flattenedBuffer);
+const partialBorder = await JSZip.loadAsync(partialBorderBuffer);
 const slidePattern = /^ppt\/slides\/slide\d+\.xml$/;
 const editableSlides = Object.keys(editable.files).filter((name) => slidePattern.test(name));
 const flattenedSlides = Object.keys(flattened.files).filter((name) => slidePattern.test(name));
@@ -70,6 +80,12 @@ assert.match(shapeSlide, /FrameSeq line/);
 assert.match(shapeSlide, /prst="line"/);
 assert.match(shapeSlide, /prst="ellipse"/);
 
+const partialBorderSlide = await slideXml(partialBorder, 1);
+assert.match(partialBorderSlide, /Underline title/);
+assert.match(partialBorderSlide, /FrameSeq border-bottom/);
+assert.match(partialBorderSlide, /FrameSeq border-top/);
+assert.match(partialBorderSlide, /prst="line"/);
+
 const notes = await Promise.all(
   Object.keys(editable.files)
     .filter((name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(name))
@@ -93,4 +109,4 @@ const flattenedMedia = Object.keys(flattened.files)
   .filter((name) => /^ppt\/media\/image-\d+-\d+\.png$/.test(name));
 assert.equal(flattenedMedia.length, 8);
 
-console.log("PPTX test passed: editable objects, centered bullets, speaker notes, 16:9 sizing, and flattened slides.");
+console.log("PPTX test passed: editable objects, partial borders, centered bullets, speaker notes, 16:9 sizing, and flattened slides.");
