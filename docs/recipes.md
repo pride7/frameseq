@@ -164,6 +164,10 @@ text("Research Systems Group · 2026").caption();
 
 A closing slide with one sentence gives the room something to hold on to. `center()` and `quote()` do the rest; the object form of `slide()` leaves the page without a heading.
 
+## Revising them
+
+[Revising a talk](revising.md) takes this same deck through the edits a second draft needs — a theme change, a page split, a new measurement, a new node in a diagram — and shows what each one costs in lines.
+
 ## Checking your own deck
 
 The deck these recipes come from passes the layout checker, and yours can be held to the same standard:

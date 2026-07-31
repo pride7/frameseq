@@ -23,6 +23,7 @@ const documentationGroups = [
     label: "Write and design",
     pages: [
       { slug: "recipes", source: "docs/recipes.md", label: "Recipes" },
+      { slug: "revising", source: "docs/revising.md", label: "Revising a talk" },
       { slug: "document-model", source: "docs/document-model.md", label: "Document model" },
       { slug: "content", source: "docs/content.md", label: "Content" },
       { slug: "layout", source: "docs/layout.md", label: "Layout" },

@@ -12,6 +12,7 @@ You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or e
 ## Write and design slides
 
 - [Recipes](recipes.md) — complete slides for the pages a talk actually needs: cover, comparison, measurements, code, formula, diagram, reveal, close.
+- [Revising a talk](revising.md) — the edits a second draft needs, each shown as a diff and measured in lines.
 
 - [Document model](document-model.md) — how `presentation()`, `slide()`, objects, and active regions fit together.
 - [Content](content.md) — text, lists, images, code, formulas, metrics, cards, and groups.
