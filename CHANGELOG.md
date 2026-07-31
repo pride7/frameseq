@@ -2,6 +2,13 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+
+- Add a Recipes guide organised by what a slide is for rather than by which function it uses: cover, one idea and its evidence, comparison, a row of measurements, code beside its explanation, a formula, a flow diagram, a two-dimensional architecture, a progressive reveal, and a closing statement. Every recipe is a complete slide taken from a deck that ships with the Gallery and passes the layout checker.
+- End the getting-started guide with the next task rather than a pointer into the reference.
+
 ## [0.27.0] - 2026-07-31
 
 ### Fixed

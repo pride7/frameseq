@@ -167,4 +167,14 @@ For editor support in a zero-import slide file, add the global declarations to `
 }
 ```
 
-Continue with the [document model](document-model.md).
+## Next
+
+Write the pages your talk actually needs. [Recipes](recipes.md) has a complete, checked slide for each of them — cover, comparison, a row of measurements, code beside its explanation, a formula, a diagram without coordinates, a progressive reveal, and a closing statement.
+
+Then run the layout checker before you present:
+
+```bash
+npx frameseq check my-talk.slides.ts
+```
+
+[The document model](document-model.md) explains the rules the recipes rely on, and [Diagrams](diagrams.md) covers the drawing model in full.

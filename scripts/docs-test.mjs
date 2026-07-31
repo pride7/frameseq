@@ -114,4 +114,33 @@ for (const file of [guidePath, docsIndexPath]) {
   }
 }
 
-console.log("Documentation test passed: common functions, signatures, parameters, returns, roles, entry links, and local links are present.");
+// The recipes page claims every snippet comes from a deck that the layout checker
+// accepts, so each one must actually appear in that deck.
+const recipes = await readFile(resolve(packageRoot, "docs", "recipes.md"), "utf8");
+const deck = await readFile(
+  resolve(packageRoot, "gallery", "slides", "recipes.slides.ts"),
+  "utf8",
+);
+const normalise = (source) => source
+  .split("\n")
+  .map((line) => line.trimEnd())
+  .filter((line) => line.trim().length > 0)
+  .join("\n");
+const deckSource = normalise(deck);
+const recipeBlocks = [...recipes.matchAll(/```ts\n([\s\S]*?)```/g)].map((match) => match[1]);
+
+assert.ok(recipeBlocks.length >= 10, "The recipes page should carry a recipe for each slide");
+assert.equal(
+  (deck.match(/^slide\(/gm) ?? []).length,
+  recipeBlocks.length,
+  "Every slide in the recipes deck should appear on the recipes page, and the other way round",
+);
+for (const block of recipeBlocks) {
+  const snippet = normalise(block);
+  assert.ok(
+    deckSource.includes(snippet),
+    `A recipe is missing from gallery/slides/recipes.slides.ts: ${snippet.split("\n")[0]}`,
+  );
+}
+
+console.log("Documentation test passed: common functions, signatures, parameters, returns, roles, recipes, entry links, and local links are present.");

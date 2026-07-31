@@ -22,6 +22,7 @@ const documentationGroups = [
   {
     label: "Write and design",
     pages: [
+      { slug: "recipes", source: "docs/recipes.md", label: "Recipes" },
       { slug: "document-model", source: "docs/document-model.md", label: "Document model" },
       { slug: "content", source: "docs/content.md", label: "Content" },
       { slug: "layout", source: "docs/layout.md", label: "Layout" },
@@ -68,6 +69,7 @@ const documentationGroups = [
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
+  { slug: "recipes", entry: resolve(packageRoot, "gallery", "slides", "recipes.slides.ts") },
   { slug: "ai-research", entry: resolve(packageRoot, "gallery", "slides", "ai-research.slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
