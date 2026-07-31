@@ -29,6 +29,8 @@ rect("TypeScript")
 
 The label is optional. It is centered by default and supports the same inline `$...$` math syntax as `text()`.
 
+A rectangle without a height is 240 x 96, its minimum. Setting `height()` releases that minimum, so a shorter shape is rendered as asked; set `minHeight()` before `height()` to keep a floor of your own.
+
 ## Circles
 
 ```ts

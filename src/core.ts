@@ -461,6 +461,16 @@ export class ContainerBuilder extends ElementBuilder {
 }
 
 export class ShapeBuilder extends ElementBuilder {
+  /**
+   * A shape carries a minimum height from the stylesheet so an unsized node still
+   * looks like one. A minimum always clamps an explicit height, so asking for a
+   * shorter shape has to release it; an explicit minHeight() set first still wins.
+   */
+  override height(value: Length): this {
+    if (this.node.styles.minHeight === undefined) this.node.styles.minHeight = "0px";
+    return super.height(value);
+  }
+
   fill(value: string): this {
     this.node.styles.background = value;
     return this;

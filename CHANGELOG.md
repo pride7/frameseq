@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## [Unreleased]
 
+### Fixed
+
+- Render a shape at the height it was given. A shape carries a minimum height from the stylesheet, and a minimum always clamps an explicit height, so `rect("A").height(80)` was drawn 96px tall. An explicit `height()` now releases that minimum, while an explicit `minHeight()` set before it still applies.
+
 ### Added
 
 - Add a Diagrams guide that puts the whole model in one place: `at()` for which container an object belongs to, `row()` and `column()` for how it arranges them, `anchor()` for where the container sits, and names for how objects relate. The composition sections move there from the shapes guide, which now covers the primitives.

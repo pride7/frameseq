@@ -82,8 +82,6 @@ function named(document, name) {
   const document = presentation("Alignment test");
   slide("Alignment").canvas();
 
-  // The shape stylesheet keeps a rect at least 96px tall, so this one renders 96,
-  // not 80, and every placement below it follows the rendered box.
   rect("Anchor").as("anchor").position({ x: 100, y: 100 }).width(200).height(80);
   const sidecar = rect("Sidecar").as("sidecar").rightOf("anchor", 40).alignTop("anchor");
   const stacked = rect("Stacked").as("stacked").below("anchor", 30).alignLeft("anchor");
@@ -96,11 +94,11 @@ function named(document, name) {
   assert.equal(sidecar.node.styles.translate, undefined);
 
   assert.equal(stacked.node.styles.left, "100px");
-  assert.equal(stacked.node.styles.top, "226px");
+  assert.equal(stacked.node.styles.top, "210px");
   assert.equal(stacked.node.styles.translate, undefined);
 
   assert.equal(badge.node.styles.left, "200px");
-  assert.equal(badge.node.styles.top, "148px");
+  assert.equal(badge.node.styles.top, "140px");
   assert.equal(badge.node.styles.translate, "-50% -50%");
 }
 
@@ -334,6 +332,23 @@ function named(document, name) {
   assert.equal(corner.node.styles.top, "calc(100% - 40px)");
   assert.equal(corner.node.styles.translate, "-100% -100%");
   assert.throws(() => rect("X").anchor("middle"), /does not know "middle"/);
+}
+
+// An explicit height releases the minimum a shape carries from the stylesheet,
+// but an explicit minimum set first still wins.
+{
+  presentation("Shape height test");
+  slide("Heights").canvas();
+
+  const short = rect("Short").height(60);
+  assert.equal(short.node.styles.height, "60px");
+  assert.equal(short.node.styles.minHeight, "0px");
+
+  const floored = rect("Floored").minHeight(120).height(60);
+  assert.equal(floored.node.styles.minHeight, "120px");
+
+  const unsized = rect("Unsized");
+  assert.equal(unsized.node.styles.minHeight, undefined);
 }
 
 // Names are validated where they are written.

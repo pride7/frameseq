@@ -125,13 +125,12 @@ try {
   );
   assert.equal(named.get("parse").width, 240);
 
-  // The centred column places each child by the widest one. Both shapes render 96px
-  // tall even though the fixture asks for 80, because the shape stylesheet sets a
-  // minimum height, so the second child starts at 96 + the 40px gap.
+  // The centred column places each child by the widest one, and an explicit height
+  // is rendered as asked, so the second child starts at 80 plus the 40px gap.
   assert.equal(named.get("wide").x, 0);
-  assert.equal(named.get("wide").height, 96);
+  assert.equal(named.get("wide").height, 80);
   assert.equal(named.get("narrow").x, 80);
-  assert.equal(named.get("narrow").y, 136);
+  assert.equal(named.get("narrow").y, 120);
 
   // Stretch gives a child without its own height the height of the line.
   assert.equal(named.get("tall").height, 160);
