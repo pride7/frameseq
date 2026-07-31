@@ -1564,10 +1564,13 @@ footer > div a {
 
 @media (max-width: 980px) {
   .site-header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
   }
 
-  nav {
+  /* The in-page anchors are reachable by scrolling, but the documentation is a
+     different destination, so it has to survive on a phone. */
+  nav a:not(.nav-docs) {
     display: none;
   }
 

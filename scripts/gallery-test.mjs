@@ -181,6 +181,22 @@ try {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
+  // The landing page hides its in-page anchors on a phone; the documentation is a
+  // separate destination, so its link has to stay reachable.
+  await page.goto(url, { waitUntil: "networkidle0" });
+  const homeMobile = await page.evaluate(() => ({
+    header: [...document.querySelectorAll(".site-header a")]
+      .filter((link) => link.offsetParent !== null)
+      .map((link) => link.getAttribute("href")),
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+  }));
+  assert.ok(
+    homeMobile.header.includes("./docs/"),
+    `The landing page should link to the documentation on a phone, found ${homeMobile.header.join(", ")}`,
+  );
+  assert.ok(homeMobile.overflow <= 0);
+  await page.goto(new URL("docs/index.html", url).href, { waitUntil: "networkidle0" });
+
   assert.equal(docsMobile.groups, documentationGroups.length);
   assert.ok(docsMobile.overflow <= 0);
 

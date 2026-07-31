@@ -97,6 +97,16 @@ assert.ok(guide.includes("**Returns**"), "Function entries need return-value doc
 assert.ok(docsIndex.includes("[Function reference](function-guide.md)"));
 assert.ok(readme.includes("https://pride7.github.io/frameseq/docs/function-guide.html"));
 
+// A release replaces the Unreleased heading, and a replacement that only matched the
+// first one left an orphan section whose entries belonged to no release at all.
+const changelog = await readFile(resolve(packageRoot, "CHANGELOG.md"), "utf8");
+const unreleased = changelog.match(/^## \[Unreleased\]/gm) ?? [];
+assert.ok(unreleased.length <= 1, "The changelog has more than one Unreleased section");
+const firstSection = changelog.match(/^## \[[^\]]+\]/m)?.[0];
+if (unreleased.length === 1) {
+  assert.equal(firstSection, "## [Unreleased]", "Unreleased should be the first section");
+}
+
 // One structure describes the navigation; the home page is rendered from it and the
 // Gallery sidebar is built from it, so neither can drift from the other.
 assert.equal(
