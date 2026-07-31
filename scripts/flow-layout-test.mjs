@@ -78,7 +78,7 @@ try {
     });
   });
 
-  assert.equal(measured.length, 7, "Every connector in the fixture should be rendered");
+  assert.equal(measured.length, 10, "Every connector in the fixture should be rendered");
 
   const tolerance = 1;
   const edgeDistance = (point, box) => {
@@ -150,6 +150,18 @@ try {
   // The anchored group needs no coordinates, and its contents still resolve.
   assert.equal(named.get("a").x, 0);
   assert.equal(named.get("b").x, 260);
+
+  // Nested containers compose: a row inside a column carries its own offset.
+  assert.deepEqual([named.get("a1").x, named.get("a1").y], [0, 0]);
+  assert.deepEqual([named.get("b1").x, named.get("b1").y], [184, 0]);
+  assert.deepEqual([named.get("c1").x, named.get("c1").y], [0, 130]);
+  assert.deepEqual([named.get("d1").x, named.get("d1").y], [184, 130]);
+
+  // A column inside a row starts after the previous column plus the gap, and the
+  // shorter column stretches to the height of the taller one without moving its child.
+  assert.deepEqual([named.get("l1").x, named.get("l1").y], [0, 0]);
+  assert.deepEqual([named.get("l2").x, named.get("l2").y], [0, 116]);
+  assert.deepEqual([named.get("r1").x, named.get("r1").y], [188, 0]);
 
   assert.deepEqual(errors, []);
 } finally {

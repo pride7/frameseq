@@ -28,6 +28,7 @@ const documentationGroups = [
       { slug: "styling", source: "docs/styling.md", label: "Styling" },
       { slug: "themes", source: "docs/themes.md", label: "Themes" },
       { slug: "shapes", source: "docs/shapes.md", label: "Shapes and connectors" },
+      { slug: "diagrams", source: "docs/diagrams.md", label: "Diagrams" },
     ],
   },
   {

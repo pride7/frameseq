@@ -2,6 +2,13 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add a Diagrams guide that puts the whole model in one place: `at()` for which container an object belongs to, `row()` and `column()` for how it arranges them, `anchor()` for where the container sits, and names for how objects relate. The composition sections move there from the shapes guide, which now covers the primitives.
+- Resolve nested rows and columns, so a two-dimensional diagram needs no coordinates either. A nested container is as large as the layout it produces, and the container around it decides its size on the other axis. Using `align()` or `justify()` on a nested container requires an explicit `width()` and `height()`, because otherwise its size is not its own to decide.
+
 ## [0.26.0] - 2026-07-31
 
 ### Added

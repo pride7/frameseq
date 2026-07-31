@@ -339,6 +339,11 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       throw new AnchorError(`${label()} wraps, so FrameSeq cannot resolve where its contents land`);
     }
 
+    const parent = parents.get(container);
+    const nested = Boolean(parent)
+      && parent!.styles.display === "flex"
+      && container.styles.position !== "absolute";
+
     const gap = cssNumber(container.styles.gap);
     if (gap === undefined) {
       throw new AnchorError(
@@ -349,6 +354,13 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     const padding = paddingOf(container, label);
     const justify = container.styles.justifyContent ?? "flex-start";
     const align = container.styles.alignItems ?? "stretch";
+    if (nested && (justify !== "flex-start" || align !== "stretch")
+      && (container.styles.width === undefined || container.styles.height === undefined)) {
+      throw new AnchorError(
+        `${label()} sits inside another row or column, so its size is decided by that `
+        + "container; give it .width(...) and .height(...) to use align() or justify() here",
+      );
+    }
     if (!["flex-start", "center", "flex-end", "stretch"].includes(align)) {
       throw new AnchorError(`${label()} uses align("${align}"), which FrameSeq cannot resolve`);
     }
@@ -364,7 +376,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
           + "give it .width(...) and .height(...) and remove grow() to anchor it",
         );
       }
-      const { width, height } = sizeOf(child);
+      const { width, height } = intrinsicSize(child);
       if (width === undefined || height === undefined) {
         const missing = width === undefined ? "width" : "height";
         throw new AnchorError(
@@ -419,12 +431,32 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     return layout;
   };
 
+  /** A row or column with no declared size is as large as the layout it produces. */
+  function intrinsicSize(node: FrameSeqNode): { width?: number; height?: number } {
+    const declared = sizeOf(node);
+    if (declared.width !== undefined && declared.height !== undefined) return declared;
+    if (node.styles.display !== "flex") return declared;
+
+    const layout = flowLayout(node);
+    const padding = paddingOf(node, () => describe(node));
+    let width = 0;
+    let height = 0;
+    for (const box of layout.values()) {
+      width = Math.max(width, box.x + box.width);
+      height = Math.max(height, box.y + box.height);
+    }
+    return {
+      width: declared.width ?? width + padding.left,
+      height: declared.height ?? height + padding.top,
+    };
+  }
+
   function boxOf(node: FrameSeqNode): ResolvedBox {
     const cached = boxes.get(node);
     if (cached) return cached;
 
     const frame = frameOrigin(frames.get(node) ?? slide);
-    const { width, height } = sizeOf(node);
+    const { width, height } = intrinsicSize(node);
     let flowSize: { width: number; height: number } | undefined;
     let x: number;
     let y: number;
@@ -457,12 +489,13 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
             + `or a placement such as .rightOf(...)`,
           );
         }
-        if (frames.get(node) !== container) {
+        if (container.styles.display !== "flex") {
           throw new AnchorError(
-            `${describe(node)} is laid out by ${describe(container)}, which has no coordinates `
-            + `of its own; give that container .position({ x, y }) or .anchor(...)`,
+            `${describe(node)} has no canvas coordinates, and ${describe(container)} does not `
+            + "place it either; give it .position({ x, y }), .anchor(...), or a placement",
           );
         }
+
         const placed = flowLayout(container).get(node);
         if (!placed) {
           throw new AnchorError(
@@ -470,6 +503,22 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
             + `or a placement such as .rightOf(...)`,
           );
         }
+
+        // A row or column can itself sit inside another one, so keep composing
+        // offsets until a container with coordinates of its own is reached.
+        if (frames.get(node) !== container) {
+          const outer = boxOf(container);
+          const nestedBox: ResolvedBox = {
+            root: outer.root,
+            x: outer.x + placed.x,
+            y: outer.y + placed.y,
+            width: placed.width,
+            height: placed.height,
+          };
+          boxes.set(node, nestedBox);
+          return nestedBox;
+        }
+
         x = placed.x;
         y = placed.y;
         flowSize = { width: placed.width, height: placed.height };

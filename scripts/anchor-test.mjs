@@ -227,6 +227,51 @@ function named(document, name) {
   );
 }
 
+// Rows and columns nest, so a two-dimensional arrangement needs no coordinates either.
+{
+  const document = presentation("Nested flow test");
+  slide("Matrix").canvas();
+
+  at("matrix").column().gap(30).position({ x: 120, y: 120 });
+  at("matrix/top").row().gap(24);
+  rect("A").as("a").width(160).height(100);
+  rect("B").as("b").width(160).height(100);
+  at("matrix/bottom").row().gap(24);
+  rect("C").as("c").width(160).height(100);
+  at("matrix");
+  const down = line().from("a").to("c");
+  const across = line().from("a").to("b");
+
+  resolveAnchors(document.node);
+
+  assert.deepEqual(
+    [down.node.props.x1, down.node.props.y1, down.node.props.x2, down.node.props.y2],
+    [80, 100, 80, 130],
+  );
+  assert.deepEqual(
+    [across.node.props.x1, across.node.props.y1, across.node.props.x2, across.node.props.y2],
+    [160, 50, 184, 50],
+  );
+}
+
+// A nested container cannot use align() or justify() unless it declares its size,
+// because the container around it decides how large it is.
+{
+  const document = presentation("Nested alignment test");
+  slide("Matrix").canvas();
+
+  at("matrix").column().gap(20).position({ x: 0, y: 0 });
+  at("matrix/row").row().gap(10).justify("center");
+  rect("A").as("a");
+  at("matrix");
+  line().from("a").to("a");
+
+  assert.throws(
+    () => resolveAnchors(document.node),
+    /sits inside another row or column, so its size is decided by that container/,
+  );
+}
+
 // Layouts that cannot be resolved exactly are reported instead of guessed.
 {
   const document = presentation("Flow limits test");
@@ -260,7 +305,7 @@ function named(document, name) {
 
   assert.throws(
     () => resolveAnchors(document.node),
-    /is laid out by "row", which has no coordinates of its own/,
+    /"row" has no canvas coordinates, and a column does not place it either/,
   );
 }
 

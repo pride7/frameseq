@@ -43,3 +43,31 @@ rect("Middle").as("middle").width(180).height(90);
 rect("Right").as("right").width(180).height(90);
 line().from("left").to("middle").arrow("end");
 line().from("middle").to("right").arrow("end");
+
+// Nested rows inside a column build a two-dimensional arrangement.
+slide("Matrix").canvas();
+
+at("matrix").column().gap(30).position({ x: 120, y: 120 });
+at("matrix/top").row().gap(24);
+rect("A1").as("a1").width(160).height(100);
+rect("B1").as("b1").width(160).height(100);
+at("matrix/bottom").row().gap(24);
+rect("C1").as("c1").width(160).height(100);
+rect("D1").as("d1").width(160).height(100);
+
+at("matrix");
+line().from("a1").to("c1").arrow("end");
+line().from("b1").to("d1").arrow("end");
+
+// Columns inside a row, where the shorter column stretches to the tallest one.
+slide("Columns").canvas();
+
+at("cols").row().gap(48).position({ x: 100, y: 120 });
+at("cols/left").column().gap(16);
+rect("L1").as("l1").width(140).height(100);
+rect("L2").as("l2").width(140).height(100);
+at("cols/right").column().gap(16);
+rect("R1").as("r1").width(140).height(100);
+
+at("cols");
+line().from("l1").to("r1").arrow("end");

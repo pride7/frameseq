@@ -12,7 +12,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const galleryOutput = resolve(packageRoot, "dist", "gallery");
 const docsOutput = resolve(galleryOutput, "docs");
 const docsFiles = (await readdir(docsOutput)).filter((file) => file.endsWith(".html"));
-assert.equal(docsFiles.length, 22);
+assert.equal(docsFiles.length, 23);
 
 const docsSources = new Map();
 for (const file of docsFiles) {

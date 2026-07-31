@@ -17,6 +17,7 @@ You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or e
 - [Styling](styling.md) — chainable modifiers, text roles, dimensions, Tailwind CSS, and inline styles.
 - [Themes](themes.md) — built-in themes, global typography, and custom design tokens.
 - [Shapes and connectors](shapes.md) — editable rectangles, circles, lines, and arrows.
+- [Diagrams](diagrams.md) — region paths, automatic rows and columns, names, and connectors that follow their objects.
 
 ## Present and export
 

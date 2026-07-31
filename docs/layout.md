@@ -158,7 +158,7 @@ text("Right copy");
 
 Set a region's layout where it first appears, then use the bare path afterwards. Revisiting a path returns the same region and appends to it, so a page can be written in the order that reads best rather than in the order the containers nest. Paths are scoped to their slide: the same path on the next slide is a new region.
 
-FrameSeq also registers each path as an anchor name, so a positioned region can be connected like any other object:
+For diagrams, [Diagrams](diagrams.md) shows how region paths, rows, and connectors combine into a page with no coordinates. FrameSeq registers each path as an anchor name, so a positioned region can be connected like any other object:
 
 ```ts
 slide("Stages").canvas();
