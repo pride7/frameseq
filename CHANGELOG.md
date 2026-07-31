@@ -2,6 +2,18 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add Chinese, Japanese, and Korean fallbacks to every built-in theme font stack, for body, heading, and code text. Families resolve per character, so Latin text keeps the theme font while CJK text gets a real face instead of empty boxes. The same list reaches Typst export, which also falls back per character.
+- Add a CJK rendering test that compares rendered glyph bitmaps in interactive and print mode and fails when characters render as identical tofu boxes. The test validates its own detector against unassigned code points.
+- Install `fonts-noto-cjk` in the CI, publish, and Gallery workflows so exports rendered on a Linux runner carry real glyphs.
+
+### Fixed
+
+- Export a CJK typeface for PowerPoint runs that contain CJK characters. PowerPoint stores one typeface per run, so the Latin family that leads the stack previously left those runs to viewer substitution.
+
 ## [0.24.0] - 2026-07-31
 
 ### Removed

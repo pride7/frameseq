@@ -59,4 +59,11 @@ const compiler = NodeCompiler.create({ workspace: testDirectory });
 const svg = compiler.plainSvg({ mainFileContent: compileSource });
 assert.match(svg, /<svg/);
 
+// Typst falls back per character too, so the CJK families must reach the export.
+assert.match(
+  source,
+  /"Noto Sans CJK SC"|"Microsoft YaHei"|"PingFang SC"/,
+  "The exported font tuple should carry the theme's CJK fallbacks",
+);
+
 console.log("Typst export test passed: pages, layouts, MiTeX mapping, native LaTeX tables, Typst fragments, shapes, notes, and syntax are valid.");

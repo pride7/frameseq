@@ -100,10 +100,20 @@ export interface ThemeOptions {
 
 export type ThemeInput = BuiltInThemeName | ThemeDefinition;
 
+/**
+ * Chinese, Japanese, and Korean fallbacks. Browsers resolve font families per
+ * character, so a Latin family first keeps Latin text unchanged while CJK text
+ * finds the first installed family here instead of rendering as empty boxes.
+ * The same list travels to Typst export, which also falls back per character.
+ */
+const cjkSans = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC"';
+const cjkSerif = '"Songti SC", SimSun, "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC"';
+const cjkMono = '"Noto Sans Mono CJK SC", "Sarasa Mono SC"';
+
 const defaultFonts: ThemeFonts = {
-  body: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  heading: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  mono: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+  body: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", ${cjkSans}, sans-serif`,
+  heading: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", ${cjkSans}, sans-serif`,
+  mono: `"SFMono-Regular", Consolas, "Liberation Mono", ${cjkMono}, monospace`,
 };
 
 const defaultSpacing: ThemeSpacing = {
@@ -221,8 +231,8 @@ const paper: ThemeDefinition = {
   },
   fonts: {
     ...defaultFonts,
-    body: 'Georgia, Cambria, "Times New Roman", serif',
-    heading: 'Georgia, Cambria, "Times New Roman", serif',
+    body: `Georgia, Cambria, "Times New Roman", ${cjkSerif}, serif`,
+    heading: `Georgia, Cambria, "Times New Roman", ${cjkSerif}, serif`,
   },
   spacing: defaultSpacing,
   radii: {
@@ -237,8 +247,8 @@ const paper: ThemeDefinition = {
 };
 
 const beamerFonts: ThemeFonts = {
-  body: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
-  heading: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
+  body: `Arial, "Helvetica Neue", Helvetica, ${cjkSans}, sans-serif`,
+  heading: `Arial, "Helvetica Neue", Helvetica, ${cjkSans}, sans-serif`,
   mono: defaultFonts.mono,
 };
 
@@ -368,8 +378,8 @@ const minimalAcademic: ThemeDefinition = {
   },
   fonts: {
     ...beamerFonts,
-    body: '"Latin Modern Sans", "LM Sans 10", Arial, sans-serif',
-    heading: '"Latin Modern Sans", "LM Sans 10", Arial, sans-serif',
+    body: `"Latin Modern Sans", "LM Sans 10", Arial, ${cjkSans}, sans-serif`,
+    heading: `"Latin Modern Sans", "LM Sans 10", Arial, ${cjkSans}, sans-serif`,
   },
   spacing: {
     ...beamerSpacing,

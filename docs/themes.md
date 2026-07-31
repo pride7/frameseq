@@ -164,6 +164,36 @@ const conferenceTheme = defineTheme({
 
 See [API reference](api-reference.md#themes) for all token names.
 
+## Chinese, Japanese, and Korean text
+
+Every built-in theme ends its font stacks with CJK families, so Chinese, Japanese, and Korean text renders with a real face instead of empty boxes:
+
+```ts
+presentation({ title: "中文排版", theme: "minimal-academic" });
+
+slide("正文与列表");
+text("中文与 English 混排时，拉丁字母仍使用主题字体。");
+```
+
+Browsers, and the Typst exporter, resolve font families per character. The Latin family stays first in every stack, so Latin text is unchanged and only the characters it cannot draw fall through to `PingFang SC`, `Hiragino Sans GB`, `Microsoft YaHei`, `Noto Sans CJK SC`, `Noto Sans SC`, or `Source Han Sans SC`. The `paper` theme uses the serif equivalents, and code blocks fall back to `Noto Sans Mono CJK SC`.
+
+To choose the face yourself, put it first in the presentation font option:
+
+```ts
+presentation({
+  title: "中文排版",
+  font: { family: '"Source Han Sans SC", Inter, sans-serif' },
+});
+```
+
+The machine that renders the slides must have the font installed. Browsers substitute a system font when a family is missing, but PDF, PPTX, and Typst export from a machine with no CJK font produces empty boxes. On a Linux server or CI runner, install one:
+
+```bash
+sudo apt-get install -y fonts-noto-cjk
+```
+
+FrameSeq's own CI installs that package and `npm test` fails if Chinese glyphs render as boxes.
+
 ## Local overrides
 
 Element modifiers still have the final say:

@@ -97,6 +97,16 @@ assert.match(partialBorderSlide, /FrameSeq border-top/);
 assert.match(partialBorderSlide, /prst="line"/);
 assert.match(shapeXmlByName(partialBorderSlide, "FrameSeq chrome 1"), /anchor="b"/);
 
+// A run containing CJK text must carry a CJK typeface, not the Latin family
+// that leads the stack, because PowerPoint stores one typeface per run.
+const chineseSlide = await slideXml(partialBorder, 2);
+assert.match(chineseSlide, /中文文本必须/);
+const chineseTypeface = chineseSlide.match(/typeface="([^"]+)"/g) ?? [];
+assert.ok(
+  chineseTypeface.some((value) => /PingFang|YaHei|Noto Sans CJK|Noto Sans SC|Source Han|Songti|SimSun/i.test(value)),
+  `A Chinese run should use a CJK typeface, found: ${chineseTypeface.join(", ")}`,
+);
+
 const notes = await Promise.all(
   Object.keys(editable.files)
     .filter((name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(name))

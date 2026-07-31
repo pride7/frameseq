@@ -94,4 +94,23 @@ assert.equal(minimalAcademicSlides.font?.heading?.weight, 700);
 assert.equal(minimalAcademicSlides.font?.code?.family, "Consolas, monospace");
 assert.equal(minimalAcademicSlides.font?.code?.size, 17);
 
-console.log("Theme test passed: default, built-in, Beamer, custom, metadata, and override behavior.");
+// Every built-in theme must be able to render Chinese, Japanese, and Korean text.
+// Browsers resolve families per character, so a CJK family after the Latin one
+// leaves Latin text unchanged while giving CJK text a real face to use.
+const cjkFamily = /PingFang SC|Microsoft YaHei|Noto Sans CJK SC|Noto Sans SC|Source Han Sans SC|Songti SC|SimSun|Noto Serif CJK SC|Noto Serif SC|Source Han Serif SC/;
+const cjkMonoFamily = /Noto Sans Mono CJK SC|Sarasa Mono SC/;
+
+for (const [name, theme] of Object.entries(themes)) {
+  assert.match(theme.fonts.body, cjkFamily, `${name}: body font stack has no CJK family`);
+  assert.match(theme.fonts.heading, cjkFamily, `${name}: heading font stack has no CJK family`);
+  assert.match(theme.fonts.mono, cjkMonoFamily, `${name}: mono font stack has no CJK family`);
+
+  // The Latin family must still come first, or Latin text changes shape.
+  const first = theme.fonts.body.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+  assert.doesNotMatch(first, cjkFamily, `${name}: a CJK family must not lead the body stack`);
+}
+
+const derived = defineTheme({ name: "derived", extends: "paper" });
+assert.match(derived.fonts.body, cjkFamily, "A derived theme keeps the CJK fallbacks");
+
+console.log("Theme test passed: default, built-in, Beamer, custom, CJK fallbacks, metadata, and override behavior.");

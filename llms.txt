@@ -77,6 +77,8 @@ Common modifiers: `.hero()`, `.subtitle()`, `.lead()`, `.caption()`, `.quote()`,
 
 Built-in themes: `blank`, `midnight`, `paper`, `beamer-default`, `beamer-madrid`, `beamer-cambridge-us`, `minimal-academic`
 
+Chinese, Japanese, and Korean content needs no configuration: every theme font stack ends with CJK families and resolves per character, so Latin text keeps the theme font. Override the face with `presentation({ font: { family: "..." } })`. The rendering machine must have a CJK font installed for PDF, PPTX, and Typst export.
+
 ## Layout patterns
 
 Use a split for comparison or text beside a visual:

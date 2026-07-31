@@ -51,11 +51,29 @@ function cssColor(value, opacity = 1) {
   };
 }
 
-function fontFace(fontFamily) {
-  return fontFamily
-    .split(",", 1)[0]
-    .trim()
-    .replace(/^['"]|['"]$/g, "") || "Arial";
+const cjkPattern = /[⺀-鿿豈-﫿＀-￯]/;
+
+function familyList(fontFamily) {
+  return String(fontFamily ?? "")
+    .split(",")
+    .map((family) => family.trim().replace(/^['"]|['"]$/g, ""))
+    .filter(Boolean);
+}
+
+/**
+ * PowerPoint stores one typeface per run, so a Latin-only family would leave
+ * CJK text to whatever the viewer substitutes. Runs that contain CJK text use
+ * the first CJK family from the stack instead; those faces also carry Latin
+ * glyphs, so mixed runs stay consistent.
+ */
+function fontFace(fontFamily, text = "") {
+  const families = familyList(fontFamily);
+  if (cjkPattern.test(text)) {
+    const cjk = families.find((family) => /PingFang|Hiragino|YaHei|Noto (Sans|Serif)( Mono)? CJK|Noto (Sans|Serif)( Mono)? SC|Source Han|Songti|SimSun|Sarasa/i.test(family));
+    if (cjk) return cjk;
+  }
+  const generic = new Set(["sans-serif", "serif", "monospace", "system-ui", "ui-sans-serif", "ui-serif", "ui-monospace", "cursive", "fantasy"]);
+  return families.find((family) => !generic.has(family.toLowerCase())) || "Arial";
 }
 
 function rotation(transform) {
@@ -204,7 +222,7 @@ function textOptions(item, box = item.contentBox) {
     ...position(box),
     margin: 0,
     isTextBox: true,
-    fontFace: fontFace(item.style.fontFamily),
+    fontFace: fontFace(item.style.fontFamily, item.text ?? ""),
     fontSize,
     color: color.color,
     transparency: color.transparency,

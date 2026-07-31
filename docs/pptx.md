@@ -50,6 +50,12 @@ Flattened mode is recommended for slides that rely heavily on gradients, shadows
 
 Editable PowerPoint text uses the font family reported by the browser. Install the same fonts on the computer opening the `.pptx`; otherwise PowerPoint may substitute another font and change line wrapping. Use `--flatten` when the recipient cannot install the presentation fonts.
 
+PowerPoint stores one typeface per text run, so a run that contains Chinese, Japanese, or Korean characters is exported with the first CJK family from the theme's font stack rather than the Latin family that leads it. Those faces carry Latin glyphs too, so a mixed run stays consistent. To control which name reaches PowerPoint, put your preferred family first:
+
+```ts
+presentation({ font: { family: '"Microsoft YaHei", Inter, sans-serif' } });
+```
+
 CSS layout and coordinates are preserved, but not every browser visual effect has a native PowerPoint equivalent. Solid fills, typography, basic shapes, and connectors map directly. When all four CSS borders match, FrameSeq uses a native PowerPoint shape border. When only some edges are visible or the edges differ, it emits separate editable line objects for those edges. Formula, Typst, and compiled LaTeX fragments remain visually stable as high-resolution images.
 
 ## Reveal steps
