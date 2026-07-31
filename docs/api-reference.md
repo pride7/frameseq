@@ -492,7 +492,6 @@ grow(value?: number): this
 wrap(enabled?: boolean): this
 opacity(value: number): this
 clip(enabled?: boolean): this
-parent(parent: ElementBuilder): this
 position(position: { x?: Length; y?: Length }): this
 as(name: string): this
 rightOf(target: string, gap?: number): this

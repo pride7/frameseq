@@ -2,6 +2,12 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Removed
+
+- Remove `.parent(container)`. Region paths and name-based grouping cover every case it served: use `at("panel")` to name a container before its contents, and `group("first", "second")` or `gridSection(2, "first", "second")` to collect objects that were written first. Unlike `.parent()`, neither requires a local variable, so slide source stays flat.
+
 ## [0.23.0] - 2026-07-31
 
 ### Added

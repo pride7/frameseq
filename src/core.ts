@@ -175,21 +175,6 @@ function justifyValue(
 export class ElementBuilder {
   constructor(readonly node: FrameSeqNode) {}
 
-  /** Move this object below another content object in the rendered hierarchy. */
-  parent(parent: ElementBuilder): this {
-    if (this.node.type === "slides" || this.node.type === "slide") {
-      throw new Error("Only content objects can use parent()");
-    }
-    if (parent.node.type === "slides" || parent.node.type === "slide") {
-      throw new Error("parent() expects a content object, group(), or gridSection()");
-    }
-    if (!parent.node.styles.position || parent.node.styles.position === "static") {
-      parent.node.styles.position = "relative";
-    }
-    attachNode(parent.node, this.node);
-    return this;
-  }
-
   /** Name this object so connectors and relative placement can reference it. */
   as(name: string): this {
     if (this.node.type === "slides" || this.node.type === "slide") {

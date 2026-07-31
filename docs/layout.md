@@ -104,33 +104,29 @@ gridSection(
 
 `gridSection()` expresses a local parent-child relationship without requiring manual cell selection. Prefer it over a canvas for card rows, metrics, feature comparisons, and other regular two-dimensional arrangements.
 
-## Incremental parent-child layout
+## Name a container before its contents
 
-When a container should be named before its contents, create it empty and assign each later object with `.parent()`:
-
-```ts
-const results = gridSection(2).gap(20);
-
-card("Quality", "Higher is better").parent(results);
-metric("94.8%", "Accuracy").card().parent(results);
-```
-
-The child is first created by the normal linear command, then moved into `results`; it is never rendered twice. A parent and child must belong to the same slide, and FrameSeq rejects cycles.
-
-An empty `group()` can also be a local positioned container:
+When the container reads better than the objects inside it, name it with `at()` and keep writing content normally. Nothing needs a local variable:
 
 ```ts
-const diagram = group()
-  .canvas()
-  .width(640)
-  .height(280)
-  .clip();
+at("diagram").canvas().width(640).height(280).clip();
 
-rect("Input").parent(diagram).position({ x: 40, y: 80 });
-circle("Model").parent(diagram).position({ x: 360, y: 60 });
+rect("Input").position({ x: 40, y: 80 });
+circle("Model").position({ x: 360, y: 60 });
 ```
 
-Container `.canvas()` establishes a local coordinate system, so child `.position()` values are relative to that container instead of the whole slide. `.clip(false)` allows positioned children to extend beyond its bounds.
+Container `.canvas()` establishes a local coordinate system, so `.position()` values are relative to that container instead of the whole slide. `.clip(false)` allows positioned children to extend beyond its bounds.
+
+When the objects come first and the container second, name the objects and collect them afterwards:
+
+```ts
+card("Quality", "Higher is better").as("quality");
+metric("94.8%", "Accuracy").card().as("accuracy");
+
+gridSection(2, "quality", "accuracy").gap(20);
+```
+
+Each object is created by the normal linear command and moved once into the grid; it is never rendered twice. Objects must belong to the current region of the same slide.
 
 ## Region paths
 

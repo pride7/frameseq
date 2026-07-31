@@ -303,12 +303,12 @@ group("parse", "build").row().gap(16);
 
 The child objects are removed from the current region and inserted once inside the group. This keeps the linear syntax: create the children first, then define their parent.
 
-With no items, `group()` creates an empty container in the current flow. Subsequent objects can select it explicitly:
+With no items, `group()` creates an empty container in the current flow. To write the container first and its contents afterwards, name it with `at()` instead:
 
 ```ts
-const panel = group().card().padding(24);
-text("Revenue").bold().parent(panel);
-text("$1.2M").size(42).parent(panel);
+at("panel").card().padding(24);
+text("Revenue").bold();
+text("$1.2M").size(42);
 ```
 
 ### `ref()`
@@ -357,13 +357,13 @@ gridSection(columns, ...items) → GridSectionBuilder
 - `columns` — `number | string`, required. An integer from `1` to `12` creates equal columns. A CSS grid-template string creates custom tracks, for example `"1fr 2fr"`.
 - `items` — `Array<ElementBuilder | string>`, optional. Every supplied object becomes one cell, in source order. Strings select objects by name, as in `group()`.
 
-In the direct form, every following object becomes one cell. Omitting all objects creates the incremental form described below.
+In the direct form, every following object becomes one cell.
 
 **Returns** `GridSectionBuilder`, with `.columns()` and container modifiers such as `.gap()`, `.align()`, and `.padding()`.
 
 Content written before and after `gridSection()` stays in the ordinary slide flow. Use `slide().grid()` when the entire slide body should be divided into regions.
 
-Calling `gridSection(columns)` without items creates an empty grid. Add later objects with `.parent(section)` when naming the parent makes the source easier to follow.
+Calling `gridSection(columns)` without items creates an empty grid in the current flow. When the objects should be written before the grid, name them with `.as()` and collect them afterwards: `gridSection(2, "quality", "accuracy")`.
 
 ## Media and typesetting
 
@@ -895,7 +895,6 @@ Content functions return the object they create. These methods change that objec
 | `.textAlign(value)` | `value: left \| center \| right` | Set text alignment. |
 | `.opacity(value)` | `value: number` | Set opacity, normally from `0` to `1`. |
 | `.clip(enabled)` | `enabled: boolean`, optional | Clip children to this object's bounds; defaults to `true`. |
-| `.parent(container)` | `container: ElementBuilder` | Move the object below another object in the rendered hierarchy. |
 | `.position(bounds)` | `bounds: { x?: Length; y?: Length }` | Use absolute canvas coordinates. |
 | `.rotate(degrees)` | `degrees: number` | Rotate the object. |
 | `.style(classes)` | `classes: string` | Add Tailwind utility classes. |

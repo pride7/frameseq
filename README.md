@@ -393,15 +393,15 @@ gridSection(
 
 Unlike `slide().grid(3)`, a local grid does not take over the whole slide body. Content before and after it remains in the ordinary document flow.
 
-When naming the container first reads more naturally, create it empty and assign later objects with `.parent()`:
+When the container reads better than its contents, name it with `at()` and keep writing normally:
 
 ```ts
-const results = gridSection(2).gap(20);
-card("Quality", "Higher is better").parent(results);
-metric("94.8%", "Accuracy").card().parent(results);
+at("panel").card().padding(24);
+text("Revenue").bold();
+text("$1.2M").size(42);
 ```
 
-The same pattern works with `group()`. Calling `.canvas()` on a container creates a local coordinate system for positioned children, and `.clip()` keeps them inside its bounds.
+Calling `.canvas()` on a container creates a local coordinate system for positioned children, and `.clip()` keeps them inside its bounds.
 
 Objects can also be grouped and restyled by name, which keeps the source free of local variables:
 

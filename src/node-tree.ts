@@ -16,14 +16,14 @@ function assertCanAttach(parent: FrameSeqNode, child: FrameSeqNode): void {
 
   let ancestor: FrameSeqNode | undefined = parent;
   while (ancestor) {
-    if (ancestor === child) throw new Error("parent() cannot create a cycle");
+    if (ancestor === child) throw new Error("A container cannot be placed inside one of its own children");
     ancestor = parents.get(ancestor);
   }
 
   const parentSlide = owningSlide(parent);
   const childSlide = owningSlide(child);
   if (parentSlide && childSlide && parentSlide !== childSlide) {
-    throw new Error("parent() requires both objects to belong to the same slide");
+    throw new Error("Objects can only be combined within the same slide");
   }
 }
 

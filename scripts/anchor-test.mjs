@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
+  at,
   circle,
-  group,
   line,
   presentation,
   rect,
@@ -107,8 +107,10 @@ function named(document, name) {
   const document = presentation("Nested frame test");
   slide("Stages").canvas();
 
-  const stage = group().canvas().position({ x: 200, y: 60 }).width(400).height(300);
-  rect("Inner").as("inner").position({ x: 20, y: 40 }).width(100).height(60).parent(stage);
+  at("stage").canvas().position({ x: 200, y: 60 }).width(400).height(300);
+  rect("Inner").as("inner").position({ x: 20, y: 40 }).width(100).height(60);
+
+  at("");
   const outer = rect("Outer").as("outer").position({ x: 700, y: 100 }).width(100).height(60);
   const link = line().from("inner").to("outer");
 
@@ -161,8 +163,10 @@ function named(document, name) {
 {
   const document = presentation("Unpositioned test");
   slide("Flow").canvas();
-  const holder = group().canvas();
-  rect("Hidden").as("hidden").position({ x: 10, y: 10 }).parent(holder);
+  at("holder").canvas();
+  rect("Hidden").as("hidden").position({ x: 10, y: 10 });
+
+  at("");
   rect("Visible").as("visible").position({ x: 400, y: 10 });
   line().from("visible").to("hidden");
 

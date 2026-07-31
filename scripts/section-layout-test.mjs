@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  at,
   card,
   gridSection,
   group,
@@ -55,40 +56,34 @@ assert.throws(
   /same object more than once/,
 );
 
-slide("Incremental parent-child layout");
+slide("Named container layout");
 
-const panel = group()
-  .card()
-  .canvas()
-  .width(520)
-  .height(220)
-  .clip();
-const panelTitle = text("Local canvas")
-  .parent(panel)
-  .position({ x: 24, y: 20 });
-const panelMetric = metric("63+", "papers")
-  .parent(panel)
-  .position({ x: 24, y: 82 });
+at("panel").card().canvas().width(520).height(220).clip();
+const panelTitle = text("Local canvas").position({ x: 24, y: 20 });
+const panelMetric = metric("63+", "papers").position({ x: 24, y: 82 });
 
-const incrementalGrid = gridSection(2).gap(16);
-const gridCardA = card("A", "First").parent(incrementalGrid);
-const gridCardB = card("B", "Second").parent(incrementalGrid);
+at("");
+const gridCardA = card("A", "First").as("a");
+const gridCardB = card("B", "Second").as("b");
+const incrementalGrid = gridSection(2, "a", "b").gap(16);
 
 const nestedPage = slides.slides[1];
 const nestedBody = nestedPage.children.find((node) =>
   classes(node).includes("frameseq-slide-body"));
 assert.ok(nestedBody, "The nested slide body should exist");
-assert.deepEqual(nestedBody.children, [panel.node, incrementalGrid.node]);
-assert.deepEqual(panel.node.children, [panelTitle.node, panelMetric.node]);
-assert.equal(panel.node.styles.position, "relative");
-assert.equal(panel.node.styles.display, "block");
-assert.equal(panel.node.styles.overflow, "hidden");
+const panel = nestedBody.children[0];
+assert.deepEqual(nestedBody.children, [panel, incrementalGrid.node]);
+assert.deepEqual(panel.children, [panelTitle.node, panelMetric.node]);
+assert.equal(panel.props.name, "panel");
+assert.equal(panel.styles.position, "relative");
+assert.equal(panel.styles.display, "block");
+assert.equal(panel.styles.overflow, "hidden");
 assert.equal(panelTitle.node.styles.position, "absolute");
 assert.deepEqual(incrementalGrid.node.children, [gridCardA.node, gridCardB.node]);
 
+// A container still cannot be placed inside one of its own children.
 const outer = group();
-const inner = group().parent(outer);
-assert.throws(() => outer.parent(inner), /cycle/);
+assert.throws(() => outer.add(group().add(outer)), /inside one of its own children/);
 
 slide("Regrouping by name");
 
@@ -126,7 +121,7 @@ assert.throws(() => group("missing"), /group\(\) cannot find an object named "mi
 
 const foreignSlide = slide("Different slide");
 const foreignObject = text("Cannot move across slides");
-assert.throws(() => foreignObject.parent(panel), /same slide/);
-assert.throws(() => foreignSlide.parent(panel), /Only content objects/);
+assert.throws(() => group(panelTitle, foreignObject), /must belong to the current layout region/);
+assert.equal(foreignSlide.node.props.name, "Different slide");
 
-console.log("Section layout test passed: regrouping, incremental parents, local canvases, clipping, ordering, and validation.");
+console.log("Section layout test passed: regrouping, named containers, local canvases, clipping, ordering, and validation.");
