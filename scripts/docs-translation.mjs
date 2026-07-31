@@ -33,7 +33,13 @@ export function translatedSources(locale = "zh") {
 }
 
 function digest(source) {
-  return createHash("sha256").update(source).digest("hex").slice(0, 16);
+  // Git hands Windows a CRLF checkout and Linux an LF one, so the bytes of the same
+  // committed file differ by platform. Normalise before hashing, or the guard fires
+  // on every machine that did not write the stamp.
+  return createHash("sha256")
+    .update(source.replace(/\r\n/g, "\n"))
+    .digest("hex")
+    .slice(0, 16);
 }
 
 export async function translationStatus(locale = "zh") {

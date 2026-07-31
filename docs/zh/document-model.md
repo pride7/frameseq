@@ -1,4 +1,4 @@
-<!-- translation-of: docs/document-model.md sha256:c0038a4c8a19b8e8 -->
+<!-- translation-of: docs/document-model.md sha256:7d8f15c71e196a91 -->
 
 # 文档模型
 

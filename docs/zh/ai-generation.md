@@ -1,4 +1,4 @@
-<!-- translation-of: docs/ai-generation.md sha256:9c9b10d7b618ab78 -->
+<!-- translation-of: docs/ai-generation.md sha256:a64ec4911cf85c1d -->
 
 # 用 AI 生成演示
 

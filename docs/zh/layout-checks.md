@@ -1,4 +1,4 @@
-<!-- translation-of: docs/layout-checks.md sha256:da7a13df1dbca91a -->
+<!-- translation-of: docs/layout-checks.md sha256:54aa0b43628b28ae -->
 
 # 面向 AI 的布局检查
 
