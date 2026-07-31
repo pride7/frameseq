@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { documentationGroups, documentationPages } from "./docs-structure.mjs";
 import { renderDocumentationIndex } from "./docs-index.mjs";
+import { translationStatus } from "./docs-translation.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guidePath = resolve(packageRoot, "docs", "function-guide.md");
@@ -122,11 +123,36 @@ assert.deepEqual(
   "The reading path should be install, write, revise",
 );
 
+// The Chinese reading path must still say what the English pages say. Each translation
+// records the hash of the source it was written from; a changed source fails here.
+assert.equal(
+  await readFile(resolve(packageRoot, "docs", "zh", "README.md"), "utf8"),
+  renderDocumentationIndex("zh"),
+  "docs/zh/README.md is out of date; run npm run docs:index",
+);
+
+const translations = await translationStatus("zh");
+assert.ok(translations.length >= 3, "The reading path should be translated");
+for (const page of translations) {
+  assert.equal(
+    page.declaredSource,
+    page.english,
+    `${page.translated} should declare which page it translates`,
+  );
+  assert.equal(
+    page.recorded,
+    page.expected,
+    `${page.english} changed after ${page.translated} was written. `
+    + "Update the translation, then run npm run docs:stamp",
+  );
+}
+
 // A page that exists but is not in the navigation cannot be found by a reader.
 const navigated = new Set(documentationPages
   .filter((page) => page.source.startsWith("docs/"))
   .map((page) => basename(page.source)));
-const present = (await readdir(resolve(packageRoot, "docs"))).filter((file) => file.endsWith(".md"));
+const present = (await readdir(resolve(packageRoot, "docs")))
+  .filter((file) => file.endsWith(".md"));
 for (const file of present) {
   assert.ok(navigated.has(file), `docs/${file} is missing from scripts/docs-structure.mjs`);
 }
@@ -170,5 +196,17 @@ for (const block of recipeBlocks) {
     `A recipe is missing from gallery/slides/recipes.slides.ts: ${snippet.split("\n")[0]}`,
   );
 }
+
+// Code is not translated, so the Chinese recipes must quote the same deck.
+const chineseRecipes = await readFile(resolve(packageRoot, "docs", "zh", "recipes.md"), "utf8");
+const chineseBlocks = [...chineseRecipes.matchAll(/```ts\n([\s\S]*?)```/g)].map((m) => m[1]);
+assert.equal(chineseBlocks.length, recipeBlocks.length);
+for (const block of chineseBlocks) {
+  assert.ok(
+    deckSource.includes(normalise(block)),
+    "A Chinese recipe is missing from gallery/slides/recipes.slides.ts",
+  );
+}
+
 
 console.log("Documentation test passed: navigation structure, common functions, signatures, parameters, returns, roles, recipes, and links.");

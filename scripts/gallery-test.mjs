@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { documentationGroups, documentationPages } from "./docs-structure.mjs";
+import { documentationGroups, documentationPages, localisedGroups } from "./docs-structure.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const galleryOutput = resolve(packageRoot, "dist", "gallery");
@@ -29,6 +29,21 @@ for (const file of referenced) {
   const { size } = await stat(resolve(docsOutput, "images", file));
   assert.ok(size > 5000, `${file} is too small to be a rendered slide`);
 }
+
+// The Chinese reading path is published beside the English documentation, each page
+// linking to its counterpart, and untranslated pages are offered in English.
+const chineseFiles = (await readdir(resolve(docsOutput, "zh"))).filter((f) => f.endsWith(".html"));
+const translated = localisedGroups("zh").flatMap((group) => group.pages)
+  .filter((page) => page.translated);
+assert.equal(chineseFiles.length, translated.length);
+const chineseHome = await readFile(resolve(docsOutput, "zh", "index.html"), "utf8");
+assert.match(chineseHome, /<html lang="zh-Hans"/);
+assert.match(chineseHome, /href="\.\.\/index\.html"[^>]*>English</);
+assert.match(chineseHome, /href="\.\.\/themes\.html"[^>]*>Themes <span class="docs-nav-lang">EN</);
+const englishHome = await readFile(resolve(docsOutput, "index.html"), "utf8");
+assert.match(englishHome, /href="zh\/index\.html"[^>]*>中文</);
+const chineseRecipes = await readFile(resolve(docsOutput, "zh", "recipes.html"), "utf8");
+assert.match(chineseRecipes, /src="\.\.\/images\/recipes-1\.png"/);
 
 const docsSources = new Map();
 for (const file of docsFiles) {

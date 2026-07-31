@@ -83,6 +83,7 @@
     "frameseq": "node scripts/frameseq.mjs",
     "docs:check": "node scripts/docs-test.mjs",
     "docs:index": "node scripts/docs-index.mjs",
+    "docs:stamp": "node scripts/docs-translation.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",
     "pptx": "node scripts/frameseq.mjs pptx slides.ts",
     "export:pptx": "node scripts/frameseq.mjs pptx slides.ts --output output/pptx/frameseq.pptx",

@@ -203,3 +203,50 @@ export const documentationGroups = [
 ];
 
 export const documentationPages = documentationGroups.flatMap((group) => group.pages);
+
+/**
+ * The Chinese documentation. Only the reading path is translated: a reader can get from
+ * installing FrameSeq to a revised talk without English, and every other page is offered
+ * in English rather than hidden, so no link leads nowhere.
+ */
+export const locales = {
+  en: { code: "en", htmlLang: "en", label: "English", switchLabel: "中文", directory: "" },
+  zh: { code: "zh", htmlLang: "zh-Hans", label: "中文", switchLabel: "English", directory: "zh" },
+};
+
+const chinese = {
+  groups: {
+    Start: { label: "开始", summary: "装上 FrameSeq,写出第一份讲演,再改一遍。" },
+    "Write slides": { label: "写幻灯片", summary: "配方背后的模型,一次讲一个主题。" },
+    "Typeset mathematics and tables": {
+      label: "排版公式与表格",
+      summary: "需要外部排版器的片段,交给它来排。",
+    },
+    "Check and generate": { label: "检查与生成", summary: "上台前验证,或者把格式交给 AI。" },
+    "Present and export": { label: "演示与导出", summary: "讲完之后,把文件交出去。" },
+    "Editor and command line": { label: "编辑器与命令行", summary: "在你已有的工具里驱动 FrameSeq。" },
+    Reference: { label: "参考", summary: "查东西用。不属于阅读路径。" },
+  },
+  pages: {
+    index: { label: "文档首页", blurb: "按能把讲演写出来的顺序,该读什么。" },
+    "getting-started": { label: "快速上手", blurb: "建项目、写头几页、预览、导出。" },
+    recipes: { label: "配方", blurb: "讲演需要的每一种页面,各一页完整源码,配渲染结果。" },
+    revising: { label: "修改一场讲演", blurb: "第二稿要做的改动,每处一段 diff,按行计价。" },
+  },
+};
+
+/** The documentation structure in one language, with untranslated pages left in English. */
+export function localisedGroups(locale) {
+  if (locale === "en") return documentationGroups;
+  return documentationGroups.map((group) => ({
+    ...group,
+    ...(chinese.groups[group.label] ?? {}),
+    pages: group.pages.map((page) => ({
+      ...page,
+      ...(chinese.pages[page.slug] ?? {}),
+      translated: Boolean(chinese.pages[page.slug]),
+    })),
+  }));
+}
+
+export const translatedSlugs = Object.keys(chinese.pages);

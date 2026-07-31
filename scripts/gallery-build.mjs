@@ -8,7 +8,7 @@ import { marked } from "marked";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { documentationGroups, documentationPages } from "./docs-structure.mjs";
+import { documentationPages, locales, localisedGroups } from "./docs-structure.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(packageRoot, "dist");
@@ -43,13 +43,16 @@ function rewriteMarkdownLinks(source) {
     if (/^(?:https?:|mailto:|#)/.test(rawTarget)) return match;
     const [path, fragment] = rawTarget.split("#", 2);
     if (!path.toLowerCase().endsWith(".md")) return match;
+    // A translated page links into its own directory or up into the English one,
+    // so the prefix has to survive the rewrite.
+    const prefix = path.slice(0, path.length - basename(path).length);
     const name = basename(path, ".md").toLowerCase();
     const slug = name === "readme"
       ? "index"
       : name === "changelog"
         ? "changelog"
         : name;
-    return `](${slug}.html${fragment ? `#${fragment}` : ""})`;
+    return `](${prefix}${slug}.html${fragment ? `#${fragment}` : ""})`;
   });
 }
 
@@ -74,44 +77,54 @@ function addHeadingIds(html) {
   });
 }
 
-function documentationNavigation(activeSlug) {
-  return documentationGroups.map((group) => `
+function documentationNavigation(activeSlug, locale) {
+  return localisedGroups(locale).map((group) => `
     <section class="docs-nav-group">
       <h2>${escapeHtml(group.label)}</h2>
-      ${group.pages.map((page) => `
-        <a${page.slug === activeSlug ? ' class="is-active" aria-current="page"' : ""} href="${page.slug}.html">${escapeHtml(page.label)}</a>
-      `).join("")}
+      ${group.pages.map((page) => {
+        // An untranslated page is offered in English rather than hidden.
+        const english = locale !== "en" && !page.translated;
+        const href = english ? `../${page.slug}.html` : `${page.slug}.html`;
+        const active = page.slug === activeSlug && !english;
+        return `
+        <a${active ? ' class="is-active" aria-current="page"' : ""} href="${href}">${escapeHtml(page.label)}${english ? ' <span class="docs-nav-lang">EN</span>' : ""}</a>
+      `;
+      }).join("")}
     </section>
   `).join("");
 }
 
 /** Replace each preview marker with the slide the recipe above it produces. */
-function withSlidePreviews(html, slug) {
+function withSlidePreviews(html, slug, locale = "en") {
   if (!slug) return html;
+  const directory = locale === "en" ? "images" : "../images";
   let index = 0;
   return html.replace(/<!-- preview -->/g, () => {
     index += 1;
     return `<figure class="docs-preview">`
-      + `<img src="images/${slug}-${index}.png" width="1280" height="720" loading="lazy"`
+      + `<img src="${directory}/${slug}-${index}.png" width="1280" height="720" loading="lazy"`
       + ` alt="The slide this recipe renders" />`
       + `</figure>`;
   });
 }
 
-function documentationPage({ slug, label, source, previews }, content) {
+function documentationPage({ slug, label, source, previews }, content, locale = "en") {
   const rendered = withSlidePreviews(
     addHeadingIds(marked.parse(rewriteMarkdownLinks(content), { gfm: true })),
     previews,
+    locale,
   );
+  const other = locale === "en" ? locales.zh : locales.en;
+  const switchHref = locale === "en" ? `zh/${slug}.html` : `../${slug}.html`;
   return `<!doctype html>
-<html lang="en">
+<html lang="${locales[locale].htmlLang}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f2ea" />
     <meta name="description" content="${escapeHtml(label)} — FrameSeq documentation." />
-    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" href="${locale === "en" ? ".." : "../.."}/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="${locale === "en" ? "." : ".."}/styles.css" />
     <title>${escapeHtml(label)} — FrameSeq docs</title>
   </head>
   <body>
@@ -121,14 +134,15 @@ function documentationPage({ slug, label, source, previews }, content) {
         <span>FrameSeq</span>
       </a>
       <nav aria-label="Documentation navigation">
-        <a href="index.html">Docs</a>
-        <a href="../">Gallery</a>
+        <a href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
+        <a href="${locale === "en" ? "../" : "../../"}">Gallery</a>
+        <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
         <a href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
     <div class="docs-shell">
       <aside class="docs-sidebar" aria-label="Documentation sections">
-        ${documentationNavigation(slug)}
+        ${documentationNavigation(slug, locale)}
       </aside>
       <main class="docs-main">
         <article class="docs-article">${rendered}</article>
@@ -217,6 +231,20 @@ for (const page of documentationPages) {
     "utf8",
   );
 }
+
+const chinesePages = localisedGroups("zh").flatMap((group) => group.pages)
+  .filter((page) => page.translated);
+await mkdir(resolve(galleryOutput, "docs", "zh"), { recursive: true });
+for (const page of chinesePages) {
+  const source = page.slug === "index" ? "docs/zh/README.md" : `docs/zh/${page.slug}.md`;
+  const markdown = await readFile(resolve(packageRoot, source), "utf8");
+  await writeFile(
+    resolve(galleryOutput, "docs", "zh", `${page.slug}.html`),
+    documentationPage(page, markdown, "zh"),
+    "utf8",
+  );
+}
+console.log(`Documentation written: ${documentationPages.length} English, ${chinesePages.length} Chinese.`);
 
 await Promise.all([
   copyFile(resolve(packageRoot, "gallery", "index.html"), resolve(galleryOutput, "index.html")),

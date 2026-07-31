@@ -7,7 +7,7 @@ FrameSeq is an AI-friendly presentation framework with a linear authoring model,
 [![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
 [![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
 
-[Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://pride7.github.io/frameseq/docs/) · [See what changed](https://pride7.github.io/frameseq/docs/changelog.html)
+[中文文档](https://pride7.github.io/frameseq/docs/zh/) · [Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://pride7.github.io/frameseq/docs/) · [See what changed](https://pride7.github.io/frameseq/docs/changelog.html)
 
 ```ts
 presentation({

@@ -8,6 +8,8 @@ Three pages get a talk written: install FrameSeq, copy the page you need, then r
 
 You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
 
+A Chinese translation of this reading path is at [中文文档](zh/README.md).
+
 ## Write slides
 
 The model behind the recipes, one subject at a time.
