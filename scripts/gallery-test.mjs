@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
@@ -13,6 +13,21 @@ const galleryOutput = resolve(packageRoot, "dist", "gallery");
 const docsOutput = resolve(galleryOutput, "docs");
 const docsFiles = (await readdir(docsOutput)).filter((file) => file.endsWith(".html"));
 assert.equal(docsFiles.length, 25);
+
+// The recipes page shows the slide each recipe renders, captured from the deck
+// on every build. A missing or blank capture means the page is showing nothing.
+const previewImages = (await readdir(resolve(docsOutput, "images")))
+  .filter((file) => file.startsWith("recipes-") && file.endsWith(".png"));
+const recipesPage = await readFile(resolve(docsOutput, "recipes.html"), "utf8");
+const referenced = [...recipesPage.matchAll(/src="images\/(recipes-\d+\.png)"/g)]
+  .map((match) => match[1]);
+assert.equal(referenced.length, 10, "Every recipe should show its slide");
+assert.equal(previewImages.length, referenced.length);
+for (const file of referenced) {
+  assert.ok(previewImages.includes(file), `The recipes page references a missing ${file}`);
+  const { size } = await stat(resolve(docsOutput, "images", file));
+  assert.ok(size > 5000, `${file} is too small to be a rendered slide`);
+}
 
 const docsSources = new Map();
 for (const file of docsFiles) {

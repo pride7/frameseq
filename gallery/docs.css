@@ -449,3 +449,16 @@ pre {
     width: calc(100% - 36px);
   }
 }
+
+.docs-preview {
+  margin: 20px 0 28px;
+}
+
+.docs-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--docs-border, rgb(0 0 0 / 0.12));
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.08);
+}

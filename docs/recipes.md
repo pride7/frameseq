@@ -25,6 +25,8 @@ text("Routing easy inputs away from the network").subtitle();
 text("Research Systems Group").author();
 ```
 
+<!-- preview -->
+
 `cover()` changes the layout; the four text roles carry the meaning. Nothing here sets a font size, so a change of theme restyles the page without touching it.
 
 ## One idea and its evidence
@@ -41,6 +43,8 @@ note("Give the audience the problem before the method.");
 text("Measurements in this deck are illustrative.").caption();
 ```
 
+<!-- preview -->
+
 The most common slide in a talk. The title states the claim, `lead()` states it once more in a sentence, and the bullets are the evidence. `note()` keeps the delivery detail off the screen, and `caption()` is where a disclaimer belongs.
 
 ## Comparison
@@ -54,6 +58,8 @@ right();
 text("Adaptive").lead();
 bullets("41 ms for routed inputs", "72% stay on the device", "Accuracy traded per input");
 ```
+
+<!-- preview -->
 
 `split()` names two regions and `right()` moves to the second, so the two sides stay side by side in the source as well as on the page. Keep the two lists the same length; the shape of the slide is the argument.
 
@@ -70,6 +76,8 @@ gridSection(
 ).gap(20);
 text("Values are illustrative and not a benchmark.").caption();
 ```
+
+<!-- preview -->
 
 `gridSection()` arranges only its own items, so the sentence above and the caption below stay in the ordinary flow. Use `slide().grid(3)` instead when the whole page is the grid.
 
@@ -91,6 +99,8 @@ bullets(
 );
 ```
 
+<!-- preview -->
+
 Give the code slightly more than half the width and cut it down to the lines that carry the idea. The bullets say what the reader should notice, which is not the same as narrating the code.
 
 ## A formula with its reading
@@ -101,6 +111,8 @@ text`The router minimises latency subject to an accuracy floor.`.lead();
 math`\min_{\theta}\; \mathbb{E}\big[\ell(f_\theta(x), y)\big] + \lambda\,\mathbb{E}\big[c(x)\big]`;
 text("λ prices a millisecond against a point of accuracy.").caption();
 ```
+
+<!-- preview -->
 
 Use the tagged-template form for anything with backslashes. Sentence, formula, reading: the audience needs to know what the symbols buy before they parse them.
 
@@ -118,6 +130,8 @@ line().from("device").to("router").arrow("end");
 line().from("router").to("cloud").arrow("end");
 text("28% of inputs continue past the router").caption().below("router", 28);
 ```
+
+<!-- preview -->
 
 No coordinates. The row lays the boxes out, `anchor("center")` places the row, and the connectors follow the boxes. Changing `gap(90)` re-spaces the whole diagram, connectors included. See [Diagrams](diagrams.md) for the full model.
 
@@ -139,6 +153,8 @@ line().from("confidence").to("large").arrow("end");
 line().from("large").to("cache").arrow("both");
 ```
 
+<!-- preview -->
+
 Rows nested in a column give the second dimension, and the path is the nesting. Return to the outer container with `at("map")` before writing the connectors, so their coordinates belong to it.
 
 ## Progressive reveal
@@ -152,6 +168,8 @@ steps(
 );
 ```
 
+<!-- preview -->
+
 `steps()` reveals one item per keypress in the browser and shows everything in PDF and PPTX. Use `showAt(n)` when an individual object, rather than a list item, belongs to a step.
 
 ## Closing statement
@@ -161,6 +179,8 @@ slide({ name: "Close" }).center();
 text("Route the easy inputs. Keep the budget for the hard ones.").quote();
 text("Research Systems Group · 2026").caption();
 ```
+
+<!-- preview -->
 
 A closing slide with one sentence gives the room something to hold on to. `center()` and `quote()` do the rest; the object form of `slide()` leaves the page without a heading.
 

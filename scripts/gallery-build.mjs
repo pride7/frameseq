@@ -5,6 +5,9 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { marked } from "marked";
+import puppeteer from "puppeteer";
+import { preview } from "vite";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(packageRoot, "dist");
@@ -22,7 +25,7 @@ const documentationGroups = [
   {
     label: "Write and design",
     pages: [
-      { slug: "recipes", source: "docs/recipes.md", label: "Recipes" },
+      { slug: "recipes", source: "docs/recipes.md", label: "Recipes", previews: "recipes" },
       { slug: "revising", source: "docs/revising.md", label: "Revising a talk" },
       { slug: "document-model", source: "docs/document-model.md", label: "Document model" },
       { slug: "content", source: "docs/content.md", label: "Content" },
@@ -138,8 +141,24 @@ function documentationNavigation(activeSlug) {
   `).join("");
 }
 
-function documentationPage({ slug, label, source }, content) {
-  const rendered = addHeadingIds(marked.parse(rewriteMarkdownLinks(content), { gfm: true }));
+/** Replace each preview marker with the slide the recipe above it produces. */
+function withSlidePreviews(html, slug) {
+  if (!slug) return html;
+  let index = 0;
+  return html.replace(/<!-- preview -->/g, () => {
+    index += 1;
+    return `<figure class="docs-preview">`
+      + `<img src="images/${slug}-${index}.png" width="1280" height="720" loading="lazy"`
+      + ` alt="The slide this recipe renders" />`
+      + `</figure>`;
+  });
+}
+
+function documentationPage({ slug, label, source, previews }, content) {
+  const rendered = withSlidePreviews(
+    addHeadingIds(marked.parse(rewriteMarkdownLinks(content), { gfm: true })),
+    previews,
+  );
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -199,6 +218,53 @@ for (const example of examples) {
   if (result.status !== 0) {
     throw new Error(`Could not build gallery example ${example.slug}`);
   }
+}
+
+/**
+ * Photograph every slide of a deck so a documentation page can show the result
+ * beside its source. The pictures are generated on every build, so they cannot
+ * fall out of step with the deck they come from.
+ */
+async function captureSlides(slug) {
+  const imagesDirectory = resolve(galleryOutput, "docs", "images");
+  await mkdir(imagesDirectory, { recursive: true });
+
+  const server = await preview({
+    configFile: false,
+    root: packageRoot,
+    build: { outDir: galleryOutput },
+    preview: { host: "127.0.0.1", port: 0, open: false },
+  });
+  const url = server.resolvedUrls?.local[0];
+  if (!url) throw new Error("Gallery preview did not expose a local URL");
+
+  const browser = await puppeteer.launch(puppeteerLaunchOptions());
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 2 });
+    await page.goto(new URL(`examples/${slug}/?print=1`, url).href, { waitUntil: "networkidle0" });
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    await page.evaluate(() => document.fonts.ready);
+
+    const slides = await page.$$(".frameseq-slide");
+    if (slides.length === 0) throw new Error(`No slides to capture in ${slug}`);
+    for (const [index, slide] of slides.entries()) {
+      await slide.screenshot({
+        path: resolve(imagesDirectory, `${slug}-${index + 1}.png`),
+        optimizeForSpeed: false,
+      });
+    }
+    console.log(`Captured ${slides.length} slides from ${slug}`);
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+}
+
+for (const slug of new Set(
+  documentationGroups.flatMap((group) => group.pages).map((page) => page.previews).filter(Boolean),
+)) {
+  await captureSlides(slug);
 }
 
 for (const page of documentationGroups.flatMap((group) => group.pages)) {
