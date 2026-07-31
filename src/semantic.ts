@@ -2,6 +2,8 @@ import {
   Code,
   Column,
   ContainerBuilder,
+  type GridColumns,
+  gridTemplate,
   SlidesRoot,
   SlidesRootDefinition,
   type SlidesOptions,
@@ -19,7 +21,7 @@ import {
 import { attachNode, takeNodeChildren } from "./node-tree";
 
 export type SplitRatio = `${number}:${number}` | number | [number, number];
-export type GridColumns = number | string;
+export type { GridColumns };
 
 function List(items: string[], ordered: boolean, reveal: boolean): ElementBuilder {
   const list = Column().className("frameseq-list");
@@ -66,18 +68,6 @@ export function Bullets(...items: string[]): ElementBuilder {
 
 export function Steps(...items: string[]): ElementBuilder {
   return List(items, true, true).className("frameseq-steps");
-}
-
-function gridTemplate(columns: GridColumns): string {
-  if (typeof columns === "number") {
-    if (!Number.isInteger(columns) || columns < 1 || columns > 12) {
-      throw new Error("Grid columns must be an integer from 1 to 12");
-    }
-    return `repeat(${columns}, minmax(0, 1fr))`;
-  }
-
-  if (!columns.trim()) throw new Error("Grid columns cannot be empty");
-  return columns;
 }
 
 export class GroupBuilder extends ContainerBuilder {

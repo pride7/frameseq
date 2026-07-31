@@ -421,6 +421,21 @@ export class ElementBuilder {
   }
 }
 
+export type GridColumns = number | string;
+
+/** Turn a column count or a CSS template into a grid-template-columns value. */
+export function gridTemplate(columns: GridColumns): string {
+  if (typeof columns === "number") {
+    if (!Number.isInteger(columns) || columns < 1 || columns > 12) {
+      throw new Error("Grid columns must be an integer from 1 to 12");
+    }
+    return `repeat(${columns}, minmax(0, 1fr))`;
+  }
+
+  if (!columns.trim()) throw new Error("Grid columns cannot be empty");
+  return columns;
+}
+
 export class ContainerBuilder extends ElementBuilder {
   add(...children: ElementBuilder[]): this {
     for (const child of children) attachNode(this.node, child.node);
@@ -441,6 +456,14 @@ export class ContainerBuilder extends ElementBuilder {
 
   stack(): this {
     this.node.styles.display = "block";
+    return this;
+  }
+
+  /** Arrange the contents in a grid, filling each row before the next. */
+  grid(columns: GridColumns, gap?: Length): this {
+    this.node.styles.display = "grid";
+    this.node.styles.gridTemplateColumns = gridTemplate(columns);
+    if (gap !== undefined) this.node.styles.gap = length(gap);
     return this;
   }
 

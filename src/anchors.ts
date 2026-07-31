@@ -323,16 +323,109 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
    * exactly is supported; anything else fails instead of guessing a position that
    * the browser would then contradict.
    */
+  /**
+   * Resolve a grid whose track sizes are knowable: equal columns of a declared width,
+   * or an explicit list of pixel tracks. Rows are as tall as their tallest item, and an
+   * item without a size of its own fills its cell, which is what the browser does.
+   */
+  const gridLayout = (container: FrameSeqNode, label: () => string): Map<FrameSeqNode, Box> => {
+    const gap = cssNumber(container.styles.gap);
+    if (gap === undefined) {
+      throw new AnchorError(
+        `the gap of ${label()} comes from the theme; call .gap(...) so its contents can be resolved`,
+      );
+    }
+
+    const padding = paddingOf(container, label);
+    const template = (container.styles.gridTemplateColumns ?? "").trim();
+    const declaredWidth = cssNumber(container.styles.width);
+    const innerWidth = declaredWidth === undefined ? undefined : declaredWidth - padding.left * 2;
+
+    let tracks: number[];
+    const equalColumns = /^repeat\((\d+),\s*minmax\(0,\s*1fr\)\)$/.exec(template);
+    if (equalColumns) {
+      const count = Number(equalColumns[1]);
+      if (innerWidth === undefined) {
+        throw new AnchorError(
+          `${label()} divides its width into ${count} equal columns, so it needs .width(...) `
+          + "before its contents can be resolved",
+        );
+      }
+      const track = (innerWidth - gap * (count - 1)) / count;
+      tracks = Array.from({ length: count }, () => track);
+    } else {
+      const pixels = template.split(/\s+/).filter(Boolean).map((part) => cssNumber(part));
+      if (pixels.length === 0 || pixels.some((value) => value === undefined)) {
+        throw new AnchorError(
+          `${label()} uses grid columns FrameSeq cannot resolve: "${template}". Use a column `
+          + "count with .width(...), or tracks given in pixels",
+        );
+      }
+      tracks = pixels as number[];
+    }
+
+    const children = container.children.filter((child) =>
+      child.type !== "line" && child.styles.position !== "absolute");
+    const boxes = children.map((child) => {
+      if (child.styles.gridColumn !== undefined || child.styles.gridRow !== undefined) {
+        throw new AnchorError(
+          `${describe(child)} places itself in the grid, which FrameSeq cannot resolve; `
+          + "give it .position({ x, y }) instead",
+        );
+      }
+      const { width, height } = intrinsicSize(child);
+      if (height === undefined) {
+        throw new AnchorError(
+          `the height of ${describe(child)} is unknown, so ${label()} cannot be resolved; `
+          + "add .height(...)",
+        );
+      }
+      return { width, height };
+    });
+
+    const rowHeights: number[] = [];
+    for (const [index, box] of boxes.entries()) {
+      const row = Math.floor(index / tracks.length);
+      rowHeights[row] = Math.max(rowHeights[row] ?? 0, box.height);
+    }
+
+    const layout = new Map<FrameSeqNode, Box>();
+    for (const [index, child] of children.entries()) {
+      const column = index % tracks.length;
+      const row = Math.floor(index / tracks.length);
+      const x = padding.left
+        + tracks.slice(0, column).reduce((total, track) => total + track, 0)
+        + gap * column;
+      const y = padding.top
+        + rowHeights.slice(0, row).reduce((total, height) => total + height, 0)
+        + gap * row;
+      // Without a size of its own, an item stretches to fill its cell.
+      layout.set(child, {
+        x,
+        y,
+        width: boxes[index].width ?? tracks[column],
+        height: child.styles.height === undefined ? rowHeights[row] : boxes[index].height,
+      });
+    }
+    return layout;
+  };
+
   const flowLayout = (container: FrameSeqNode): Map<FrameSeqNode, Box> => {
     const cached = flows.get(container);
     if (cached) return cached;
 
     const label = () => describe(container);
+    if (container.styles.display === "grid") {
+      const layout = gridLayout(container, label);
+      flows.set(container, layout);
+      return layout;
+    }
+
     const direction = container.styles.flexDirection;
     if (container.styles.display !== "flex" || (direction !== "row" && direction !== "column")) {
       throw new AnchorError(
-        `${label()} is not a row() or column(), so the position of its contents is unknown; `
-        + "give the object .position({ x, y }) or a placement",
+        `${label()} is not a row(), column(), or grid(), so the position of its contents is `
+        + "unknown; give the object .position({ x, y }) or a placement",
       );
     }
     if (container.styles.flexWrap === "wrap") {
@@ -435,7 +528,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
   function intrinsicSize(node: FrameSeqNode): { width?: number; height?: number } {
     const declared = sizeOf(node);
     if (declared.width !== undefined && declared.height !== undefined) return declared;
-    if (node.styles.display !== "flex") return declared;
+    if (node.styles.display !== "flex" && node.styles.display !== "grid") return declared;
 
     const layout = flowLayout(node);
     const padding = paddingOf(node, () => describe(node));
@@ -489,7 +582,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
             + `or a placement such as .rightOf(...)`,
           );
         }
-        if (container.styles.display !== "flex") {
+        if (container.styles.display !== "flex" && container.styles.display !== "grid") {
           throw new AnchorError(
             `${describe(node)} has no canvas coordinates, and ${describe(container)} does not `
             + "place it either; give it .position({ x, y }), .anchor(...), or a placement",

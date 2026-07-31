@@ -51,6 +51,20 @@ rect("Render").as("render");
 
 `gap()` must be explicit whenever the objects inside will be connected. A region inherits a gap from the theme otherwise, and a theme can change it, so FrameSeq refuses to guess it.
 
+### A grid, when the arrangement is a matrix
+
+Nested rows build a matrix, and so does `grid()`, with one container instead of three:
+
+```ts
+at("cells").grid(3).gap(20).width(800).anchor("center");
+rect("Parse").as("parse").height(120);
+rect("Build").as("build").height(120);
+rect("Render").as("render").height(120);
+rect("Cache").as("cache").height(120);
+```
+
+Items fill each row before starting the next, so the fourth lands under the first. Equal columns divide the container's width, so a grid written as a column count needs `width()`; give the tracks in pixels instead — `grid("200px 300px")` — and it needs none.
+
 ## `anchor()` places the container
 
 ```ts
@@ -152,6 +166,7 @@ A connector may anchor one end only; the other end then keeps the coordinates pa
 Automatic layout is resolved before rendering, from the declared source. FrameSeq computes only the part of it that is exact, and reports anything else instead of guessing a position the browser would contradict:
 
 - `row()` and `column()`, with an explicit `gap()`. A gap inherited from the theme is refused, because its value depends on the theme.
+- `grid()` with equal columns and a declared `width()`, or with tracks given in pixels. Rows are as tall as their tallest item, and an item without a width of its own fills its cell. Items that place themselves with a CSS grid line are refused.
 - Children with a resolvable box: `rect()` and `circle()` have default sizes, everything else needs `width()` and `height()`.
 - `align()` of `start`, `center`, or `end`, and the default stretch, which gives a child without its own cross size the size of the line.
 - `justify()` of `start`, and `center`, `end`, or `space-between` when the container has an explicit size along that axis.

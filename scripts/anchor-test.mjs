@@ -252,6 +252,67 @@ function named(document, name) {
   );
 }
 
+// A grid resolves by column count, so a matrix needs no nested containers.
+{
+  const document = presentation("Grid flow test");
+  slide("Grid").canvas();
+
+  at("cells").grid(2).gap(20).width(520).position({ x: 100, y: 100 });
+  rect("A").as("a").height(120);
+  rect("B").as("b").height(120);
+  rect("C").as("c").height(120);
+  const across = line().from("a").to("b");
+  const down = line().from("a").to("c");
+
+  resolveAnchors(document.node);
+
+  // Two tracks of (520 - 20) / 2 = 250. A shape keeps its own 240px width and sits at
+  // the start of its cell, so the second column still begins at 250 + 20.
+  assert.deepEqual(
+    [across.node.props.x1, across.node.props.y1, across.node.props.x2, across.node.props.y2],
+    [240, 60, 270, 60],
+  );
+  // The third item starts the second row, below the tallest item of the first.
+  assert.deepEqual(
+    [down.node.props.x1, down.node.props.y1, down.node.props.x2, down.node.props.y2],
+    [120, 120, 120, 140],
+  );
+}
+
+// Explicit pixel tracks need no width of their own.
+{
+  const document = presentation("Grid tracks test");
+  slide("Tracks").canvas();
+
+  at("cells").grid("200px 300px").gap(40).position({ x: 0, y: 0 });
+  rect("A").as("a").width(200).height(100);
+  rect("B").as("b").width(300).height(100);
+  const link = line().from("a").to("b");
+
+  resolveAnchors(document.node);
+
+  assert.deepEqual(
+    [link.node.props.x1, link.node.props.y1, link.node.props.x2, link.node.props.y2],
+    [200, 50, 240, 50],
+  );
+}
+
+// Equal columns depend on the container's width, so it has to be declared.
+{
+  const document = presentation("Grid width test");
+  slide("Grid").canvas();
+
+  at("cells").grid(3).gap(20).position({ x: 0, y: 0 });
+  rect("A").as("a").height(100);
+  rect("B").as("b").height(100);
+  line().from("a").to("b");
+
+  assert.throws(
+    () => resolveAnchors(document.node),
+    /divides its width into 3 equal columns, so it needs \.width\(\.\.\.\)/,
+  );
+}
+
 // A nested container cannot use align() or justify() unless it declares its size,
 // because the container around it decides how large it is.
 {

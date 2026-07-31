@@ -505,6 +505,7 @@ add(...children: ElementBuilder[]): this
 row(): this
 column(): this
 stack(): this
+grid(columns: GridColumns, gap?: Length): this
 canvas(): this
 center(): this
 ```

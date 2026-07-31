@@ -78,7 +78,7 @@ try {
     });
   });
 
-  assert.equal(measured.length, 10, "Every connector in the fixture should be rendered");
+  assert.equal(measured.length, 12, "Every connector in the fixture should be rendered");
 
   const tolerance = 1;
   const edgeDistance = (point, box) => {
@@ -161,6 +161,17 @@ try {
   assert.deepEqual([named.get("l1").x, named.get("l1").y], [0, 0]);
   assert.deepEqual([named.get("l2").x, named.get("l2").y], [0, 116]);
   assert.deepEqual([named.get("r1").x, named.get("r1").y], [188, 0]);
+
+  // A grid divides its declared width into equal tracks and starts a new row after
+  // the column count, so the fourth item sits under the first.
+  const track = (800 - 20 * 2) / 3;
+  // A shape has a width of its own, so it keeps it and sits at the start of its cell
+  // rather than filling the track.
+  assert.equal(named.get("g1").width, 240);
+  assert.deepEqual([named.get("g1").x, named.get("g1").y], [0, 0]);
+  assert.equal(Math.round(named.get("g2").x), Math.round(track + 20));
+  assert.equal(Math.round(named.get("g3").x), Math.round((track + 20) * 2));
+  assert.deepEqual([named.get("g4").x, named.get("g4").y], [0, 140]);
 
   assert.deepEqual(errors, []);
 } finally {

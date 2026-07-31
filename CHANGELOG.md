@@ -9,6 +9,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - Reorganise the documentation as a reading path followed by reference: Start, Write slides, Typeset mathematics and tables, Check and generate, Present and export, Editor and command line, Reference. The function and API references move out of the first group, the task pages move into it, and every group carries a one-line summary.
 - Describe the navigation once, in `scripts/docs-structure.mjs`. The Gallery sidebar is built from it and `docs/README.md` is rendered from it with `npm run docs:index`, so the two views of the documentation cannot disagree. The documentation test fails when the committed home page is out of date, when a group is missing a summary, when a page has no one-line description, and when a page in `docs/` is missing from the navigation entirely.
 
+## [Unreleased]
+
+### Added
+
+- Add `grid(columns, gap?)` to containers, so a region created by `at()` can be a grid as well as a row or a column. The resolver computes grid geometry too: equal columns divide a declared width, tracks may be given in pixels instead, rows are as tall as their tallest item, and an item without a width of its own fills its cell. A matrix of connected boxes now needs one container rather than three.
+
 ## [0.27.1] - 2026-07-31
 
 ### Documentation

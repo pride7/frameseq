@@ -71,3 +71,16 @@ rect("R1").as("r1").width(140).height(100);
 
 at("cols");
 line().from("l1").to("r1").arrow("end");
+
+// A grid places its contents by column count instead of nested rows.
+slide("Grid").canvas();
+
+at("cells").grid(3).gap(20).width(800).position({ x: 100, y: 140 });
+rect("G1").as("g1").height(120);
+rect("G2").as("g2").height(120);
+rect("G3").as("g3").height(120);
+rect("G4").as("g4").height(120);
+
+at("cells");
+line().from("g1").to("g2").arrow("end");
+line().from("g1").to("g4").arrow("end");
