@@ -239,6 +239,16 @@ const chinese = {
     shapes: { label: "图形与连线", blurb: "构成一张图的图元:矩形、圆、线和箭头。" },
     styling: { label: "样式", blurb: "链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。" },
     themes: { label: "主题", blurb: "内置主题、全局排版、中日韩文字和自定义 token。" },
+    typst: { label: "Typst 集成", blurb: "嵌入 Typst 片段,或把整场演示导出为可编辑的 .typ 源码。" },
+    latex: { label: "LaTeX 集成", blurb: "把现有的 LaTeX 表格和片段编译成演示对象。" },
+    "layout-checks": { label: "布局检查", blurb: "发现空白页、溢出、裁切、过小字号和拼错的区域路径。" },
+    "ai-generation": { label: "用 AI 生成", blurb: "把 FrameSeq 的契约交给代理,并按布局诊断迭代。" },
+    presenter: { label: "演讲者视图与遥控", blurb: "备注、下一页预览、计时器、同步控制和手机遥控。" },
+    deployment: { label: "部署 HTML", blurb: "发布静态演示、用 GitHub Pages,或构建单个可移植文件。" },
+    pptx: { label: "导出 PowerPoint", blurb: "可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。" },
+    vscode: { label: "VS Code 扩展", blurb: "分屏、页面导航、诊断和导出命令。" },
+    cli: { label: "CLI 参考", blurb: "开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。" },
+    advanced: { label: "高级组合", blurb: "大写的对象 API 与底层组件。" },
   },
 };
 

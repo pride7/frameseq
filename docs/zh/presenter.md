@@ -1,0 +1,124 @@
+<!-- translation-of: docs/presenter.md sha256:64615fe65f25433a -->
+
+# 演讲者视图
+
+演讲者视图为现场演讲或彩排提供一块私有的控制面板,包含当前页、下一页预览、演讲者备注、计时器、页面选择器和导航控件。
+
+## 添加演讲者备注
+
+在页面构建器上链式调用 `notes()`:
+
+```ts
+slide("Architecture")
+  .notes(`
+    Explain why FrameSeq owns the presentation structure.
+    Reveal the compiler stages one at a time.
+  `);
+
+text("Compiler pipeline").lead();
+steps("Parse", "Render", "Export");
+```
+
+备注是页面元数据。它们**永远不会**出现在观众视图、静态内容、打印模式或 PDF 里。PPTX 导出会把它们存为 PowerPoint 的演讲者备注。
+
+`note(content)` 做的是同一件事,但它是普通的线性命令,可以把备注写在它所解释的内容旁边。重复调用会追加一行:
+
+```ts
+slide("Architecture");
+text("Compiler pipeline").lead();
+note("Explain why FrameSeq owns the presentation structure.");
+
+steps("Parse", "Render", "Export");
+note("Reveal the stages one at a time.");
+```
+
+对象形式也接受备注:
+
+```ts
+slide({
+  name: "architecture",
+  title: "System architecture",
+  notes: "Spend about two minutes on this slide.",
+});
+```
+
+## 打开演讲者视图
+
+照常启动开发服务器:
+
+```bash
+npm run dev
+```
+
+在观众页面里按 `P`,或点导航栏的 `P` 按钮。FrameSeq 会用与观众页**相同的源**在第二个窗口打开演讲者视图。比如观众页地址是 `http://localhost:5174/`,演讲者页就是:
+
+```text
+http://localhost:5174/?presenter=1
+```
+
+**不要默认开发服务器一定在 `5173` 端口** —— 该端口被占用时 Vite 会另选一个。请使用 `npm run dev` 打印出来的地址,或者在能正常工作的观众页上按 `P`,或者在它的**实际**地址后面加 `?presenter=1`。浏览器显示 `connection refused` 通常意味着端口不对,或者开发服务器已经停了。
+
+把演讲者窗口移到讲者的显示器上,观众窗口留在投影仪或共享屏幕上。只有一块物理显示器的视频会议场景下,只共享观众那个浏览器窗口。
+
+## 双向同步导航
+
+导航是**双向**同步的。下列操作会更新另一个窗口:
+
+- 方向键、Page Up、Page Down、空格。
+- 上一页/下一页控件。
+- `steps()` 和 `showAt()` 的逐步揭示。
+- 演讲者页面的页面选择器。
+
+同设备同步使用浏览器的 `BroadcastChannel` API,两个窗口必须来自同一个源、同一个浏览器配置。
+
+## 配对手机遥控
+
+启用局域网传输来启动 FrameSeq:
+
+```bash
+npm run present
+```
+
+生成项目里的 `present` 脚本执行的是 `frameseq dev slides.ts --remote`。这个模式下 FrameSeq 会监听本机的局域网接口,并在观众页加上 `R` 控件、在演讲者视图加上 **Phone remote** 控件。
+
+1. 把手机和演示电脑连到同一个 Wi-Fi 或局域网。
+2. 在电脑上打开演示。
+3. 点 `R` 或 **Phone remote**。
+4. 用手机扫二维码。
+5. 如果电脑有多个网卡,第一个地址手机连不上时,在配对对话框里换一个。
+
+二维码里包含一个随机会话标识和一个内网 IP。它在浏览器里生成,**不会**发给任何第三方二维码服务。手机首先打开的是紧凑版遥控器:大号的上一页/下一页按钮、当前页和页码,以及适合触屏的激光笔控件。启用激光笔后在幻灯片预览上拖动,即可把光点投到观众屏幕上。
+
+点手机遥控顶部的 **Presenter view** 可以看到完整的演讲者界面,包括下一页预览、备注、计时器、页面选择器和导航控件。在窄屏手机上,当前页始终可见,**Notes** 和 **Next slide** 共用一个可切换面板;长备注在该面板内滚动,不会把当前页挤出屏幕。点 **Simple remote** 回到触屏遥控器。两种布局共用同一个配对会话,并且都与观众屏幕保持同步。
+
+导航、揭示步骤和光标坐标通过运行中的 FrameSeq 开发服务器内部的 WebSocket 中继传输。**不涉及任何账号、互联网连接或 FrameSeq 云服务。** 服务器同时把手机指令转发给电脑上打开的演讲者窗口。
+
+操作系统可能会询问 Node.js 是否可以接受专用网络上的连接;手机配对需要允许专用网络访问。开启了客户端隔离的访客 Wi-Fi 会阻止设备互访,即使它们显示同一个网络名。
+
+## 计时器
+
+计时器在演讲者视图打开时开始。可用:
+
+- **Pause** 暂停。
+- **Resume** 从暂停处继续。
+- **Reset** 归零并重新开始。
+
+计时器是演讲者视图私有的,不影响页面节奏或揭示状态。
+
+## 激光笔
+
+在演讲者视图里按 `Ctrl+L`,或点 `Laser: Off`,即可启用虚拟激光笔。把指针移到当前页预览上,观众窗口的对应位置就会出现一个红点。位置使用**归一化的幻灯片坐标**,所以两个窗口尺寸或缩放不同时仍然对得准。
+
+指针移出当前页预览时红点消失,再按一次 `Ctrl+L` 关闭。鼠标、手写笔和触摸都支持。激光笔**永远不会**出现在 PDF 或打印输出里。
+
+## 彩排与小屏幕
+
+演讲者视图在没有观众窗口时也能用,很适合彩排。宽度低于 900 像素时,界面切换成纵向布局:当前页、下一页、备注和控件依次排列。
+
+响应式布局让面板在小设备上仍然可读。扫码配对的手机页面可以在这套完整布局和控件更大的专用遥控器之间切换。
+
+## 静态 HTML
+
+`frameseq build` 的产物里包含演讲者视图。把生成的 `dist/` 目录托管出去之后,打开普通页面按 `P`,或者在地址后加 `?presenter=1`。同设备同步**不需要**演讲者服务器。
+
+手机遥控配对**刻意只支持本地服务器**。静态的 GitHub Pages 部署没有 WebSocket 中继,所以不会显示配对控件。需要手机遥控时,在演示电脑上跑 `npm run present`。

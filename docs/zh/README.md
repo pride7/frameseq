@@ -26,30 +26,30 @@
 
 需要外部排版器的片段,交给它来排。
 
-- [Typst integration (English)](../typst.md) — Embed Typst fragments, or export the whole presentation as editable .typ source.
-- [LaTeX integration (English)](../latex.md) — Compile existing LaTeX tables and fragments into presentation objects.
+- [Typst 集成](typst.md) — 嵌入 Typst 片段,或把整场演示导出为可编辑的 .typ 源码。
+- [LaTeX 集成](latex.md) — 把现有的 LaTeX 表格和片段编译成演示对象。
 
 ## 检查与生成
 
 上台前验证,或者把格式交给 AI。
 
-- [Layout checks (English)](../layout-checks.md) — Detect empty pages, overflow, clipped text, small type, and mistyped region paths.
-- [Generate with AI (English)](../ai-generation.md) — Give an agent the FrameSeq contract and iterate from layout diagnostics.
+- [布局检查](layout-checks.md) — 发现空白页、溢出、裁切、过小字号和拼错的区域路径。
+- [用 AI 生成](ai-generation.md) — 把 FrameSeq 的契约交给代理,并按布局诊断迭代。
 
 ## 演示与导出
 
 讲完之后,把文件交出去。
 
-- [Presenter and remote (English)](../presenter.md) — Notes, next-slide preview, timer, synchronised controls, and a phone remote.
-- [Deploy HTML (English)](../deployment.md) — Publish a static presentation, use GitHub Pages, or build one portable file.
-- [Export PowerPoint (English)](../pptx.md) — Editable hybrid PPTX or pixel-faithful flattened slides.
+- [演讲者视图与遥控](presenter.md) — 备注、下一页预览、计时器、同步控制和手机遥控。
+- [部署 HTML](deployment.md) — 发布静态演示、用 GitHub Pages,或构建单个可移植文件。
+- [导出 PowerPoint](pptx.md) — 可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。
 
 ## 编辑器与命令行
 
 在你已有的工具里驱动 FrameSeq。
 
-- [VS Code extension (English)](../vscode.md) — Split view, slide navigation, diagnostics, and export commands.
-- [CLI reference (English)](../cli.md) — Development, remote control, HTML, PDF, PPTX, Typst, inspection, and checking.
+- [VS Code 扩展](vscode.md) — 分屏、页面导航、诊断和导出命令。
+- [CLI 参考](cli.md) — 开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。
 
 ## 参考
 
@@ -57,7 +57,7 @@
 
 - [Function reference (English)](../function-guide.md) — What each authoring function creates, its signature, parameters, and return value.
 - [API reference (English)](../api-reference.md) — Exact TypeScript overloads, interfaces, and every public builder method.
-- [Advanced composition (English)](../advanced.md) — The uppercase object API and lower-level components.
+- [高级组合](advanced.md) — 大写的对象 API 与底层组件。
 - [Changelog (English)](../../CHANGELOG.md) — User-visible changes across releases.
 - [Release automation (English)](../releasing.md) — npm Trusted Publishing and the version-tag workflow.
 
