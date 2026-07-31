@@ -103,17 +103,10 @@ import { Slides, Text } from "@pride7/frameseq";
 const slides = Slides("Canvas");
 const page = slides.slide({ name: "Diagram" }).canvas();
 
-page.place(Text("Input").size(24), {
-  x: 80,
-  y: 120,
-  width: 240,
-});
-
-page.place(Text("Output").size(24), {
-  x: 900,
-  y: 120,
-  width: 240,
-});
+page.custom(
+  Text("Input").size(24).position({ x: 80, y: 120 }).width(240),
+  Text("Output").size(24).position({ x: 900, y: 120 }).width(240),
+);
 
 export default slides;
 ```

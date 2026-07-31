@@ -232,6 +232,35 @@ export class ElementBuilder {
     return this.relate("alignLeft", target, 0);
   }
 
+  /**
+   * Position this object against its container instead of by coordinates, for example
+   * `anchor("center")` or `anchor("bottom-right", 40)`. The browser resolves it, so the
+   * object becomes its own coordinate space: anchor connectors to the objects inside it.
+   */
+  anchor(position: AnchorSide, margin = 0): this {
+    if (!anchorSides.includes(position)) {
+      throw new Error(`anchor() does not know "${position}". Use one of: ${anchorSides.join(", ")}`);
+    }
+    const inset = margin === 0 ? "0px" : `${length(margin)}`;
+    const far = margin === 0 ? "100%" : `calc(100% - ${length(margin)})`;
+    const horizontal = position.endsWith("left")
+      ? { value: inset, shift: "0" }
+      : position.endsWith("right")
+        ? { value: far, shift: "-100%" }
+        : { value: "50%", shift: "-50%" };
+    const vertical = position.startsWith("top")
+      ? { value: inset, shift: "0" }
+      : position.startsWith("bottom")
+        ? { value: far, shift: "-100%" }
+        : { value: "50%", shift: "-50%" };
+
+    this.node.styles.position = "absolute";
+    this.node.styles.left = horizontal.value;
+    this.node.styles.top = vertical.value;
+    this.node.styles.translate = `${horizontal.shift} ${vertical.shift}`;
+    return this;
+  }
+
   style(classes: string): this;
   style(properties: Record<string, string | number>): this;
   style(value: string | Record<string, string | number>): this {

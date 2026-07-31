@@ -67,12 +67,45 @@ function establishesFrame(node: FrameSeqNode): boolean {
   return classList(node).includes("frameseq-layout-canvas");
 }
 
+/** Classes whose padding comes from a theme token, so it is unknown before rendering. */
+const themePadded = ["frameseq-card", "frameseq-region-card", "frameseq-grid-cell"];
+
+interface FlowBox {
+  padding: { top: number; left: number };
+  inner: { width?: number; height?: number };
+}
+
+function paddingOf(node: FrameSeqNode, describe: () => string): FlowBox["padding"] {
+  const shorthand = node.styles.padding;
+  if (shorthand === undefined) {
+    if (classList(node).some((name) => themePadded.includes(name))) {
+      throw new AnchorError(
+        `the padding of ${describe()} comes from the theme; call .padding(...) so its `
+        + "contents can be resolved, or position them individually",
+      );
+    }
+    return { top: 0, left: 0 };
+  }
+
+  const parts = shorthand.trim().split(/\s+/).map((part) => cssNumber(part));
+  if (parts.some((part) => part === undefined)) {
+    throw new AnchorError(`the padding of ${describe()} is not a pixel value`);
+  }
+  const [first, second = first] = parts as number[];
+  return { top: first, left: second };
+}
+
 function sizeOf(node: FrameSeqNode): { width?: number; height?: number } {
   const defaults = shapeSizes[node.type];
   const width = cssNumber(node.styles.width) ?? defaults?.width;
-  const declaredHeight = cssNumber(node.styles.height) ?? cssNumber(node.styles.minHeight);
-  const height = declaredHeight
-    ?? (node.type === "circle" ? width : defaults?.height);
+  // A shape's stylesheet sets a minimum height, and a minimum always clamps an
+  // explicit height, so a shorter declared height is not what the browser renders.
+  const floor = cssNumber(node.styles.minHeight) ?? defaults?.height;
+  const declared = cssNumber(node.styles.height)
+    ?? (node.type === "circle" ? width : undefined);
+  const height = declared === undefined
+    ? floor
+    : floor === undefined ? declared : Math.max(declared, floor);
   return { width, height };
 }
 
@@ -112,6 +145,7 @@ function slideLabel(slide: FrameSeqNode, index: number): string {
 
 function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): void {
   const frames = new Map<FrameSeqNode, FrameSeqNode>();
+  const parents = new Map<FrameSeqNode, FrameSeqNode>();
   const named = new Map<string, FrameSeqNode>();
   const placed: FrameSeqNode[] = [];
   const connectors: FrameSeqNode[] = [];
@@ -119,6 +153,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
   const collect = (parent: FrameSeqNode, frame: FrameSeqNode): void => {
     for (const child of parent.children) {
       frames.set(child, frame);
+      parents.set(child, parent);
       const name = child.props.name;
       if (typeof name === "string") {
         if (named.has(name)) {
@@ -140,6 +175,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
 
   const origins = new Map<FrameSeqNode, FrameOrigin>();
   const boxes = new Map<FrameSeqNode, ResolvedBox>();
+  const flows = new Map<FrameSeqNode, Map<FrameSeqNode, Box>>();
   const placements = new Map<FrameSeqNode, Placement>();
   const resolving = new Set<FrameSeqNode>();
 
@@ -281,12 +317,115 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     }
   };
 
+  /**
+   * Resolve the automatic layout of a row or column so its children can be anchored
+   * without coordinates of their own. Only the part of flexbox that can be computed
+   * exactly is supported; anything else fails instead of guessing a position that
+   * the browser would then contradict.
+   */
+  const flowLayout = (container: FrameSeqNode): Map<FrameSeqNode, Box> => {
+    const cached = flows.get(container);
+    if (cached) return cached;
+
+    const label = () => describe(container);
+    const direction = container.styles.flexDirection;
+    if (container.styles.display !== "flex" || (direction !== "row" && direction !== "column")) {
+      throw new AnchorError(
+        `${label()} is not a row() or column(), so the position of its contents is unknown; `
+        + "give the object .position({ x, y }) or a placement",
+      );
+    }
+    if (container.styles.flexWrap === "wrap") {
+      throw new AnchorError(`${label()} wraps, so FrameSeq cannot resolve where its contents land`);
+    }
+
+    const gap = cssNumber(container.styles.gap);
+    if (gap === undefined) {
+      throw new AnchorError(
+        `the gap of ${label()} comes from the theme; call .gap(...) so its contents can be resolved`,
+      );
+    }
+
+    const padding = paddingOf(container, label);
+    const justify = container.styles.justifyContent ?? "flex-start";
+    const align = container.styles.alignItems ?? "stretch";
+    if (!["flex-start", "center", "flex-end", "stretch"].includes(align)) {
+      throw new AnchorError(`${label()} uses align("${align}"), which FrameSeq cannot resolve`);
+    }
+
+    const row = direction === "row";
+    // Connectors are taken out of flow by the stylesheet, not by an inline style.
+    const children = container.children.filter((child) =>
+      child.type !== "line" && child.styles.position !== "absolute");
+    const sizes = children.map((child) => {
+      if (child.styles.flexGrow !== undefined && child.styles.flexGrow !== "0") {
+        throw new AnchorError(
+          `${describe(child)} uses grow(), so its size depends on the browser; `
+          + "give it .width(...) and .height(...) and remove grow() to anchor it",
+        );
+      }
+      const { width, height } = sizeOf(child);
+      if (width === undefined || height === undefined) {
+        const missing = width === undefined ? "width" : "height";
+        throw new AnchorError(
+          `the ${missing} of ${describe(child)} is unknown, so ${label()} cannot be resolved; `
+          + `add .${missing}(...)`,
+        );
+      }
+      return { width, height };
+    });
+
+    const mainOf = (size: { width: number; height: number }) => (row ? size.width : size.height);
+    const crossOf = (size: { width: number; height: number }) => (row ? size.height : size.width);
+    const declaredMain = cssNumber(row ? container.styles.width : container.styles.height);
+    const declaredCross = cssNumber(row ? container.styles.height : container.styles.width);
+    const usedMain = sizes.reduce((total, size) => total + mainOf(size), 0)
+      + gap * Math.max(sizes.length - 1, 0);
+    const innerMain = declaredMain === undefined
+      ? usedMain
+      : declaredMain - (row ? padding.left : padding.top) * 2;
+    const innerCross = declaredCross === undefined
+      ? sizes.reduce((largest, size) => Math.max(largest, crossOf(size)), 0)
+      : declaredCross - (row ? padding.top : padding.left) * 2;
+
+    const free = innerMain - usedMain;
+    let cursor = row ? padding.left : padding.top;
+    let between = gap;
+    if (justify === "center") cursor += free / 2;
+    else if (justify === "flex-end") cursor += free;
+    else if (justify === "space-between" && sizes.length > 1) between += free / (sizes.length - 1);
+    else if (justify !== "flex-start" && justify !== "normal") {
+      throw new AnchorError(`${label()} uses justify("${justify}"), which FrameSeq cannot resolve`);
+    }
+
+    const layout = new Map<FrameSeqNode, Box>();
+    for (const [index, child] of children.entries()) {
+      const size = sizes[index];
+      // Under the default stretch, an item without its own cross size fills the line.
+      const stretched = align === "stretch"
+        && (row ? child.styles.height : child.styles.width) === undefined;
+      const cross = stretched ? innerCross : crossOf(size);
+      let crossStart = row ? padding.top : padding.left;
+      if (!stretched && align === "center") crossStart += (innerCross - cross) / 2;
+      else if (!stretched && align === "flex-end") crossStart += innerCross - cross;
+
+      layout.set(child, row
+        ? { x: cursor, y: crossStart, width: size.width, height: cross }
+        : { x: crossStart, y: cursor, width: cross, height: size.height });
+      cursor += mainOf(size) + between;
+    }
+
+    flows.set(container, layout);
+    return layout;
+  };
+
   function boxOf(node: FrameSeqNode): ResolvedBox {
     const cached = boxes.get(node);
     if (cached) return cached;
 
     const frame = frameOrigin(frames.get(node) ?? slide);
     const { width, height } = sizeOf(node);
+    let flowSize: { width: number; height: number } | undefined;
     let x: number;
     let y: number;
 
@@ -307,17 +446,43 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     } else {
       const left = cssNumber(node.styles.left);
       const top = cssNumber(node.styles.top);
-      if (left === undefined || top === undefined) {
-        throw new AnchorError(
-          `${describe(node)} has no canvas coordinates; give it .position({ x, y }) `
-          + `or a placement such as .rightOf(...)`,
-        );
+      if (left !== undefined && top !== undefined) {
+        x = left;
+        y = top;
+      } else {
+        const container = parents.get(node);
+        if (!container || node.styles.position === "absolute") {
+          throw new AnchorError(
+            `${describe(node)} has no canvas coordinates; give it .position({ x, y }) `
+            + `or a placement such as .rightOf(...)`,
+          );
+        }
+        if (frames.get(node) !== container) {
+          throw new AnchorError(
+            `${describe(node)} is laid out by ${describe(container)}, which has no coordinates `
+            + `of its own; give that container .position({ x, y }) or .anchor(...)`,
+          );
+        }
+        const placed = flowLayout(container).get(node);
+        if (!placed) {
+          throw new AnchorError(
+            `${describe(node)} has no canvas coordinates; give it .position({ x, y }) `
+            + `or a placement such as .rightOf(...)`,
+          );
+        }
+        x = placed.x;
+        y = placed.y;
+        flowSize = { width: placed.width, height: placed.height };
       }
-      x = left;
-      y = top;
     }
 
-    const box: ResolvedBox = { root: frame.root, x: frame.x + x, y: frame.y + y, width, height };
+    const box: ResolvedBox = {
+      root: frame.root,
+      x: frame.x + x,
+      y: frame.y + y,
+      width: flowSize?.width ?? width,
+      height: flowSize?.height ?? height,
+    };
     boxes.set(node, box);
     return box;
   }

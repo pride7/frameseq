@@ -116,6 +116,45 @@ Available anchors are `center`, `top`, `bottom`, `left`, `right`, `top-left`, `t
 
 A connector may anchor one end only; the other end then keeps the coordinates passed to `line({ x1, y1, x2, y2 })`.
 
+### Diagrams without coordinates
+
+Writing `position()` on every object is tedious and makes a diagram hard to move. A row or column solves both: the container carries the only coordinate, its children are laid out automatically, and connectors still anchor to them.
+
+```ts
+slide({ name: "Pipeline" }).canvas();
+
+at("stages").row().gap(80).position({ x: 80, y: 200 });
+rect("Parse").as("parse");
+rect("Build").as("build");
+rect("Render").as("render");
+
+line().from("parse").to("build").arrow("end");
+line().from("build").to("render").arrow("end");
+```
+
+Moving the whole diagram is one edit, and changing `gap()` re-spaces every connector with it. Connectors written after `at("stages")` belong to that container, which is what keeps their coordinates local to it.
+
+`anchor()` removes the last coordinate by positioning the container against its own container instead:
+
+```ts
+at("stages").row().gap(80).anchor("center");
+at("legend").column().gap(8).anchor("bottom-right", 40);
+```
+
+It takes the same nine positions as connector anchors — `center`, `top`, `bottom`, `left`, `right`, and the four corners — plus an optional margin. The browser resolves it, so an object placed this way becomes its own coordinate space: anchor connectors to the objects inside it rather than across it.
+
+### What FrameSeq can resolve in a row or column
+
+Automatic layout is resolved before rendering, from the declared source. FrameSeq computes only the part of it that is exact, and reports anything else instead of guessing a position the browser would contradict:
+
+- `row()` and `column()`, with an explicit `gap()`. A gap inherited from the theme is refused, because its value depends on the theme.
+- Children with a resolvable box: `rect()` and `circle()` have default sizes, everything else needs `width()` and `height()`.
+- `align()` of `start`, `center`, or `end`, and the default stretch, which gives a child without its own cross size the size of the line.
+- `justify()` of `start`, and `center`, `end`, or `space-between` when the container has an explicit size along that axis.
+- `padding()` in pixels. Padding that comes from `card()` or a grid cell is refused for the same reason as the theme gap.
+
+Anything else — `wrap()`, `grow()`, a child whose height depends on how its text wraps — produces an error naming the object and what to add.
+
 ### What names can reach
 
 References are resolved before rendering, from declared geometry, so both objects must share a coordinate system:

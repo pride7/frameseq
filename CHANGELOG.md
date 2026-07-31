@@ -2,6 +2,18 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Resolve `row()` and `column()` layout before rendering, so objects inside them can be anchored and connected without coordinates of their own. Only the exactly computable part of flexbox is supported; `wrap()`, `grow()`, a theme-supplied gap or padding, and children of unknown size are reported as errors instead of guessed.
+- Add `.anchor(position, margin)`, which places an object against its container using the same nine positions as connector anchors, so a diagram can be written without a single coordinate.
+- Add a test that measures the rendered boxes in a browser and checks every connector endpoint against them, so build-time layout cannot silently drift from what the browser draws.
+
+### Removed
+
+- Remove `slide().place(element, bounds)` and the `PlaceBounds` type. Geometry now has one spelling: `.position({ x, y })` with `.width()` and `.height()`. Objects created by the linear API attach themselves, and detached objects from the explicit object API reach a slide through `custom(...)`. Call `canvas()` explicitly, which `place()` used to do silently.
+
 ## [0.25.0] - 2026-07-31
 
 ### Added

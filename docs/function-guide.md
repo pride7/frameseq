@@ -832,6 +832,35 @@ rect("Cache").as("cache").rightOf("enc", 60).alignTop("enc");
 
 - `name` — `string`, required.
 
+### `.anchor()`
+
+Positions an object against its container instead of by coordinates.
+
+```ts
+at("stages").row().gap(80).anchor("center");
+at("legend").column().gap(8).anchor("bottom-right", 40);
+```
+
+**Signature** `.anchor(position, margin) → the same object`
+
+**Parameters**
+
+- `position` — `string`, required. One of `center`, `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right`.
+- `margin` — `number`, optional. Distance from the edge in canvas pixels; defaults to `0` and is ignored for `center`.
+
+The browser resolves the result, so an object placed this way becomes its own coordinate space. Anchor connectors to the objects inside it rather than across it, and put those connectors inside the same container.
+
+A row or column placed this way still resolves its children, so a diagram can be written without a single coordinate:
+
+```ts
+slide("Pipeline").canvas();
+
+at("stages").row().gap(80).anchor("center");
+rect("Parse").as("parse");
+rect("Build").as("build");
+line().from("parse").to("build").arrow("end");
+```
+
 See [Shapes and connectors](shapes.md) for the full anchor model and its limits.
 
 ## Themes

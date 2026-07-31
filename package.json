@@ -79,7 +79,7 @@
     "preview": "vite preview --open",
     "check": "tsc --noEmit",
     "check:layout": "node scripts/frameseq.mjs check slides.ts",
-    "test": "npm run build && npm run docs:check && node scripts/section-layout-test.mjs && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/anchor-test.mjs && node scripts/region-path-test.mjs && node scripts/notes-test.mjs && node scripts/cjk-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && node scripts/typst-export-test.mjs && npm run gallery:check",
+    "test": "npm run build && npm run docs:check && node scripts/section-layout-test.mjs && npm run vscode:check && node scripts/puppeteer-options-test.mjs && node scripts/theme-test.mjs && node scripts/smoke-test.mjs && node scripts/beamer-smoke-test.mjs && node scripts/minimal-academic-smoke-test.mjs && node scripts/layout-check-test.mjs && node scripts/anchor-test.mjs && node scripts/region-path-test.mjs && node scripts/notes-test.mjs && node scripts/cjk-test.mjs && node scripts/flow-layout-test.mjs && node scripts/single-file-test.mjs && node scripts/remote-control-test.mjs && node scripts/pptx-test.mjs && node scripts/typst-export-test.mjs && npm run gallery:check",
     "frameseq": "node scripts/frameseq.mjs",
     "docs:check": "node scripts/docs-test.mjs",
     "export:pdf": "node scripts/frameseq.mjs pdf slides.ts --output output/pdf/frameseq.pdf",

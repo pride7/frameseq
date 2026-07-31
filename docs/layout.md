@@ -223,13 +223,9 @@ import { Slides, Text, Image, px } from "@pride7/frameseq";
 const slides = Slides("Diagram");
 const page = slides.slide({ name: "Canvas" }).canvas();
 
-page.place(
-  Text("Compiler").size(32).bold(),
-  { x: px(80), y: px(90), width: px(300) },
-);
-page.place(
-  Image(diagram, "Compiler diagram"),
-  { x: px(520), y: px(120), width: px(620) },
+page.custom(
+  Text("Compiler").size(32).bold().position({ x: px(80), y: px(90) }).width(px(300)),
+  Image(diagram, "Compiler diagram").position({ x: px(520), y: px(120) }).width(px(620)),
 );
 
 export default slides;

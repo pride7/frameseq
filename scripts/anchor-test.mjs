@@ -82,6 +82,8 @@ function named(document, name) {
   const document = presentation("Alignment test");
   slide("Alignment").canvas();
 
+  // The shape stylesheet keeps a rect at least 96px tall, so this one renders 96,
+  // not 80, and every placement below it follows the rendered box.
   rect("Anchor").as("anchor").position({ x: 100, y: 100 }).width(200).height(80);
   const sidecar = rect("Sidecar").as("sidecar").rightOf("anchor", 40).alignTop("anchor");
   const stacked = rect("Stacked").as("stacked").below("anchor", 30).alignLeft("anchor");
@@ -94,11 +96,11 @@ function named(document, name) {
   assert.equal(sidecar.node.styles.translate, undefined);
 
   assert.equal(stacked.node.styles.left, "100px");
-  assert.equal(stacked.node.styles.top, "210px");
+  assert.equal(stacked.node.styles.top, "226px");
   assert.equal(stacked.node.styles.translate, undefined);
 
   assert.equal(badge.node.styles.left, "200px");
-  assert.equal(badge.node.styles.top, "140px");
+  assert.equal(badge.node.styles.top, "148px");
   assert.equal(badge.node.styles.translate, "-50% -50%");
 }
 
@@ -108,18 +110,18 @@ function named(document, name) {
   slide("Stages").canvas();
 
   at("stage").canvas().position({ x: 200, y: 60 }).width(400).height(300);
-  rect("Inner").as("inner").position({ x: 20, y: 40 }).width(100).height(60);
+  rect("Inner").as("inner").position({ x: 20, y: 40 }).width(100).height(100);
 
   at("");
-  const outer = rect("Outer").as("outer").position({ x: 700, y: 100 }).width(100).height(60);
+  const outer = rect("Outer").as("outer").position({ x: 700, y: 100 }).width(100).height(100);
   const link = line().from("inner").to("outer");
 
   resolveAnchors(document.node);
 
-  // inner sits at 200 + 20, 60 + 40 in slide coordinates.
+  // inner sits at 200 + 20, 60 + 40 in slide coordinates, and both boxes are 100 tall.
   assert.deepEqual(
     [link.node.props.x1, link.node.props.y1, link.node.props.x2, link.node.props.y2],
-    [320, 130, 700, 130],
+    [320, 150, 700, 150],
   );
   assert.equal(outer.node.styles.left, "700px");
 }
@@ -186,6 +188,107 @@ function named(document, name) {
     () => resolveAnchors(document.node),
     /the width of "copy" is unknown/,
   );
+}
+
+// A row resolves its children so they need no coordinates of their own.
+{
+  const document = presentation("Flow layout test");
+  slide("Row").canvas();
+
+  at("stages").row().gap(80).position({ x: 80, y: 200 });
+  rect("Parse").as("parse");
+  rect("Build").as("build");
+  const link = line().from("parse").to("build");
+
+  resolveAnchors(document.node);
+
+  // Default rect box is 240 x 96, so the second child starts at 240 + 80.
+  assert.deepEqual(
+    [link.node.props.x1, link.node.props.y1, link.node.props.x2, link.node.props.y2],
+    [240, 48, 320, 48],
+  );
+}
+
+// A column resolves along the other axis.
+{
+  const document = presentation("Column flow test");
+  slide("Column").canvas();
+
+  at("steps").column().gap(30).position({ x: 100, y: 100 });
+  rect("First").as("first").height(120);
+  rect("Second").as("second").height(120);
+  const link = line().from("first").to("second");
+
+  resolveAnchors(document.node);
+
+  assert.deepEqual(
+    [link.node.props.x1, link.node.props.y1, link.node.props.x2, link.node.props.y2],
+    [120, 120, 120, 150],
+  );
+}
+
+// Layouts that cannot be resolved exactly are reported instead of guessed.
+{
+  const document = presentation("Flow limits test");
+  slide("Theme gap").canvas();
+  at("row").row().position({ x: 0, y: 0 });
+  rect("A").as("a");
+  rect("B").as("b");
+  line().from("a").to("b");
+
+  assert.throws(() => resolveAnchors(document.node), /gap of "row" comes from the theme/);
+}
+
+{
+  const document = presentation("Grow test");
+  slide("Grow").canvas();
+  at("row").row().gap(10).position({ x: 0, y: 0 });
+  rect("A").as("a").grow();
+  rect("B").as("b");
+  line().from("a").to("b");
+
+  assert.throws(() => resolveAnchors(document.node), /uses grow\(\)/);
+}
+
+{
+  const document = presentation("Unpositioned container test");
+  slide("Flow").canvas();
+  at("row").row().gap(10);
+  rect("A").as("a");
+  rect("B").as("b");
+  line().from("a").to("b");
+
+  assert.throws(
+    () => resolveAnchors(document.node),
+    /is laid out by "row", which has no coordinates of its own/,
+  );
+}
+
+{
+  const document = presentation("Unknown child size test");
+  slide("Text row").canvas();
+  at("row").row().gap(10).position({ x: 0, y: 0 });
+  text("Free text").as("copy");
+  rect("B").as("b");
+  line().from("copy").to("b");
+
+  assert.throws(() => resolveAnchors(document.node), /the width of "copy" is unknown/);
+}
+
+// anchor() positions an object against its container without coordinates.
+{
+  const document = presentation("Anchor test");
+  slide("Anchored").canvas();
+  const centred = at("diagram").row().gap(20).anchor("center");
+  const corner = at("legend").anchor("bottom-right", 40);
+
+  assert.equal(centred.node.styles.left, "50%");
+  assert.equal(centred.node.styles.top, "50%");
+  assert.equal(centred.node.styles.translate, "-50% -50%");
+  assert.equal(corner.node.styles.left, "calc(100% - 40px)");
+  assert.equal(corner.node.styles.top, "calc(100% - 40px)");
+  assert.equal(corner.node.styles.translate, "-100% -100%");
+  assert.throws(() => rect("X").anchor("middle"), /does not know "middle"/);
 }
 
 // Names are validated where they are written.

@@ -160,6 +160,18 @@ rect("Decoder").as("dec").rightOf("enc", 140);
 line().from("enc").to("dec").arrow("end");
 ```
 
+Better still, put the objects in a row or column so none of them needs a coordinate, and anchor the container itself:
+
+```ts
+slide({ name: "Pipeline" }).canvas();
+at("stages").row().gap(80).anchor("center");
+rect("Encoder").as("enc");
+rect("Decoder").as("dec");
+line().from("enc").to("dec").arrow("end");
+```
+
+Write the connectors inside the same container. A resolved row or column needs an explicit `gap()` and children with known sizes; `wrap()`, `grow()`, and text of unknown height are refused with an error.
+
 Names are unique per slide and may be referenced before they are defined. `from()` and `to()` accept an anchor, such as `"enc.right"` or `"enc.bottom-left"`; without one FrameSeq uses the facing edges. Referenced objects must sit on the same canvas and have a resolvable box: `rect()` defaults to 240 by 96, `circle()` to 160 by 160.
 
 ## Math, Typst, LaTeX, and Tailwind

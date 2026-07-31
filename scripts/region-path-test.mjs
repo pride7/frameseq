@@ -107,10 +107,10 @@ function body(slideNode) {
   slide("Stages").canvas();
 
   at("stages").canvas().position({ x: 200, y: 60 }).width(400).height(300);
-  rect("First").as("first").position({ x: 20, y: 40 }).width(100).height(60);
+  rect("First").as("first").position({ x: 20, y: 40 }).width(100).height(100);
 
   at("");
-  rect("Outside").as("outside").position({ x: 800, y: 100 }).width(120).height(60);
+  rect("Outside").as("outside").position({ x: 800, y: 100 }).width(120).height(100);
   const inner = line().from("first").to("outside");
   const edge = line().from("outside").to("stages");
 
@@ -118,12 +118,12 @@ function body(slideNode) {
 
   assert.deepEqual(
     [inner.node.props.x1, inner.node.props.y1, inner.node.props.x2, inner.node.props.y2],
-    [320, 130, 800, 130],
+    [320, 150, 800, 150],
   );
   // "stages" resolves as a box of its own: 400 x 300 at (200, 60).
   assert.deepEqual(
     [edge.node.props.x1, edge.node.props.y1, edge.node.props.x2, edge.node.props.y2],
-    [800, 130, 600, 210],
+    [800, 150, 600, 210],
   );
 }
 

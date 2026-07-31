@@ -480,7 +480,21 @@ line().from("loss.bottom").to("enc.bottom").arrow("end");
 text("shared vocabulary").caption().below("enc", 16);
 ```
 
-Placement modifiers are `rightOf()`, `leftOf()`, `above()`, `below()`, `centerOn()`, `alignTop()`, and `alignLeft()`. Connectors pick the facing edges automatically, or take an explicit anchor such as `"enc.top-right"`. Moving one box updates every connector attached to it. See [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for anchors, arrow directions, layering, and custom SVG assets.
+A row or column removes the coordinates altogether: the container carries the only one, its children lay themselves out, and connectors still find them.
+
+```ts
+slide({ name: "Pipeline" }).canvas();
+
+at("stages").row().gap(80).anchor("center");
+rect("Parse").as("parse");
+rect("Build").as("build");
+rect("Render").as("render");
+
+line().from("parse").to("build").arrow("end");
+line().from("build").to("render").arrow("end");
+```
+
+Moving the diagram is one edit, and `anchor()` places the container against the slide, so this page has no coordinates at all. Placement modifiers are `rightOf()`, `leftOf()`, `above()`, `below()`, `centerOn()`, `alignTop()`, `alignLeft()`, and `anchor()`. Connectors pick the facing edges automatically, or take an explicit anchor such as `"enc.top-right"`. Moving one box updates every connector attached to it. See [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for anchors, arrow directions, layering, and custom SVG assets.
 
 Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 

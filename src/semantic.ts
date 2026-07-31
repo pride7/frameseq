@@ -18,13 +18,6 @@ import {
 } from "./core";
 import { attachNode, takeNodeChildren } from "./node-tree";
 
-export interface PlaceBounds {
-  x: Length;
-  y: Length;
-  width?: Length;
-  height?: Length;
-}
-
 export type SplitRatio = `${number}:${number}` | number | [number, number];
 export type GridColumns = number | string;
 
@@ -206,7 +199,6 @@ export class ContentSlideBuilder extends SlideBuilder {
   private splitRegions?: [RegionBuilder, RegionBuilder];
   private gridRegions?: RegionBuilder[];
   private structuredLayout?: "split" | "grid";
-  private canvasEnabled = false;
 
   constructor(node: FrameSeqNode, content: RegionBuilder) {
     super(node);
@@ -355,17 +347,7 @@ export class ContentSlideBuilder extends SlideBuilder {
   }
 
   canvas(): this {
-    this.canvasEnabled = true;
     this.content.className("frameseq-layout-canvas").stack();
-    return this;
-  }
-
-  place(element: ElementBuilder, bounds: PlaceBounds): this {
-    if (!this.canvasEnabled) this.canvas();
-    element.position({ x: bounds.x, y: bounds.y });
-    if (bounds.width !== undefined) element.width(bounds.width);
-    if (bounds.height !== undefined) element.height(bounds.height);
-    this.content.add(element);
     return this;
   }
 }

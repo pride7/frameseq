@@ -446,20 +446,9 @@ Centers the normal content region.
 
 Adds an image and applies the full-bleed image layout.
 
-### `canvas()` / `place(element, bounds)`
+### `canvas()`
 
-Enables freeform placement. `place()` accepts:
-
-```ts
-interface PlaceBounds {
-  x: Length;
-  y: Length;
-  width?: Length;
-  height?: Length;
-}
-```
-
-Creating unattached elements requires the [explicit object API](advanced.md).
+Switches the slide body to freeform placement, so objects position themselves with `.position({ x, y })`. Detached objects created with the [explicit object API](advanced.md) reach the slide through `custom(...elements)`.
 
 ## Element modifiers
 
@@ -501,6 +490,7 @@ below(target: string, gap?: number): this
 centerOn(target: string): this
 alignTop(target: string): this
 alignLeft(target: string): this
+anchor(position: AnchorSide, margin?: number): this
 rotate(degrees: number): this
 showAt(step: number): this
 className(value: string): this
