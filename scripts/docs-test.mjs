@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { documentationGroups, documentationPages } from "./docs-structure.mjs";
+import { renderDocumentationIndex } from "./docs-index.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guidePath = resolve(packageRoot, "docs", "function-guide.md");
@@ -93,16 +96,41 @@ assert.ok(guide.includes("**Returns**"), "Function entries need return-value doc
 assert.ok(docsIndex.includes("[Function reference](function-guide.md)"));
 assert.ok(readme.includes("https://pride7.github.io/frameseq/docs/function-guide.html"));
 
-for (const category of [
-  "## Start here",
-  "## Write and design slides",
-  "## Present and export",
-  "## AI and advanced typesetting",
-  "## Editor and tooling",
-  "## Advanced and maintainer reference",
-]) {
-  assert.ok(docsIndex.includes(category), `Documentation category is missing: ${category}`);
+// One structure describes the navigation; the home page is rendered from it and the
+// Gallery sidebar is built from it, so neither can drift from the other.
+assert.equal(
+  docsIndex,
+  renderDocumentationIndex(),
+  "docs/README.md is out of date; run npm run docs:index",
+);
+
+for (const group of documentationGroups) {
+  assert.ok(group.label && group.summary, "Every documentation group needs a label and a summary");
+  assert.ok(group.pages.length > 0, `Documentation group ${group.label} is empty`);
+  for (const page of group.pages) {
+    assert.ok(page.blurb, `${page.slug} needs a one-line description in the navigation`);
+    assert.ok(existsSync(resolve(packageRoot, page.source)), `Missing page source: ${page.source}`);
+  }
 }
+
+// The reading path comes first, and reference material comes last.
+assert.equal(documentationGroups[0].label, "Start");
+assert.equal(documentationGroups.at(-1).label, "Reference");
+assert.deepEqual(
+  documentationGroups[0].pages.map((page) => page.slug),
+  ["index", "getting-started", "recipes", "revising"],
+  "The reading path should be install, write, revise",
+);
+
+// A page that exists but is not in the navigation cannot be found by a reader.
+const navigated = new Set(documentationPages
+  .filter((page) => page.source.startsWith("docs/"))
+  .map((page) => basename(page.source)));
+const present = (await readdir(resolve(packageRoot, "docs"))).filter((file) => file.endsWith(".md"));
+for (const file of present) {
+  assert.ok(navigated.has(file), `docs/${file} is missing from scripts/docs-structure.mjs`);
+}
+assert.equal(navigated.size, present.length);
 
 for (const file of [guidePath, docsIndexPath]) {
   const source = await readFile(file, "utf8");
@@ -143,4 +171,4 @@ for (const block of recipeBlocks) {
   );
 }
 
-console.log("Documentation test passed: common functions, signatures, parameters, returns, roles, recipes, entry links, and local links are present.");
+console.log("Documentation test passed: navigation structure, common functions, signatures, parameters, returns, roles, recipes, and links.");

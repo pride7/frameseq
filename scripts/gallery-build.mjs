@@ -8,68 +8,12 @@ import { marked } from "marked";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { documentationGroups, documentationPages } from "./docs-structure.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(packageRoot, "dist");
 const galleryOutput = resolve(distRoot, "gallery");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
-const documentationGroups = [
-  {
-    label: "Start",
-    pages: [
-      { slug: "index", source: "docs/README.md", label: "Documentation home" },
-      { slug: "getting-started", source: "docs/getting-started.md", label: "Getting started" },
-      { slug: "function-guide", source: "docs/function-guide.md", label: "Function reference" },
-    ],
-  },
-  {
-    label: "Write and design",
-    pages: [
-      { slug: "recipes", source: "docs/recipes.md", label: "Recipes", previews: "recipes" },
-      { slug: "revising", source: "docs/revising.md", label: "Revising a talk" },
-      { slug: "document-model", source: "docs/document-model.md", label: "Document model" },
-      { slug: "content", source: "docs/content.md", label: "Content" },
-      { slug: "layout", source: "docs/layout.md", label: "Layout" },
-      { slug: "styling", source: "docs/styling.md", label: "Styling" },
-      { slug: "themes", source: "docs/themes.md", label: "Themes" },
-      { slug: "shapes", source: "docs/shapes.md", label: "Shapes and connectors" },
-      { slug: "diagrams", source: "docs/diagrams.md", label: "Diagrams" },
-    ],
-  },
-  {
-    label: "Present and export",
-    pages: [
-      { slug: "presenter", source: "docs/presenter.md", label: "Presenter and remote" },
-      { slug: "deployment", source: "docs/deployment.md", label: "Deploy HTML" },
-      { slug: "pptx", source: "docs/pptx.md", label: "Export PowerPoint" },
-    ],
-  },
-  {
-    label: "AI and typesetting",
-    pages: [
-      { slug: "ai-generation", source: "docs/ai-generation.md", label: "Generate with AI" },
-      { slug: "layout-checks", source: "docs/layout-checks.md", label: "Layout checks" },
-      { slug: "typst", source: "docs/typst.md", label: "Typst integration" },
-      { slug: "latex", source: "docs/latex.md", label: "LaTeX integration" },
-    ],
-  },
-  {
-    label: "Editor and tools",
-    pages: [
-      { slug: "vscode", source: "docs/vscode.md", label: "VS Code extension" },
-      { slug: "cli", source: "docs/cli.md", label: "CLI reference" },
-    ],
-  },
-  {
-    label: "Advanced",
-    pages: [
-      { slug: "api-reference", source: "docs/api-reference.md", label: "API reference" },
-      { slug: "advanced", source: "docs/advanced.md", label: "Advanced composition" },
-      { slug: "changelog", source: "CHANGELOG.md", label: "Changelog" },
-      { slug: "releasing", source: "docs/releasing.md", label: "Release automation" },
-    ],
-  },
-];
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
@@ -261,13 +205,11 @@ async function captureSlides(slug) {
   }
 }
 
-for (const slug of new Set(
-  documentationGroups.flatMap((group) => group.pages).map((page) => page.previews).filter(Boolean),
-)) {
+for (const slug of new Set(documentationPages.map((page) => page.previews).filter(Boolean))) {
   await captureSlides(slug);
 }
 
-for (const page of documentationGroups.flatMap((group) => group.pages)) {
+for (const page of documentationPages) {
   const markdown = await readFile(resolve(packageRoot, page.source), "utf8");
   await writeFile(
     resolve(galleryOutput, "docs", `${page.slug}.html`),

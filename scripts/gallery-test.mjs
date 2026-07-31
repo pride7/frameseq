@@ -7,12 +7,13 @@ import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { documentationGroups, documentationPages } from "./docs-structure.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const galleryOutput = resolve(packageRoot, "dist", "gallery");
 const docsOutput = resolve(galleryOutput, "docs");
 const docsFiles = (await readdir(docsOutput)).filter((file) => file.endsWith(".html"));
-assert.equal(docsFiles.length, 25);
+assert.equal(docsFiles.length, documentationPages.length);
 
 // The recipes page shows the slide each recipe renders, captured from the deck
 // on every build. A missing or blank capture means the page is showing nothing.
@@ -137,7 +138,7 @@ try {
     overflow: document.documentElement.scrollWidth - window.innerWidth,
   }));
   assert.equal(docsDesktop.title, "Function reference — FrameSeq docs");
-  assert.equal(docsDesktop.groups, 6);
+  assert.equal(docsDesktop.groups, documentationGroups.length);
   assert.equal(docsDesktop.active, "Function reference");
   assert.match(docsDesktop.metric ?? "", /metric/i);
   assert.equal(docsDesktop.signature, true);
@@ -151,7 +152,7 @@ try {
     sidebarOverflow: getComputedStyle(document.querySelector(".docs-sidebar")).overflowX,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
   }));
-  assert.equal(docsMobile.groups, 6);
+  assert.equal(docsMobile.groups, documentationGroups.length);
   assert.equal(docsMobile.sidebarOverflow, "auto");
   assert.ok(docsMobile.overflow <= 0);
 } finally {

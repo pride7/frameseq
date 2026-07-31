@@ -1,52 +1,62 @@
 # FrameSeq documentation
 
-You do not need to read every page. Most presentations can be written with the two documents below; open the other guides only when a slide needs them.
+Three pages get a talk written: install FrameSeq, copy the page you need, then revise it. Everything else is here for the moment a slide asks for it.
 
-## Start here
+1. [Getting started](getting-started.md) — a project, the first slides, a preview, an export.
+2. [Recipes](recipes.md) — a complete slide for each page a talk needs, with the result beside it.
+3. [Revising a talk](revising.md) — what a second draft costs, edit by edit.
 
-1. [Getting started](getting-started.md) — create a project, write the first slides, preview them, and export the result.
-2. [Function reference](function-guide.md) — look up what a function creates, how to call it, its parameters, and what it returns.
+You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
 
-You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing FrameSeq.
+## Write slides
 
-## Write and design slides
+The model behind the recipes, one subject at a time.
 
-- [Recipes](recipes.md) — complete slides for the pages a talk actually needs: cover, comparison, measurements, code, formula, diagram, reveal, close.
-- [Revising a talk](revising.md) — the edits a second draft needs, each shown as a diff and measured in lines.
+- [Document model](document-model.md) — How presentation(), slide(), objects, and the active region fit together.
+- [Content](content.md) — Text, lists, images, code, formulas, metrics, cards, and groups.
+- [Layout](layout.md) — Normal flow, split pages, grids, local grids, region paths, and canvas.
+- [Diagrams](diagrams.md) — Region paths, automatic rows and columns, names, and connectors that follow their objects.
+- [Shapes and connectors](shapes.md) — The primitives a diagram is built from: rectangles, circles, lines, and arrows.
+- [Styling](styling.md) — Chainable modifiers, text roles, dimensions, Tailwind utilities, and inline styles.
+- [Themes](themes.md) — Built-in themes, presentation-wide typography, CJK text, and custom tokens.
 
-- [Document model](document-model.md) — how `presentation()`, `slide()`, objects, and active regions fit together.
-- [Content](content.md) — text, lists, images, code, formulas, metrics, cards, and groups.
-- [Layout](layout.md) — normal flow, split pages, grids, local grid sections, centering, and canvas placement.
-- [Styling](styling.md) — chainable modifiers, text roles, dimensions, Tailwind CSS, and inline styles.
-- [Themes](themes.md) — built-in themes, global typography, and custom design tokens.
-- [Shapes and connectors](shapes.md) — editable rectangles, circles, lines, and arrows.
-- [Diagrams](diagrams.md) — region paths, automatic rows and columns, names, and connectors that follow their objects.
+## Typeset mathematics and tables
+
+Bring an external typesetter in for the fragments that need one.
+
+- [Typst integration](typst.md) — Embed Typst fragments, or export the whole presentation as editable .typ source.
+- [LaTeX integration](latex.md) — Compile existing LaTeX tables and fragments into presentation objects.
+
+## Check and generate
+
+Verify a deck before presenting it, and hand the format to an agent.
+
+- [Layout checks](layout-checks.md) — Detect empty pages, overflow, clipped text, small type, and mistyped region paths.
+- [Generate with AI](ai-generation.md) — Give an agent the FrameSeq contract and iterate from layout diagnostics.
 
 ## Present and export
 
-- [Presenter view and phone remote](presenter.md) — notes, next-slide preview, timer, synchronized controls, and a LAN phone remote.
-- [Deploy HTML](deployment.md) — publish a static presentation, use GitHub Pages, or build one self-contained HTML file.
-- [Export PowerPoint](pptx.md) — choose editable hybrid PPTX or pixel-faithful flattened slides.
-- [Typst integration and export](typst.md) — embed Typst fragments or export the complete presentation as editable `.typ` source.
+Deliver the talk and hand the file over afterwards.
 
-## AI and advanced typesetting
+- [Presenter and remote](presenter.md) — Notes, next-slide preview, timer, synchronised controls, and a phone remote.
+- [Deploy HTML](deployment.md) — Publish a static presentation, use GitHub Pages, or build one portable file.
+- [Export PowerPoint](pptx.md) — Editable hybrid PPTX or pixel-faithful flattened slides.
 
-- [Generate presentations with AI](ai-generation.md) — give an agent the FrameSeq contract and iterate from layout diagnostics.
-- [AI-friendly layout checks](layout-checks.md) — detect empty pages, overflow, clipped text, and unreadably small type.
-- [LaTeX integration](latex.md) — compile existing LaTeX tables and typeset fragments into FrameSeq objects.
+## Editor and command line
 
-## Editor and tooling
+Drive FrameSeq from the tools you already use.
 
-- [Visual Studio Code extension](vscode.md) — source/preview split view, slide navigation, diagnostics, and export commands.
-- [CLI reference](cli.md) — commands for development, remote control, HTML, PDF, PPTX, inspection, and layout checking.
+- [VS Code extension](vscode.md) — Split view, slide navigation, diagnostics, and export commands.
+- [CLI reference](cli.md) — Development, remote control, HTML, PDF, PPTX, Typst, inspection, and checking.
 
-## Advanced and maintainer reference
+## Reference
 
-These pages are not part of the normal learning path.
+Look something up. Not part of the reading path.
 
-- [API reference](api-reference.md) — exact TypeScript overloads, interfaces, and all public builder methods.
-- [Advanced composition](advanced.md) — the uppercase object API and lower-level components.
-- [Version changelog](../CHANGELOG.md) — user-visible changes across releases.
+- [Function reference](function-guide.md) — What each authoring function creates, its signature, parameters, and return value.
+- [API reference](api-reference.md) — Exact TypeScript overloads, interfaces, and every public builder method.
+- [Advanced composition](advanced.md) — The uppercase object API and lower-level components.
+- [Changelog](../CHANGELOG.md) — User-visible changes across releases.
 - [Release automation](releasing.md) — npm Trusted Publishing and the version-tag workflow.
 
 The documentation tracks the latest published FrameSeq release.
