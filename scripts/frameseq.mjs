@@ -457,6 +457,34 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
           ? bounds
           : element.getBoundingClientRect();
       };
+      // One insertion, deletion, substitution, or transposition apart.
+      const differsBySingleEdit = (first, second) => {
+        if (first === second) return false;
+        if (Math.abs(first.length - second.length) > 1) return false;
+
+        let left = 0;
+        let right = 0;
+        let edits = 0;
+        while (left < first.length && right < second.length) {
+          if (first[left] === second[right]) {
+            left += 1;
+            right += 1;
+            continue;
+          }
+          edits += 1;
+          if (edits > 1) return false;
+          if (first.length > second.length) left += 1;
+          else if (first.length < second.length) right += 1;
+          else if (first[left + 1] === second[right] && first[left] === second[right + 1]) {
+            left += 2;
+            right += 2;
+          } else {
+            left += 1;
+            right += 1;
+          }
+        }
+        return edits + (first.length - left) + (second.length - right) <= 1;
+      };
       const sides = (value) => Object.entries(value)
         .filter(([, amount]) => amount > tolerance)
         .map(([side, amount]) => `${rounded(amount)}px on the ${side}`)
@@ -497,6 +525,55 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
               "If the blank slide is intentional, call slide().allowEmpty().",
             ],
           });
+        }
+
+        const namedElements = nodes.filter((element) => element.dataset.frameseqName);
+        for (const element of namedElements) {
+          const type = element.dataset.frameseqNode ?? "unknown";
+          if (!containerTypes.has(type) || element.childElementCount > 0) continue;
+          const name = element.dataset.frameseqName;
+          issues.push({
+            severity: "warning",
+            rule: "empty-region",
+            slide,
+            element: {
+              type,
+              path: element.dataset.frameseqPath ?? "unknown",
+              text: "",
+            },
+            message: `Region "${name}" is empty.`,
+            details: { name },
+            suggestions: [
+              `Add content after at("${name}").`,
+              "Remove the region if the path was a typo or is no longer used.",
+            ],
+          });
+        }
+
+        for (let index = 1; index < namedElements.length; index += 1) {
+          const name = namedElements[index].dataset.frameseqName;
+          if (name.length < 4) continue;
+          for (let earlier = 0; earlier < index; earlier += 1) {
+            const other = namedElements[earlier].dataset.frameseqName;
+            if (other.length < 4 || !differsBySingleEdit(name, other)) continue;
+            issues.push({
+              severity: "warning",
+              rule: "similar-name",
+              slide,
+              element: {
+                type: namedElements[index].dataset.frameseqNode ?? "unknown",
+                path: namedElements[index].dataset.frameseqPath ?? "unknown",
+                text: "",
+              },
+              message: `Names "${other}" and "${name}" are one edit apart.`,
+              details: { name, other },
+              suggestions: [
+                "Rename one of them so the difference is deliberate.",
+                `If "${name}" was meant to reach the same object as "${other}", correct the spelling.`,
+              ],
+            });
+            break;
+          }
         }
 
         for (const element of nodes) {

@@ -2,6 +2,29 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add `.as(name)` to give a diagram object a slide-scoped name.
+- Add anchored connectors: `line().from("enc")` and `line().to("dec.left")` resolve to endpoints before rendering, pick the facing edges when no anchor is given, and accept a `{ dx, dy }` offset. `line()` no longer requires coordinates.
+- Add relative placement modifiers `.rightOf()`, `.leftOf()`, `.above()`, `.below()`, `.centerOn()`, `.alignTop()`, and `.alignLeft()`, so a diagram can position one object and describe the rest in relation to it.
+- Add `note(content)`, the linear form of `slide().notes(content)`. It returns the current slide, and repeated calls append a line, so speaker notes can be written beside the content they explain.
+- Add `ref(name)` for selecting a named object or region again, and let `group()` and `gridSection()` take names as well as objects, so regrouping and later styling need no local variables.
+- Add `at(path)`, a region cursor that addresses regions by path and creates the containers it names, so grouping no longer requires nested source. The first segment may be an existing region such as `main`, `left`, `right`, or `cell0`; revisiting a path appends to the same region; paths are scoped to their slide and are also registered as anchor names.
+
+- Add two layout checks for named regions: `empty-region` reports a region created by `at()` that never received content, and `similar-name` reports two names on the same slide that are one edit apart, which usually means a mistyped path.
+
+### Changed
+
+- Resolve every named reference into finished geometry before rendering, so HTML, PDF, PPTX, and Typst output stay identical, and report unresolved references as errors that name the slide, the reference, and the available objects.
+
+- Report notes written with `note()` in `frameseq inspect`, so the editor outline stays accurate.
+
+### Documentation
+
+- Document names, anchors, and relative placement in the README, shapes guide, function guide, and AI generation notes.
+
 ## [0.22.1] - 2026-07-22
 
 ### Changed

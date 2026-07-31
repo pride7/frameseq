@@ -12,8 +12,18 @@ The checker builds the slides, opens them in a headless browser at their native 
 - `canvas-overflow` — a rendered object extends beyond the slide canvas.
 - `text-clipped` — text is hidden by a clipped text box or ancestor.
 - `font-too-small` — body or code text is below 14px, or a slide heading is below 24px.
+- `empty-region` — a named region created by `at()` never received any content.
+- `similar-name` — two names on the same slide are one edit apart, which usually means one of them is a mistyped `at()` path or `.as()` name.
 
-Canvas overflow and clipped text are errors. Empty slides and small text are warnings. Strict mode fails for either warning.
+Canvas overflow and clipped text are errors. Empty slides, small text, empty regions, and near-identical names are warnings. Strict mode fails for any warning.
+
+A mistyped path is invisible at runtime because `at()` creates whatever it is given, so these two rules catch the case where `at("cell0/nwo")` was meant to return to `at("cell0/now")`:
+
+```text
+WARNING Slide 1 "Roadmap" [similar-name]
+  Names "cell0/now" and "cell0/nwo" are one edit apart.
+  Suggestion: Rename one of them so the difference is deliberate.
+```
 
 An automatic title page generated from presentation metadata counts as visible content. If a blank page is deliberate, mark that intent in the source:
 

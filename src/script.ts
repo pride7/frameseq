@@ -6,12 +6,13 @@ import {
   Latex,
   type SlidesOptions,
   ElementBuilder,
+  type FrameSeqNode,
   Line,
-  type LineBuilder,
+  LineBuilder,
   type LinePoints,
   type Length,
   Rect,
-  type ShapeBuilder,
+  ShapeBuilder,
   Text,
   Typst,
   type SlideOptions,
@@ -26,7 +27,7 @@ import {
   Group,
   type GroupBuilder,
   Metric,
-  type RegionBuilder,
+  RegionBuilder,
   Slides,
   type SlidesDefinition,
   Steps,
@@ -146,6 +147,7 @@ export function presentation(titleOrOptions: string | SlidesOptions = {}): Slide
   activeSlides = Slides(titleOrOptions);
   activeSlide = undefined;
   activeRegion = undefined;
+  pathRegions.clear();
   return activeSlides;
 }
 
@@ -164,7 +166,20 @@ export function slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBu
   }
   activeSlide = activeSlides.slide(nameOrOptions);
   activeRegion = undefined;
+  pathRegions.clear();
   return activeSlide;
+}
+
+/**
+ * Add speaker notes to the current slide, the same as slide().notes(content).
+ * Repeated calls append a line, so a note can stay beside the content it explains.
+ */
+export function note(content: string): ContentSlideBuilder {
+  const slide = currentSlide();
+  const existing = slide.node.props.notes;
+  return slide.notes(
+    typeof existing === "string" && existing ? `${existing}\n${content}` : content,
+  );
 }
 
 export function text(content: string): TextBoxBuilder;
@@ -253,8 +268,8 @@ export function circle(label = ""): ShapeBuilder {
   return attach(Circle(label).className("frameseq-semantic-shape"));
 }
 
-/** Add a canvas-relative vector line or connector. */
-export function line(points: LinePoints): LineBuilder {
+/** Add a canvas-relative vector line or connector. Omit the points when using from()/to(). */
+export function line(points: Partial<LinePoints> = {}): LineBuilder {
   return attach(Line(points).className("frameseq-semantic-line"));
 }
 
@@ -270,12 +285,64 @@ export function metric(value: string, label: string): GroupBuilder {
   return attach(Metric(value, label));
 }
 
+function findNamed(node: FrameSeqNode, name: string): FrameSeqNode | undefined {
+  for (const child of node.children) {
+    if (child.props.name === name) return child;
+    const found = findNamed(child, name);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function collectNames(node: FrameSeqNode, names: string[]): string[] {
+  for (const child of node.children) {
+    if (typeof child.props.name === "string") names.push(child.props.name);
+    collectNames(child, names);
+  }
+  return names;
+}
+
+/** Wrap an existing node in the builder that matches what it can do. */
+function builderFor(node: FrameSeqNode): ElementBuilder {
+  if (node.type === "rect" || node.type === "circle") return new ShapeBuilder(node);
+  if (node.type === "line") return new LineBuilder(node);
+  if (node.type === "row" || node.type === "column" || node.type === "stack") {
+    return new RegionBuilder(node);
+  }
+  return new ElementBuilder(node);
+}
+
+function named(name: string, command: string): ElementBuilder {
+  const slide = currentSlide();
+  const found = findNamed(slide.node, name);
+  if (!found) {
+    const names = collectNames(slide.node, []);
+    const known = names.length === 0
+      ? "this slide has no named objects yet"
+      : `named objects on this slide: ${names.join(", ")}`;
+    throw new Error(`${command} cannot find an object named "${name}"; ${known}`);
+  }
+  return builderFor(found);
+}
+
+function resolveItems(
+  items: Array<ElementBuilder | string>,
+  command: string,
+): ElementBuilder[] {
+  return items.map((item) => (typeof item === "string" ? named(item, command) : item));
+}
+
+/** Select an object or region by the name given to it with as() or at(). */
+export function ref(name: string): ElementBuilder {
+  return named(name, "ref()");
+}
+
 /** Create a vertical container, optionally regrouping adjacent content objects into it. */
-export function group(...items: ElementBuilder[]): GroupBuilder {
+export function group(...items: Array<ElementBuilder | string>): GroupBuilder {
   const container = Group();
   return items.length === 0
     ? attach(container)
-    : regroup(container, items, "group()");
+    : regroup(container, resolveItems(items, "group()"), "group()");
 }
 
 /** Add a semantic title-and-copy card to the current document flow. */
@@ -286,12 +353,12 @@ export function card(title: string, content?: string): GroupBuilder {
 /** Create a local grid, optionally regrouping supplied content objects into it. */
 export function gridSection(
   columns: GridColumns,
-  ...items: ElementBuilder[]
+  ...items: Array<ElementBuilder | string>
 ): GridSectionBuilder {
   const section = GridSection(columns);
   return items.length === 0
     ? attach(section)
-    : regroup(section, items, "gridSection()");
+    : regroup(section, resolveItems(items, "gridSection()"), "gridSection()");
 }
 
 /** Return automatic content placement to the slide's primary region. */
@@ -313,6 +380,83 @@ export function right(): RegionBuilder {
 export function cell(index: number): RegionBuilder {
   activeRegion = currentSlide().cell(index);
   return activeRegion;
+}
+
+const pathSegment = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+const pathRegions = new Map<string, RegionBuilder>();
+
+function pathSegments(path: string): string[] {
+  if (!path.trim()) return [];
+  const segments = path.split("/");
+  for (const segment of segments) {
+    if (!pathSegment.test(segment)) {
+      throw new Error(
+        `at("${path}") expects segments separated by "/", such as "cell0/legend": `
+        + `letters, digits, "_" and "-", starting with a letter`,
+      );
+    }
+  }
+  return segments;
+}
+
+/** Regions the slide layout already owns, addressed by their first path segment. */
+function layoutRegion(segment: string): RegionBuilder | undefined {
+  const slide = currentSlide();
+  if (segment === "main") return slide.defaultContent;
+
+  if (segment === "left" || segment === "right") {
+    try {
+      return segment === "left" ? slide.left : slide.right;
+    } catch {
+      throw new Error(`at("${segment}") needs a split layout; call slide().split() first`);
+    }
+  }
+
+  const cellMatch = /^cell(\d+)$/.exec(segment);
+  if (!cellMatch) return undefined;
+  const index = Number(cellMatch[1]);
+  try {
+    return slide.cell(index);
+  } catch {
+    throw new Error(
+      `at("${segment}") needs a grid with at least ${index + 1} cells; `
+      + `call slide().grid(columns) first`,
+    );
+  }
+}
+
+/**
+ * Move the authoring cursor to a named region, creating the containers on the way.
+ * Paths are unique per slide and can be revisited, so composition needs no nesting.
+ */
+export function at(path: string): RegionBuilder {
+  const slide = currentSlide();
+  const segments = pathSegments(path);
+  if (segments.length === 0) return main();
+
+  let region: RegionBuilder | undefined;
+  let prefix = "";
+  for (const [index, segment] of segments.entries()) {
+    prefix = prefix ? `${prefix}/${segment}` : segment;
+    const existing = pathRegions.get(prefix);
+    if (existing) {
+      region = existing;
+      continue;
+    }
+
+    const created = index === 0 ? layoutRegion(segment) : undefined;
+    if (created) {
+      region = created;
+    } else {
+      const child = new RegionBuilder(Group().node).as(prefix);
+      (region ?? slide.defaultContent).add(child);
+      region = child;
+    }
+    pathRegions.set(prefix, region);
+  }
+
+  activeRegion = region;
+  return region as RegionBuilder;
 }
 
 export function gap(value: Length): RegionBuilder {

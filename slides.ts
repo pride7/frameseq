@@ -31,23 +31,28 @@ right()
 text("Compiler").lead()
 bullets("DSL", "HTML", "PDF")`);
 
-slide("A fixed canvas with time")
-  .notes("Reveal the three points one at a time. Pause after each step.");
+slide("A fixed canvas with time");
 text("Presentation structure stays shallow. Progressive reveals are expressed as content, not an animation timeline.");
+note("Reveal the three points one at a time.");
+
 steps(
   "Layout like an app",
   "Reveal as state",
   "Export from HTML",
 );
+note("Pause after each step.");
 
 slide("Layouts use named regions").grid(3);
 
-cell(0);
+at("cell0");
 metric("2", "named regions in split()");
-cell(1);
+at("cell1");
 metric("3", "cells in this grid()");
-cell(2);
+at("cell2");
 metric("0", "Flexbox rules to remember");
+
+at("cell2/footnote");
+text("Region paths create their containers on demand.").caption();
 
 slide("LaTeX-compatible equations").center();
 text`Math belongs in text too: $E = mc^2$.`.lead();
@@ -86,18 +91,23 @@ slide("Shapes and connectors")
   .canvas()
   .notes("Explain that nodes are HTML while connectors and arrowheads remain vector SVG.");
 
-line({ x1: 320, y1: 200, x2: 460, y2: 200 })
+line()
+  .from("source")
+  .to("core")
   .className("shape-line-smoke")
   .stroke("#38bdf8")
   .strokeWidth(4)
   .arrow("end");
 
-line({ x1: 620, y1: 200, x2: 760, y2: 200 })
+line()
+  .from("core")
+  .to("output")
   .stroke("#38bdf8")
   .strokeWidth(4)
   .arrow("end");
 
 rect("TypeScript")
+  .as("source")
   .className("shape-rect-smoke")
   .position({ x: 80, y: 145 })
   .width(240)
@@ -108,15 +118,17 @@ rect("TypeScript")
   .radius(18);
 
 circle("FrameSeq")
+  .as("core")
   .className("shape-circle-smoke")
-  .position({ x: 460, y: 120 })
+  .rightOf("source", 140)
   .width(160)
   .fill("#164e63")
   .stroke("#22d3ee")
   .strokeWidth(3);
 
 rect("HTML + PDF")
-  .position({ x: 760, y: 145 })
+  .as("output")
+  .rightOf("core", 140)
   .width(240)
   .height(110)
   .fill("#14532d")

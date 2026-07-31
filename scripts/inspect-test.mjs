@@ -39,7 +39,7 @@ assert.deepEqual(
     {
       label: "Precise",
       layout: "canvas",
-      notes: false,
+      notes: true,
       objects: ["text", "rect"],
     },
     {

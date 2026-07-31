@@ -5,6 +5,8 @@ import {
   group,
   metric,
   presentation,
+  rect,
+  ref,
   slide,
   text,
 } from "../lib/index.js";
@@ -87,6 +89,40 @@ assert.deepEqual(incrementalGrid.node.children, [gridCardA.node, gridCardB.node]
 const outer = group();
 const inner = group().parent(outer);
 assert.throws(() => outer.parent(inner), /cycle/);
+
+slide("Regrouping by name");
+
+const parse = rect("Parse").as("parse");
+const build = rect("Build").as("build");
+const render = rect("Render").as("render");
+const stages = group("parse", "build", "render").row().gap(16).as("stages");
+
+const namedPage = slides.slides[2];
+const namedBody = namedPage.children.find((node) =>
+  classes(node).includes("frameseq-slide-body"));
+assert.deepEqual(namedBody.children, [stages.node]);
+assert.deepEqual(stages.node.children, [parse.node, build.node, render.node]);
+assert.equal(stages.node.styles.flexDirection, "row");
+
+// ref() selects an object by name and returns a builder for its own type.
+ref("parse").fill("#dbeafe").stroke("#2563eb");
+assert.equal(parse.node.styles.background, "#dbeafe");
+assert.equal(parse.node.styles.borderColor, "#2563eb");
+assert.equal(ref("parse").node, parse.node);
+assert.equal(ref("stages").node, stages.node);
+
+// Names and objects can be mixed, and unknown names are reported with the known ones.
+const plainText = text("First");
+const namedText = text("Second").as("second");
+const mixed = group(plainText, "second");
+assert.deepEqual(mixed.node.children, [plainText.node, namedText.node]);
+assert.throws(
+  () => ref("missing"),
+  (error) => /cannot find an object named "missing"/.test(error.message)
+    && /named objects on this slide: stages, parse, build, render, second/.test(error.message),
+);
+
+assert.throws(() => group("missing"), /group\(\) cannot find an object named "missing"/);
 
 const foreignSlide = slide("Different slide");
 const foreignObject = text("Cannot move across slides");

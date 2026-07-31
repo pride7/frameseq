@@ -83,4 +83,23 @@ assert.deepEqual(localGrid.report.summary, {
   warnings: 0,
 });
 
-console.log("Layout check test passed: overflow, clipping, font size, empty slides, automatic covers, local grids, JSON, and strict mode.");
+const names = runCheck("layout-names.slides.ts");
+assert.equal(names.status, 0);
+assert.deepEqual(names.report.summary, {
+  slides: 2,
+  errors: 0,
+  warnings: 2,
+});
+assert.deepEqual(
+  names.report.issues.map((issue) => issue.rule),
+  ["empty-region", "similar-name"],
+);
+assert.equal(names.report.issues[0].slide.label, "Mistyped region path");
+assert.equal(names.report.issues[0].details.name, "cell1/later");
+assert.ok(names.report.issues[0].suggestions.some((suggestion) => suggestion.includes("at(")));
+assert.deepEqual(names.report.issues[1].details, { name: "cell0/nwo", other: "cell0/now" });
+
+const strictNames = runCheck("layout-names.slides.ts", "--strict");
+assert.equal(strictNames.status, 1);
+
+console.log("Layout check test passed: overflow, clipping, font size, empty slides, region names, automatic covers, local grids, JSON, and strict mode.");

@@ -132,6 +132,49 @@ circle("Model").parent(diagram).position({ x: 360, y: 60 });
 
 Container `.canvas()` establishes a local coordinate system, so child `.position()` values are relative to that container instead of the whole slide. `.clip(false)` allows positioned children to extend beyond its bounds.
 
+## Region paths
+
+`at(path)` moves the authoring cursor to a region addressed by a path and creates the containers it names. It is the flat alternative to nesting: every object stays one statement, and there is no closing call, because the next `at()` ends the previous region.
+
+```ts
+slide("Roadmap").grid(2);
+
+at("cell0/now").card();
+text("Q3").eyebrow();
+bullets("Anchors", "Region paths");
+
+at("cell1/next").card();
+text("Q4").eyebrow();
+
+at("cell0/now");
+text("Merged into main").caption();
+```
+
+The first segment may address a region the slide layout already owns — `main`, `left`, `right`, `cell0`, `cell1`, and so on — so `at("cell1")` and `cell(1)` select the same region. Every other segment is created the first time it is used, at any depth:
+
+```ts
+at("notes").row().gap(24);
+at("notes/left");
+text("Left copy");
+at("notes/right");
+text("Right copy");
+```
+
+Set a region's layout where it first appears, then use the bare path afterwards. Revisiting a path returns the same region and appends to it, so a page can be written in the order that reads best rather than in the order the containers nest. Paths are scoped to their slide: the same path on the next slide is a new region.
+
+FrameSeq also registers each path as an anchor name, so a positioned region can be connected like any other object:
+
+```ts
+slide("Stages").canvas();
+
+at("stages").canvas().position({ x: 200, y: 60 }).width(400).height(300);
+rect("Parse").as("parse").position({ x: 20, y: 40 });
+
+at("");
+rect("Output").as("output").position({ x: 800, y: 100 });
+line().from("output").to("stages");
+```
+
 ## Return to the primary region
 
 ```ts

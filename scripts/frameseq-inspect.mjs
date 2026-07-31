@@ -181,7 +181,9 @@ export async function inspectSlides(entry, cwd = process.cwd()) {
       continue;
     }
 
-    if (currentSlide) currentSlide.objects.push(...contentObjects(sourceFile, statement));
+    if (!currentSlide) continue;
+    if (findIdentifierCall(statement, "note")) currentSlide.notes = true;
+    currentSlide.objects.push(...contentObjects(sourceFile, statement));
   }
 
   const finalLine = sourceFile.getLineAndCharacterOfPosition(source.length).line + 1;

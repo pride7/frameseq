@@ -107,6 +107,22 @@ text("Values are illustrative.").caption();
 
 Each argument is one cell. Use `card()` for a title-and-copy item and `group()` only when a cell needs multiple independently styled objects.
 
+For the one diagram that does need a canvas, position a single anchor object and describe the rest in relation to it. Named references stay correct when the diagram is revised, which matters more for generated source than for hand-written source:
+
+```ts
+slide("Two-stage routing").canvas();
+
+rect("Router").as("router").position({ x: 120, y: 150 }).width(220).height(110);
+rect("Small model").as("small").rightOf("router", 160);
+rect("Large model").as("large").below("small", 40);
+
+line().from("router").to("small").arrow("end");
+line().from("router").to("large").arrow("end");
+text("72% of inputs stop here").caption().below("small", 12);
+```
+
+Editing one coordinate then moves every connector attached to it, so a correction pass cannot leave arrows pointing at empty canvas.
+
 ### 3. Put delivery detail in speaker notes
 
 Visible text should help the audience scan the slide. Explanations, transitions, caveats, and reminders belong in notes:
@@ -131,7 +147,7 @@ An agent can request structured diagnostics directly:
 npx frameseq check slides.ts --json
 ```
 
-The JSON report identifies empty pages and gives each geometry issue a slide, object type, object path, measurements, and suggested corrections. Add real visible content when `empty-slide` appears; use `.allowEmpty()` only when a blank page is intentional. Prefer shortening copy or changing the layout before making text smaller.
+The JSON report identifies empty pages and gives each geometry issue a slide, object type, object path, measurements, and suggested corrections. Add real visible content when `empty-slide` appears; use `.allowEmpty()` only when a blank page is intentional. Prefer shortening copy or changing the layout before making text smaller. `empty-region` and `similar-name` warnings point at a mistyped `at()` path or `.as()` name: correct the spelling rather than filling the accidental region.
 
 ### 5. Export from the validated source
 
@@ -165,6 +181,7 @@ Before accepting AI-generated slides, verify that:
 - illustrative data is labeled and fabricated citations are absent;
 - every slide has one clear message and a visible reading order;
 - structured layouts are used for ordinary pages;
+- diagram objects are named and placed relative to one another instead of by repeated coordinates;
 - formulas use tagged templates so LaTeX backslashes survive;
 - Typst fragments are static and used only for local complex typesetting;
 - LaTeX table fragments are static, body-only, and use `latex` or `latexFile()`;

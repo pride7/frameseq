@@ -19,6 +19,17 @@ steps("Parse", "Render", "Export");
 
 Notes are slide metadata. They never appear in the audience view, static slide content, print mode, or PDF output. PPTX export stores them as PowerPoint speaker notes.
 
+`note(content)` does the same thing as a linear command, so a note can be written beside the content it explains. Repeated calls append a line:
+
+```ts
+slide("Architecture");
+text("Compiler pipeline").lead();
+note("Explain why FrameSeq owns the presentation structure.");
+
+steps("Parse", "Render", "Export");
+note("Reveal the stages one at a time.");
+```
+
 The object form also accepts notes:
 
 ```ts

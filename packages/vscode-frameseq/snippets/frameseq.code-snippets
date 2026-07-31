@@ -66,6 +66,30 @@
       "  .width(${5:420});"
     ]
   },
+  "FrameSeq diagram": {
+    "prefix": "diagram",
+    "description": "Insert a FrameSeq diagram whose objects are named and connected",
+    "body": [
+      "slide(\"${1:Slide title}\").canvas();",
+      "",
+      "rect(\"${2:First stage}\").as(\"${3:first}\")",
+      "  .position({ x: ${4:120}, y: ${5:160} })",
+      "  .width(${6:220})",
+      "  .height(${7:110});",
+      "rect(\"${8:Second stage}\").as(\"${9:second}\").rightOf(\"${3:first}\", ${10:140});",
+      "",
+      "line().from(\"${3:first}\").to(\"${9:second}\").arrow(\"end\");"
+    ]
+  },
+  "FrameSeq region path": {
+    "prefix": "at",
+    "description": "Insert a named FrameSeq region and its content",
+    "body": [
+      "at(\"${1:notes/detail}\").card();",
+      "text(\"${2:Eyebrow}\").eyebrow();",
+      "text(\"${3:Supporting copy}\");"
+    ]
+  },
   "FrameSeq bullets": {
     "prefix": "bullets",
     "description": "Insert FrameSeq bullet points",
@@ -75,6 +99,13 @@
       "  \"${2:Second point}\",",
       "  \"${3:Third point}\",",
       ");"
+    ]
+  },
+  "FrameSeq speaker note": {
+    "prefix": "note",
+    "description": "Add speaker notes to the current slide",
+    "body": [
+      "note(\"${1:What to say here.}\");"
     ]
   },
   "FrameSeq LaTeX": {

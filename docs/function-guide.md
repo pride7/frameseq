@@ -92,6 +92,36 @@ slide("Results").notes("Pause here and explain the comparison.");
 
 Notes are not shown on the audience page or in PDF output.
 
+### `note()`
+
+Adds speaker notes to the current slide without chaining them onto `slide()`. `note(content)` and `slide().notes(content)` produce the same result.
+
+```ts
+slide("Results");
+text("Revenue increased by 42%.");
+note("Compare the trend, not the absolute value.");
+```
+
+**Signature** `note(content) → ContentSlideBuilder`
+
+**Parameters**
+
+- `content` — `string`, required. Text shown in presenter view and exported to PowerPoint speaker notes.
+
+**Returns** the current slide, so slide methods still chain: `note("Pause here").allowEmpty()`.
+
+Repeated calls append a line instead of replacing the previous note, so a reminder can stay beside the content it explains:
+
+```ts
+slide("Two comparisons");
+text("First measurement");
+note("Explain how it was collected.");
+text("Second measurement");
+note("Contrast it with the first.");
+```
+
+Notes written with `slide().notes()` are kept and extended in the same way.
+
 ### `.allowEmpty()`
 
 Marks a slide as intentionally empty for the layout checker.
@@ -261,7 +291,13 @@ group(
 
 **Parameters**
 
-- `items` — `ElementBuilder[]`, optional. Existing FrameSeq objects, in vertical order.
+- `items` — `Array<ElementBuilder | string>`, optional. Existing FrameSeq objects, in vertical order. A string selects an object by the name given to it with `.as()`, so grouping needs no local variables:
+
+```ts
+rect("Parse").as("parse");
+rect("Build").as("build");
+group("parse", "build").row().gap(16);
+```
 
 **Returns** `GroupBuilder`.
 
@@ -274,6 +310,28 @@ const panel = group().card().padding(24);
 text("Revenue").bold().parent(panel);
 text("$1.2M").size(42).parent(panel);
 ```
+
+### `ref()`
+
+Selects an object or region by the name given to it with `.as()` or `at()`, so styling can happen after the content is written.
+
+```ts
+rect("Parse").as("parse");
+rect("Build").as("build");
+
+ref("parse").fill("#dbeafe");
+ref("build").fill("#dbeafe");
+```
+
+**Signature** `ref(name) → ElementBuilder`
+
+**Parameters**
+
+- `name` — `string`, required. A name from `.as()` or a region path from `at()`.
+
+**Returns** the builder that matches the object: shapes keep `.fill()`, `.stroke()`, and `.strokeWidth()`, connectors keep `.arrow()`, `.from()`, and `.to()`, and containers keep `.row()`, `.gap()`, and the content methods. Every object keeps the common modifiers, including `.style({ ... })` for CSS that has no dedicated method.
+
+`ref()` searches the current slide, and reports the available names when it finds nothing.
 
 ### `gridSection()`
 
@@ -297,7 +355,7 @@ gridSection(columns, ...items) → GridSectionBuilder
 **Parameters**
 
 - `columns` — `number | string`, required. An integer from `1` to `12` creates equal columns. A CSS grid-template string creates custom tracks, for example `"1fr 2fr"`.
-- `items` — `ElementBuilder[]`, optional. Every supplied object becomes one cell, in source order.
+- `items` — `Array<ElementBuilder | string>`, optional. Every supplied object becomes one cell, in source order. Strings select objects by name, as in `group()`.
 
 In the direct form, every following object becomes one cell. Omitting all objects creates the incremental form described below.
 
@@ -593,6 +651,32 @@ text("This goes in the second cell.");
 
 **Returns** the selected `RegionBuilder` and makes it active.
 
+### `at()`
+
+Moves the authoring cursor to a region addressed by a path, creating the containers on the way. Composition therefore stays flat: one statement per object, no nesting and no closing call.
+
+```ts
+at("cell0/now").card();
+text("Q3").eyebrow();
+bullets("Anchors", "Region paths");
+
+at("cell1/next").card();
+text("Q4").eyebrow();
+
+at("cell0/now");
+text("Merged into main").caption();
+```
+
+**Signature** `at(path) → RegionBuilder`
+
+**Parameters**
+
+- `path` — `string`, required. Segments separated by `/`. The first segment may name a region the layout already owns: `main`, `left`, `right`, or `cell0`, `cell1`, and so on. Every other segment is a container that FrameSeq creates the first time it is used. An empty path is the same as `main()`.
+
+**Returns** the selected `RegionBuilder` and makes it active. Revisiting a path returns the same region and appends to it, so a page can be written in whatever order reads best. Paths are scoped to their slide, and FrameSeq also registers them as anchor names, so `line().from("stages.left")` can connect to a positioned region.
+
+Set the layout of a region where it first appears: `at("pipeline").row().gap(24)`.
+
 ### `main()`
 
 Returns content placement to the slide's primary region.
@@ -681,9 +765,74 @@ line({ x1: 320, y1: 190, x2: 520, y2: 190 })
 
 **Parameters**
 
-- `points` — `{ x1: number; y1: number; x2: number; y2: number }`, required.
+- `points` — `{ x1: number; y1: number; x2: number; y2: number }`, optional. Omit it when both ends use `.from()` and `.to()`.
 
-**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, and `.arrow("none" | "start" | "end" | "both")`.
+**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, and `.to()`.
+
+### `.as()`
+
+Names a diagram object so connectors and placements can reference it instead of repeating coordinates. Names are unique within a slide.
+
+```ts
+rect("Encoder").as("enc").position({ x: 80, y: 140 }).width(200).height(100);
+```
+
+**Signature** `.as(name) → the same object`
+
+**Parameters**
+
+- `name` — `string`, required. Letters, digits, `_`, and `-`, starting with a letter or `_`.
+
+### `.from()` and `.to()`
+
+Attach a connector to named objects. FrameSeq resolves the endpoints before rendering, so a connector follows its nodes when their coordinates change.
+
+```ts
+line().from("enc").to("dec").arrow("end");
+line().from("enc.right", { dy: -20 }).to("dec.top-left");
+```
+
+**Signature** `.from(reference, offset) → the same connector`, `.to(reference, offset) → the same connector`
+
+**Parameters**
+
+- `reference` — `string`, required. A name such as `"enc"`, or a name and an anchor such as `"enc.right"`. Anchors are `center`, `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, and `bottom-right`. Without an anchor FrameSeq uses the edges that face the other end.
+- `offset` — `{ dx?: number; dy?: number }`, optional. Shifts the endpoint in canvas pixels.
+
+### `.rightOf()`, `.leftOf()`, `.above()`, and `.below()`
+
+Place an object next to a named object instead of computing its coordinates.
+
+```ts
+rect("Decoder").as("dec").rightOf("enc", 140);
+text("shared vocabulary").caption().below("enc", 16);
+```
+
+**Signature** `.rightOf(name, gap) → the same object`, and likewise for the other three
+
+**Parameters**
+
+- `name` — `string`, required. The name of a positioned object on the same canvas.
+- `gap` — `number`, optional. Canvas pixels between the two objects. Defaults to `40` horizontally and `24` vertically.
+
+The placed object is centred on the other axis and needs no size of its own. The referenced object needs a resolvable box: `rect()` defaults to 240 x 96 and `circle()` to 160 x 160.
+
+### `.centerOn()`, `.alignTop()`, and `.alignLeft()`
+
+Centre an object on a named object, or match one of its edges. `alignTop()` and `alignLeft()` change one axis only, so they chain onto another placement.
+
+```ts
+circle("Badge").as("badge").centerOn("dec").width(48);
+rect("Cache").as("cache").rightOf("enc", 60).alignTop("enc");
+```
+
+**Signature** `.centerOn(name) → the same object`, `.alignTop(name) → the same object`, `.alignLeft(name) → the same object`
+
+**Parameters**
+
+- `name` — `string`, required.
+
+See [Shapes and connectors](shapes.md) for the full anchor model and its limits.
 
 ## Themes
 

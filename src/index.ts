@@ -1,4 +1,5 @@
 export * from "./core";
+export { resolveAnchors } from "./anchors";
 export * from "./semantic";
 export * from "./script";
 export { defineTheme, themes } from "./theme";

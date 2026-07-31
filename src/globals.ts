@@ -3,6 +3,7 @@ export {};
 declare global {
   const presentation: typeof import("./script").presentation;
   const slide: typeof import("./script").slide;
+  const note: typeof import("./script").note;
   const text: typeof import("./script").text;
   const image: typeof import("./script").image;
   const code: typeof import("./script").code;
@@ -18,12 +19,14 @@ declare global {
   const steps: typeof import("./script").steps;
   const metric: typeof import("./script").metric;
   const group: typeof import("./script").group;
+  const ref: typeof import("./script").ref;
   const card: typeof import("./script").card;
   const gridSection: typeof import("./script").gridSection;
   const main: typeof import("./script").main;
   const left: typeof import("./script").left;
   const right: typeof import("./script").right;
   const cell: typeof import("./script").cell;
+  const at: typeof import("./script").at;
   const gap: typeof import("./script").gap;
 
   const px: typeof import("./core").px;

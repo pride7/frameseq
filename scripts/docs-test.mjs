@@ -15,12 +15,14 @@ const readme = await readFile(readmePath, "utf8");
 const documentedFunctions = [
   "presentation",
   "slide",
+  "note",
   "text",
   "bullets",
   "steps",
   "metric",
   "card",
   "group",
+  "ref",
   "gridSection",
   "image",
   "code",
@@ -30,6 +32,7 @@ const documentedFunctions = [
   "latex",
   "latexFile",
   "cell",
+  "at",
   "main",
   "gap",
   "rect",
@@ -43,6 +46,16 @@ for (const name of documentedFunctions) {
 }
 
 assert.ok(guide.includes("### `left()` and `right()`"), "left() and right() are missing");
+assert.ok(guide.includes("### `.as()`"), ".as() is missing");
+assert.ok(guide.includes("### `.from()` and `.to()`"), ".from() and .to() are missing");
+assert.ok(
+  guide.includes("### `.rightOf()`, `.leftOf()`, `.above()`, and `.below()`"),
+  "Relative placement modifiers are missing",
+);
+assert.ok(
+  guide.includes("### `.centerOn()`, `.alignTop()`, and `.alignLeft()`"),
+  "Alignment modifiers are missing",
+);
 
 for (const method of [
   "notes",

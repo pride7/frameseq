@@ -338,6 +338,26 @@ text("Portable").lead();
 text("HTML and PDF");
 ```
 
+### Region paths
+
+Grouping usually forces source to nest. `at(path)` addresses a region instead, and creates the containers it names, so composition stays flat — one statement per object, no nesting, no closing call:
+
+```ts
+slide("Roadmap").grid(2);
+
+at("cell0/now").card();
+text("Q3").eyebrow();
+bullets("Anchors", "Region paths");
+
+at("cell1/next").card();
+text("Q4").eyebrow();
+
+at("cell0/now");
+text("Merged into main").caption();
+```
+
+The first segment can address a region the layout already owns, so `at("cell1")` and `cell(1)` are the same region. Every other segment is created on first use, at any depth. Revisiting a path appends to the same region, which means a page can be written in the order that reads best. Paths reset with the next `slide()`, and each one doubles as an anchor name, so `line().to("stages")` can connect to a positioned region.
+
 ### Local grid section
 
 Keep the slide in its normal top-to-bottom flow and arrange only one group of objects as a grid. Each object passed to `gridSection()` becomes one cell:
@@ -382,6 +402,19 @@ metric("94.8%", "Accuracy").card().parent(results);
 ```
 
 The same pattern works with `group()`. Calling `.canvas()` on a container creates a local coordinate system for positioned children, and `.clip()` keeps them inside its bounds.
+
+Objects can also be grouped and restyled by name, which keeps the source free of local variables:
+
+```ts
+rect("Parse").as("parse");
+rect("Build").as("build");
+rect("Render").as("render");
+
+group("parse", "build", "render").row().gap(16);
+ref("parse").fill("#dbeafe");
+```
+
+`ref(name)` returns the same builder the object was created with, so shapes keep `.fill()`, connectors keep `.arrow()`, and containers keep `.gap()`. Names come from `.as()` or from an `at()` path.
 
 ### Freeform positioning
 
@@ -430,7 +463,24 @@ circle("FrameSeq")
   .stroke("#0891b2");
 ```
 
-Write connectors before nodes when the lines should appear behind them. See [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for arrow directions, layering, and custom SVG assets.
+Write connectors before nodes when the lines should appear behind them.
+
+Diagrams that reference names instead of numbers survive editing. Name an object with `as()`, then place and connect the rest relative to it:
+
+```ts
+slide({ name: "Training loop" }).canvas();
+
+rect("Encoder").as("enc").position({ x: 80, y: 140 }).width(200).height(100);
+rect("Decoder").as("dec").rightOf("enc", 140);
+circle("Loss").as("loss").rightOf("dec", 140);
+
+line().from("enc").to("dec").arrow("end");
+line().from("loss.bottom").to("enc.bottom").arrow("end");
+
+text("shared vocabulary").caption().below("enc", 16);
+```
+
+Placement modifiers are `rightOf()`, `leftOf()`, `above()`, `below()`, `centerOn()`, `alignTop()`, and `alignLeft()`. Connectors pick the facing edges automatically, or take an explicit anchor such as `"enc.top-right"`. Moving one box updates every connector attached to it. See [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for anchors, arrow directions, layering, and custom SVG assets.
 
 Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
 

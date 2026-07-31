@@ -6,6 +6,7 @@ import type {
   Length,
   PresentationFontOptions,
 } from "./core";
+import { resolveAnchors } from "./anchors";
 import { themeCssVariables } from "./theme";
 
 const remoteSyncEvent = "frameseq:remote-sync";
@@ -183,6 +184,7 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
   element.classList.add(`frameseq-${node.type}`);
   element.dataset.frameseqNode = node.type;
   element.dataset.frameseqPath = nodePath;
+  if (typeof node.props.name === "string") element.dataset.frameseqName = node.props.name;
   const extraClassName = node.props.className;
   if (typeof extraClassName === "string") {
     element.classList.add(...extraClassName.split(/\s+/).filter(Boolean));
@@ -629,6 +631,7 @@ function applyPresentationFont(font: PresentationFontOptions | undefined): void 
 }
 
 export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
+  resolveAnchors(slidesDocument.node);
   document.title = slidesDocument.title;
   target.replaceChildren();
 

@@ -109,6 +109,19 @@ slide("Architecture")
   `);
 ```
 
+`note()` writes the same metadata as a normal linear command, which keeps a reminder next to the content it belongs to:
+
+```ts
+slide("Architecture");
+text("Three compiler stages").lead();
+note("Explain the three compiler stages.");
+
+steps("Parse", "Render", "Export");
+note("Pause before revealing the result.");
+```
+
+Repeated `note()` calls append a line rather than replacing the previous text.
+
 Notes belong to the slide as metadata. They are available in [presenter view](presenter.md) but are not rendered into the audience page or PDF.
 
 ## Create a cover
@@ -147,6 +160,16 @@ text("Right side");
 ```
 
 A new `slide()` resets the destination. `main()` returns to the current slide's primary region: the left region of a split, the first cell of a grid, or the normal body.
+
+`at(path)` extends the same idea to containers the layout does not own yet. Each segment of the path is a region; segments that do not exist are created when the path is first used, so grouping never requires nesting the source:
+
+```ts
+at("cell0/highlight").card();
+text("Q3").eyebrow();
+text("Anchors and region paths");
+```
+
+Revisiting a path selects the same region again and appends to it. Like the rest of the document context, paths belong to the current slide and reset with the next `slide()`.
 
 ## Zero-boilerplate compilation
 

@@ -74,6 +74,82 @@ export interface LinePoints {
 
 export type ArrowPlacement = "none" | "start" | "end" | "both";
 
+export type AnchorSide =
+  | "center"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
+export const anchorSides: readonly AnchorSide[] = [
+  "center",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+];
+
+export interface AnchorOffset {
+  dx?: number;
+  dy?: number;
+}
+
+export interface AnchorReference extends AnchorOffset {
+  target: string;
+  side?: AnchorSide;
+}
+
+export type PlacementRelation =
+  | "rightOf"
+  | "leftOf"
+  | "above"
+  | "below"
+  | "centerOn"
+  | "alignTop"
+  | "alignLeft";
+
+export interface PlacementStep {
+  relation: PlacementRelation;
+  target: string;
+  gap: number;
+}
+
+const segmentPattern = "[A-Za-z_][A-Za-z0-9_-]*";
+const namePattern = new RegExp(`^${segmentPattern}(?:/${segmentPattern})*$`);
+
+export function assertName(name: string, command: string): string {
+  if (!namePattern.test(name)) {
+    throw new Error(
+      `${command} expects a name such as "encoder" or a region path such as "stages/first": `
+      + `letters, digits, "_" and "-", starting with a letter`,
+    );
+  }
+  return name;
+}
+
+/** Split "encoder.right" into an object name and an optional anchor side. */
+export function parseAnchorReference(reference: string, command: string): AnchorReference {
+  const separator = reference.indexOf(".");
+  if (separator < 0) return { target: assertName(reference, command) };
+
+  const target = assertName(reference.slice(0, separator), command);
+  const side = reference.slice(separator + 1);
+  if (!anchorSides.includes(side as AnchorSide)) {
+    throw new Error(
+      `${command} does not know the anchor "${side}". Use one of: ${anchorSides.join(", ")}`,
+    );
+  }
+  return { target, side: side as AnchorSide };
+}
+
 function length(value: Length): string {
   return typeof value === "number" ? `${value}px` : value;
 }
@@ -112,6 +188,63 @@ export class ElementBuilder {
     }
     attachNode(parent.node, this.node);
     return this;
+  }
+
+  /** Name this object so connectors and relative placement can reference it. */
+  as(name: string): this {
+    if (this.node.type === "slides" || this.node.type === "slide") {
+      throw new Error("as() names a content object, not a presentation or a slide");
+    }
+    this.node.props.name = assertName(name, "as()");
+    return this;
+  }
+
+  private relate(relation: PlacementRelation, target: string, gap: number): this {
+    if (this.node.type === "slides" || this.node.type === "slide") {
+      throw new Error(`${relation}() places a content object, not a presentation or a slide`);
+    }
+    const steps = Array.isArray(this.node.props.place)
+      ? this.node.props.place as PlacementStep[]
+      : [];
+    steps.push({ relation, target: assertName(target, `${relation}()`), gap });
+    this.node.props.place = steps;
+    this.node.styles.position = "absolute";
+    return this;
+  }
+
+  /** Place this object to the right of a named object, vertically centred on it. */
+  rightOf(target: string, gap = 40): this {
+    return this.relate("rightOf", target, gap);
+  }
+
+  /** Place this object to the left of a named object, vertically centred on it. */
+  leftOf(target: string, gap = 40): this {
+    return this.relate("leftOf", target, gap);
+  }
+
+  /** Place this object above a named object, horizontally centred on it. */
+  above(target: string, gap = 24): this {
+    return this.relate("above", target, gap);
+  }
+
+  /** Place this object below a named object, horizontally centred on it. */
+  below(target: string, gap = 24): this {
+    return this.relate("below", target, gap);
+  }
+
+  /** Place this object on the centre of a named object. */
+  centerOn(target: string): this {
+    return this.relate("centerOn", target, 0);
+  }
+
+  /** Align this object's top edge with a named object, keeping its horizontal placement. */
+  alignTop(target: string): this {
+    return this.relate("alignTop", target, 0);
+  }
+
+  /** Align this object's left edge with a named object, keeping its vertical placement. */
+  alignLeft(target: string): this {
+    return this.relate("alignLeft", target, 0);
   }
 
   style(classes: string): this;
@@ -346,6 +479,18 @@ export class LineBuilder extends ElementBuilder {
     this.node.props.arrow = value;
     return this;
   }
+
+  /** Start this connector at a named object, for example "encoder" or "encoder.right". */
+  from(reference: string, offset: AnchorOffset = {}): this {
+    this.node.props.from = { ...parseAnchorReference(reference, "from()"), ...offset };
+    return this;
+  }
+
+  /** End this connector at a named object, for example "decoder" or "decoder.left". */
+  to(reference: string, offset: AnchorOffset = {}): this {
+    this.node.props.to = { ...parseAnchorReference(reference, "to()"), ...offset };
+    return this;
+  }
 }
 
 export class SlideBuilder extends ContainerBuilder {
@@ -509,8 +654,12 @@ export function Circle(label = ""): ShapeBuilder {
   return new ShapeBuilder(node("circle", { label }));
 }
 
-export function Line(points: LinePoints): LineBuilder {
+export function Line(points: Partial<LinePoints> = {}): LineBuilder {
   return new LineBuilder(node("line", {
+    x1: 0,
+    y1: 0,
+    x2: 0,
+    y2: 0,
     ...points,
     stroke: "var(--frameseq-accent)",
     strokeWidth: "3px",

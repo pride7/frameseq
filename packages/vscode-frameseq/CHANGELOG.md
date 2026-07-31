@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Add a local `gridSection()` card-grid snippet.
+- Add snippets for anchored diagrams (`diagram`), region paths (`at`), and speaker notes (`note`).
+- Show the notes marker in the slide outline for notes written with `note()`.
 - Add editable Typst export to the Slides view export menu.
 
 ## 0.2.1

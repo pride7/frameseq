@@ -6,6 +6,7 @@ text("A subtitle").subtitle();
 
 slide({ name: "Precise", title: "Exact placement" }).canvas();
 text("Pinned").position({ x: 80, y: 120 });
+note("Point at the pinned object.");
 rect("Box").position({ x: 400, y: 200 });
 
 slide("Results").grid(2);

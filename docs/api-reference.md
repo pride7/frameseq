@@ -186,6 +186,14 @@ notes(content: string): ContentSlideBuilder
 
 Stores private speaker notes on the current slide. Notes are displayed in presenter view, omitted from the audience page and PDF, and preserved as PowerPoint speaker notes in PPTX export.
 
+### `note(content)`
+
+```ts
+note(content: string): ContentSlideBuilder
+```
+
+Adds speaker notes to the current slide, the linear form of `slide().notes(content)`. It returns the slide, so slide methods still chain. Repeated calls append a line to the existing notes rather than replacing them.
+
 ### `allowEmpty(enabled?)`
 
 ```ts
@@ -304,10 +312,10 @@ interface LinePoints {
   y2: number;
 }
 
-line(points: LinePoints): LineBuilder
+line(points?: Partial<LinePoints>): LineBuilder
 ```
 
-Adds an SVG line whose coordinates are numeric pixels relative to the current canvas region. Lines are intended for slides using `canvas()`.
+Adds an SVG line whose coordinates are numeric pixels relative to the current canvas region. Lines are intended for slides using `canvas()`. Omit the points when both ends are attached with `from()` and `to()`.
 
 ### `bullets(...items)`
 
@@ -344,7 +352,7 @@ Adds a semantic title-and-copy card to the current flow.
 ### `group(...items)`
 
 ```ts
-group(...items: ElementBuilder[]): GroupBuilder
+group(...items: Array<ElementBuilder | string>): GroupBuilder
 ```
 
 Combines adjacent content objects into one vertical object. Chain `.card()` when the group should receive the standard card surface.
@@ -353,10 +361,18 @@ Combines adjacent content objects into one vertical object. Chain `.card()` when
 
 ```ts
 type GridColumns = number | string;
-gridSection(columns: GridColumns, ...items: ElementBuilder[]): GridSectionBuilder
+gridSection(columns: GridColumns, ...items: Array<ElementBuilder | string>): GridSectionBuilder
 ```
 
 Places a local grid in the current document flow. Every supplied object becomes one grid cell. Numeric columns accept integers from 1 through 12; a CSS grid-template string such as `"1fr 2fr"` creates unequal columns. Use `.gap(value)` to change spacing or `.columns(value)` to replace the template.
+
+### `ref(name)`
+
+```ts
+ref(name: string): ElementBuilder
+```
+
+Selects an object or region on the current slide by the name given to it with `.as()` or `at()`. The returned builder matches the object: `ShapeBuilder` for `rect()` and `circle()`, `LineBuilder` for `line()`, `RegionBuilder` for containers, and `ElementBuilder` for everything else. `group()` and `gridSection()` accept the same names directly, so regrouping needs no local variables.
 
 ## Region selection
 
@@ -375,6 +391,14 @@ cell(index: number): RegionBuilder
 ```
 
 Selects a zero-based grid cell. The slide must already use `grid()`.
+
+### `at(path)`
+
+```ts
+at(path: string): RegionBuilder
+```
+
+Selects the region addressed by a `/` separated path and creates the containers it names. The first segment may be `main`, `left`, `right`, or `cell<n>`; every other segment is created on first use. An empty path is the same as `main()`. Revisiting a path selects the same region, paths are scoped to the current slide, and each path is registered as an anchor name.
 
 ### `gap(value)`
 
@@ -470,6 +494,14 @@ opacity(value: number): this
 clip(enabled?: boolean): this
 parent(parent: ElementBuilder): this
 position(position: { x?: Length; y?: Length }): this
+as(name: string): this
+rightOf(target: string, gap?: number): this
+leftOf(target: string, gap?: number): this
+above(target: string, gap?: number): this
+below(target: string, gap?: number): this
+centerOn(target: string): this
+alignTop(target: string): this
+alignLeft(target: string): this
 rotate(degrees: number): this
 showAt(step: number): this
 className(value: string): this
@@ -499,12 +531,22 @@ strokeWidth(value: Length): this
 Line builders provide:
 
 ```ts
+type AnchorSide =
+  | "center" | "top" | "bottom" | "left" | "right"
+  | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
 stroke(value: string): this
 strokeWidth(value: Length): this
 arrow(value?: "none" | "start" | "end" | "both"): this
+from(reference: string, offset?: { dx?: number; dy?: number }): this
+to(reference: string, offset?: { dx?: number; dy?: number }): this
 ```
 
 Calling `arrow()` without an argument adds an end arrow. A line has no arrow by default.
+
+`from()` and `to()` take the name given to an object by `as()`, optionally followed by an anchor: `"encoder"` or `"encoder.top-right"`. Without an anchor FrameSeq uses the edges that face the other end of the connector.
+
+`as()`, the placement modifiers, and connector anchors are resolved by `resolveAnchors(root)` before rendering. `mountSlides()` calls it, so linear documents need nothing further; the function is exported for tools that consume the node tree directly. Names are scoped to a slide, may be referenced before they are defined, and require both objects to share a coordinate system — the same `canvas()`, or a container positioned with `position()`.
 
 ## Unit helpers
 
