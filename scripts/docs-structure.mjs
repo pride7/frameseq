@@ -205,9 +205,14 @@ export const documentationGroups = [
 export const documentationPages = documentationGroups.flatMap((group) => group.pages);
 
 /**
- * The Chinese documentation. Only the reading path is translated: a reader can get from
- * installing FrameSeq to a revised talk without English, and every other page is offered
- * in English rather than hidden, so no link leads nowhere.
+ * The Chinese documentation. Every guide is translated; four pages stay English on
+ * purpose, and are offered as such rather than hidden, so no link leads nowhere:
+ *
+ * - the function and API references are mostly signatures and code, which is what a
+ *   reader types, and they change with every API addition;
+ * - the changelog is a historical record, so translating it means retranslating on
+ *   every release;
+ * - release automation is written for the maintainer of this repository.
  */
 export const locales = {
   en: { code: "en", htmlLang: "en", label: "English", switchLabel: "中文", directory: "" },

@@ -8,7 +8,7 @@
 
 也可以先看 [在线 Gallery](https://pride7.github.io/frameseq/),或者在 [在线 Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) 里直接改,什么都不用装。
 
-标注 (English) 的页面尚未翻译,链接指向英文原页。
+标注 (English) 的页面**刻意保持英文**:函数参考和 API 参考的主体是签名和代码,读者查的就是要敲进去的那串字符;更新日志是历史记录,翻译它意味着每次发版都要再翻一遍;发布自动化只写给维护者。这些页面的链接指向英文原页。
 
 ## 写幻灯片
 
