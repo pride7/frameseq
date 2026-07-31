@@ -169,14 +169,33 @@ try {
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await page.reload({ waitUntil: "networkidle0" });
-  const docsMobile = await page.evaluate(() => ({
-    groups: document.querySelectorAll(".docs-nav-group").length,
-    sidebarOverflow: getComputedStyle(document.querySelector(".docs-sidebar")).overflowX,
-    overflow: document.documentElement.scrollWidth - window.innerWidth,
-  }));
+  const docsMobile = await page.evaluate(() => {
+    const sidebar = document.querySelector(".docs-sidebar");
+    return {
+      groups: document.querySelectorAll(".docs-nav-group").length,
+      sidebarScrollX: sidebar.scrollWidth - sidebar.clientWidth,
+      titleTop: Math.round(document.querySelector(".docs-article h1").getBoundingClientRect().top),
+      headerLinks: [...document.querySelectorAll(".docs-header nav a")]
+        .filter((link) => getComputedStyle(link).display !== "none")
+        .map((link) => link.textContent.trim()),
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
   assert.equal(docsMobile.groups, documentationGroups.length);
-  assert.equal(docsMobile.sidebarOverflow, "auto");
   assert.ok(docsMobile.overflow <= 0);
+
+  // On a phone the navigation stacks instead of scrolling sideways, so no label is
+  // cut off; it is capped so the article starts on the first screen; and the language
+  // switch survives, since it is the only way into the Chinese documentation.
+  assert.equal(docsMobile.sidebarScrollX, 0, "The mobile navigation should not scroll sideways");
+  assert.ok(
+    docsMobile.titleTop < 830,
+    `The article title should be reachable on the first screen, found ${docsMobile.titleTop}`,
+  );
+  assert.ok(
+    docsMobile.headerLinks.includes("中文"),
+    `The language switch should survive on a phone, found ${docsMobile.headerLinks.join(", ")}`,
+  );
 } finally {
   await browser.close();
   await server.close();

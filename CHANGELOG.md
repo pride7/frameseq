@@ -2,6 +2,13 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Fix the documentation navigation on a phone. It scrolled sideways, which cut off the longer labels and pushed the article below every group; it now stacks and is capped so the article starts on the first screen.
+- Keep the language switch visible on a phone. The small-screen rule hid whichever link happened to be third in the header, which became the switch itself once it was added, so the Chinese documentation had no entry point on a phone. The external link is now hidden by name.
+
 ## [0.28.1] - 2026-07-31
 
 ### Documentation

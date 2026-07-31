@@ -357,22 +357,21 @@ pre {
 
   .docs-sidebar {
     position: static;
-    display: flex;
-    gap: 22px;
+    display: block;
+    /* Stacked rather than scrolled sideways, so no label is cut off, and capped so
+       the article starts within the first screen instead of below every group. */
+    max-height: 42vh;
     height: auto;
-    padding: 21px 24px 24px;
-    overflow-x: auto;
+    padding: 18px 24px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     scrollbar-width: thin;
   }
 
-  .docs-nav-group {
-    flex: 0 0 190px;
-  }
-
   .docs-nav-group + .docs-nav-group {
-    margin-top: 0;
+    margin-top: 18px;
   }
 
   .docs-article {
@@ -395,7 +394,7 @@ pre {
     gap: 14px;
   }
 
-  .docs-header nav a:nth-child(3) {
+  .docs-nav-external {
     display: none;
   }
 

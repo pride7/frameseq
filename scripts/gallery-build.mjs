@@ -142,7 +142,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
         <a href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
         <a href="${locale === "en" ? "../" : "../../"}">Gallery</a>
         <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
-        <a href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="docs-nav-external" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
     <div class="docs-shell">
