@@ -6,7 +6,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
-- Fix the documentation navigation on a phone. It scrolled sideways, which cut off the longer labels and pushed the article below every group; it now stacks and is capped so the article starts on the first screen.
+- Turn the documentation navigation into a drawer on a phone. It used to sit above the article, first scrolling sideways with cut-off labels and then filling half the screen, so a reader met the contents before the page they asked for. A Contents control now opens it on demand, the page opens on the article, and the desktop layout is unchanged. The drawer is a checkbox and a label, so the documentation still ships no JavaScript.
 - Keep a documentation link on the landing page on a phone. The small-screen rule hid the whole navigation, and the only link to the documentation lived inside it, so a phone visitor could reach GitHub but not the docs. The in-page anchors are still hidden, since scrolling reaches those sections anyway.
 - Keep the language switch visible on a phone. The small-screen rule hid whichever link happened to be third in the header, which became the switch itself once it was added, so the Chinese documentation had no entry point on a phone. The external link is now hidden by name.
 

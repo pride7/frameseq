@@ -138,13 +138,18 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
         <span class="docs-brand-mark" aria-hidden="true"></span>
         <span>FrameSeq</span>
       </a>
+      <label class="docs-nav-button" for="docs-nav">
+        <span class="docs-nav-icon" aria-hidden="true"></span>
+        ${locale === "en" ? "Contents" : "目录"}
+      </label>
       <nav aria-label="Documentation navigation">
-        <a href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
+        <a class="docs-nav-home" href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
         <a href="${locale === "en" ? "../" : "../../"}">Gallery</a>
         <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
         <a class="docs-nav-external" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
+    <input class="docs-nav-state" id="docs-nav" type="checkbox" aria-label="${locale === "en" ? "Show the documentation contents" : "显示文档目录"}" />
     <div class="docs-shell">
       <aside class="docs-sidebar" aria-label="Documentation sections">
         ${documentationNavigation(slug, locale)}

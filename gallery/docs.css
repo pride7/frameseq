@@ -350,24 +350,67 @@ pre {
   text-decoration: none;
 }
 
+/* The contents toggle is a checkbox so the drawer needs no JavaScript. It stays
+   focusable for the keyboard while the label carries the visible button. */
+.docs-nav-state {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip-path: inset(50%);
+}
+
+.docs-nav-button {
+  display: none;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 13px;
+  border: 1px solid var(--docs-border, rgb(0 0 0 / 0.16));
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.docs-nav-icon {
+  position: relative;
+  width: 15px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
+}
+
+.docs-nav-state:focus-visible + .docs-shell .docs-sidebar,
+.docs-nav-state:focus-visible ~ .docs-shell .docs-sidebar {
+  outline: 2px solid var(--accent, #1d6b4f);
+}
+
 @media (max-width: 900px) {
   .docs-shell {
     display: block;
   }
 
+  .docs-nav-button {
+    display: inline-flex;
+  }
+
+  /* A drawer rather than a block above the article: the page opens on the text,
+     and the contents appear only when asked for. */
   .docs-sidebar {
     position: static;
-    display: block;
-    /* Stacked rather than scrolled sideways, so no label is cut off, and capped so
-       the article starts within the first screen instead of below every group. */
-    max-height: 42vh;
+    display: none;
+    max-height: 70vh;
     height: auto;
-    padding: 18px 24px 20px;
+    padding: 18px 24px 22px;
     overflow-x: hidden;
     overflow-y: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     scrollbar-width: thin;
+  }
+
+  .docs-nav-state:checked ~ .docs-shell .docs-sidebar {
+    display: block;
   }
 
   .docs-nav-group + .docs-nav-group {
@@ -394,8 +437,19 @@ pre {
     gap: 14px;
   }
 
-  .docs-nav-external {
+  /* The drawer already lists the documentation home, so on a narrow phone the
+     header keeps only what the drawer cannot reach. */
+  .docs-nav-external,
+  .docs-nav-home {
     display: none;
+  }
+
+  .docs-header {
+    gap: 10px;
+  }
+
+  .docs-nav-button {
+    padding: 6px 11px;
   }
 
   .docs-brand {
@@ -464,6 +518,7 @@ pre {
 
 .docs-lang-switch {
   padding: 4px 12px;
+  white-space: nowrap;
   border: 1px solid var(--docs-border, rgb(0 0 0 / 0.16));
   border-radius: 999px;
 }

@@ -173,7 +173,8 @@ try {
     const sidebar = document.querySelector(".docs-sidebar");
     return {
       groups: document.querySelectorAll(".docs-nav-group").length,
-      sidebarScrollX: sidebar.scrollWidth - sidebar.clientWidth,
+      sidebarHeight: sidebar.offsetHeight,
+      toggle: getComputedStyle(document.querySelector(".docs-nav-button")).display,
       titleTop: Math.round(document.querySelector(".docs-article h1").getBoundingClientRect().top),
       headerLinks: [...document.querySelectorAll(".docs-header nav a")]
         .filter((link) => getComputedStyle(link).display !== "none")
@@ -200,18 +201,41 @@ try {
   assert.equal(docsMobile.groups, documentationGroups.length);
   assert.ok(docsMobile.overflow <= 0);
 
-  // On a phone the navigation stacks instead of scrolling sideways, so no label is
-  // cut off; it is capped so the article starts on the first screen; and the language
-  // switch survives, since it is the only way into the Chinese documentation.
-  assert.equal(docsMobile.sidebarScrollX, 0, "The mobile navigation should not scroll sideways");
+  // On a phone the contents are a drawer: the page opens on the article, and the
+  // navigation appears only when asked for. The switch has to survive either way,
+  // since it is the only way into the Chinese documentation.
+  assert.equal(docsMobile.sidebarHeight, 0, "The mobile navigation should start closed");
+  assert.notEqual(docsMobile.toggle, "none", "A phone needs a control that opens it");
   assert.ok(
-    docsMobile.titleTop < 830,
-    `The article title should be reachable on the first screen, found ${docsMobile.titleTop}`,
+    docsMobile.titleTop < 200,
+    `The article should open at the top on a phone, found ${docsMobile.titleTop}`,
   );
   assert.ok(
     docsMobile.headerLinks.includes("中文"),
     `The language switch should survive on a phone, found ${docsMobile.headerLinks.join(", ")}`,
   );
+
+  await page.click(".docs-nav-button");
+  const opened = await page.evaluate(() => ({
+    height: document.querySelector(".docs-sidebar").offsetHeight,
+    links: document.querySelectorAll(".docs-sidebar a").length,
+    scrollX: document.querySelector(".docs-sidebar").scrollWidth
+      - document.querySelector(".docs-sidebar").clientWidth,
+  }));
+  assert.ok(opened.height > 0, "The drawer should open");
+  assert.equal(opened.links, documentationPages.length, "The drawer should list every page");
+  assert.equal(opened.scrollX, 0, "The drawer should not scroll sideways");
+
+  // The desktop layout keeps the sidebar in place and needs no control.
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await page.reload({ waitUntil: "networkidle0" });
+  const docsDesktopAgain = await page.evaluate(() => ({
+    sidebar: document.querySelector(".docs-sidebar").offsetHeight,
+    toggle: getComputedStyle(document.querySelector(".docs-nav-button")).display,
+  }));
+  assert.ok(docsDesktopAgain.sidebar > 0, "The sidebar stays visible on a desktop");
+  assert.equal(docsDesktopAgain.toggle, "none", "A desktop needs no contents button");
+
 } finally {
   await browser.close();
   await server.close();
