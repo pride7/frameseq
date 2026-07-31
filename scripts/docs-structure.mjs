@@ -232,6 +232,13 @@ const chinese = {
     "getting-started": { label: "快速上手", blurb: "建项目、写头几页、预览、导出。" },
     recipes: { label: "配方", blurb: "讲演需要的每一种页面,各一页完整源码,配渲染结果。" },
     revising: { label: "修改一场讲演", blurb: "第二稿要做的改动,每处一段 diff,按行计价。" },
+    "document-model": { label: "文档模型", blurb: "presentation()、slide()、对象和当前区域怎么组合在一起。" },
+    content: { label: "内容", blurb: "文字、列表、图片、代码、公式、指标、卡片和分组。" },
+    layout: { label: "布局", blurb: "普通流、分栏、网格、局部网格、区域路径和画布。" },
+    diagrams: { label: "画图", blurb: "区域路径、自动行列、命名,以及跟着对象走的连线。" },
+    shapes: { label: "图形与连线", blurb: "构成一张图的图元:矩形、圆、线和箭头。" },
+    styling: { label: "样式", blurb: "链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。" },
+    themes: { label: "主题", blurb: "内置主题、全局排版、中日韩文字和自定义 token。" },
   },
 };
 

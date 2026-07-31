@@ -139,11 +139,13 @@ for (const page of translations) {
     page.english,
     `${page.translated} should declare which page it translates`,
   );
+  if (page.admittedStale) continue;
   assert.equal(
     page.recorded,
     page.expected,
     `${page.english} changed after ${page.translated} was written. `
-    + "Update the translation, then run npm run docs:stamp",
+    + "Update the translation, then run npm run docs:stamp. To ship without translating "
+    + "it yet, record sha256:stale and the page will tell readers it may be behind",
   );
 }
 

@@ -39,7 +39,14 @@ assert.equal(chineseFiles.length, translated.length);
 const chineseHome = await readFile(resolve(docsOutput, "zh", "index.html"), "utf8");
 assert.match(chineseHome, /<html lang="zh-Hans"/);
 assert.match(chineseHome, /href="\.\.\/index\.html"[^>]*>English</);
-assert.match(chineseHome, /href="\.\.\/themes\.html"[^>]*>Themes <span class="docs-nav-lang">EN</);
+const untranslated = localisedGroups("zh").flatMap((group) => group.pages)
+  .find((page) => !page.translated);
+assert.ok(untranslated, "Some pages are still English only");
+assert.match(
+  chineseHome,
+  new RegExp(`href="\.\./${untranslated.slug}\.html"[^>]*>[^<]+<span class="docs-nav-lang">EN<`),
+  "An untranslated page should be offered in English rather than hidden",
+);
 const englishHome = await readFile(resolve(docsOutput, "index.html"), "utf8");
 assert.match(englishHome, /href="zh\/index\.html"[^>]*>中文</);
 const chineseRecipes = await readFile(resolve(docsOutput, "zh", "recipes.html"), "utf8");

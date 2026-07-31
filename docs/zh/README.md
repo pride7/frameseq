@@ -14,13 +14,13 @@
 
 配方背后的模型,一次讲一个主题。
 
-- [Document model (English)](../document-model.md) — How presentation(), slide(), objects, and the active region fit together.
-- [Content (English)](../content.md) — Text, lists, images, code, formulas, metrics, cards, and groups.
-- [Layout (English)](../layout.md) — Normal flow, split pages, grids, local grids, region paths, and canvas.
-- [Diagrams (English)](../diagrams.md) — Region paths, automatic rows and columns, names, and connectors that follow their objects.
-- [Shapes and connectors (English)](../shapes.md) — The primitives a diagram is built from: rectangles, circles, lines, and arrows.
-- [Styling (English)](../styling.md) — Chainable modifiers, text roles, dimensions, Tailwind utilities, and inline styles.
-- [Themes (English)](../themes.md) — Built-in themes, presentation-wide typography, CJK text, and custom tokens.
+- [文档模型](document-model.md) — presentation()、slide()、对象和当前区域怎么组合在一起。
+- [内容](content.md) — 文字、列表、图片、代码、公式、指标、卡片和分组。
+- [布局](layout.md) — 普通流、分栏、网格、局部网格、区域路径和画布。
+- [画图](diagrams.md) — 区域路径、自动行列、命名,以及跟着对象走的连线。
+- [图形与连线](shapes.md) — 构成一张图的图元:矩形、圆、线和箭头。
+- [样式](styling.md) — 链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。
+- [主题](themes.md) — 内置主题、全局排版、中日韩文字和自定义 token。
 
 ## 排版公式与表格
 

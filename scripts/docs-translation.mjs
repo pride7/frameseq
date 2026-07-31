@@ -51,6 +51,10 @@ export async function translationStatus(locale = "zh") {
       expected: digest(english),
       recorded: found?.[2],
       declaredSource: found?.[1],
+      // "stale" is a deliberate admission that the page has fallen behind. The build
+      // stays green and the page says so to the reader, which beats both a blocked
+      // release and a translation that quietly lies.
+      admittedStale: found?.[2] === "stale",
     });
   }
   return report;

@@ -7,6 +7,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Documentation
 
 - Publish the documentation reading path in Chinese: the home page, getting started, recipes, and revising a talk. Every page carries a language switch, the Chinese sidebar offers untranslated pages in English rather than hiding them, and both home pages are rendered from the shared navigation structure.
+- Translate the seven pages that explain how to write slides: the document model, content, layout, diagrams, shapes, styling, and themes. A Chinese reader can now write a talk end to end without English; export, tooling, and the references remain English and are offered as such in the sidebar.
+- Allow a translation to admit that it is behind by recording `sha256:stale`. The build stays green and the page tells its reader that the English version is authoritative, which is better than either blocking a release or leaving a translation that quietly lies.
 - Keep translations honest with a recorded hash of the English source. The documentation test fails when a translated page's source has changed, naming the page and asking for `npm run docs:stamp` once the translation has caught up. Code samples are not translated, so the Chinese recipes are held to the same deck as the English ones.
 
 ## [0.28.0] - 2026-07-31

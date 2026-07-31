@@ -108,7 +108,12 @@ function withSlidePreviews(html, slug, locale = "en") {
   });
 }
 
+const staleNotice = {
+  zh: '<aside class="docs-stale">本页可能落后于英文原文,以 <a href="../{slug}.html">英文版</a> 为准。</aside>',
+};
+
 function documentationPage({ slug, label, source, previews }, content, locale = "en") {
+  const stale = /^<!-- translation-of: \S+ sha256:stale -->/.test(content);
   const rendered = withSlidePreviews(
     addHeadingIds(marked.parse(rewriteMarkdownLinks(content), { gfm: true })),
     previews,
@@ -145,7 +150,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
         ${documentationNavigation(slug, locale)}
       </aside>
       <main class="docs-main">
-        <article class="docs-article">${rendered}</article>
+        <article class="docs-article">${stale ? staleNotice[locale].replace("{slug}", slug) : ""}${rendered}</article>
         <footer class="docs-footer">
           <span>FrameSeq documentation</span>
           <a href="https://github.com/pride7/frameseq/blob/main/${source}">Edit this page on GitHub ↗</a>
