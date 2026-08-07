@@ -17,11 +17,17 @@ import {
 } from "./source-edits.mjs";
 import { sourceMarks } from "./source-marks.mjs";
 
-/** Wait for the development server to write the drag back to the slide document. */
+/**
+ * Wait for the development server to write the drag back to the slide document. A write
+ * truncates before it fills, so a read can catch the file part way; only a content that two
+ * reads agree on is reported.
+ */
 async function waitForChange(path, previous, attempts = 100) {
+  let candidate;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const current = await readFile(path, "utf8");
-    if (current !== previous) return current;
+    if (current !== previous && current === candidate) return current;
+    candidate = current;
     await delay(100);
   }
   throw new Error("The slide document was never rewritten");
@@ -488,7 +494,7 @@ try {
   await page.keyboard.down("Control");
   await page.keyboard.press("KeyZ");
   await page.keyboard.up("Control");
-  assert.equal(await waitForChange(entry, reordered), fixture, "Ctrl+Z puts a reorder back");
+  assert.equal(await waitForChange(entry, reordered), fixture);
 
   const settled = await page.evaluate(() => document.documentElement.dataset.ready);
   await page.keyboard.down("Control");
