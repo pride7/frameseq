@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Move the cursor to the command that drew an object when it is Alt-clicked in the preview.
+- Apply a drag in the preview through the workspace, so one Undo puts the object back, and save so the preview reloads from the document. The extension checks the numbers still match before replacing them, and refuses a drag whose source has moved on.
+- Carry a command's lines to a new place among its neighbours when an object in the document flow is dragged, as a single undoable edit.
 - Add a local `gridSection()` card-grid snippet.
 - Add snippets for anchored diagrams (`diagram`), region paths (`at`), and speaker notes (`note`).
 - Show the notes marker in the slide outline for notes written with `note()`.

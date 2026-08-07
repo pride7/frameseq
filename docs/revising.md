@@ -93,6 +93,17 @@ Moving a page is the same property in reverse: cut the block from its `slide()` 
 
 **One line moved.** A detail that was crowding the slide becomes something you say. `note()` appends, so it can sit beside the content it belongs to rather than at the top of the page.
 
+## Drag it instead of typing it
+
+```diff
+-rect("Cache").as("cache").position({ x: 320, y: 90 });
++rect("Cache").as("cache").position({ x: 404, y: 132 });
+```
+
+**Two numbers.** The `E` control in the live preview turns on layout editing, and an object placed by coordinates can then be dragged into place; releasing it writes the numbers back. An object in the flow has none to write, so dragging it changes its place among its neighbours and carries its lines there instead.
+
+The point is what the edit looks like afterwards. Dragging produces the revision you would have typed, in the same place, at the same size, so it still reviews and diffs as source. Where no single number or line stands for what was dragged — a computed coordinate, or a command that runs in a loop — there is no handle to grab, because there would be nothing honest to write. See [Visual Studio Code extension](vscode.md) for the whole gesture set.
+
 ## Check the result
 
 ```bash
