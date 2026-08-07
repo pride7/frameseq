@@ -11,7 +11,7 @@ import { defineConfig, normalizePath } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
 import { applySourceEdits, markEdits, sourceMarks } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
-import { applyIncomingEdits, undoLastEdit } from "./scripts/source-edits.mjs";
+import { applyIncomingEdits, applyIncomingMove, undoLastEdit } from "./scripts/source-edits.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -483,7 +483,10 @@ export default defineConfig({
         };
 
         server.ws.on(sourceEditEvent, (payload, client) => {
-          settleEdit(client, applyIncomingEdits(entry, payload));
+          const request = payload as { move?: unknown } | null;
+          settleEdit(client, request?.move
+            ? applyIncomingMove(entry, payload)
+            : applyIncomingEdits(entry, payload));
         });
 
         server.ws.on(sourceUndoEvent, (_payload, client) => {

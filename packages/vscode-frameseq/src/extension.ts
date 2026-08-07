@@ -381,6 +381,48 @@ function readIncomingEdits(message: unknown): IncomingEdit[] | undefined {
  * Apply a drag from the preview to the slide document, then save so the preview reloads from
  * it. Going through the workspace means one Undo puts the object back where it was.
  */
+interface IncomingMove {
+  start: number;
+  end: number;
+  expected: string;
+  at: number;
+}
+
+function readIncomingMove(message: unknown): IncomingMove | undefined {
+  const move = (message as { move?: unknown } | undefined)?.move as
+    Record<string, unknown> | undefined;
+  if (!move) return undefined;
+  const { start, end, expected, at } = move;
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return undefined;
+  if ((start as number) < 0 || (end as number) <= (start as number)) return undefined;
+  if (typeof expected !== "string" || expected.length !== (end as number) - (start as number)) return undefined;
+  if (!Number.isInteger(at) || (at as number) < 0) return undefined;
+  if ((at as number) > (start as number) && (at as number) < (end as number)) return undefined;
+  return { start: start as number, end: end as number, expected, at: at as number };
+}
+
+/**
+ * Carry a command's lines to another place among its neighbours. The two halves are stated
+ * against the document as it stands, which is how a workspace edit reads them, so they compose
+ * without either having to account for the other.
+ */
+async function applyPreviewMove(message: unknown): Promise<boolean> {
+  const move = readIncomingMove(message);
+  const entry = move && await resolveEntry();
+  if (!move || !entry) return false;
+
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const range = new vscode.Range(document.positionAt(move.start), document.positionAt(move.end));
+  if (document.getText(range) !== move.expected) return false;
+  if (move.at === move.start || move.at === move.end) return true;
+
+  const edit = new vscode.WorkspaceEdit();
+  edit.delete(entry.uri, range);
+  edit.insert(entry.uri, document.positionAt(move.at), move.expected);
+  if (!await vscode.workspace.applyEdit(edit)) return false;
+  return document.save();
+}
+
 async function applyPreviewEdits(message: unknown): Promise<boolean> {
   const edits = readIncomingEdits(message);
   const entry = edits && await resolveEntry();
@@ -469,7 +511,10 @@ async function openPreviewUrl(
         return;
       }
       if (request?.type === "frameseq.edit") {
-        void applyPreviewEdits(message).then((ok) => {
+        const applied = (message as { move?: unknown }).move
+          ? applyPreviewMove(message)
+          : applyPreviewEdits(message);
+        void applied.then((ok) => {
           void previewPanel?.webview.postMessage({ type: "frameseq.edit-result", ok });
         });
       }

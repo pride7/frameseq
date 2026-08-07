@@ -54,6 +54,7 @@ assert.ok(source.includes('message.type === "frameseq.reveal"'));
 assert.ok(source.includes("previewPanel.webview.onDidReceiveMessage"));
 assert.ok(source.includes("async function revealSourceLine"));
 assert.ok(source.includes("async function applyPreviewEdits"));
+assert.ok(source.includes("async function applyPreviewMove"));
 assert.ok(source.includes("new vscode.WorkspaceEdit()"));
 assert.ok(source.includes('message.type === "frameseq.edit-result"'));
 assert.ok(source.includes("vscode.ViewColumn.Beside"));

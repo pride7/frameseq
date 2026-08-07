@@ -593,6 +593,8 @@ The `E` control goes one step further and turns on layout editing. An object pla
 
 `Ctrl+Z` in the preview undoes the last drag. In a browser the development server keeps the text each drag replaced and puts it back verbatim; inside the VS Code preview the drag is applied through the workspace instead of written to disk behind the editor's back, so the editor's own undo covers it. Either way the history is dropped rather than misapplied once the document no longer matches it.
 
+An object in the document flow has no coordinates to rewrite, so dragging it changes its place among its neighbours instead: the preview draws where it would land, and releasing it carries the whole lines its command occupies there, with any comment written above or beside it. This stays inside one run of the document—a `left()`, a `cell(1)`, a new `slide()`, or a `group(a, b)` that collects the objects above it each end a run, since carrying lines across one would change which region an object belongs to rather than only its order.
+
 Editing is deliberately limited to numbers the document states outright. `position({ x: cursor, y: 90 })` computes its x, and `for (const stage of stages) rect(stage)` writes one command that becomes several objects; in both cases no single number stands for what was dragged, so FrameSeq offers no handle rather than guessing. The source stays the only description of the talk—dragging is just another way to type a number into it.
 
 Build the current extension from this repository:

@@ -210,9 +210,15 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
     element.dataset.frameseqSource = `${span.line}:${span.column}:${span.start}:${span.end}`;
     // A command in a loop or a helper renders several objects from one line, and a drag could
     // not say which of them to rewrite. Those objects still lead back to their source line.
-    if (span.fields && !sharedSpans.has(span.start)) {
-      element.dataset.frameseqEdit = JSON.stringify(span.fields);
-      if (span.fields.x && span.fields.y) element.dataset.frameseqMove = "true";
+    if (!sharedSpans.has(span.start)) {
+      if (span.fields) {
+        element.dataset.frameseqEdit = JSON.stringify(span.fields);
+        if (span.fields.x && span.fields.y) element.dataset.frameseqMove = "true";
+      }
+      if (span.statement && span.region !== undefined) {
+        element.dataset.frameseqStatement = JSON.stringify(span.statement);
+        element.dataset.frameseqRegion = String(span.region);
+      }
     }
   }
   const extraClassName = node.props.className;
@@ -778,14 +784,23 @@ function sendSourceEdits(fields: SourceFields, values: Record<string, number>): 
       expected: fields[name].text,
       value,
     }));
-  if (edits.length === 0) return;
+  if (edits.length > 0) sendSourceRequest({ edits });
+}
 
+/** Ask for a command's lines to be carried to another place among its neighbours. */
+function sendSourceMove(statement: SourceStatement, at: number): void {
+  sendSourceRequest({
+    move: { start: statement.start, end: statement.end, expected: statement.text, at },
+  });
+}
+
+function sendSourceRequest(request: Record<string, unknown>): void {
   if (window.parent === window) {
-    import.meta.hot?.send(sourceEditEvent, { edits });
+    import.meta.hot?.send(sourceEditEvent, request);
     return;
   }
 
-  window.parent.postMessage({ type: "frameseq.edit", edits }, "*");
+  window.parent.postMessage({ type: "frameseq.edit", ...request }, "*");
   const reply = setTimeout(() => location.reload(), editReplyTimeout);
   addEventListener("message", function settle(event: MessageEvent<unknown>) {
     const message = event.data as { type?: unknown; ok?: unknown } | null;
@@ -796,10 +811,56 @@ function sendSourceEdits(fields: SourceFields, values: Record<string, number>): 
   });
 }
 
+interface SourceStatement {
+  start: number;
+  end: number;
+  text: string;
+}
+
+function parseSourceStatement(element: HTMLElement): SourceStatement | undefined {
+  const descriptor = element.dataset.frameseqStatement;
+  if (!descriptor) return undefined;
+  try {
+    return JSON.parse(descriptor) as SourceStatement;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The objects a command can trade places with: the ones beside it in the same container that
+ * belong to the same run of the document, so that moving its lines moves only the object.
+ */
+function reorderSiblings(element: HTMLElement): HTMLElement[] {
+  const region = element.dataset.frameseqRegion;
+  const parent = element.parentElement;
+  if (!region || !parent) return [];
+  return [...parent.children].filter((child): child is HTMLElement => (
+    child instanceof HTMLElement
+    && child.dataset.frameseqRegion === region
+    && Boolean(child.dataset.frameseqStatement)
+  ));
+}
+
+/** Where the pointer sits among the neighbours, along whichever way they are laid out. */
+function insertionIndex(boxes: DOMRect[], x: number, y: number): number {
+  const spreadX = Math.max(...boxes.map((box) => box.x)) - Math.min(...boxes.map((box) => box.x));
+  const spreadY = Math.max(...boxes.map((box) => box.y)) - Math.min(...boxes.map((box) => box.y));
+  const vertical = spreadY >= spreadX;
+  const pointer = vertical ? y : x;
+  const middle = (box: DOMRect): number => (vertical ? box.y + box.height / 2 : box.x + box.width / 2);
+  const index = boxes.findIndex((box) => pointer < middle(box));
+  return index < 0 ? boxes.length : index;
+}
+
 interface LayoutDrag {
   element: HTMLElement;
   fields: SourceFields;
-  mode: "move" | "resize";
+  mode: "move" | "resize" | "reorder";
+  statement?: SourceStatement;
+  siblings?: HTMLElement[];
+  index?: number;
+  target?: number;
   pointerId: number;
   originX: number;
   originY: number;
@@ -822,8 +883,37 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
   const handle = document.createElement("div");
   handle.className = "frameseq-edit-handle";
   handle.setAttribute("aria-hidden", "true");
+  const insertion = document.createElement("div");
+  insertion.className = "frameseq-insertion-marker";
+  insertion.setAttribute("aria-hidden", "true");
   let editing = false;
   let drag: LayoutDrag | undefined;
+
+  /**
+   * Draw where the object would land. The marker is placed against the viewport and lives
+   * outside the slide, so it neither takes part in the layout it describes nor is scaled by it.
+   */
+  function showInsertion(siblings: HTMLElement[], target: number): void {
+    const boxes = siblings.map((sibling) => sibling.getBoundingClientRect());
+    if (boxes.length === 0) return;
+    const spreadX = Math.max(...boxes.map((box) => box.x)) - Math.min(...boxes.map((box) => box.x));
+    const vertical = (Math.max(...boxes.map((box) => box.y)) - Math.min(...boxes.map((box) => box.y))) >= spreadX;
+    const before = boxes[Math.min(target, boxes.length - 1)];
+    const after = target < boxes.length;
+
+    if (vertical) {
+      const left = Math.min(...boxes.map((box) => box.x));
+      const right = Math.max(...boxes.map((box) => box.right));
+      insertion.style.cssText = `left:${left}px;width:${right - left}px;`
+        + `top:${(after ? before.top : before.bottom) - 1}px;height:2px;`;
+    } else {
+      const top = Math.min(...boxes.map((box) => box.y));
+      const bottom = Math.max(...boxes.map((box) => box.bottom));
+      insertion.style.cssText = `top:${top}px;height:${bottom - top}px;`
+        + `left:${(after ? before.left : before.right) - 1}px;width:2px;`;
+    }
+    document.body.append(insertion);
+  }
 
   /** The slide is drawn at a fixed size and scaled to the frame, so undo that scale. */
   function canvasScale(element: HTMLElement): number {
@@ -849,16 +939,26 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     const resizing = Boolean(event.target.closest(".frameseq-edit-handle"));
     const element = resizing
       ? handle.parentElement
-      : event.target.closest<HTMLElement>("[data-frameseq-edit]");
-    const fields = element ? parseSourceFields(element) : undefined;
-    if (!element || !fields) return;
-    if (resizing ? !fields.width : !(fields.x && fields.y)) return;
+      : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-statement]");
+    if (!element) return;
+
+    const fields = parseSourceFields(element) ?? {};
+    const statement = parseSourceStatement(element);
+    const siblings = statement ? reorderSiblings(element) : [];
+    // An object placed by coordinates is dragged to new ones; one in the document flow has
+    // none to change, so dragging it trades its place with a neighbour instead.
+    const mode = resizing ? "resize" : (fields.x && fields.y ? "move" : "reorder");
+    if (mode === "resize" && !fields.width) return;
+    if (mode === "reorder" && (!statement || siblings.length < 2)) return;
 
     event.preventDefault();
     drag = {
       element,
       fields,
-      mode: resizing ? "resize" : "move",
+      mode,
+      statement,
+      siblings,
+      index: siblings.indexOf(element),
       pointerId: event.pointerId,
       originX: event.clientX,
       originY: event.clientY,
@@ -867,7 +967,7 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
       values: {},
     };
     root.setPointerCapture(event.pointerId);
-    element.classList.add("is-frameseq-dragging");
+    element.classList.add(mode === "reorder" ? "is-frameseq-reordering" : "is-frameseq-dragging");
   });
 
   root.addEventListener("pointermove", (event) => {
@@ -875,6 +975,18 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     const travelled = Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY);
     if (!drag.moved && travelled < dragThreshold) return;
     drag.moved = true;
+
+    if (drag.mode === "reorder") {
+      const siblings = drag.siblings ?? [];
+      drag.target = insertionIndex(
+        siblings.map((sibling) => sibling.getBoundingClientRect()),
+        event.clientX,
+        event.clientY,
+      );
+      showInsertion(siblings, drag.target);
+      return;
+    }
+
     const dx = (event.clientX - drag.originX) / drag.scale;
     const dy = (event.clientY - drag.originY) / drag.scale;
 
@@ -901,9 +1013,22 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     const finished = drag;
     drag = undefined;
     root.releasePointerCapture(event.pointerId);
-    finished.element.classList.remove("is-frameseq-dragging");
-    // The server writes the slide document, which reloads the page with the new layout.
-    if (finished.moved) sendSourceEdits(finished.fields, finished.values);
+    finished.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
+    insertion.remove();
+    if (!finished.moved) return;
+
+    // The slide document is written for us, which reloads the page with the new layout.
+    if (finished.mode !== "reorder") {
+      sendSourceEdits(finished.fields, finished.values);
+      return;
+    }
+
+    const { siblings = [], statement, index = 0, target } = finished;
+    // Dropping either side of where it already sits leaves the order as it was.
+    if (!statement || target === undefined || target === index || target === index + 1) return;
+    const neighbour = target < siblings.length ? siblings[target] : siblings[siblings.length - 1];
+    const landing = parseSourceStatement(neighbour);
+    if (landing) sendSourceMove(statement, target < siblings.length ? landing.start : landing.end);
   }
 
   root.addEventListener("pointerup", endDrag);
@@ -914,7 +1039,8 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     if (!drag) return;
     const abandoned = drag;
     drag = undefined;
-    abandoned.element.classList.remove("is-frameseq-dragging");
+    abandoned.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
+    insertion.remove();
     if (abandoned.moved) location.reload();
   }
 
@@ -951,7 +1077,10 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
   return (active: boolean): void => {
     editing = active;
     document.documentElement.classList.toggle("frameseq-edit-mode", active);
-    if (!active) handle.remove();
+    if (!active) {
+      handle.remove();
+      insertion.remove();
+    }
   };
 }
 

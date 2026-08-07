@@ -96,6 +96,66 @@ function editableFields(sourceFile, node) {
   return Object.keys(fields).length > 0 ? fields : undefined;
 }
 
+/**
+ * Calls that decide where the objects after them belong. Reordering across one of these would
+ * move an object into another region or another slide, which is not what a drag between
+ * neighbours means, so they divide the document into runs that reordering stays inside.
+ */
+function isRegionBarrier(node) {
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false;
+  const name = node.expression.text;
+  if (["presentation", "slide", "main", "left", "right", "cell", "at"].includes(name)) return true;
+  // group(a, b) and gridSection(2, a, b) collect objects written above them into a container.
+  if (name === "group") return node.arguments.length > 0;
+  if (name === "gridSection") return node.arguments.length > 1;
+  return false;
+}
+
+function lineStartAt(text, index) {
+  let start = index;
+  while (start > 0 && text[start - 1] !== "\n") start -= 1;
+  return start;
+}
+
+/**
+ * The whole lines a command occupies, which is the unit a drag between neighbours moves.
+ * A command sharing its line with anything else has no such unit and cannot be reordered.
+ * Comment lines directly above travel with it, since they were written about it.
+ */
+function statementBlock(sourceFile, node) {
+  let statement = node;
+  while (statement.parent && !ts.isSourceFile(statement.parent)) statement = statement.parent;
+  if (!statement.parent || !ts.isSourceFile(statement.parent)) return undefined;
+  if (!ts.isExpressionStatement(statement) || statement.expression !== node) return undefined;
+
+  const text = sourceFile.text;
+  const start = lineStartAt(text, statement.getStart(sourceFile));
+  if (text.slice(start, statement.getStart(sourceFile)).trim()) return undefined;
+
+  const blank = (index) => text[index] === " " || text[index] === "\t";
+  let end = statement.getEnd();
+  while (end < text.length && blank(end)) end += 1;
+  if (text[end] === ";") end += 1;
+  while (end < text.length && blank(end)) end += 1;
+  // A remark written after the command on the same line was written about it.
+  if (text.startsWith("//", end)) {
+    while (end < text.length && text[end] !== "\r" && text[end] !== "\n") end += 1;
+  }
+  if (text[end] === "\r") end += 1;
+  if (text[end] === "\n") end += 1;
+  // Anything else still on the line means the command has no whole lines of its own.
+  else if (end !== text.length) return undefined;
+
+  let blockStart = start;
+  while (blockStart > 0) {
+    const previousStart = lineStartAt(text, blockStart - 1);
+    if (!text.slice(previousStart, blockStart).trim().startsWith("//")) break;
+    blockStart = previousStart;
+  }
+
+  return { start: blockStart, end, text: text.slice(blockStart, end) };
+}
+
 /** True while the call is still being chained, so only the whole chain gets marked. */
 function chainedFurther(node) {
   const parent = node.parent;
@@ -118,8 +178,10 @@ export function sourceMarks(source, fileName = "slides.ts") {
     ts.ScriptKind.TS,
   );
   const marks = [];
+  const barriers = [];
 
   function visit(node) {
+    if (isRegionBarrier(node)) barriers.push(node.getStart(sourceFile));
     if ((ts.isCallExpression(node) || ts.isTaggedTemplateExpression(node))
       && markableCommands.has(chainRoot(node) ?? "")
       && !chainedFurther(node)) {
@@ -131,12 +193,25 @@ export function sourceMarks(source, fileName = "slides.ts") {
         line: position.line + 1,
         column: position.character + 1,
         fields: editableFields(sourceFile, node),
+        // A slide is not one object among neighbours; its content lives in later statements.
+        // Neither is a call that collects the objects written above it: moving it past them
+        // would leave it reaching for objects that do not exist yet.
+        statement: chainRoot(node) === "slide" || isRegionBarrier(node)
+          ? undefined
+          : statementBlock(sourceFile, node),
       });
     }
     ts.forEachChild(node, visit);
   }
 
   visit(sourceFile);
+
+  // Two commands can only trade places when no barrier stands between them.
+  barriers.sort((a, b) => a - b);
+  for (const mark of marks) {
+    if (!mark.statement) continue;
+    mark.region = barriers.filter((position) => position < mark.start).length;
+  }
   return marks;
 }
 
@@ -151,6 +226,7 @@ export function markEdits(mark) {
     start: mark.start,
     end: mark.end,
     ...(mark.fields ? { fields: mark.fields } : {}),
+    ...(mark.statement ? { statement: mark.statement, region: mark.region } : {}),
   };
   return [
     { start: mark.start, end: mark.start, rank: 1, text: "__frameSeqMark(" },

@@ -127,6 +127,24 @@ button {
   outline: 2px solid var(--frameseq-accent);
 }
 
+/* An object in the document flow has no coordinates to drag, so it trades place instead. */
+.frameseq-edit-mode .frameseq-slides [data-frameseq-statement]:not([data-frameseq-move]) {
+  cursor: grab;
+}
+
+.frameseq-slides .is-frameseq-reordering {
+  cursor: grabbing;
+  opacity: 0.45;
+}
+
+.frameseq-insertion-marker {
+  position: fixed;
+  z-index: 30;
+  border-radius: 2px;
+  background: var(--frameseq-accent);
+  pointer-events: none;
+}
+
 .frameseq-edit-handle {
   position: absolute;
   right: -6px;

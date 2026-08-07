@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
@@ -147,19 +148,28 @@ try {
   }
   assert.equal(await activeSlide(), movableSlide, "The preview should reach the canvas slide");
 
-  // The deck states these coordinates, and a drag may have changed them, so grab the object
-  // wherever it currently shows rather than assuming it sits fully inside the slide.
-  const bounds = await (await frame.$("[data-frameseq-move]")).boundingBox();
-  const slide = await (await frame.$(".frameseq-slide-frame.is-active")).boundingBox();
-  const left = Math.max(bounds.x, slide.x);
-  const top = Math.max(bounds.y, slide.y);
-  const right = Math.min(bounds.x + bounds.width, slide.x + slide.width);
-  const bottom = Math.min(bounds.y + bounds.height, slide.y + slide.height);
-  assert.ok(right - left > 8 && bottom - top > 8, "The object to drag should be visible on the slide");
+  // The deck states these coordinates and a drag may have changed them, so grab the object
+  // wherever it shows. A slide is scaled to its frame after it becomes the active one, so wait
+  // for that to settle rather than measure the object where it briefly is not.
+  let grab;
+  for (let attempt = 0; attempt < 40 && !grab; attempt += 1) {
+    const bounds = await (await frame.$("[data-frameseq-move]")).boundingBox();
+    const slide = await (await frame.$(".frameseq-slide-frame.is-active")).boundingBox();
+    if (bounds && slide) {
+      const left = Math.max(bounds.x, slide.x);
+      const top = Math.max(bounds.y, slide.y);
+      const right = Math.min(bounds.x + bounds.width, slide.x + slide.width);
+      const bottom = Math.min(bounds.y + bounds.height, slide.y + slide.height);
+      if (right - left > 8 && bottom - top > 8) grab = { x: (left + right) / 2, y: (top + bottom) / 2 };
+    }
+    if (!grab) await delay(100);
+  }
+  assert.ok(grab, "The object to drag should be visible on the slide");
 
-  await page.mouse.move((left + right) / 2, (top + bottom) / 2);
+  await page.mouse.move(grab.x, grab.y);
   await page.mouse.down();
-  await page.mouse.move((left + right) / 2 + 40, (top + bottom) / 2 + 20);
+  await page.mouse.move(grab.x + 20, grab.y + 10);
+  await page.mouse.move(grab.x + 40, grab.y + 20);
   await page.mouse.up();
 
   await page.waitForFunction(() => window.edited.length > 0, { timeout: 10_000 });

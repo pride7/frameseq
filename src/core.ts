@@ -50,6 +50,13 @@ export interface SourceSpan {
   end: number;
   /** Coordinates and sizes written as plain numbers, by name: x, y, width, height. */
   fields?: Record<string, SourceField>;
+  /** The whole lines the command occupies, which is what a drag between neighbours moves. */
+  statement?: { start: number; end: number; text: string };
+  /**
+   * The run of the document the command belongs to. Commands share a run when nothing between
+   * them decides where objects belong, so only commands from one run can trade places.
+   */
+  region?: number;
 }
 
 /**

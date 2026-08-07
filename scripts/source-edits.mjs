@@ -12,6 +12,13 @@ const maximumUndoDepth = 50;
  * replaced. Restoring that text rather than a formatted number puts a literal such as 80.5
  * back exactly as it was written.
  */
+function pushUndo(entry, batch) {
+  const stack = undoStacks.get(entry) ?? [];
+  stack.push(batch);
+  if (stack.length > maximumUndoDepth) stack.shift();
+  undoStacks.set(entry, stack);
+}
+
 function inverseEdits(edits) {
   let shift = 0;
   return edits.map((edit) => {
@@ -20,6 +27,56 @@ function inverseEdits(edits) {
     shift += replacement.length - (edit.end - edit.start);
     return { start, end: start + replacement.length, expected: replacement, text: edit.expected };
   });
+}
+
+/**
+ * Read a request to move one command's lines to where another command's lines begin or end.
+ * The text to move is never supplied: it is read back out of the file, and the caller's copy
+ * of it only says which text the drag was aimed at.
+ */
+export function readIncomingMove(payload) {
+  const move = payload?.move;
+  if (!move) return undefined;
+  const { start, end, expected, at } = move;
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) return undefined;
+  if (typeof expected !== "string" || expected.length !== end - start) return undefined;
+  if (!Number.isInteger(at) || at < 0) return undefined;
+  // Dropping a command inside its own lines would mean moving it nowhere in particular.
+  if (at > start && at < end) return undefined;
+  return { start, end, expected, at };
+}
+
+/**
+ * Move a command's lines to another place among its neighbours. Both ends are whole lines, so
+ * the file keeps its shape; the lines themselves are carried over untouched, comments included.
+ */
+export async function applyIncomingMove(entry, payload) {
+  const move = readIncomingMove(payload);
+  if (!move) return { ok: false, reason: "The move request was malformed." };
+
+  const source = await readFile(entry, "utf8");
+  if (move.end > source.length || source.slice(move.start, move.end) !== move.expected) {
+    return { ok: false, reason: "The slide document changed while the preview was being dragged." };
+  }
+  if (move.at > source.length) return { ok: false, reason: "The move request was malformed." };
+  if (move.at === move.start || move.at === move.end) return { ok: true };
+
+  const block = source.slice(move.start, move.end);
+  const without = source.slice(0, move.start) + source.slice(move.end);
+  const landsAt = move.at < move.start ? move.at : move.at - block.length;
+  const updated = without.slice(0, landsAt) + block + without.slice(landsAt);
+  if (updated === source) return { ok: true };
+
+  await writeFile(entry, updated, "utf8");
+  // Undoing a move is the move back: lift the block out of where it landed and put it where it
+  // came from. Moving it up shifted its old place along by its own length; moving it down did
+  // not, because everything it passed over is now above it.
+  const returnsTo = move.start < landsAt ? move.start : move.start + block.length;
+  pushUndo(entry, [
+    { start: landsAt, end: landsAt + block.length, expected: block, text: "" },
+    { start: returnsTo, end: returnsTo, expected: "", text: block },
+  ].sort((a, b) => a.start - b.start));
+  return { ok: true };
 }
 
 /**
@@ -103,9 +160,6 @@ export async function applyIncomingEdits(entry, payload) {
   if (updated === source) return { ok: true };
 
   await writeFile(entry, updated, "utf8");
-  const stack = undoStacks.get(entry) ?? [];
-  stack.push(inverseEdits(edits));
-  if (stack.length > maximumUndoDepth) stack.shift();
-  undoStacks.set(entry, stack);
+  pushUndo(entry, inverseEdits(edits));
   return { ok: true };
 }

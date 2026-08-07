@@ -8,7 +8,13 @@ import { setTimeout as delay } from "node:timers/promises";
 import puppeteer from "puppeteer";
 import { createServer } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { applyIncomingEdits, readIncomingEdits, undoLastEdit } from "./source-edits.mjs";
+import {
+  applyIncomingEdits,
+  applyIncomingMove,
+  readIncomingEdits,
+  readIncomingMove,
+  undoLastEdit,
+} from "./source-edits.mjs";
 import { sourceMarks } from "./source-marks.mjs";
 
 /** Wait for the development server to write the drag back to the slide document. */
@@ -48,6 +54,12 @@ const fixture = [
   'text("Decimal").position({ x: 80.5, y: 300 }).width(160);',
   "",
   'for (const label of ["one", "two"]) rect(label).position({ x: 400, y: 90 }).width(120);',
+  "",
+  'slide("Flow");',
+  "",
+  'text("First");',
+  'text("Second");',
+  'text("Third");',
   "",
 ].join("\n");
 
@@ -204,6 +216,89 @@ function markFor(source, command) {
   assert.match((await undoLastEdit(staleEntry)).reason, /nothing to undo/i);
 }
 
+// Only a command with whole lines of its own, in a run of its own, can trade places.
+{
+  const source = [
+    'presentation({});',
+    'slide("Flow");',
+    'text("A");',
+    'text("B"); text("C");',
+    'left();',
+    'text("D");',
+    'group(ref("a"), ref("b"));',
+    'text("E");',
+    "",
+  ].join("\n");
+  const marks = sourceMarks(source);
+  const of = (command) => marks.find((mark) => source.slice(mark.start, mark.end).startsWith(command));
+
+  assert.ok(of('text("A")').statement, "A command on its own lines can be moved");
+  assert.equal(of('text("B")').statement, undefined, "Two commands on a line have no lines of their own");
+  assert.equal(of('text("C")').statement, undefined);
+  assert.equal(of('slide("Flow")').statement, undefined, "A slide is not one object among neighbours");
+  assert.equal(
+    of('group(ref("a")').statement,
+    undefined,
+    "A call that collects the objects above it cannot be moved past them",
+  );
+  // A cursor move and a regrouping call each start a new run, so nothing crosses them.
+  assert.equal(of('text("A")').region, of('text("D")').region - 1);
+  assert.notEqual(of('text("D")').region, of('text("E")').region);
+}
+
+// A move request that would land inside the lines it is moving is refused.
+{
+  const block = { start: 100, end: 120, expected: "x".repeat(20) };
+  assert.equal(readIncomingMove(undefined), undefined);
+  assert.equal(readIncomingMove({ move: { ...block, at: 110 } }), undefined);
+  assert.equal(readIncomingMove({ move: { ...block, expected: "short", at: 10 } }), undefined);
+  assert.equal(readIncomingMove({ move: { ...block, at: -1 } }), undefined);
+  assert.ok(readIncomingMove({ move: { ...block, at: 40 } }));
+}
+
+// Moving a command carries its comment lines with it and leaves the rest of the file alone.
+{
+  const moveEntry = resolve(workingDirectory, "move.slides.ts");
+  const source = [
+    "presentation({});",
+    'slide("Flow");',
+    'text("First");',
+    "// a note about the second",
+    'text("Second");  // and one beside it',
+    'text("Third");',
+    "",
+  ].join("\n");
+  await writeFile(moveEntry, source, "utf8");
+  const second = sourceMarks(source)
+    .find((mark) => source.slice(mark.start, mark.end).startsWith('text("Second")')).statement;
+  const first = sourceMarks(source)
+    .find((mark) => source.slice(mark.start, mark.end).startsWith('text("First")')).statement;
+
+  const asMove = (statement, at) => ({
+    move: { start: statement.start, end: statement.end, expected: statement.text, at },
+  });
+  const moved = await applyIncomingMove(moveEntry, asMove(second, first.start));
+  assert.equal(moved.ok, true);
+  assert.equal(await readFile(moveEntry, "utf8"), [
+    "presentation({});",
+    'slide("Flow");',
+    "// a note about the second",
+    'text("Second");  // and one beside it',
+    'text("First");',
+    'text("Third");',
+    "",
+  ].join("\n"));
+
+  const undone = await undoLastEdit(moveEntry);
+  assert.equal(undone.ok, true);
+  assert.equal(await readFile(moveEntry, "utf8"), source, "Undo puts a move back exactly");
+
+  // Dropping a command where it already sits changes nothing and records nothing to undo.
+  assert.equal((await applyIncomingMove(moveEntry, asMove(second, second.end))).ok, true);
+  assert.equal(await readFile(moveEntry, "utf8"), source);
+  assert.match((await undoLastEdit(moveEntry)).reason, /nothing to undo/i);
+}
+
 // End to end: dragging an object in the browser rewrites the slide document on disk.
 await writeFile(entry, fixture, "utf8");
 process.env.FRAMESEQ_ENTRY = entry;
@@ -346,8 +441,55 @@ try {
     () => document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "80px",
   );
 
+  // An object in the document flow has no coordinates, so dragging it trades places instead.
+  const activeSlide = () => page.evaluate(
+    () => Number(document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index),
+  );
+  for (let attempt = 0; attempt < 20 && await activeSlide() !== 1; attempt += 1) {
+    await page.click('.frameseq-controls [data-action="next"]');
+  }
+  assert.equal(await activeSlide(), 1, "The preview should reach the flow slide");
+
+  // Writing the document reloads the page, and a reload part way through a drag would drop it.
+  await delay(500);
+  const flow = await page.evaluate(() => [...document.querySelectorAll(
+    ".frameseq-slide-frame.is-active [data-frameseq-statement]",
+  )].map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { label: element.textContent, x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, top: rect.y };
+  }));
+  assert.deepEqual(flow.map((item) => item.label), ["First", "Second", "Third"]);
+
+  await page.mouse.move(flow[2].x, flow[2].y);
+  await page.mouse.down();
+  await page.mouse.move(flow[1].x, flow[1].y);
+  await page.mouse.move(flow[0].x, flow[0].top + 2);
+  await page.waitForFunction(
+    () => Boolean(document.querySelector(".frameseq-insertion-marker")),
+    { timeout: 5_000 },
+  ).catch(() => {
+    throw new Error("A reorder should show where the object would land");
+  });
+  await page.mouse.up();
+
+  const reordered = await waitForChange(entry, fixture);
+  assert.equal(
+    reordered,
+    fixture.replace('text("First");\ntext("Second");\ntext("Third");', 'text("Third");\ntext("First");\ntext("Second");'),
+    "Reordering moves the command's lines and leaves the rest of the document alone",
+  );
+  await page.waitForFunction(() => document.querySelector(
+    ".frameseq-slide-frame.is-active [data-frameseq-statement]",
+  )?.textContent === "Third");
+
   // An undo with nothing left that still describes the file is not a mismatch to redraw:
   // it must write nothing and leave the preview exactly as it stands.
+  // Undo takes the reorder back first, which is the last thing that was written.
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  assert.equal(await waitForChange(entry, reordered), fixture, "Ctrl+Z puts a reorder back");
+
   const settled = await page.evaluate(() => document.documentElement.dataset.ready);
   await page.keyboard.down("Control");
   await page.keyboard.press("KeyZ");
