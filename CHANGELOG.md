@@ -2,7 +2,7 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.29.0] - 2026-08-07
 
 ### Added
 
