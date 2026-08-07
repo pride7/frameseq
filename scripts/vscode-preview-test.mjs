@@ -73,10 +73,22 @@ try {
     ></iframe>
     <script>
       const preview = document.getElementById("frameseq-preview");
+      window.revealed = [];
+      const editor = { postMessage: (message) => window.revealed.push(message) };
       window.addEventListener("message", (event) => {
         const message = event.data;
-        if (!message || message.type !== "frameseq.navigate" || typeof message.url !== "string") return;
-        preview.src = message.url;
+        if (!message) return;
+        if (message.type === "frameseq.navigate" && typeof message.url === "string") {
+          preview.src = message.url;
+          return;
+        }
+        if (message.type === "frameseq.reveal" && typeof message.line === "number") {
+          editor.postMessage({
+            type: "frameseq.reveal",
+            line: message.line,
+            column: typeof message.column === "number" ? message.column : 1,
+          });
+        }
       });
     </script>
   `);
@@ -91,6 +103,18 @@ try {
     await frame.$eval(".frameseq-slide-frame.is-active", (slide) => slide.textContent ?? ""),
     /Build slides like building apps/,
   );
+
+  // Alt-clicking inside the preview reaches the extension instead of the development server.
+  await frame.evaluate(() => {
+    const target = document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-source]");
+    if (!target) throw new Error("The preview carries no source spans");
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
+  });
+  await page.waitForFunction(() => window.revealed.length > 0, { timeout: 10_000 });
+  const revealed = await page.evaluate(() => window.revealed[0]);
+  assert.equal(revealed.type, "frameseq.reveal");
+  assert.ok(revealed.line > 0, "A revealed object should report the line that wrote it");
+  assert.ok(revealed.column > 0, "A revealed object should report the column that wrote it");
 
   const thirdSlideUrl = new URL(url);
   thirdSlideUrl.searchParams.set("frameseq-preview", "vscode-test-slide-3");

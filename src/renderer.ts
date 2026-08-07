@@ -5,12 +5,19 @@ import type {
   FrameSeqNode,
   Length,
   PresentationFontOptions,
+  SourceField,
+  SourceSpan,
 } from "./core";
 import { resolveAnchors } from "./anchors";
 import { themeCssVariables } from "./theme";
 
 const remoteSyncEvent = "frameseq:remote-sync";
+const sourceEditEvent = "frameseq:apply-edit";
+const sourceEditResultEvent = "frameseq:apply-edit-result";
+const layoutEditingKey = "frameseq-layout-editing";
 const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
+/** Editing writes the slide document, so it only exists while a development server is serving. */
+const localEditingAvailable = Boolean(import.meta.hot);
 
 function applyStyles(element: HTMLElement, styles: Record<string, string>): void {
   Object.assign(element.style, styles);
@@ -101,6 +108,18 @@ function renderLine(node: FrameSeqNode): HTMLElement {
   return element;
 }
 
+/** Source positions that produced more than one object, collected before rendering starts. */
+const sharedSpans = new Set<number>();
+
+function collectSharedSpans(node: FrameSeqNode, seen = new Set<number>()): void {
+  const span = node.props.sourceSpan as SourceSpan | undefined;
+  if (span) {
+    if (seen.has(span.start)) sharedSpans.add(span.start);
+    seen.add(span.start);
+  }
+  for (const child of node.children) collectSharedSpans(child, seen);
+}
+
 function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
   let element: HTMLElement;
 
@@ -185,6 +204,16 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
   element.dataset.frameseqNode = node.type;
   element.dataset.frameseqPath = nodePath;
   if (typeof node.props.name === "string") element.dataset.frameseqName = node.props.name;
+  const span = node.props.sourceSpan as SourceSpan | undefined;
+  if (span) {
+    element.dataset.frameseqSource = `${span.line}:${span.column}:${span.start}:${span.end}`;
+    // A command in a loop or a helper renders several objects from one line, and a drag could
+    // not say which of them to rewrite. Those objects still lead back to their source line.
+    if (span.fields && !sharedSpans.has(span.start)) {
+      element.dataset.frameseqEdit = JSON.stringify(span.fields);
+      if (span.fields.x && span.fields.y) element.dataset.frameseqMove = "true";
+    }
+  }
   const extraClassName = node.props.className;
   if (typeof extraClassName === "string") {
     element.classList.add(...extraClassName.split(/\s+/).filter(Boolean));
@@ -630,8 +659,269 @@ function applyPresentationFont(font: PresentationFontOptions | undefined): void 
   }
 }
 
+interface SourceTarget {
+  line: number;
+  column: number;
+  start: number;
+  end: number;
+}
+
+function parseSourceTarget(descriptor: string): SourceTarget | undefined {
+  const [line, column, start, end] = descriptor.split(":").map(Number);
+  if (![line, column, start, end].every((value) => Number.isFinite(value))) return undefined;
+  return { line, column, start, end };
+}
+
+/** The slide document's path on the development server, asked for once and remembered. */
+let entryPath: string | undefined;
+
+async function slideEntryPath(): Promise<string | undefined> {
+  if (entryPath === undefined) {
+    try {
+      const response = await fetch("/__frameseq/source-info", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { entry?: unknown };
+      entryPath = typeof data.entry === "string" ? data.entry : "";
+    } catch {
+      entryPath = "";
+    }
+  }
+  return entryPath || undefined;
+}
+
+/** Ask the editor to show the command that produced an object in the preview. */
+async function revealSource(target: SourceTarget): Promise<void> {
+  // Inside the Visual Studio Code preview the surrounding webview reaches the editor directly.
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "frameseq.reveal", ...target }, "*");
+    return;
+  }
+
+  const entry = await slideEntryPath();
+  if (!entry) return;
+  const file = `${entry}:${target.line}:${target.column}`;
+  await fetch(`/__open-in-editor?file=${encodeURIComponent(file)}`).catch(() => undefined);
+}
+
+/** Alt-click any object in the live preview to open the line that wrote it. */
+function enableSourceReveal(root: HTMLElement): void {
+  root.addEventListener("click", (event) => {
+    if (!event.altKey || event.button !== 0) return;
+    const element = event.target instanceof Element
+      ? event.target.closest<HTMLElement>("[data-frameseq-source]")
+      : undefined;
+    const target = element && parseSourceTarget(element.dataset.frameseqSource ?? "");
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void revealSource(target);
+  });
+
+  const hint = (active: boolean): void => {
+    document.documentElement.classList.toggle("frameseq-source-hint", active);
+  };
+  addEventListener("keydown", (event) => hint(event.altKey));
+  addEventListener("keyup", (event) => hint(event.altKey));
+  addEventListener("blur", () => hint(false));
+}
+
+type SourceFields = Record<string, SourceField>;
+
+/**
+ * A preview embedded in another page may be refused access to storage entirely, so neither
+ * reading nor writing the editing flag is allowed to stop the deck from mounting.
+ */
+function readLayoutEditing(): boolean {
+  try {
+    return sessionStorage.getItem(layoutEditingKey) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function storeLayoutEditing(active: boolean): void {
+  try {
+    sessionStorage.setItem(layoutEditingKey, active ? "1" : "0");
+  } catch {
+    // The mode simply will not survive a reload.
+  }
+}
+
+function parseSourceFields(element: HTMLElement): SourceFields | undefined {
+  const descriptor = element.dataset.frameseqEdit;
+  if (!descriptor) return undefined;
+  try {
+    return JSON.parse(descriptor) as SourceFields;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Ask the development server to rewrite the numbers a drag changed. Only offsets and numbers
+ * travel: the server formats them and refuses anything whose source text has moved on.
+ */
+function sendSourceEdits(fields: SourceFields, values: Record<string, number>): void {
+  const edits = Object.entries(values)
+    .filter(([name]) => fields[name])
+    .map(([name, value]) => ({
+      start: fields[name].start,
+      end: fields[name].end,
+      expected: fields[name].text,
+      value,
+    }));
+  if (edits.length > 0) import.meta.hot?.send(sourceEditEvent, { edits });
+}
+
+interface LayoutDrag {
+  element: HTMLElement;
+  fields: SourceFields;
+  mode: "move" | "resize";
+  pointerId: number;
+  originX: number;
+  originY: number;
+  scale: number;
+  moved: boolean;
+  values: Record<string, number>;
+}
+
+/**
+ * How far the pointer travels before a press counts as a drag. Writing the slide document
+ * cannot be undone from the preview, so a stray click must never rewrite anything.
+ */
+const dragThreshold = 4;
+
+/**
+ * Drag an object on a canvas slide to change the coordinates its command states, and drag the
+ * corner handle to change its size. Returns the switch that turns the mode on and off.
+ */
+function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: boolean) => void {
+  const handle = document.createElement("div");
+  handle.className = "frameseq-edit-handle";
+  handle.setAttribute("aria-hidden", "true");
+  let editing = false;
+  let drag: LayoutDrag | undefined;
+
+  /** The slide is drawn at a fixed size and scaled to the frame, so undo that scale. */
+  function canvasScale(element: HTMLElement): number {
+    const canvas = element.closest<HTMLElement>(".frameseq-slide");
+    if (!canvas) return 1;
+    return canvas.getBoundingClientRect().width / canvasWidth || 1;
+  }
+
+  root.addEventListener("pointerover", (event) => {
+    if (!editing || drag) return;
+    const element = event.target instanceof Element
+      ? event.target.closest<HTMLElement>("[data-frameseq-edit]")
+      : null;
+    if (element === handle.parentElement) return;
+    const fields = element ? parseSourceFields(element) : undefined;
+    if (element && fields?.width) element.append(handle);
+    else handle.remove();
+  });
+
+  root.addEventListener("pointerdown", (event) => {
+    // Alt is the shortcut for opening the source, so it never starts a drag.
+    if (!editing || event.button !== 0 || event.altKey || !(event.target instanceof Element)) return;
+    const resizing = Boolean(event.target.closest(".frameseq-edit-handle"));
+    const element = resizing
+      ? handle.parentElement
+      : event.target.closest<HTMLElement>("[data-frameseq-edit]");
+    const fields = element ? parseSourceFields(element) : undefined;
+    if (!element || !fields) return;
+    if (resizing ? !fields.width : !(fields.x && fields.y)) return;
+
+    event.preventDefault();
+    drag = {
+      element,
+      fields,
+      mode: resizing ? "resize" : "move",
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      scale: canvasScale(element),
+      moved: false,
+      values: {},
+    };
+    root.setPointerCapture(event.pointerId);
+    element.classList.add("is-frameseq-dragging");
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const travelled = Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY);
+    if (!drag.moved && travelled < dragThreshold) return;
+    drag.moved = true;
+    const dx = (event.clientX - drag.originX) / drag.scale;
+    const dy = (event.clientY - drag.originY) / drag.scale;
+
+    if (drag.mode === "move") {
+      drag.values = {
+        x: Math.round(drag.fields.x.value + dx),
+        y: Math.round(drag.fields.y.value + dy),
+      };
+      drag.element.style.left = `${drag.values.x}px`;
+      drag.element.style.top = `${drag.values.y}px`;
+      return;
+    }
+
+    drag.values = { width: Math.max(8, Math.round(drag.fields.width.value + dx)) };
+    drag.element.style.width = `${drag.values.width}px`;
+    if (drag.fields.height) {
+      drag.values.height = Math.max(8, Math.round(drag.fields.height.value + dy));
+      drag.element.style.height = `${drag.values.height}px`;
+    }
+  });
+
+  function endDrag(event: PointerEvent): void {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const finished = drag;
+    drag = undefined;
+    root.releasePointerCapture(event.pointerId);
+    finished.element.classList.remove("is-frameseq-dragging");
+    // The server writes the slide document, which reloads the page with the new layout.
+    if (finished.moved) sendSourceEdits(finished.fields, finished.values);
+  }
+
+  root.addEventListener("pointerup", endDrag);
+  root.addEventListener("pointercancel", endDrag);
+
+  /** Abandon a drag whose pointer was lost, so a later click can never commit a stale one. */
+  function abandonDrag(): void {
+    if (!drag) return;
+    const abandoned = drag;
+    drag = undefined;
+    abandoned.element.classList.remove("is-frameseq-dragging");
+    if (abandoned.moved) location.reload();
+  }
+
+  addEventListener("blur", abandonDrag);
+  addEventListener("pointerup", (event) => {
+    // A release the deck never saw means the pointer left it mid-drag.
+    if (drag && event.pointerId === drag.pointerId && !root.contains(event.target as Node)) {
+      abandonDrag();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) abandonDrag();
+  });
+
+  import.meta.hot?.on(sourceEditResultEvent, (result: unknown) => {
+    const ok = (result as { ok?: unknown } | undefined)?.ok;
+    // A refused edit leaves the preview showing a position the source does not state.
+    if (ok === false) location.reload();
+  });
+
+  return (active: boolean): void => {
+    editing = active;
+    document.documentElement.classList.toggle("frameseq-edit-mode", active);
+    if (!active) handle.remove();
+  };
+}
+
 export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
   resolveAnchors(slidesDocument.node);
+  collectSharedSpans(slidesDocument.node);
   document.title = slidesDocument.title;
   target.replaceChildren();
 
@@ -697,6 +987,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     return;
   }
 
+  if (import.meta.hot) enableSourceReveal(root);
+
   const laserPointers = slides.map(({ canvas }) => {
     const pointer = document.createElement("span");
     pointer.className = "frameseq-laser-pointer";
@@ -721,10 +1013,29 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       <span class="frameseq-counter"></span>
       <button type="button" data-action="next" aria-label="Next slide">→</button>
       ${localRemoteAvailable ? '<button type="button" data-action="remote-pair" aria-label="Pair phone remote" title="Pair phone remote">R</button>' : ""}
+      ${localEditingAvailable ? '<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="Toggle layout editing" title="Drag objects to rewrite their coordinates (Escape to leave)">E</button>' : ""}
       <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
     `;
     target.append(controls);
   }
+
+  const setLayoutEditing = localEditingAvailable && !presenter && !remote
+    ? createLayoutEditor(root, slidesDocument.canvasWidth)
+    : undefined;
+  // Writing the slide document reloads the page, so the mode has to outlive the reload.
+  let layoutEditing = readLayoutEditing();
+
+  function updateLayoutEditing(active: boolean): void {
+    if (!setLayoutEditing) return;
+    layoutEditing = active;
+    storeLayoutEditing(active);
+    setLayoutEditing(active);
+    controls
+      .querySelector<HTMLButtonElement>('[data-action="edit-toggle"]')
+      ?.setAttribute("aria-pressed", String(active));
+  }
+
+  updateLayoutEditing(layoutEditing);
 
   let currentSlide = 0;
   let currentStep = 0;
@@ -1037,6 +1348,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (button?.dataset.action === "audience") openMode("audience");
     if (button?.dataset.action === "remote-pair") void openRemotePairing();
     if (button?.dataset.action === "remote-here") switchMode("remote");
+    if (button?.dataset.action === "edit-toggle") updateLayoutEditing(!layoutEditing);
   });
 
   remote?.shell.addEventListener("click", (event) => {
@@ -1229,6 +1541,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   addEventListener("keydown", (event) => {
     const modified = event.ctrlKey || event.altKey || event.metaKey;
+    if (event.key === "Escape" && layoutEditing) {
+      event.preventDefault();
+      updateLayoutEditing(false);
+      return;
+    }
     if (["ArrowRight", "PageDown", " "].includes(event.key)) {
       event.preventDefault();
       next();

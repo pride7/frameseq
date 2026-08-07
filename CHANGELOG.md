@@ -4,6 +4,11 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Alt-click any object in the live preview to open the command that wrote it. The development transform records where each command sits in the slide document and the renderer publishes it as `data-frameseq-source`, so the preview can point back at the source. Inside the VS Code preview the click moves the cursor in the editor beside it; in a browser it asks the development server to open the file. Production builds carry no source spans.
+- Drag objects in the live preview to change the coordinates their command states. The `E` control turns on layout editing, where an object placed with `position({ x, y })` can be moved and one given a `width()` or `height()` can be resized from its corner. Only the digits themselves are rewritten, so comments, formatting, and everything else in the file survive unchanged, and a drag whose numbers no longer match the file on disk is refused rather than guessed at. An object whose coordinates are computed, or whose command runs in a loop or a helper, is not draggable: there is no single number a drag could stand for. It stays clickable, and still leads back to its line.
+
 ### Fixed
 
 - Turn the documentation navigation into a drawer on a phone. It used to sit above the article, first scrolling sideways with cut-off labels and then filling half the screen, so a reader met the contents before the page they asked for. A Contents control now opens it on demand, the page opens on the article, and the desktop layout is unchanged. The drawer is a checkbox and a label, so the documentation still ships no JavaScript.

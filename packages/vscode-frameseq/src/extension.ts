@@ -322,6 +322,27 @@ function updateStatusBar(
   status.show();
 }
 
+/** Show the command an object in the live preview came from, sent there by an Alt-click. */
+async function revealSourceLine(line: number, column: number): Promise<void> {
+  const entry = await resolveEntry();
+  if (!entry) return;
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const editor = await vscode.window.showTextDocument(document, {
+    viewColumn: vscode.ViewColumn.One,
+    preserveFocus: false,
+    preview: false,
+  });
+  const position = new vscode.Position(
+    Math.max(0, Math.min(line - 1, document.lineCount - 1)),
+    Math.max(0, column - 1),
+  );
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(
+    new vscode.Range(position, position),
+    vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+  );
+}
+
 async function openSlide(provider: SlidesProvider, item?: OutlineItem): Promise<void> {
   const entry = provider.entry ?? await resolveEntry();
   const slide = item instanceof IssueItem ? item.slide : item?.slide;
@@ -382,6 +403,11 @@ async function openPreviewUrl(
     previewPanel.onDidDispose(() => {
       previewPanel = undefined;
     });
+    previewPanel.webview.onDidReceiveMessage((message: unknown) => {
+      const reveal = message as { type?: unknown; line?: unknown; column?: unknown } | undefined;
+      if (reveal?.type !== "frameseq.reveal" || typeof reveal.line !== "number") return;
+      void revealSourceLine(reveal.line, typeof reveal.column === "number" ? reveal.column : 1);
+    });
   } else {
     previewPanel.reveal(panelColumn, false);
   }
@@ -426,10 +452,22 @@ function previewWebviewHtml(url: string): string {
     ></iframe>
     <script nonce="${nonce}">
       const preview = document.getElementById("frameseq-preview");
+      const editor = acquireVsCodeApi();
       window.addEventListener("message", (event) => {
         const message = event.data;
-        if (!message || message.type !== "frameseq.navigate" || typeof message.url !== "string") return;
-        preview.src = message.url;
+        if (!message) return;
+        if (message.type === "frameseq.navigate" && typeof message.url === "string") {
+          preview.src = message.url;
+          return;
+        }
+        // Alt-clicking an object in the preview asks the editor to show the line that wrote it.
+        if (message.type === "frameseq.reveal" && typeof message.line === "number") {
+          editor.postMessage({
+            type: "frameseq.reveal",
+            line: message.line,
+            column: typeof message.column === "number" ? message.column : 1,
+          });
+        }
       });
     </script>
   </body>

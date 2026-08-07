@@ -91,6 +91,54 @@ button {
   display: block;
 }
 
+/* Holding Alt in the live preview turns every object into a link back to its source line. */
+.frameseq-source-hint .frameseq-slides [data-frameseq-source] {
+  cursor: pointer;
+}
+
+/* Objects nest, so only the innermost one under the pointer is highlighted. */
+.frameseq-source-hint .frameseq-slides
+  [data-frameseq-source]:hover:not(:has([data-frameseq-source]:hover)) {
+  outline: 2px solid color-mix(in srgb, var(--frameseq-accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* Editing mode: objects whose coordinates are plain numbers can be dragged into place. */
+.frameseq-edit-mode .frameseq-slides {
+  user-select: none;
+}
+
+/*
+ * An object in the document flow needs a containing block so the resize handle sits on its
+ * corner. An object placed by position() already has one, and its inline style wins here.
+ */
+.frameseq-edit-mode .frameseq-slides [data-frameseq-edit] {
+  position: relative;
+  outline: 1px dashed color-mix(in srgb, var(--frameseq-accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.frameseq-edit-mode .frameseq-slides [data-frameseq-move] {
+  cursor: move;
+}
+
+.frameseq-edit-mode .frameseq-slides [data-frameseq-edit]:hover,
+.frameseq-edit-mode .frameseq-slides .is-frameseq-dragging {
+  outline: 2px solid var(--frameseq-accent);
+}
+
+.frameseq-edit-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--frameseq-background);
+  border-radius: 3px;
+  background: var(--frameseq-accent);
+  cursor: nwse-resize;
+}
+
 .frameseq-slide {
   position: absolute;
   width: var(--slide-width);

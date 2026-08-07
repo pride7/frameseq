@@ -587,6 +587,12 @@ presentation({ title: "Ocean Research", theme: ocean });
 
 FrameSeq includes a companion VS Code extension that keeps `slides.ts` on the left and a live preview on the right. It also provides a slide outline with source-and-preview synchronization, current/previous/next slide navigation, a current-slide status item, slide insertion, TypeScript snippets, Problems-panel layout diagnostics, and HTML/PDF/PPTX/Typst export commands. It consumes the same local FrameSeq CLI as the terminal workflow, so there is only one rendering and validation implementation.
 
+Synchronization also runs the other way. While `frameseq dev` is serving, hold Alt over the preview to outline the object under the pointer, and Alt-click it to jump to the command that wrote it: in the VS Code preview the cursor moves in the editor beside it, and in a browser the development server opens the file. A command inside a loop or a helper function produces several objects, so more than one of them can lead back to the same line. Source positions are recorded only while serving; a built presentation has none.
+
+The `E` control goes one step further and turns on layout editing. An object placed with `position({ x, y })` can then be dragged, and one given a `width()` or a `height()` can be resized from its corner; releasing the drag rewrites those numbers in `slides.ts` and the preview reloads from the new source. Only the digits change, so comments and formatting are untouched, and a drag is refused outright if the numbers no longer match the file on disk. Escape leaves the mode.
+
+Editing is deliberately limited to numbers the document states outright. `position({ x: cursor, y: 90 })` computes its x, and `for (const stage of stages) rect(stage)` writes one command that becomes several objects; in both cases no single number stands for what was dragged, so FrameSeq offers no handle rather than guessing. The source stays the only description of the talk—dragging is just another way to type a number into it.
+
 Build the current extension from this repository:
 
 ```bash

@@ -27,6 +27,44 @@ export interface FrameSeqNode {
   children: FrameSeqNode[];
 }
 
+/** A number the slide document states literally, which the preview can rewrite in place. */
+export interface SourceField {
+  /** Character offset of the number's first character. */
+  start: number;
+  /** Character offset just past the number's last character. */
+  end: number;
+  /** The number exactly as it is written, so a stale edit can be recognised and refused. */
+  text: string;
+  value: number;
+}
+
+/** Where the command that created an object was written in the slide document. */
+export interface SourceSpan {
+  /** One-based line of the command's first character. */
+  line: number;
+  /** One-based column of the command's first character. */
+  column: number;
+  /** Character offset of the command's first character. */
+  start: number;
+  /** Character offset just past the command's last character. */
+  end: number;
+  /** Coordinates and sizes written as plain numbers, by name: x, y, width, height. */
+  fields?: Record<string, SourceField>;
+}
+
+/**
+ * @internal Records where a command was written, so the preview can point back at the source.
+ * The development transform wraps every content command with this; anything that is not a
+ * content object passes through untouched. A command inside a loop or a helper function runs
+ * more than once, so several objects can share one span.
+ */
+export function markSource<T>(value: T, span: SourceSpan): T {
+  const node = (value as { node?: FrameSeqNode } | null | undefined)?.node;
+  // Not props.source: Typst and LaTeX objects already keep their fragment text under that name.
+  if (node && Array.isArray(node.children)) node.props.sourceSpan = span;
+  return value;
+}
+
 export interface FontStyleOptions {
   family?: string;
   size?: Length;

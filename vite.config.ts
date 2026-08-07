@@ -8,6 +8,10 @@ import type { RunResult } from "node-tectonic";
 import tailwindcss from "@tailwindcss/vite";
 import ts from "typescript";
 import { defineConfig, normalizePath } from "vite";
+// @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
+import { applySourceEdits, markEdits, sourceMarks } from "./scripts/source-marks.mjs";
+// @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
+import { applyIncomingEdits } from "./scripts/source-edits.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -29,6 +33,10 @@ const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
 const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
 const openBrowser = process.env.FRAMESEQ_OPEN_BROWSER !== "0";
 const remoteSyncEvent = "frameseq:remote-sync";
+const sourceEditEvent = "frameseq:apply-edit";
+const sourceEditResultEvent = "frameseq:apply-edit-result";
+// Source marks only help the live preview, so a production build stays free of them.
+let marksEnabled = false;
 
 function networkOrigins(port: number, protocol: "http" | "https"): string[] {
   const origins = new Set<string>();
@@ -133,6 +141,23 @@ interface SourceReplacement {
   end: number;
   source: string;
   label: string;
+}
+
+/** Where a document command sits in the entry file, found by scripts/source-marks.mjs. */
+interface SourceMark {
+  start: number;
+  end: number;
+  line: number;
+  column: number;
+}
+
+/** One text edit on the entry file: a compiled fragment, or half of a source-mark wrapper. */
+interface SourceEdit {
+  start: number;
+  end: number;
+  /** Orders edits that begin and end at the same offset: replacement, opening, closing. */
+  rank: 0 | 1 | 2;
+  text: string;
 }
 
 interface LatexReplacement extends SourceReplacement {
@@ -426,7 +451,32 @@ export default defineConfig({
         if (id !== resolvedVirtualEntry) return undefined;
         return `export { default } from ${JSON.stringify(normalizedEntry)};`;
       },
+      configResolved(config) {
+        marksEnabled = config.command === "serve";
+      },
       configureServer(server) {
+        server.middlewares.use("/__frameseq/source-info", (request, response, next) => {
+          if (request.method !== "GET") {
+            next();
+            return;
+          }
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "application/json; charset=utf-8");
+          response.setHeader("Cache-Control", "no-store");
+          response.end(JSON.stringify({ entry: normalizedEntry }));
+        });
+
+        server.ws.on(sourceEditEvent, (payload, client) => {
+          void applyIncomingEdits(entry, payload).then((result: { ok: boolean; reason?: string }) => {
+            if (!result.ok && result.reason) server.config.logger.warn(`FrameSeq: ${result.reason}`);
+            client.send(sourceEditResultEvent, result);
+          }).catch((error: unknown) => {
+            const reason = error instanceof Error ? error.message : String(error);
+            server.config.logger.error(`FrameSeq could not write the slide document: ${reason}`);
+            client.send(sourceEditResultEvent, { ok: false, reason });
+          });
+        });
+
         if (!remoteServerEnabled) return;
 
         server.middlewares.use("/__frameseq/remote-info", (request, response, next) => {
@@ -529,11 +579,17 @@ export default defineConfig({
           });
         }
 
-        for (const replacement of compiledReplacements.sort((a, b) => b.start - a.start)) {
-          transformedSource = transformedSource.slice(0, replacement.start)
-            + replacement.code
-            + transformedSource.slice(replacement.end);
-        }
+        const marks: SourceMark[] = marksEnabled ? sourceMarks(source, normalizedEntry) : [];
+        const edits: SourceEdit[] = [
+          ...compiledReplacements.map((replacement) => ({
+            start: replacement.start,
+            end: replacement.end,
+            rank: 0 as const,
+            text: replacement.code,
+          })),
+          ...marks.flatMap((mark) => markEdits(mark) as SourceEdit[]),
+        ];
+        transformedSource = applySourceEdits(transformedSource, edits);
 
         const importsFramework = /(?:from\s*|import\s*)["']@pride7\/frameseq["']/.test(source);
         const typstImport = typstSourceReplacements.length > 0
@@ -542,9 +598,12 @@ export default defineConfig({
         const latexImport = latexSourceReplacements.length > 0
           ? "import { latexSvg as __frameSeqLatexSvg } from \"@pride7/frameseq\";\n"
           : "";
-        const internalImports = `${typstImport}${latexImport}`;
+        const markImport = marks.length > 0
+          ? "import { markSource as __frameSeqMark } from \"@pride7/frameseq\";\n"
+          : "";
+        const internalImports = `${typstImport}${latexImport}${markImport}`;
         if (importsFramework) {
-          return compiledReplacements.length > 0
+          return edits.length > 0
             ? { code: `${internalImports}${transformedSource}`, map: null }
             : undefined;
         }
