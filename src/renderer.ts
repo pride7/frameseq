@@ -13,6 +13,7 @@ import { themeCssVariables } from "./theme";
 
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
+const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 const layoutEditingKey = "frameseq-layout-editing";
 const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
@@ -757,9 +758,16 @@ function parseSourceFields(element: HTMLElement): SourceFields | undefined {
   }
 }
 
+/** How long an embedded preview waits for its host to say it applied a drag. */
+const editReplyTimeout = 2_000;
+
 /**
- * Ask the development server to rewrite the numbers a drag changed. Only offsets and numbers
- * travel: the server formats them and refuses anything whose source text has moved on.
+ * Ask for the numbers a drag changed to be rewritten. Only offsets and numbers travel: the
+ * receiver formats them and refuses anything whose source text has moved on.
+ *
+ * An embedded preview asks its host rather than the development server, because the editor
+ * around it can apply the same change as an undoable step. If no host answers, the preview
+ * reloads rather than go on showing a position the slide document does not state.
  */
 function sendSourceEdits(fields: SourceFields, values: Record<string, number>): void {
   const edits = Object.entries(values)
@@ -770,7 +778,22 @@ function sendSourceEdits(fields: SourceFields, values: Record<string, number>): 
       expected: fields[name].text,
       value,
     }));
-  if (edits.length > 0) import.meta.hot?.send(sourceEditEvent, { edits });
+  if (edits.length === 0) return;
+
+  if (window.parent === window) {
+    import.meta.hot?.send(sourceEditEvent, { edits });
+    return;
+  }
+
+  window.parent.postMessage({ type: "frameseq.edit", edits }, "*");
+  const reply = setTimeout(() => location.reload(), editReplyTimeout);
+  addEventListener("message", function settle(event: MessageEvent<unknown>) {
+    const message = event.data as { type?: unknown; ok?: unknown } | null;
+    if (message?.type !== "frameseq.edit-result") return;
+    removeEventListener("message", settle);
+    clearTimeout(reply);
+    if (message.ok === false) location.reload();
+  });
 }
 
 interface LayoutDrag {
@@ -906,10 +929,23 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     if (document.hidden) abandonDrag();
   });
 
+  /**
+   * Undo the last drag. A browser has no editor to undo into, so the development server keeps
+   * the history; an embedded preview leaves undo to the editor around it, which owns it.
+   */
+  addEventListener("keydown", (event) => {
+    if (!editing || window.parent !== window) return;
+    if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return;
+    if (event.key.toLowerCase() !== "z") return;
+    event.preventDefault();
+    import.meta.hot?.send(sourceUndoEvent, {});
+  });
+
   import.meta.hot?.on(sourceEditResultEvent, (result: unknown) => {
-    const ok = (result as { ok?: unknown } | undefined)?.ok;
-    // A refused edit leaves the preview showing a position the source does not state.
-    if (ok === false) location.reload();
+    const outcome = result as { ok?: unknown; undo?: unknown } | undefined;
+    // A refused drag leaves the preview showing a position the source does not state, so it
+    // has to be redrawn. Nothing left to undo is not a mismatch, and needs no reload.
+    if (outcome?.ok === false && outcome.undo !== true) location.reload();
   });
 
   return (active: boolean): void => {

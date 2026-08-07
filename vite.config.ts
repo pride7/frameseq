@@ -11,7 +11,7 @@ import { defineConfig, normalizePath } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
 import { applySourceEdits, markEdits, sourceMarks } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
-import { applyIncomingEdits } from "./scripts/source-edits.mjs";
+import { applyIncomingEdits, undoLastEdit } from "./scripts/source-edits.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -34,6 +34,7 @@ const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
 const openBrowser = process.env.FRAMESEQ_OPEN_BROWSER !== "0";
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
+const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 // Source marks only help the live preview, so a production build stays free of them.
 let marksEnabled = false;
@@ -466,15 +467,27 @@ export default defineConfig({
           response.end(JSON.stringify({ entry: normalizedEntry }));
         });
 
-        server.ws.on(sourceEditEvent, (payload, client) => {
-          void applyIncomingEdits(entry, payload).then((result: { ok: boolean; reason?: string }) => {
+        const settleEdit = (
+          client: { send: (event: string, payload: unknown) => void },
+          work: Promise<{ ok: boolean; reason?: string }>,
+          undo = false,
+        ): void => {
+          void work.then((result) => {
             if (!result.ok && result.reason) server.config.logger.warn(`FrameSeq: ${result.reason}`);
             client.send(sourceEditResultEvent, result);
           }).catch((error: unknown) => {
             const reason = error instanceof Error ? error.message : String(error);
             server.config.logger.error(`FrameSeq could not write the slide document: ${reason}`);
-            client.send(sourceEditResultEvent, { ok: false, reason });
+            client.send(sourceEditResultEvent, { ok: false, undo, reason });
           });
+        };
+
+        server.ws.on(sourceEditEvent, (payload, client) => {
+          settleEdit(client, applyIncomingEdits(entry, payload));
+        });
+
+        server.ws.on(sourceUndoEvent, (_payload, client) => {
+          settleEdit(client, undoLastEdit(entry), true);
         });
 
         if (!remoteServerEnabled) return;

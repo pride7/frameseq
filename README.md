@@ -591,6 +591,8 @@ Synchronization also runs the other way. While `frameseq dev` is serving, hold A
 
 The `E` control goes one step further and turns on layout editing. An object placed with `position({ x, y })` can then be dragged, and one given a `width()` or a `height()` can be resized from its corner; releasing the drag rewrites those numbers in `slides.ts` and the preview reloads from the new source. Only the digits change, so comments and formatting are untouched, and a drag is refused outright if the numbers no longer match the file on disk. Escape leaves the mode.
 
+`Ctrl+Z` in the preview undoes the last drag. In a browser the development server keeps the text each drag replaced and puts it back verbatim; inside the VS Code preview the drag is applied through the workspace instead of written to disk behind the editor's back, so the editor's own undo covers it. Either way the history is dropped rather than misapplied once the document no longer matches it.
+
 Editing is deliberately limited to numbers the document states outright. `position({ x: cursor, y: 90 })` computes its x, and `for (const stage of stages) rect(stage)` writes one command that becomes several objects; in both cases no single number stands for what was dragged, so FrameSeq offers no handle rather than guessing. The source stays the only description of the talk—dragging is just another way to type a number into it.
 
 Build the current extension from this repository:

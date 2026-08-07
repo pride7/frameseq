@@ -343,6 +343,65 @@ async function revealSourceLine(line: number, column: number): Promise<void> {
   );
 }
 
+interface IncomingEdit {
+  start: number;
+  end: number;
+  expected: string;
+  value: number;
+}
+
+/**
+ * Read the numbers a drag in the preview asks to rewrite. Only offsets and numbers are
+ * accepted, so the preview can never introduce source text of its own choosing. The
+ * development server applies the same rules; this path exists so the change lands in the
+ * editor's undo history instead of arriving as a file that changed underneath it.
+ */
+function readIncomingEdits(message: unknown): IncomingEdit[] | undefined {
+  const edits = (message as { edits?: unknown } | undefined)?.edits;
+  if (!Array.isArray(edits) || edits.length === 0 || edits.length > 4) return undefined;
+
+  const parsed: IncomingEdit[] = [];
+  for (const candidate of edits) {
+    const { start, end, expected, value } = (candidate ?? {}) as Record<string, unknown>;
+    if (!Number.isInteger(start) || !Number.isInteger(end)) return undefined;
+    if ((start as number) < 0 || (end as number) <= (start as number)) return undefined;
+    if (typeof expected !== "string" || expected.length !== (end as number) - (start as number)) return undefined;
+    if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+    parsed.push({ start: start as number, end: end as number, expected, value });
+  }
+
+  const ordered = [...parsed].sort((a, b) => a.start - b.start);
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index].start < ordered[index - 1].end) return undefined;
+  }
+  return ordered;
+}
+
+/**
+ * Apply a drag from the preview to the slide document, then save so the preview reloads from
+ * it. Going through the workspace means one Undo puts the object back where it was.
+ */
+async function applyPreviewEdits(message: unknown): Promise<boolean> {
+  const edits = readIncomingEdits(message);
+  const entry = edits && await resolveEntry();
+  if (!edits || !entry) return false;
+
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const ranges = edits.map((edit) => new vscode.Range(
+    document.positionAt(edit.start),
+    document.positionAt(edit.end),
+  ));
+  // Refuse a drag whose numbers have moved on rather than overwrite whatever is there now.
+  if (ranges.some((range, index) => document.getText(range) !== edits[index].expected)) return false;
+
+  const edit = new vscode.WorkspaceEdit();
+  for (const [index, range] of ranges.entries()) {
+    edit.replace(entry.uri, range, String(Math.round(edits[index].value)));
+  }
+  if (!await vscode.workspace.applyEdit(edit)) return false;
+  return document.save();
+}
+
 async function openSlide(provider: SlidesProvider, item?: OutlineItem): Promise<void> {
   const entry = provider.entry ?? await resolveEntry();
   const slide = item instanceof IssueItem ? item.slide : item?.slide;
@@ -404,9 +463,16 @@ async function openPreviewUrl(
       previewPanel = undefined;
     });
     previewPanel.webview.onDidReceiveMessage((message: unknown) => {
-      const reveal = message as { type?: unknown; line?: unknown; column?: unknown } | undefined;
-      if (reveal?.type !== "frameseq.reveal" || typeof reveal.line !== "number") return;
-      void revealSourceLine(reveal.line, typeof reveal.column === "number" ? reveal.column : 1);
+      const request = message as { type?: unknown; line?: unknown; column?: unknown } | undefined;
+      if (request?.type === "frameseq.reveal" && typeof request.line === "number") {
+        void revealSourceLine(request.line, typeof request.column === "number" ? request.column : 1);
+        return;
+      }
+      if (request?.type === "frameseq.edit") {
+        void applyPreviewEdits(message).then((ok) => {
+          void previewPanel?.webview.postMessage({ type: "frameseq.edit-result", ok });
+        });
+      }
     });
   } else {
     previewPanel.reveal(panelColumn, false);
@@ -456,17 +522,19 @@ function previewWebviewHtml(url: string): string {
       window.addEventListener("message", (event) => {
         const message = event.data;
         if (!message) return;
+        if (event.source === preview.contentWindow) {
+          // Alt-clicking asks for a line; dragging asks for numbers to be rewritten.
+          if (message.type === "frameseq.reveal" || message.type === "frameseq.edit") {
+            editor.postMessage(message);
+          }
+          return;
+        }
         if (message.type === "frameseq.navigate" && typeof message.url === "string") {
           preview.src = message.url;
           return;
         }
-        // Alt-clicking an object in the preview asks the editor to show the line that wrote it.
-        if (message.type === "frameseq.reveal" && typeof message.line === "number") {
-          editor.postMessage({
-            type: "frameseq.reveal",
-            line: message.line,
-            column: typeof message.column === "number" ? message.column : 1,
-          });
+        if (message.type === "frameseq.edit-result") {
+          preview.contentWindow?.postMessage(message, "*");
         }
       });
     </script>

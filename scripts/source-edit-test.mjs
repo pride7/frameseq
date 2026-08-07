@@ -8,7 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import puppeteer from "puppeteer";
 import { createServer } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { applyIncomingEdits, readIncomingEdits } from "./source-edits.mjs";
+import { applyIncomingEdits, readIncomingEdits, undoLastEdit } from "./source-edits.mjs";
 import { sourceMarks } from "./source-marks.mjs";
 
 /** Wait for the development server to write the drag back to the slide document. */
@@ -44,6 +44,8 @@ const fixture = [
   'text("Caption").position({ x: 80, y: 260 });',
   "",
   'text("Computed").position({ x: 40 + 40, y: 300 });',
+  "",
+  'text("Decimal").position({ x: 80.5, y: 300 }).width(160);',
   "",
   'for (const label of ["one", "two"]) rect(label).position({ x: 400, y: 90 }).width(120);',
   "",
@@ -145,6 +147,61 @@ function markFor(source, command) {
   assert.equal(result.ok, true);
   const updated = await readFile(entry, "utf8");
   assert.equal(updated, source.replace(".width(240)\n  .height(120)", ".width(300)\n  .height(96)"));
+}
+
+// Undo puts back the text that was there, not a number formatted afresh from it. The history
+// belongs to a document, so these use their own file rather than the one dragged above.
+{
+  const undoEntry = resolve(workingDirectory, "undo.slides.ts");
+  await writeFile(undoEntry, fixture, "utf8");
+  const { x, y } = markFor(fixture, 'text("Decimal")').fields;
+  assert.equal(x.text, "80.5");
+
+  // Both numbers change width, which moves where the second one sits once the first is written.
+  const applied = await applyIncomingEdits(undoEntry, {
+    edits: [
+      { start: x.start, end: x.end, expected: x.text, value: 1234 },
+      { start: y.start, end: y.end, expected: y.text, value: 7 },
+    ],
+  });
+  assert.equal(applied.ok, true);
+  assert.equal(
+    await readFile(undoEntry, "utf8"),
+    fixture.replace("{ x: 80.5, y: 300 }).width(160)", "{ x: 1234, y: 7 }).width(160)"),
+  );
+
+  const undone = await undoLastEdit(undoEntry);
+  assert.equal(undone.ok, true);
+  assert.equal(
+    await readFile(undoEntry, "utf8"),
+    fixture,
+    "Undo restores the file character for character",
+  );
+
+  // The history is one drag deep, and asking again is refused rather than guessed at.
+  const empty = await undoLastEdit(undoEntry);
+  assert.equal(empty.ok, false);
+  assert.equal(empty.undo, true);
+  assert.match(empty.reason, /nothing to undo/i);
+}
+
+// A drag that someone has since edited over cannot be undone, and the history is dropped.
+{
+  const staleEntry = resolve(workingDirectory, "stale.slides.ts");
+  await writeFile(staleEntry, fixture, "utf8");
+  const { x } = markFor(fixture, 'rect("Encoder")').fields;
+  assert.equal((await applyIncomingEdits(staleEntry, {
+    edits: [{ start: x.start, end: x.end, expected: x.text, value: 400 }],
+  })).ok, true);
+
+  const edited = (await readFile(staleEntry, "utf8")).replace("{ x: 400", "{ x: 401");
+  await writeFile(staleEntry, edited, "utf8");
+  const undone = await undoLastEdit(staleEntry);
+  assert.equal(undone.ok, false);
+  assert.match(undone.reason, /changed/);
+  assert.equal(await readFile(staleEntry, "utf8"), edited, "A refused undo leaves the document alone");
+  // Once the history no longer describes the file it is dropped rather than kept and misapplied.
+  assert.match((await undoLastEdit(staleEntry)).reason, /nothing to undo/i);
 }
 
 // End to end: dragging an object in the browser rewrites the slide document on disk.
@@ -275,6 +332,30 @@ try {
     {},
     `${moved.x.value}px`,
   );
+
+  // Editing mode outlives the reload, so Ctrl+Z reaches the server that recorded the drag.
+  assert.equal(
+    await page.$eval('[data-action="edit-toggle"]', (button) => button.getAttribute("aria-pressed")),
+    "true",
+  );
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  assert.equal(await waitForChange(entry, changed), fixture, "Ctrl+Z puts the drag back");
+  await page.waitForFunction(
+    () => document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "80px",
+  );
+
+  // An undo with nothing left that still describes the file is not a mismatch to redraw:
+  // it must write nothing and leave the preview exactly as it stands.
+  const settled = await page.evaluate(() => document.documentElement.dataset.ready);
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  await delay(1_000);
+  assert.equal(await readFile(entry, "utf8"), fixture);
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.ready), settled);
+
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();
