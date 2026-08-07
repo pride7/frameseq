@@ -179,6 +179,20 @@ try {
       headerLinks: [...document.querySelectorAll(".docs-header nav a")]
         .filter((link) => getComputedStyle(link).display !== "none")
         .map((link) => link.textContent.trim()),
+      // How much room the header has left over. Fonts differ between platforms, so a header
+      // that only just fits here is one that overflows somewhere else.
+      headerSpare: (() => {
+        const header = document.querySelector(".docs-header");
+        const style = getComputedStyle(header);
+        const gap = Number.parseFloat(style.columnGap) || 0;
+        const children = [...header.children];
+        const needed = children.reduce((total, child) => total + child.getBoundingClientRect().width, 0)
+          + gap * Math.max(0, children.length - 1);
+        const available = header.clientWidth
+          - Number.parseFloat(style.paddingLeft)
+          - Number.parseFloat(style.paddingRight);
+        return Math.round(available - needed);
+      })(),
       overflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
@@ -200,6 +214,10 @@ try {
 
   assert.equal(docsMobile.groups, documentationGroups.length);
   assert.ok(docsMobile.overflow <= 0);
+  assert.ok(
+    docsMobile.headerSpare >= 24,
+    `The phone header should fit with room to spare rather than exactly, found ${docsMobile.headerSpare}px`,
+  );
 
   // On a phone the contents are a drawer: the page opens on the article, and the
   // navigation appears only when asked for. The switch has to survive either way,

@@ -144,7 +144,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
       </label>
       <nav aria-label="Documentation navigation">
         <a class="docs-nav-home" href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
-        <a href="${locale === "en" ? "../" : "../../"}">Gallery</a>
+        <a class="docs-nav-gallery" href="${locale === "en" ? "../" : "../../"}">Gallery</a>
         <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
         <a class="docs-nav-external" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
       </nav>

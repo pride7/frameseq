@@ -437,9 +437,11 @@ pre {
     gap: 14px;
   }
 
-  /* The drawer already lists the documentation home, so on a narrow phone the
-     header keeps only what the drawer cannot reach. */
+  /* The drawer already lists the documentation home and the brand already leads back to the
+     gallery, so on a narrow phone the header keeps only what nothing else reaches. Fitting
+     these in left about two pixels to spare, which any wider set of fonts spends. */
   .docs-nav-external,
+  .docs-nav-gallery,
   .docs-nav-home {
     display: none;
   }
