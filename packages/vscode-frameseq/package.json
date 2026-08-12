@@ -2,7 +2,7 @@
   "name": "frameseq",
   "displayName": "FrameSeq",
   "description": "Edit FrameSeq presentations with a split live preview, slide navigation, validation, snippets, and exports.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "pride7",
   "license": "MIT",
   "repository": {

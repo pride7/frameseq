@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-12
+
 - Synchronise Current Slide components with the live preview in both directions: selecting a region or object highlights it on the slide, while Alt-clicking a preview object selects its inspector entry as well as opening its source.
 - Group Current Slide components by authoring region and preserve nested component hierarchy instead of presenting a flat object list.
 - Expand components into source-backed properties and edit literal positions, sizes, spacing, fills, and colours through a validated, undoable TypeScript replacement.

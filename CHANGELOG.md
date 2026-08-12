@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.30.0] - 2026-08-12
+
 ### Added
 
 - Include named `at()` regions and their visit counts in `frameseq inspect --json`, so editor integrations can expose the authoring structure inside each slide.
