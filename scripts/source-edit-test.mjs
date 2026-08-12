@@ -46,6 +46,8 @@ const fixture = [
   "",
   'slide("Diagram").canvas();',
   "",
+  'at("panel").canvas().position({ x: 40, y: 40 }).width(600).height(360);',
+  "",
   '// A comment and the surrounding formatting must survive a drag.',
   'rect("Encoder")',
   '  .as("encoder")',
@@ -60,6 +62,8 @@ const fixture = [
   'text("Decimal").position({ x: 80.5, y: 300 }).width(160);',
   "",
   'for (const label of ["one", "two"]) rect(label).position({ x: 400, y: 90 }).width(120);',
+  "",
+  'at("");',
   "",
   'slide("Flow");',
   "",
@@ -120,6 +124,19 @@ function markFor(source, command) {
     undefined,
   );
   assert.ok(readIncomingEdits({ edits: [{ start: x.start, end: x.end, expected: x.text, value: 1 }] }));
+  const hundred = Array.from({ length: 100 }, (_, index) => ({
+    start: index * 2,
+    end: index * 2 + 1,
+    expected: "1",
+    value: index,
+  }));
+  assert.equal(readIncomingEdits({ edits: hundred })?.length, 100);
+  assert.equal(readIncomingEdits({ edits: [...hundred, {
+    start: 200,
+    end: 201,
+    expected: "1",
+    value: 100,
+  }] }), undefined);
 }
 
 // A drag whose numbers no longer match the file is refused, leaving the document untouched.
@@ -349,6 +366,7 @@ try {
     const repeated = [...document.querySelectorAll('.frameseq-rect')]
       .filter((element) => !element.dataset.frameseqName);
     return {
+      panel: describe('[data-frameseq-name="panel"]'),
       encoder: describe('[data-frameseq-name="encoder"]'),
       repeated: repeated.map((element) => ({
         edit: element.dataset.frameseqEdit,
@@ -359,6 +377,8 @@ try {
         .map((element) => describe(`[data-frameseq-path="${element.dataset.frameseqPath}"]`))[0],
     };
   });
+  assert.deepEqual(editable.panel.edit, ["height", "width", "x", "y"]);
+  assert.equal(editable.panel.move, true, "A positioned at() region can move as one unit");
   assert.deepEqual(editable.encoder.edit, ["height", "width", "x", "y"]);
   assert.equal(editable.encoder.move, true);
   assert.deepEqual(editable.computed.edit, ["y"]);
@@ -400,13 +420,83 @@ try {
     "A press that does not travel far enough is not a drag",
   );
 
+  // Saving a keyboard nudge hot-swaps a hidden, fully scaled canvas. The source-backed
+  // selection and canvas focus must survive so the next arrow moves the same object.
+  await page.click('[data-frameseq-name="encoder"]');
+  await page.waitForFunction(() => (
+    document.querySelector('[data-frameseq-name="encoder"]')?.classList.contains("is-frameseq-selected")
+    && document.activeElement?.classList.contains("frameseq-slides")
+  ));
+  await page.keyboard.press("ArrowRight");
+  const nudgedOnce = await waitForChange(entry, fixture);
+  assert.equal(markFor(nudgedOnce, 'rect("Encoder")').fields.x.value, 81);
+  await page.evaluate(() => { window.__frameseqHmrProbe = "survived"; });
+  await page.evaluate(() => {
+    window.__frameseqCanvasBlanked = false;
+    window.__frameseqCanvasObserver = new MutationObserver(() => {
+      if (!document.querySelector("#app .frameseq-slide-frame.is-active")) {
+        window.__frameseqCanvasBlanked = true;
+      }
+    });
+    window.__frameseqCanvasObserver.observe(document.querySelector("#app"), {
+      childList: true,
+      subtree: true,
+    });
+  });
+  await page.waitForFunction(() => (
+    document.querySelector('[data-frameseq-name="encoder"]')?.classList.contains("is-frameseq-selected")
+    && document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "81px"
+    && document.activeElement?.classList.contains("frameseq-slides")
+  ));
+  assert.equal(
+    await page.evaluate(() => window.__frameseqHmrProbe),
+    "survived",
+    "A saved nudge hot-swaps the canvas without reloading the page",
+  );
+  assert.equal(
+    await page.evaluate(() => window.__frameseqCanvasBlanked),
+    false,
+    "The visible app keeps an active canvas throughout the hot swap",
+  );
+
+  await page.keyboard.press("ArrowRight");
+  const nudgedTwice = await waitForChange(entry, nudgedOnce);
+  assert.equal(markFor(nudgedTwice, 'rect("Encoder")').fields.x.value, 82);
+  await page.waitForFunction(() => (
+    document.querySelector('[data-frameseq-name="encoder"]')?.classList.contains("is-frameseq-selected")
+    && document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "82px"
+    && document.activeElement?.classList.contains("frameseq-slides")
+  ));
+
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  assert.equal(await waitForChange(entry, nudgedTwice), nudgedOnce);
+  await page.waitForFunction(() => (
+    document.querySelector('[data-frameseq-name="encoder"]')?.classList.contains("is-frameseq-selected")
+    && document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "81px"
+  ));
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  assert.equal(await waitForChange(entry, nudgedOnce), fixture);
+  await page.waitForFunction(() => (
+    document.querySelector('[data-frameseq-name="encoder"]')?.classList.contains("is-frameseq-selected")
+    && document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "80px"
+  ));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".is-frameseq-selected"));
+
   const shiftX = 120;
   const shiftY = 60;
+  // Ctrl bypasses smart-guide snapping, so this test isolates canvas-scale conversion.
+  await page.keyboard.down("Control");
   await page.mouse.move(box.x, box.y);
   await page.mouse.down();
   await page.mouse.move(box.x + shiftX / 2, box.y + shiftY / 2);
   await page.mouse.move(box.x + shiftX, box.y + shiftY);
   await page.mouse.up();
+  await page.keyboard.up("Control");
 
   const changed = await waitForChange(entry, fixture);
   const moved = markFor(changed, 'rect("Encoder")').fields;
@@ -446,6 +536,36 @@ try {
   await page.waitForFunction(
     () => document.querySelector('[data-frameseq-name="encoder"]')?.style.left === "80px",
   );
+
+  // Shift-dragging any child chooses the nearest editable named region and moves it as a unit.
+  const regionBefore = await readFile(entry, "utf8");
+  const regionMark = markFor(regionBefore, 'at("panel")');
+  const regionGrab = await page.$eval('[data-frameseq-name="encoder"]', (element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  await page.keyboard.down("Shift");
+  await page.mouse.move(regionGrab.x, regionGrab.y);
+  await page.mouse.down();
+  await page.mouse.move(regionGrab.x + 18, regionGrab.y + 12);
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+  const regionChanged = await waitForChange(entry, regionBefore);
+  const movedRegion = markFor(regionChanged, 'at("panel")').fields;
+  assert.ok(movedRegion.x.value > regionMark.fields.x.value);
+  assert.ok(movedRegion.y.value > regionMark.fields.y.value);
+  assert.equal(
+    regionChanged,
+    regionBefore.replace(
+      `{ x: ${regionMark.fields.x.value}, y: ${regionMark.fields.y.value} }`,
+      `{ x: ${movedRegion.x.value}, y: ${movedRegion.y.value} }`,
+    ),
+    "A region drag rewrites only the at() position",
+  );
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  assert.equal(await waitForChange(entry, regionChanged), fixture, "Undo restores the whole region position");
 
   // An object in the document flow has no coordinates, so dragging it trades places instead.
   const activeSlide = () => page.evaluate(
@@ -503,6 +623,14 @@ try {
   await delay(1_000);
   assert.equal(await readFile(entry, "utf8"), fixture);
   assert.equal(await page.evaluate(() => document.documentElement.dataset.ready), settled);
+  assert.equal(
+    await page.evaluate(() => {
+      window.__frameseqCanvasObserver?.disconnect();
+      return window.__frameseqCanvasBlanked;
+    }),
+    false,
+    "No source edit exposes an empty visible canvas during its hot swap",
+  );
 
   assert.deepEqual(errors, []);
 } finally {

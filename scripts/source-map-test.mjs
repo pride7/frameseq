@@ -31,10 +31,24 @@ function commands(source) {
   assert.match(marked(source), /^__frameSeqMark\(slide\("Why"\)\.split\("40:60"\), \{"line":1,/);
 }
 
-// Nested commands each get their own mark, and cursor moves get none.
+// Nested commands each get their own mark; at() gets one because the named region is editable.
 {
   const source = 'at("cell0/now");\ncell(1);\ngroup(rect("A"), circle("B")).gap(12);\n';
-  assert.deepEqual(commands(source), ['group(rect("A"), circle("B")).gap(12)', 'rect("A")', 'circle("B")']);
+  assert.deepEqual(commands(source), [
+    'at("cell0/now")',
+    'group(rect("A"), circle("B")).gap(12)',
+    'rect("A")',
+    'circle("B")',
+  ]);
+}
+
+// Named regions expose literal position and size fields, but never become reorderable statements.
+{
+  const source = 'at("panel").canvas().position({ x: 40, y: 60 }).width(520).height(220);\n';
+  const [mark] = sourceMarks(source);
+  assert.equal(source.slice(mark.start, mark.end), source.trim().replace(/;$/, ""));
+  assert.deepEqual(Object.keys(mark.fields).sort(), ["height", "width", "x", "y"]);
+  assert.equal(mark.statement, undefined);
 }
 
 // Tagged templates are commands too.

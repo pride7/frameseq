@@ -91,6 +91,10 @@ button {
   display: block;
 }
 
+.frameseq-slides:focus {
+  outline: none;
+}
+
 /* Holding Alt in the live preview turns every object into a link back to its source line. */
 .frameseq-source-hint .frameseq-slides [data-frameseq-source] {
   cursor: pointer;
@@ -101,6 +105,13 @@ button {
   [data-frameseq-source]:hover:not(:has([data-frameseq-source]:hover)) {
   outline: 2px solid color-mix(in srgb, var(--frameseq-accent) 70%, transparent);
   outline-offset: 2px;
+}
+
+/* The VS Code Current Slide inspector selects the same component in the live preview. */
+.frameseq-slides .is-frameseq-source-focus {
+  outline: 3px solid var(--frameseq-accent) !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--frameseq-accent) 18%, transparent);
 }
 
 /* Editing mode: objects whose coordinates are plain numbers can be dragged into place. */
@@ -122,9 +133,118 @@ button {
   cursor: move;
 }
 
+.frameseq-edit-mode .frameseq-slides :is(.frameseq-row,.frameseq-column,.frameseq-stack)[data-frameseq-name][data-frameseq-edit] {
+  outline-color: color-mix(in srgb, var(--frameseq-accent) 80%, transparent);
+}
+
 .frameseq-edit-mode .frameseq-slides [data-frameseq-edit]:hover,
 .frameseq-edit-mode .frameseq-slides .is-frameseq-dragging {
   outline: 2px solid var(--frameseq-accent);
+}
+
+.frameseq-edit-mode .frameseq-slides .is-frameseq-selected {
+  outline: 3px solid var(--frameseq-accent) !important;
+  outline-offset: 3px;
+}
+
+.frameseq-selection-toolbar {
+  position: fixed;
+  z-index: 40;
+  top: 14px;
+  left: 50%;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 8px 10px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--frameseq-accent) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--frameseq-background) 90%, transparent);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
+  color: var(--frameseq-foreground);
+  font: 600 13px/1.2 ui-sans-serif, system-ui, sans-serif;
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+
+.frameseq-edit-mode .frameseq-selection-toolbar.is-visible {
+  display: flex;
+}
+
+.frameseq-selection-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frameseq-selection-toolbar button {
+  flex: none;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--frameseq-accent);
+  color: var(--frameseq-background);
+  font: inherit;
+  cursor: pointer;
+}
+
+.frameseq-selection-tools {
+  display: flex;
+  gap: 3px;
+  padding: 0 6px;
+  border-right: 1px solid color-mix(in srgb, var(--frameseq-border) 70%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--frameseq-border) 70%, transparent);
+}
+
+.frameseq-selection-tools button {
+  min-width: 26px;
+  padding-inline: 6px;
+  font-weight: 800;
+}
+
+.frameseq-selection-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.32;
+}
+
+.frameseq-selection-coordinates {
+  position: fixed;
+  z-index: 42;
+  display: none;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--frameseq-accent) 50%, transparent);
+  border-radius: 6px;
+  color: var(--frameseq-foreground);
+  background: color-mix(in srgb, var(--frameseq-background) 92%, transparent);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 20%);
+  font: 650 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
+.frameseq-edit-mode .frameseq-selection-coordinates.is-visible {
+  display: block;
+}
+
+.frameseq-selection-coordinates.is-readonly {
+  border-color: color-mix(in srgb, var(--frameseq-foreground) 24%, transparent);
+  color: color-mix(in srgb, var(--frameseq-foreground) 72%, transparent);
+}
+
+.frameseq-smart-guide {
+  position: fixed;
+  z-index: 35;
+  background: color-mix(in srgb, var(--frameseq-accent) 88%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--frameseq-background) 45%, transparent);
+  pointer-events: none;
+}
+
+.frameseq-smart-guide.is-vertical {
+  width: 1px;
+}
+
+.frameseq-smart-guide.is-horizontal {
+  height: 1px;
 }
 
 /* An object in the document flow has no coordinates to drag, so it trades place instead. */
@@ -882,6 +1002,14 @@ button {
 .frameseq-controls button:hover {
   border-color: var(--frameseq-accent);
   color: var(--frameseq-foreground);
+}
+
+.frameseq-controls button[data-action="edit-toggle"][aria-pressed="true"] {
+  border-color: var(--frameseq-accent);
+  color: var(--frameseq-background);
+  background: var(--frameseq-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--frameseq-accent) 24%, transparent),
+    0 0 22px color-mix(in srgb, var(--frameseq-accent) 42%, transparent);
 }
 
 .frameseq-counter {
