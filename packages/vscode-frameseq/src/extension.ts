@@ -3,16 +3,48 @@ import { randomBytes } from "node:crypto";
 import { access } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import * as vscode from "vscode";
+import {
+  cursorRegionAt,
+  formatPropertyValue,
+  regionsForOffset,
+  selectionHasStructureBoundary,
+} from "./regions";
 
 interface SourceLocation {
   line: number;
   character: number;
   endLine?: number;
+  endCharacter?: number;
+  start?: number;
+  end?: number;
+}
+
+interface InspectProperty {
+  name: string;
+  kind: "number" | "string" | "boolean";
+  value: number | string | boolean;
+  source: SourceLocation & { start: number; end: number };
+  expected: string;
 }
 
 interface InspectObject {
+  id: string;
   type: string;
+  label?: string;
+  name?: string;
+  region: string;
+  parentId?: string;
+  properties: InspectProperty[];
   source: SourceLocation;
+}
+
+interface InspectRegion {
+  id: string;
+  path: string;
+  source: SourceLocation;
+  sources?: SourceLocation[];
+  properties?: InspectProperty[];
+  visits: number;
 }
 
 interface InspectSlide {
@@ -24,6 +56,7 @@ interface InspectSlide {
   notes: boolean;
   source: SourceLocation & { endLine: number };
   objects: InspectObject[];
+  regions?: InspectRegion[];
   objectCount: number;
 }
 
@@ -60,7 +93,8 @@ interface CliResult {
   stderr: string;
 }
 
-type OutlineItem = SlideItem | IssueItem;
+type OutlineItem = SlideItem | RegionItem | ObjectItem | IssueItem;
+type CurrentSlideItem = CurrentSlideSummaryItem | CurrentSlideSectionItem | RegionGroupItem | RegionPropertyItem | ObjectItem | PropertyItem;
 
 let previewProcess: ChildProcessWithoutNullStreams | undefined;
 let previewWasStopped = false;
@@ -68,6 +102,73 @@ let previewAddress: string | undefined;
 let previewOpenTimer: NodeJS.Timeout | undefined;
 let previewSlideIndex = 1;
 let previewPanel: vscode.WebviewPanel | undefined;
+let pendingPreviewFocus: PreviewComponentTarget | undefined;
+let activeSlidesProvider: SlidesProvider | undefined;
+let activeCurrentSlideProvider: CurrentSlideProvider | undefined;
+let activeCurrentSlideTree: vscode.TreeView<CurrentSlideItem> | undefined;
+let editorSelectionTimer: NodeJS.Timeout | undefined;
+let lastEditorSelectionId: string | undefined;
+let previewLineDecoration: vscode.TextEditorDecorationType | undefined;
+let previewSourceMarker: { uri: string; line: number; slideIndex: number; label: string } | undefined;
+
+interface PreviewComponentTarget {
+  slideIndex: number;
+  line?: number;
+  column?: number;
+  name?: string;
+}
+
+interface PreviewSelectionTarget {
+  line: number;
+  column: number;
+  start: number;
+  end: number;
+}
+
+function applyPreviewSourceMarker(editor?: vscode.TextEditor): void {
+  if (!previewLineDecoration) return;
+  const editors = editor ? [editor] : vscode.window.visibleTextEditors;
+  for (const candidate of editors) {
+    const marker = previewSourceMarker;
+    if (!marker || candidate.document.uri.toString() !== marker.uri) {
+      candidate.setDecorations(previewLineDecoration, []);
+      continue;
+    }
+    const line = Math.max(0, Math.min(marker.line, candidate.document.lineCount - 1));
+    candidate.setDecorations(previewLineDecoration, [{
+      range: candidate.document.lineAt(line).range,
+      hoverMessage: `FrameSeq preview is showing slide ${marker.slideIndex}: ${marker.label}`,
+      renderOptions: {
+        after: {
+          contentText: `  ← Previewing slide ${marker.slideIndex}`,
+          color: new vscode.ThemeColor("editorInfo.foreground"),
+          fontWeight: "bold",
+          margin: "0 0 0 1rem",
+        },
+      },
+    }]);
+  }
+}
+
+function setPreviewSourceMarker(
+  entry: EntryDocument,
+  slide: InspectSlide,
+  source: SourceLocation = slide.source,
+): void {
+  previewSourceMarker = {
+    uri: entry.uri.toString(),
+    line: Math.max(0, source.line - 1),
+    slideIndex: slide.index,
+    label: slide.label,
+  };
+  applyPreviewSourceMarker();
+}
+
+function refreshPreviewSourceMarker(provider: SlidesProvider): void {
+  if (!previewSourceMarker || !provider.entry || !provider.report) return;
+  const slide = provider.report.slides[previewSlideIndex - 1];
+  if (slide) setPreviewSourceMarker(provider.entry, slide);
+}
 
 function isSlidesDocument(uri: vscode.Uri): boolean {
   return uri.scheme === "file" && /(?:^|[\\/])(?:slides|[^\\/]+\.slides)\.ts$/i.test(uri.fsPath);
@@ -187,7 +288,7 @@ class SlideItem extends vscode.TreeItem {
   ) {
     super(
       `${slide.index}. ${slide.label}`,
-      issues.length > 0
+      issues.length > 0 || (slide.regions?.length ?? 0) > 0
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None,
     );
@@ -211,6 +312,162 @@ class SlideItem extends vscode.TreeItem {
       title: "Open Slide",
       arguments: [this],
     };
+  }
+}
+
+class RegionItem extends vscode.TreeItem {
+  constructor(
+    readonly region: InspectRegion,
+    readonly slide: InspectSlide,
+  ) {
+    super(region.path, vscode.TreeItemCollapsibleState.None);
+    this.description = region.visits > 1 ? `${region.visits} visits` : "region";
+    this.contextValue = "frameseqRegion";
+    this.iconPath = new vscode.ThemeIcon("symbol-namespace");
+    this.tooltip = new vscode.MarkdownString([
+      `**${region.path}**`,
+      "",
+      `Slide: ${slide.index}. ${slide.label}  `,
+      `Source: line ${region.source.line}  `,
+      `Cursor visits: ${region.visits}`,
+    ].join("\n"));
+    this.command = {
+      command: "frameseq.focusComponent",
+      title: "Focus Region",
+      arguments: [this],
+    };
+  }
+}
+
+class ObjectItem extends vscode.TreeItem {
+  constructor(
+    readonly object: InspectObject,
+    readonly slide: InspectSlide,
+    readonly ordinal: number,
+    hasChildren = false,
+  ) {
+    const label = object.label?.replace(/\s+/g, " ").trim();
+    super(
+      `${ordinal}. ${object.type}${label ? ` · ${label}` : ""}`,
+      object.properties.length > 0 || hasChildren
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    this.id = object.id;
+    this.description = `${object.name ? `${object.name} · ` : ""}line ${object.source.line}`;
+    this.contextValue = "frameseqObject";
+    this.iconPath = new vscode.ThemeIcon(
+      object.type === "text" ? "symbol-string"
+        : (object.type === "image" ? "file-media"
+          : (["rect", "circle", "line"].includes(object.type) ? "symbol-structure" : "symbol-method")),
+    );
+    this.tooltip = new vscode.MarkdownString([
+      `**${object.type}**${label ? ` — ${label}` : ""}`,
+      "",
+      `Open source line ${object.source.line}`,
+    ].join("\n"));
+    this.command = {
+      command: "frameseq.focusComponent",
+      title: "Focus Object",
+      arguments: [this],
+    };
+  }
+}
+
+class PropertyItem extends vscode.TreeItem {
+  constructor(
+    readonly property: InspectProperty,
+    readonly object: InspectObject,
+    readonly slide: InspectSlide,
+  ) {
+    const formatted = typeof property.value === "string"
+      ? property.value
+      : String(property.value);
+    super(`${property.name}: ${formatted}`, vscode.TreeItemCollapsibleState.None);
+    this.id = `${object.id}:property:${property.name}:${property.source.start}`;
+    this.description = property.kind;
+    this.contextValue = "frameseqProperty";
+    this.iconPath = new vscode.ThemeIcon("symbol-property");
+    this.tooltip = `Edit ${property.name} on source line ${property.source.line}`;
+    this.command = {
+      command: "frameseq.editProperty",
+      title: "Edit Property",
+      arguments: [this],
+    };
+  }
+}
+
+class RegionPropertyItem extends vscode.TreeItem {
+  constructor(
+    readonly property: InspectProperty,
+    readonly region: InspectRegion,
+    readonly slide: InspectSlide,
+  ) {
+    super(`${property.name}: ${String(property.value)}`, vscode.TreeItemCollapsibleState.None);
+    this.id = `${region.id}:property:${property.name}:${property.source.start}`;
+    this.description = property.kind;
+    this.contextValue = "frameseqProperty";
+    this.iconPath = new vscode.ThemeIcon("symbol-property");
+    this.tooltip = `Edit ${property.name} on named region ${region.path}`;
+    this.command = {
+      command: "frameseq.editProperty",
+      title: "Edit Region Property",
+      arguments: [this],
+    };
+  }
+}
+
+class RegionGroupItem extends vscode.TreeItem {
+  constructor(
+    readonly path: string,
+    readonly objects: InspectObject[],
+    readonly slide: InspectSlide,
+    readonly region?: InspectRegion,
+  ) {
+    super(`${path} (${objects.length})`, vscode.TreeItemCollapsibleState.Expanded);
+    this.id = `${slide.index}:component-region:${path}`;
+    this.contextValue = region ? "frameseqRegionGroup" : "frameseqLayoutRegion";
+    this.iconPath = new vscode.ThemeIcon(region ? "symbol-namespace" : "layout");
+    this.description = region
+      ? `named region${region.properties?.length ? ` · ${region.properties.length} properties` : ""}`
+      : "layout region";
+    this.tooltip = region
+      ? `Named region ${path}. Expand to edit its properties; Shift-drag a child in preview edit mode to move the positioned group.`
+      : `Layout region ${path}`;
+    if (region) {
+      this.command = {
+        command: "frameseq.focusComponent",
+        title: "Focus Region",
+        arguments: [new RegionItem(region, slide)],
+      };
+    }
+  }
+}
+
+class CurrentSlideSummaryItem extends vscode.TreeItem {
+  constructor(readonly slide: InspectSlide, totalSlides: number) {
+    super(`${slide.index}/${totalSlides} · ${slide.label}`, vscode.TreeItemCollapsibleState.None);
+    this.description = `${slide.layout} · ${slide.objectCount} objects${slide.notes ? " · notes" : ""}`;
+    this.iconPath = new vscode.ThemeIcon("preview");
+    this.tooltip = "Preview the slide containing the cursor";
+    this.command = {
+      command: "frameseq.previewCurrentSlide",
+      title: "Preview Current Slide",
+    };
+  }
+}
+
+class CurrentSlideSectionItem extends vscode.TreeItem {
+  constructor(
+    readonly section: "components",
+    count: number,
+  ) {
+    super(
+      `Components (${count})`,
+      vscode.TreeItemCollapsibleState.Expanded,
+    );
+    this.contextValue = "frameseqCurrentComponents";
+    this.iconPath = new vscode.ThemeIcon("list-tree");
   }
 }
 
@@ -250,7 +507,10 @@ class SlidesProvider implements vscode.TreeDataProvider<OutlineItem> {
 
   getChildren(element?: OutlineItem): OutlineItem[] {
     if (element instanceof SlideItem) {
-      return element.issues.map((issue) => new IssueItem(issue, element.slide));
+      return [
+        ...(element.slide.regions ?? []).map((region) => new RegionItem(region, element.slide)),
+        ...element.issues.map((issue) => new IssueItem(issue, element.slide)),
+      ];
     }
     if (element) return [];
     return (this.report?.slides ?? []).map((slide) => (
@@ -322,6 +582,319 @@ function updateStatusBar(
   status.show();
 }
 
+function updateCurrentSlide(
+  current: CurrentSlideProvider,
+  provider: SlidesProvider,
+  editor = vscode.window.activeTextEditor,
+): void {
+  const editorSlide = slideForEditor(provider, editor);
+  const previewSlide = previewPanel && provider.report
+    ? provider.report.slides[previewSlideIndex - 1]
+    : undefined;
+  current.setSlide(editorSlide ?? previewSlide, provider.report?.summary.slides ?? 0);
+}
+
+class CurrentSlideProvider implements vscode.TreeDataProvider<CurrentSlideItem> {
+  private readonly changeEmitter = new vscode.EventEmitter<CurrentSlideItem | undefined>();
+  private slide: InspectSlide | undefined;
+  private totalSlides = 0;
+
+  readonly onDidChangeTreeData = this.changeEmitter.event;
+
+  setSlide(slide: InspectSlide | undefined, totalSlides: number): void {
+    if (this.slide === slide && this.totalSlides === totalSlides) return;
+    this.slide = slide;
+    this.totalSlides = totalSlides;
+    this.changeEmitter.fire(undefined);
+  }
+
+  getTreeItem(element: CurrentSlideItem): vscode.TreeItem {
+    return element;
+  }
+
+  private objectItem(object: InspectObject): ObjectItem {
+    const slide = this.slide as InspectSlide;
+    const ordinal = slide.objects.findIndex((candidate) => candidate.id === object.id) + 1;
+    return new ObjectItem(
+      object,
+      slide,
+      ordinal,
+      slide.objects.some((candidate) => candidate.parentId === object.id),
+    );
+  }
+
+  private regionGroup(path: string): RegionGroupItem {
+    const slide = this.slide as InspectSlide;
+    return new RegionGroupItem(
+      path,
+      slide.objects.filter((object) => object.region === path),
+      slide,
+      (slide.regions ?? []).find((region) => region.path === path),
+    );
+  }
+
+  private regionPaths(): string[] {
+    const slide = this.slide;
+    if (!slide) return [];
+    return [...new Set([
+      ...slide.objects.map((object) => object.region || "main"),
+      ...(slide.regions ?? []).map((region) => region.path),
+    ])];
+  }
+
+  getParent(element: CurrentSlideItem): CurrentSlideItem | undefined {
+    const slide = this.slide;
+    if (!slide) return undefined;
+    if (element instanceof RegionGroupItem) {
+      return new CurrentSlideSectionItem("components", slide.objects.length);
+    }
+    if (element instanceof RegionPropertyItem) {
+      return this.regionGroup(element.region.path);
+    }
+    if (element instanceof ObjectItem) {
+      const parent = element.object.parentId
+        ? slide.objects.find((object) => object.id === element.object.parentId)
+        : undefined;
+      return parent ? this.objectItem(parent) : this.regionGroup(element.object.region || "main");
+    }
+    if (element instanceof PropertyItem) {
+      return this.objectItem(element.object);
+    }
+    return undefined;
+  }
+
+  itemAt(line: number, column?: number): RegionGroupItem | ObjectItem | undefined {
+    const slide = this.slide;
+    if (!slide) return undefined;
+    const region = (slide.regions ?? []).find((candidate) => (
+      (candidate.sources ?? [candidate.source]).some((source) => (
+        source.line === line
+        && (column === undefined || source.character === column)
+      ))
+    ));
+    if (region) return this.regionGroup(region.path);
+    const exact = slide.objects.findIndex((object) => (
+      object.source.line === line
+      && (column === undefined || object.source.character === column)
+    ));
+    const index = exact >= 0
+      ? exact
+      : slide.objects.findIndex((object) => object.source.line === line);
+    return index >= 0 ? this.objectItem(slide.objects[index]) : undefined;
+  }
+
+  itemAtOffset(offset: number): RegionGroupItem | RegionPropertyItem | ObjectItem | PropertyItem | undefined {
+    const slide = this.slide;
+    if (!slide) return undefined;
+    const region = (slide.regions ?? []).find((candidate) => (
+      (candidate.sources ?? [candidate.source]).some((source) => (
+        typeof source.start === "number"
+        && typeof source.end === "number"
+        && offset >= source.start
+        && offset <= source.end
+      ))
+    ));
+    if (region) {
+      const property = region.properties?.find((candidate) => (
+        offset >= candidate.source.start && offset <= candidate.source.end
+      ));
+      return property
+        ? new RegionPropertyItem(property, region, slide)
+        : this.regionGroup(region.path);
+    }
+    const containing = slide.objects
+      .filter((object) => (
+        typeof object.source.start === "number"
+        && typeof object.source.end === "number"
+        && offset >= object.source.start
+        && offset <= object.source.end
+      ))
+      .sort((left, right) => (
+        ((left.source.end ?? 0) - (left.source.start ?? 0))
+        - ((right.source.end ?? 0) - (right.source.start ?? 0))
+      ));
+    const object = containing[0];
+    if (!object) return undefined;
+    const property = object.properties.find((candidate) => (
+      offset >= candidate.source.start && offset <= candidate.source.end
+    ));
+    return property
+      ? new PropertyItem(property, object, slide)
+      : this.objectItem(object);
+  }
+
+  getChildren(element?: CurrentSlideItem): CurrentSlideItem[] {
+    const slide = this.slide;
+    if (!slide) return [];
+    if (element instanceof CurrentSlideSectionItem) {
+      return this.regionPaths().map((path) => this.regionGroup(path));
+    }
+    if (element instanceof RegionGroupItem) {
+      return [
+        ...(element.region?.properties ?? []).map((property) => (
+          new RegionPropertyItem(property, element.region as InspectRegion, slide)
+        )),
+        ...element.objects
+          .filter((object) => !object.parentId)
+          .map((object) => this.objectItem(object)),
+      ];
+    }
+    if (element instanceof ObjectItem) {
+      return [
+        ...element.object.properties.map((property) => new PropertyItem(property, element.object, slide)),
+        ...slide.objects
+          .filter((object) => object.parentId === element.object.id)
+          .map((object) => this.objectItem(object)),
+      ];
+    }
+    if (element) return [];
+
+    const items: CurrentSlideItem[] = [new CurrentSlideSummaryItem(slide, this.totalSlides)];
+    if (slide.objects.length > 0) {
+      items.push(new CurrentSlideSectionItem("components", slide.objects.length));
+    }
+    return items;
+  }
+}
+
+function updateRegionStatusBar(
+  status: vscode.StatusBarItem,
+  editor = vscode.window.activeTextEditor,
+): void {
+  if (!editor || !isSlidesDocument(editor.document.uri)) {
+    status.hide();
+    return;
+  }
+  const region = cursorRegionAt(editor.document.getText(), editor.document.offsetAt(editor.selection.active));
+  if (!region) {
+    status.hide();
+    return;
+  }
+  status.text = `$(symbol-namespace) ${region}`;
+  status.tooltip = `Current FrameSeq region: ${region}\nClick to jump to a named region on this slide.`;
+  status.show();
+}
+
+async function goToRegion(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isSlidesDocument(editor.document.uri)) {
+    void vscode.window.showInformationMessage("FrameSeq: open a slides.ts document first.");
+    return;
+  }
+  const source = editor.document.getText();
+  const offset = editor.document.offsetAt(editor.selection.active);
+  const regions = regionsForOffset(source, offset);
+  if (regions.length === 0) {
+    void vscode.window.showInformationMessage("FrameSeq: this slide has no named at() regions yet.");
+    return;
+  }
+  const selected = await vscode.window.showQuickPick(
+    regions.map((region) => ({
+      label: `$(symbol-namespace) ${region.path}`,
+      description: `line ${region.line + 1}${region.visits > 1 ? ` · visited ${region.visits} times` : ""}`,
+      region,
+    })),
+    {
+      title: "Go to FrameSeq region",
+      placeHolder: "Choose a named at() region on the current slide",
+      matchOnDescription: true,
+    },
+  );
+  if (!selected) return;
+  const position = new vscode.Position(selected.region.line, selected.region.character);
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+}
+
+function selectedWholeLines(editor: vscode.TextEditor): vscode.Range | undefined {
+  if (editor.selection.isEmpty) return undefined;
+  const startLine = editor.selection.start.line;
+  const endLine = editor.selection.end.character === 0 && editor.selection.end.line > startLine
+    ? editor.selection.end.line - 1
+    : editor.selection.end.line;
+  const start = new vscode.Position(startLine, 0);
+  const end = endLine + 1 < editor.document.lineCount
+    ? new vscode.Position(endLine + 1, 0)
+    : editor.document.lineAt(endLine).range.end;
+  return new vscode.Range(start, end);
+}
+
+function suggestedRegionPath(source: string, offset: number): string {
+  const parent = cursorRegionAt(source, offset);
+  const prefix = parent && parent !== "main" ? `${parent}/` : "";
+  const existing = new Set(regionsForOffset(source, offset).map((region) => region.path));
+  let suffix = "group";
+  let index = 2;
+  while (existing.has(`${prefix}${suffix}`)) {
+    suffix = `group${index}`;
+    index += 1;
+  }
+  return `${prefix}${suffix}`;
+}
+
+/** Turn consecutive source lines into one named container without nesting the TypeScript. */
+async function bindSelectionToRegion(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isSlidesDocument(editor.document.uri)) {
+    void vscode.window.showInformationMessage("FrameSeq: select content in a slides.ts document first.");
+    return;
+  }
+  const range = selectedWholeLines(editor);
+  if (!range) {
+    void vscode.window.showInformationMessage("FrameSeq: select the content lines to bind.");
+    return;
+  }
+  const document = editor.document;
+  const selectedSource = document.getText(range);
+  if (selectionHasStructureBoundary(selectedSource)) {
+    void vscode.window.showWarningMessage(
+      "FrameSeq: the selection contains slide or region cursor commands. Select consecutive content commands only.",
+    );
+    return;
+  }
+
+  const source = document.getText();
+  const startOffset = document.offsetAt(range.start);
+  const previousRegion = cursorRegionAt(source, startOffset);
+  if (!previousRegion) {
+    void vscode.window.showWarningMessage("FrameSeq: the selection must be inside a slide.");
+    return;
+  }
+  const existing = new Set(regionsForOffset(source, startOffset).map((region) => region.path));
+  const path = await vscode.window.showInputBox({
+    title: "Bind selection to a named FrameSeq region",
+    prompt: "The selected commands will move together when this region is positioned or anchored.",
+    value: suggestedRegionPath(source, startOffset),
+    validateInput: (value) => {
+      if (!/^[A-Za-z_][A-Za-z0-9_-]*(?:\/[A-Za-z_][A-Za-z0-9_-]*)*$/.test(value)) {
+        return "Use path segments made from letters, digits, _ or -, starting with a letter.";
+      }
+      if (existing.has(value)) return `The region “${value}” already exists on this slide.`;
+      return undefined;
+    },
+  });
+  if (!path) return;
+
+  const eol = document.eol === vscode.EndOfLine.CRLF ? "\r\n" : "\n";
+  const indentation = document.lineAt(range.start.line).text.match(/^\s*/)?.[0] ?? "";
+  const restore = previousRegion === "main" ? "main();" : `at(${JSON.stringify(previousRegion)});`;
+  const hasTrailingLineBreak = selectedSource.endsWith("\n");
+  const replacement = `${indentation}at(${JSON.stringify(path)}).column();${eol}`
+    + selectedSource
+    + (hasTrailingLineBreak ? "" : eol)
+    + `${indentation}${restore}${hasTrailingLineBreak ? eol : ""}`;
+
+  const applied = await editor.edit((edit) => edit.replace(range, replacement), {
+    undoStopBefore: true,
+    undoStopAfter: true,
+  });
+  if (!applied) return;
+  const pathOffset = document.offsetAt(range.start) + indentation.length + 4;
+  const position = document.positionAt(pathOffset);
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(new vscode.Range(position, position));
+}
+
 /** Show the command an object in the live preview came from, sent there by an Alt-click. */
 async function revealSourceLine(line: number, column: number): Promise<void> {
   const entry = await resolveEntry();
@@ -343,6 +916,184 @@ async function revealSourceLine(line: number, column: number): Promise<void> {
   );
 }
 
+function readPreviewSelection(message: unknown): PreviewSelectionTarget[] | undefined {
+  const values = (message as { targets?: unknown } | undefined)?.targets;
+  if (!Array.isArray(values) || values.length === 0 || values.length > 50) return undefined;
+  const targets: PreviewSelectionTarget[] = [];
+  for (const value of values) {
+    const { line, column, start, end } = (value ?? {}) as Record<string, unknown>;
+    if (![line, column, start, end].every(Number.isInteger)) return undefined;
+    if ((line as number) < 1 || (column as number) < 1 || (start as number) < 0) return undefined;
+    if ((end as number) <= (start as number)) return undefined;
+    targets.push({
+      line: line as number,
+      column: column as number,
+      start: start as number,
+      end: end as number,
+    });
+  }
+  return targets;
+}
+
+async function selectPreviewTargets(
+  message: unknown,
+  provider: SlidesProvider,
+  current: CurrentSlideProvider,
+): Promise<void> {
+  const targets = readPreviewSelection(message);
+  const entry = targets && (provider.entry ?? await resolveEntry());
+  if (!targets || !entry) return;
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  if (targets.some((target) => target.end > document.getText().length)) return;
+  const primary = targets.at(-1) as PreviewSelectionTarget;
+  const editor = vscode.window.visibleTextEditors.find((candidate) => (
+    candidate.document.uri.toString() === entry.uri.toString()
+  ));
+  if (editor) {
+    const ordered = [primary, ...targets.slice(0, -1)];
+    editor.selections = ordered.map((target) => new vscode.Selection(
+      document.positionAt(target.start),
+      document.positionAt(target.end),
+    ));
+    const primaryRange = new vscode.Range(
+      document.positionAt(primary.start),
+      document.positionAt(primary.end),
+    );
+    editor.revealRange(primaryRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    updateCurrentSlide(current, provider, editor);
+  } else {
+    const slide = provider.report?.slides.find((candidate) => (
+      primary.line >= candidate.source.line && primary.line <= candidate.source.endLine
+    ));
+    if (slide) current.setSlide(slide, provider.report?.summary.slides ?? slide.index);
+  }
+  selectCurrentSlideSource(primary.line, primary.column);
+}
+
+async function bindPreviewSelection(
+  message: unknown,
+  provider: SlidesProvider,
+  current: CurrentSlideProvider,
+): Promise<void> {
+  const targets = readPreviewSelection(message);
+  const entry = targets && (provider.entry ?? await resolveEntry());
+  if (!targets || targets.length < 2 || !entry || !provider.report) return;
+  const selectedStarts = new Set(targets.map((target) => target.start));
+  const selectedObjects = provider.report.slides
+    .flatMap((slide) => slide.objects.map((object) => ({ slide, object })))
+    .filter(({ object }) => typeof object.source.start === "number" && selectedStarts.has(object.source.start));
+  if (selectedObjects.length !== selectedStarts.size
+    || selectedObjects.some(({ object }) => object.parentId)) {
+    void vscode.window.showWarningMessage(
+      "FrameSeq: bind top-level components from one region; nested or region-container selections are not supported.",
+    );
+    return;
+  }
+  const [{ slide }] = selectedObjects;
+  if (selectedObjects.some((candidate) => (
+    candidate.slide.index !== slide.index || candidate.object.region !== selectedObjects[0].object.region
+  ))) {
+    void vscode.window.showWarningMessage("FrameSeq: selected components must belong to one slide and one region.");
+    return;
+  }
+  const siblings = slide.objects
+    .filter((object) => !object.parentId && object.region === selectedObjects[0].object.region)
+    .sort((left, right) => (left.source.start ?? 0) - (right.source.start ?? 0));
+  const indices = selectedObjects
+    .map(({ object }) => siblings.findIndex((candidate) => candidate.id === object.id))
+    .sort((left, right) => left - right);
+  if (indices.some((index) => index < 0)
+    || indices.at(-1) as number - indices[0] + 1 !== indices.length) {
+    void vscode.window.showWarningMessage(
+      "FrameSeq: multi-selected components must be consecutive; select the components between them too.",
+    );
+    return;
+  }
+
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const first = siblings[indices[0]];
+  const last = siblings[indices.at(-1) as number];
+  const start = new vscode.Position(document.positionAt(first.source.start as number).line, 0);
+  const lastLine = document.positionAt(last.source.end as number).line;
+  const end = lastLine + 1 < document.lineCount
+    ? new vscode.Position(lastLine + 1, 0)
+    : document.lineAt(lastLine).range.end;
+  const editor = await vscode.window.showTextDocument(document, {
+    viewColumn: vscode.ViewColumn.One,
+    preserveFocus: false,
+    preview: false,
+  });
+  editor.selection = new vscode.Selection(start, end);
+  await bindSelectionToRegion();
+  await provider.refresh();
+  updateCurrentSlide(current, provider, editor);
+}
+
+function selectCurrentSlideSource(line: number, column?: number): void {
+  setTimeout(() => {
+    const item = activeCurrentSlideProvider?.itemAt(line, column);
+    if (item && activeCurrentSlideTree) {
+      void activeCurrentSlideTree.reveal(item, { select: true, focus: false, expand: true });
+    }
+  }, 50);
+}
+
+function previewFocus(target?: PreviewComponentTarget): void {
+  if (!previewPanel) return;
+  void previewPanel.webview.postMessage(target
+    ? { type: "frameseq.focus-source", ...target }
+    : { type: "frameseq.focus-source", clear: true });
+}
+
+function syncEditorComponent(
+  current: CurrentSlideProvider,
+  provider: SlidesProvider,
+  editor: vscode.TextEditor,
+): void {
+  if (!isSlidesDocument(editor.document.uri)) return;
+  const enabled = vscode.workspace
+    .getConfiguration("frameseq", editor.document.uri)
+    .get<boolean>("followCursor", true);
+  if (!enabled) return;
+  const slide = slideForEditor(provider, editor);
+  const item = slide
+    ? current.itemAtOffset(editor.document.offsetAt(editor.selection.active))
+    : undefined;
+  const object = item instanceof PropertyItem
+    ? item.object
+    : (item instanceof ObjectItem ? item.object : undefined);
+  const region = item instanceof RegionPropertyItem
+    ? item.region
+    : (item instanceof RegionGroupItem ? item.region : undefined);
+  const selectionId = item?.id;
+  if (selectionId !== lastEditorSelectionId && item && activeCurrentSlideTree) {
+    lastEditorSelectionId = selectionId;
+    void activeCurrentSlideTree.reveal(item, { select: true, focus: false, expand: true });
+  } else if (!item) {
+    lastEditorSelectionId = undefined;
+  }
+  previewFocus(slide && region ? {
+    slideIndex: slide.index,
+    name: region.path,
+  } : (object && slide ? {
+    slideIndex: slide.index,
+    line: object.source.line,
+    column: object.source.character,
+  } : undefined));
+}
+
+function scheduleEditorComponentSync(
+  current: CurrentSlideProvider,
+  provider: SlidesProvider,
+  editor: vscode.TextEditor,
+): void {
+  if (editorSelectionTimer) clearTimeout(editorSelectionTimer);
+  editorSelectionTimer = setTimeout(() => {
+    editorSelectionTimer = undefined;
+    syncEditorComponent(current, provider, editor);
+  }, 80);
+}
+
 interface IncomingEdit {
   start: number;
   end: number;
@@ -358,7 +1109,7 @@ interface IncomingEdit {
  */
 function readIncomingEdits(message: unknown): IncomingEdit[] | undefined {
   const edits = (message as { edits?: unknown } | undefined)?.edits;
-  if (!Array.isArray(edits) || edits.length === 0 || edits.length > 4) return undefined;
+  if (!Array.isArray(edits) || edits.length === 0 || edits.length > 100) return undefined;
 
   const parsed: IncomingEdit[] = [];
   for (const candidate of edits) {
@@ -378,7 +1129,7 @@ function readIncomingEdits(message: unknown): IncomingEdit[] | undefined {
 }
 
 /**
- * Apply a drag from the preview to the slide document, then save so the preview reloads from
+ * Apply a drag from the preview to the slide document, then save so the preview refreshes from
  * it. Going through the workspace means one Undo puts the object back where it was.
  */
 interface IncomingMove {
@@ -444,29 +1195,125 @@ async function applyPreviewEdits(message: unknown): Promise<boolean> {
   return document.save();
 }
 
-async function openSlide(provider: SlidesProvider, item?: OutlineItem): Promise<void> {
+async function editProperty(
+  provider: SlidesProvider,
+  current: CurrentSlideProvider,
+  item?: PropertyItem | RegionPropertyItem,
+): Promise<void> {
+  if (!(item instanceof PropertyItem) && !(item instanceof RegionPropertyItem)) return;
   const entry = provider.entry ?? await resolveEntry();
-  const slide = item instanceof IssueItem ? item.slide : item?.slide;
+  if (!entry) {
+    void vscode.window.showErrorMessage("FrameSeq: no slides entry file was found.");
+    return;
+  }
+
+  const { property } = item;
+  const owner = item instanceof PropertyItem
+    ? (item.object.name ?? item.object.type)
+    : item.region.path;
+  const value = await vscode.window.showInputBox({
+    title: `Edit ${owner}.${property.name}`,
+    prompt: `Updates the TypeScript literal on line ${property.source.line}; Undo restores it.`,
+    value: String(property.value),
+    valueSelection: [0, String(property.value).length],
+    validateInput: (input) => formatPropertyValue(property.kind, property.expected, input) === undefined
+      ? `Enter a valid ${property.kind} value.`
+      : undefined,
+  });
+  if (value === undefined) return;
+  const replacement = formatPropertyValue(property.kind, property.expected, value);
+  if (replacement === undefined) return;
+
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const range = new vscode.Range(
+    document.positionAt(property.source.start),
+    document.positionAt(property.source.end),
+  );
+  if (document.getText(range) !== property.expected) {
+    await provider.refresh();
+    updateCurrentSlide(current, provider);
+    void vscode.window.showWarningMessage(
+      "FrameSeq: this property moved since the inspector was refreshed. Save the file and try again.",
+    );
+    return;
+  }
+
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(entry.uri, range, replacement);
+  if (!await vscode.workspace.applyEdit(edit)) {
+    void vscode.window.showErrorMessage("FrameSeq: the property edit could not be applied.");
+    return;
+  }
+  await document.save();
+  await provider.refresh();
+  updateCurrentSlide(current, provider);
+}
+
+async function openSlide(
+  provider: SlidesProvider,
+  current: CurrentSlideProvider,
+  item?: OutlineItem,
+  followPreview = true,
+): Promise<void> {
+  const entry = provider.entry ?? await resolveEntry();
+  const slide = item?.slide;
   if (!entry || !slide) return;
   const document = await vscode.workspace.openTextDocument(entry.uri);
-  const editor = await vscode.window.showTextDocument(document, {
-    viewColumn: vscode.ViewColumn.One,
-    preserveFocus: false,
-    preview: false,
-  });
+  // Once a preview exists, outline navigation must not flash a hidden source tab before
+  // returning to the preview. A source editor already visible beside it can still follow
+  // silently; a source tab hidden behind the preview stays hidden.
+  const visibleSourceEditor = vscode.window.visibleTextEditors.find((candidate) => (
+    candidate.document.uri.toString() === entry.uri.toString()
+  ));
+  const editor = previewPanel
+    ? visibleSourceEditor
+    : await vscode.window.showTextDocument(document, {
+      viewColumn: vscode.ViewColumn.One,
+      preserveFocus: false,
+      preview: false,
+    });
+  const source = item instanceof RegionItem
+    ? item.region.source
+    : (item instanceof ObjectItem ? item.object.source : slide.source);
   const position = new vscode.Position(
-    Math.max(0, slide.source.line - 1),
-    Math.max(0, slide.source.character - 1),
+    Math.max(0, source.line - 1),
+    Math.max(0, source.character - 1),
   );
-  editor.selection = new vscode.Selection(position, position);
-  editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  if (editor) {
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  }
   previewSlideIndex = slide.index;
+  setPreviewSourceMarker(entry, slide, source);
+  current.setSlide(slide, provider.report?.summary.slides ?? slide.index);
   const followOutline = vscode.workspace
     .getConfiguration("frameseq", entry.uri)
     .get<boolean>("followOutline", true);
-  if (followOutline && previewProcess && previewAddress) {
+  if (followPreview && followOutline && previewProcess && previewAddress) {
     await openPreviewUrl(previewAddress, entry, slide.index);
   }
+}
+
+async function focusComponent(
+  provider: SlidesProvider,
+  current: CurrentSlideProvider,
+  output: vscode.OutputChannel,
+  item?: RegionItem | RegionGroupItem | ObjectItem,
+): Promise<void> {
+  if (!item) return;
+  const target = item instanceof RegionGroupItem && item.region
+    ? new RegionItem(item.region, item.slide)
+    : item;
+  if (target instanceof RegionGroupItem) return;
+  pendingPreviewFocus = target instanceof RegionItem
+    ? { slideIndex: target.slide.index, name: target.region.path }
+    : {
+      slideIndex: target.slide.index,
+      line: target.object.source.line,
+      column: target.object.source.character,
+    };
+  await openSlide(provider, current, target, false);
+  await previewSlide(provider, output, target.slide.index);
 }
 
 async function openPreviewUrl(
@@ -480,8 +1327,10 @@ async function openPreviewUrl(
   const previewBeside = entry
     ? vscode.workspace.getConfiguration("frameseq", entry.uri).get<boolean>("previewBeside", true)
     : true;
+  const createsPanel = !previewPanel;
+  const existingPanelColumn = previewPanel?.viewColumn;
 
-  if (entry && previewBeside) {
+  if (entry && previewBeside && createsPanel) {
     const document = await vscode.workspace.openTextDocument(entry.uri);
     await vscode.window.showTextDocument(document, {
       viewColumn: vscode.ViewColumn.One,
@@ -492,8 +1341,9 @@ async function openPreviewUrl(
 
   const externalUri = await vscode.env.asExternalUri(vscode.Uri.parse(refreshedUrl.toString()));
   const externalUrl = externalUri.toString();
-  const panelColumn = previewBeside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
-  const createsPanel = !previewPanel;
+  const panelColumn = existingPanelColumn
+    ?? (previewBeside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active);
+  const focus = pendingPreviewFocus?.slideIndex === slideIndex ? pendingPreviewFocus : undefined;
   if (!previewPanel) {
     previewPanel = vscode.window.createWebviewPanel(
       "frameseq.preview",
@@ -507,7 +1357,23 @@ async function openPreviewUrl(
     previewPanel.webview.onDidReceiveMessage((message: unknown) => {
       const request = message as { type?: unknown; line?: unknown; column?: unknown } | undefined;
       if (request?.type === "frameseq.reveal" && typeof request.line === "number") {
-        void revealSourceLine(request.line, typeof request.column === "number" ? request.column : 1);
+        const line = request.line;
+        const column = typeof request.column === "number" ? request.column : 1;
+        void revealSourceLine(line, column).then(() => {
+          selectCurrentSlideSource(line, column);
+        });
+        return;
+      }
+      if (request?.type === "frameseq.select") {
+        if (activeSlidesProvider && activeCurrentSlideProvider) {
+          void selectPreviewTargets(message, activeSlidesProvider, activeCurrentSlideProvider);
+        }
+        return;
+      }
+      if (request?.type === "frameseq.bind-selection") {
+        if (activeSlidesProvider && activeCurrentSlideProvider) {
+          void bindPreviewSelection(message, activeSlidesProvider, activeCurrentSlideProvider);
+        }
         return;
       }
       if (request?.type === "frameseq.edit") {
@@ -524,17 +1390,19 @@ async function openPreviewUrl(
   }
   previewPanel.title = `FrameSeq · Slide ${slideIndex}`;
   if (createsPanel) {
-    previewPanel.webview.html = previewWebviewHtml(externalUrl);
+    previewPanel.webview.html = previewWebviewHtml(externalUrl, focus);
   } else {
     const delivered = await previewPanel.webview.postMessage({
       type: "frameseq.navigate",
       url: externalUrl,
+      focus,
     });
-    if (!delivered) previewPanel.webview.html = previewWebviewHtml(externalUrl);
+    if (!delivered) previewPanel.webview.html = previewWebviewHtml(externalUrl, focus);
   }
+  if (focus) pendingPreviewFocus = undefined;
 }
 
-function previewWebviewHtml(url: string): string {
+function previewWebviewHtml(url: string, focus?: PreviewComponentTarget): string {
   const origin = new URL(url).origin;
   const nonce = randomBytes(16).toString("hex");
   const escapeAttribute = (value: string): string => value
@@ -542,6 +1410,7 @@ function previewWebviewHtml(url: string): string {
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+  const initialFocus = JSON.stringify(focus ?? null).replaceAll("<", "\\u003c");
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -564,18 +1433,28 @@ function previewWebviewHtml(url: string): string {
     <script nonce="${nonce}">
       const preview = document.getElementById("frameseq-preview");
       const editor = acquireVsCodeApi();
+      let pendingFocus = ${initialFocus};
+      preview.addEventListener("load", () => {
+        if (pendingFocus) preview.contentWindow?.postMessage({ type: "frameseq.focus-source", ...pendingFocus }, "*");
+      });
       window.addEventListener("message", (event) => {
         const message = event.data;
         if (!message) return;
         if (event.source === preview.contentWindow) {
           // Alt-clicking asks for a line; dragging asks for numbers to be rewritten.
-          if (message.type === "frameseq.reveal" || message.type === "frameseq.edit") {
+          if (["frameseq.reveal", "frameseq.edit", "frameseq.select", "frameseq.bind-selection"].includes(message.type)) {
             editor.postMessage(message);
           }
           return;
         }
         if (message.type === "frameseq.navigate" && typeof message.url === "string") {
+          pendingFocus = message.focus || null;
           preview.src = message.url;
+          return;
+        }
+        if (message.type === "frameseq.focus-source") {
+          pendingFocus = message;
+          preview.contentWindow?.postMessage(message, "*");
           return;
         }
         if (message.type === "frameseq.edit-result") {
@@ -697,6 +1576,9 @@ async function previewSlide(
   const slideCount = report?.summary.slides ?? 1;
   const index = requestedIndex ?? cursorSlide?.index ?? previewSlideIndex;
   previewSlideIndex = Math.min(Math.max(index, 1), slideCount);
+  const targetSlide = report?.slides[previewSlideIndex - 1];
+  const markerEntry = provider.entry ?? await resolveEntry();
+  if (targetSlide && markerEntry) setPreviewSourceMarker(markerEntry, targetSlide);
   if (!previewProcess) {
     await startPreview(provider, output);
     return;
@@ -843,22 +1725,60 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   status.name = "FrameSeq current slide";
   status.command = "frameseq.previewCurrentSlide";
+  const regionStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  regionStatus.name = "FrameSeq current region";
+  regionStatus.command = "frameseq.goToRegion";
+  previewLineDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new vscode.ThemeColor("editor.wordHighlightStrongBackground"),
+    borderColor: new vscode.ThemeColor("editorInfo.foreground"),
+    borderStyle: "solid",
+    borderWidth: "0 0 0 3px",
+    overviewRulerColor: new vscode.ThemeColor("editorInfo.foreground"),
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+  });
   const provider = new SlidesProvider(output);
+  const current = new CurrentSlideProvider();
   const tree = vscode.window.createTreeView("frameseq.slides", {
     treeDataProvider: provider,
     showCollapseAll: true,
   });
-  context.subscriptions.push(output, diagnostics, status, tree);
+  const currentTree = vscode.window.createTreeView("frameseq.currentSlide", {
+    treeDataProvider: current,
+    showCollapseAll: true,
+  });
+  activeSlidesProvider = provider;
+  activeCurrentSlideProvider = current;
+  activeCurrentSlideTree = currentTree;
+  context.subscriptions.push(
+    output,
+    diagnostics,
+    status,
+    regionStatus,
+    tree,
+    currentTree,
+    previewLineDecoration,
+  );
   context.subscriptions.push(provider.onDidChangeMessage((message) => {
     tree.message = message;
   }));
   context.subscriptions.push(vscode.commands.registerCommand("frameseq.refresh", async () => {
     await provider.refresh(true);
+    refreshPreviewSourceMarker(provider);
     updateStatusBar(status, provider);
+    updateCurrentSlide(current, provider);
   }));
   context.subscriptions.push(vscode.commands.registerCommand(
     "frameseq.openSlide",
-    (item?: OutlineItem) => openSlide(provider, item),
+    (item?: OutlineItem) => openSlide(provider, current, item),
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "frameseq.focusComponent",
+    (item?: RegionItem | RegionGroupItem | ObjectItem) => focusComponent(provider, current, output, item),
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "frameseq.editProperty",
+    (item?: PropertyItem | RegionPropertyItem) => editProperty(provider, current, item),
   ));
   context.subscriptions.push(vscode.commands.registerCommand(
     "frameseq.preview",
@@ -881,7 +1801,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     async () => {
       await insertSlide(provider);
       updateStatusBar(status, provider);
+      updateCurrentSlide(current, provider);
     },
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand("frameseq.goToRegion", goToRegion));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "frameseq.bindSelectionToRegion",
+    bindSelectionToRegion,
   ));
   context.subscriptions.push(vscode.commands.registerCommand("frameseq.stopPreview", stopPreview));
   context.subscriptions.push(vscode.commands.registerCommand(
@@ -889,6 +1815,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     async () => {
       try {
         await checkLayout(provider, diagnostics, output);
+        updateCurrentSlide(current, provider);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         output.show(true);
@@ -954,28 +1881,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (autoRefresh && isSlidesDocument(document.uri)) {
       diagnostics.delete(document.uri);
       provider.setIssues([]);
-      void provider.refresh().then(() => updateStatusBar(status, provider));
+      void provider.refresh().then(() => {
+        refreshPreviewSourceMarker(provider);
+        updateStatusBar(status, provider);
+        updateCurrentSlide(current, provider);
+      });
+      updateRegionStatusBar(regionStatus, vscode.window.activeTextEditor);
     }
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (editor) applyPreviewSourceMarker(editor);
     if (editor && isSlidesDocument(editor.document.uri)) {
       void provider.refresh().then(() => {
         const slide = slideForEditor(provider, editor);
         if (slide) previewSlideIndex = slide.index;
+        refreshPreviewSourceMarker(provider);
         updateStatusBar(status, provider, editor);
+        updateRegionStatusBar(regionStatus, editor);
+        updateCurrentSlide(current, provider, editor);
+        scheduleEditorComponentSync(current, provider, editor);
       });
     } else {
       updateStatusBar(status, provider, editor);
+      updateRegionStatusBar(regionStatus, editor);
+      updateCurrentSlide(current, provider, editor);
     }
   }));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection((event) => {
     const slide = slideForEditor(provider, event.textEditor);
     if (slide) previewSlideIndex = slide.index;
     updateStatusBar(status, provider, event.textEditor);
+    updateRegionStatusBar(regionStatus, event.textEditor);
+    updateCurrentSlide(current, provider, event.textEditor);
+    scheduleEditorComponentSync(current, provider, event.textEditor);
   }));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration("frameseq")) {
-      void provider.refresh().then(() => updateStatusBar(status, provider));
+      void provider.refresh().then(() => {
+        refreshPreviewSourceMarker(provider);
+        updateStatusBar(status, provider);
+        updateCurrentSlide(current, provider);
+      });
     }
   }));
 
@@ -984,9 +1930,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const initialSlide = slideForEditor(provider);
   if (initialSlide) previewSlideIndex = initialSlide.index;
   updateStatusBar(status, provider);
+  updateRegionStatusBar(regionStatus);
+  updateCurrentSlide(current, provider);
+  if (vscode.window.activeTextEditor) {
+    scheduleEditorComponentSync(current, provider, vscode.window.activeTextEditor);
+  }
 }
 
 export function deactivate(): void {
+  if (editorSelectionTimer) clearTimeout(editorSelectionTimer);
   previewWasStopped = true;
   if (previewOpenTimer) clearTimeout(previewOpenTimer);
   previewOpenTimer = undefined;
@@ -995,4 +1947,9 @@ export function deactivate(): void {
   previewProcess?.kill();
   previewProcess = undefined;
   previewAddress = undefined;
+  previewSourceMarker = undefined;
+  previewLineDecoration = undefined;
+  activeSlidesProvider = undefined;
+  activeCurrentSlideProvider = undefined;
+  activeCurrentSlideTree = undefined;
 }

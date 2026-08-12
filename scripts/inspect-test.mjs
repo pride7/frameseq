@@ -51,7 +51,34 @@ assert.deepEqual(
   ],
 );
 assert.equal(report.slides[1].title, "Exact placement");
+assert.deepEqual(report.slides[1].objects.map((object) => object.label), ["Pinned", "Box"]);
+const [diagram] = report.slides[1].regions;
+assert.equal(diagram.path, "diagram");
+assert.equal(diagram.id, "slide:2:region:diagram");
+assert.equal(diagram.visits, 2);
+assert.equal(diagram.sources.length, 2);
+assert.equal(diagram.source.line, 8);
+assert.ok(diagram.source.end > diagram.source.start);
+assert.deepEqual(
+  diagram.properties.map(({ name, kind, value }) => ({ name, kind, value })),
+  [
+    { name: "x", kind: "number", value: 20 },
+    { name: "y", kind: "number", value: 30 },
+    { name: "width", kind: "number", value: 800 },
+    { name: "height", kind: "number", value: 500 },
+  ],
+);
+assert.equal(report.slides[1].objects[0].region, "diagram");
+assert.match(report.slides[1].objects[0].id, /^slide:2:object:/);
+assert.deepEqual(
+  report.slides[1].objects[0].properties.map(({ name, kind, value }) => ({ name, kind, value })),
+  [
+    { name: "x", kind: "number", value: 80 },
+    { name: "y", kind: "number", value: 120 },
+  ],
+);
+assert.ok(report.slides[1].objects[0].source.end > report.slides[1].objects[0].source.start);
 assert.ok(report.slides.every((slide) => slide.source.endLine >= slide.source.line));
 
-console.log("Inspect test passed: titles, layouts, notes, objects, and source locations are stable JSON.");
+console.log("Inspect test passed: identity, hierarchy, editable properties, and source ranges are stable JSON.");
 

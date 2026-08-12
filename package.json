@@ -1,6 +1,6 @@
 {
   "name": "@pride7/frameseq",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Build editable, AI-friendly presentations with a linear TypeScript DSL.",
   "keywords": [
     "slides",
@@ -91,7 +91,7 @@
     "export:pptx": "node scripts/frameseq.mjs pptx slides.ts --output output/pptx/frameseq.pptx",
     "typst": "node scripts/frameseq.mjs typst slides.ts",
     "export:typst": "node scripts/frameseq.mjs typst slides.ts --output output/typst/frameseq.typ",
-    "vscode:check": "node scripts/inspect-test.mjs && npm ci --prefix packages/vscode-frameseq --ignore-scripts && npm --prefix packages/vscode-frameseq run check && node scripts/vscode-extension-test.mjs && node scripts/vscode-preview-test.mjs",
+    "vscode:check": "node scripts/inspect-test.mjs && npm ci --prefix packages/vscode-frameseq --ignore-scripts && npm --prefix packages/vscode-frameseq run compile && node scripts/vscode-region-test.mjs && node scripts/vscode-extension-test.mjs && node scripts/vscode-preview-test.mjs",
     "vscode:package": "npm ci --prefix packages/vscode-frameseq --ignore-scripts && npm --prefix packages/vscode-frameseq run package",
     "pack:check": "node scripts/package-test.mjs",
     "release:tag-check": "node scripts/release-tag-test.mjs",

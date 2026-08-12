@@ -1,8 +1,8 @@
 import ts from "typescript";
 
 /**
- * Commands that create an object the preview can point back at. Cursor moves such as at() or
- * cell() are left out: they return a region that other commands already describe.
+ * Commands that create an object the preview can point back at. at() is included because its
+ * returned region is itself a visual, editable container; other cursor moves are left out.
  */
 const markableCommands = new Set([
   "slide",
@@ -23,6 +23,7 @@ const markableCommands = new Set([
   "group",
   "card",
   "gridSection",
+  "at",
 ]);
 
 /** The identifier a call chain such as text("x").lead().size(32) starts from. */
@@ -196,7 +197,7 @@ export function sourceMarks(source, fileName = "slides.ts") {
         // A slide is not one object among neighbours; its content lives in later statements.
         // Neither is a call that collects the objects written above it: moving it past them
         // would leave it reaching for objects that do not exist yet.
-        statement: chainRoot(node) === "slide" || isRegionBarrier(node)
+        statement: ["slide", "at"].includes(chainRoot(node) ?? "") || isRegionBarrier(node)
           ? undefined
           : statementBlock(sourceFile, node),
       });

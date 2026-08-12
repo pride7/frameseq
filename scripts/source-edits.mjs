@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-/** At most this many numbers change in one drag: x, y, width, height. */
-const maximumEdits = 4;
+/** One keyboard gesture may update both coordinates on each of at most 50 selections. */
+const maximumEdits = 100;
 
 /** Drags to undo, newest last, per slide document. Kept only for the server's lifetime. */
 const undoStacks = new Map();

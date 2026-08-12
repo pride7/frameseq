@@ -2,7 +2,7 @@
   "name": "frameseq",
   "displayName": "FrameSeq",
   "description": "Edit FrameSeq presentations with a split live preview, slide navigation, validation, snippets, and exports.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "pride7",
   "license": "MIT",
   "repository": {
@@ -57,6 +57,10 @@
         {
           "id": "frameseq.slides",
           "name": "Slides"
+        },
+        {
+          "id": "frameseq.currentSlide",
+          "name": "Current Slide"
         }
       ]
     },
@@ -64,6 +68,10 @@
       {
         "view": "frameseq.slides",
         "contents": "Open a FrameSeq `slides.ts` or `*.slides.ts` document.\n[Refresh slides](command:frameseq.refresh)"
+      },
+      {
+        "view": "frameseq.currentSlide",
+        "contents": "Place the cursor inside a FrameSeq slide to inspect its regions and objects."
       }
     ],
     "commands": [
@@ -75,6 +83,16 @@
       {
         "command": "frameseq.openSlide",
         "title": "FrameSeq: Open Slide"
+      },
+      {
+        "command": "frameseq.focusComponent",
+        "title": "FrameSeq: Focus Component in Preview",
+        "icon": "$(target)"
+      },
+      {
+        "command": "frameseq.editProperty",
+        "title": "FrameSeq: Edit Component Property",
+        "icon": "$(edit)"
       },
       {
         "command": "frameseq.preview",
@@ -99,6 +117,16 @@
         "command": "frameseq.insertSlide",
         "title": "FrameSeq: Insert Slide After Current",
         "icon": "$(add)"
+      },
+      {
+        "command": "frameseq.goToRegion",
+        "title": "FrameSeq: Go to Named Region",
+        "icon": "$(symbol-namespace)"
+      },
+      {
+        "command": "frameseq.bindSelectionToRegion",
+        "title": "FrameSeq: Bind Selection to Named Region",
+        "icon": "$(group-by-ref-type)"
       },
       {
         "command": "frameseq.stopPreview",
@@ -163,6 +191,21 @@
           "command": "frameseq.export",
           "when": "view == frameseq.slides",
           "group": "navigation@5"
+        },
+        {
+          "command": "frameseq.previewCurrentSlide",
+          "when": "view == frameseq.currentSlide",
+          "group": "navigation@1"
+        },
+        {
+          "command": "frameseq.check",
+          "when": "view == frameseq.currentSlide",
+          "group": "navigation@2"
+        },
+        {
+          "command": "frameseq.exportPptx",
+          "when": "view == frameseq.currentSlide",
+          "group": "navigation@3"
         }
       ],
       "editor/title": [
@@ -170,12 +213,44 @@
           "command": "frameseq.preview",
           "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
           "group": "navigation@1"
+        },
+        {
+          "command": "frameseq.goToRegion",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "frameseq.bindSelectionToRegion",
+          "when": "editorHasSelection && resourceFilename =~ /^(slides|.+\\.slides)\\.ts$/",
+          "group": "1_modification@5"
+        },
+        {
+          "command": "frameseq.goToRegion",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [
         {
           "command": "frameseq.openSlide",
           "when": "view == frameseq.slides && viewItem == frameseqSlide",
+          "group": "inline@1"
+        },
+        {
+          "command": "frameseq.focusComponent",
+          "when": "view == frameseq.slides && viewItem == frameseqRegion",
+          "group": "inline@1"
+        },
+        {
+          "command": "frameseq.focusComponent",
+          "when": "view == frameseq.currentSlide && (viewItem == frameseqRegionGroup || viewItem == frameseqObject)",
+          "group": "inline@1"
+        },
+        {
+          "command": "frameseq.editProperty",
+          "when": "view == frameseq.currentSlide && viewItem == frameseqProperty",
           "group": "inline@1"
         },
         {
@@ -212,6 +287,11 @@
           "type": "boolean",
           "default": true,
           "description": "Navigate the live preview when a slide is opened from the FrameSeq outline."
+        },
+        "frameseq.followCursor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Select the matching Current Slide component and highlight it in an open preview as the source cursor moves."
         },
         "frameseq.autoRefresh": {
           "type": "boolean",

@@ -2,6 +2,34 @@
 
 All notable changes to FrameSeq are recorded here. The project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+## [0.30.0] - 2026-08-12
+
+### Added
+
+- Include named `at()` regions and their visit counts in `frameseq inspect --json`, so editor integrations can expose the authoring structure inside each slide.
+- Give inspected objects stable IDs, authoring regions, parent relationships, complete source ranges, and editable literal-property metadata.
+- Group Current Slide components by region and hierarchy, with validated, undoable editing for source-backed number, boolean, and string properties.
+- Synchronise the source cursor, Current Slide component/property selection, and preview highlight, including automatic preview-page changes when the cursor moves across slides.
+- Mark `at()` call chains as source-backed preview containers, expose their editable properties and every revisit in inspect JSON, and support moving a positioned named region as one unit by Shift-dragging any child.
+- Add direct preview selection in editing mode, Ctrl/Command multi-selection, a named-region breadcrumb, and one-click binding of validated consecutive top-level components into a new `at()` region.
+- Make editing mode visibly persistent with an active `E` control, preserve an existing preview's editor group during outline navigation, and retain Current Slide while the preview tab is active.
+- Stop outline navigation from briefly activating `slides.ts` before returning to an existing preview; only an already-visible source editor is moved silently.
+- Mark the source line for the currently previewed slide with a persistent whole-line highlight, accent edge, overview-ruler tick, and line-end label, including after source refreshes shift its line number.
+- Make a Current Slide component outline dismissible from the preview by clicking the canvas, pressing Escape, selecting an editing target, or navigating to another slide.
+- Remove the redundant edit-mode instruction pill and single-selection label from the canvas; the active `E` control carries mode state, while the top toolbar now appears only when multiple components make its count and bind action useful.
+- Add source-backed multi-selection alignment on all six edges/centres and equal horizontal or vertical distribution, with disabled states for flow, computed, or nested selections and one undoable literal-coordinate edit per action.
+- Add one- and ten-pixel keyboard nudging for positioned single or multi-selections, compact geometry feedback, and a two-stage Escape that clears selection before leaving edit mode.
+- Snap dragged objects to nearby edges and centres with transient full-slide smart guides, with Ctrl/Command providing an explicit free-movement bypass.
+- Keep keyboard focus in the embedded preview after direct selection instead of activating `slides.ts`, and distinguish positioned selections from flow items with explicit actionable feedback.
+- Delay pointer capture until a real drag crosses its threshold, so clicking a positioned component selects it instead of retargeting the click to the canvas; restore canvas focus after selection and toolbar actions for reliable real arrow-key input.
+- Hot-swap a fully rendered and scaled canvas after source-backed edits while the old canvas remains visible, eliminating the empty-frame flash on drop; preserve selection and focus so consecutive arrow presses keep moving the same component.
+
+### Fixed
+
+- Keep the visible audience preview frame at the presentation canvas ratio inside tall or narrow browser and VS Code panes. The canvas was already scaled correctly, but its rounded outer frame filled the window, making a 16:9 slide look like a portrait page.
+
 ## [0.29.0] - 2026-08-07
 
 ### Added

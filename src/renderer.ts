@@ -16,6 +16,7 @@ const sourceEditEvent = "frameseq:apply-edit";
 const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 const layoutEditingKey = "frameseq-layout-editing";
+const previewSelectionKey = "frameseq-preview-selection";
 const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
 /** Editing writes the slide document, so it only exists while a development server is serving. */
 const localEditingAvailable = Boolean(import.meta.hot);
@@ -394,6 +395,31 @@ function scaleCanvas(canvas: HTMLElement, frame: HTMLElement, slides: SlidesRoot
   canvas.style.transform = `scale(${scale})`;
 }
 
+/** Keep the visible audience page itself at the presentation ratio inside any browser pane. */
+function fitAudienceFrame(
+  frame: HTMLElement,
+  host: HTMLElement,
+  slides: SlidesRootDefinition,
+): void {
+  const horizontalMargin = 18;
+  const topMargin = 18;
+  const controlsSpace = 58;
+  const availableWidth = Math.max(host.clientWidth - horizontalMargin * 2, 1);
+  const availableHeight = Math.max(host.clientHeight - topMargin - controlsSpace, 1);
+  const scale = Math.min(
+    availableWidth / slides.canvasWidth,
+    availableHeight / slides.canvasHeight,
+  );
+  const width = slides.canvasWidth * scale;
+  const height = slides.canvasHeight * scale;
+
+  frame.style.inset = "auto";
+  frame.style.width = `${width}px`;
+  frame.style.height = `${height}px`;
+  frame.style.left = `${(host.clientWidth - width) / 2}px`;
+  frame.style.top = `${topMargin + (availableHeight - height) / 2}px`;
+}
+
 interface PresenterElements {
   shell: HTMLElement;
   currentHost: HTMLElement;
@@ -673,6 +699,50 @@ interface SourceTarget {
   end: number;
 }
 
+interface StoredPreviewSelection {
+  slideIndex: number;
+  targets: Array<Pick<SourceTarget, "line" | "column">>;
+}
+
+function readPreviewSelection(): StoredPreviewSelection | undefined {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(previewSelectionKey) ?? "null") as unknown;
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as Partial<StoredPreviewSelection>;
+    if (!Number.isInteger(candidate.slideIndex) || !Array.isArray(candidate.targets)) return undefined;
+    const targets = candidate.targets.filter((target): target is Pick<SourceTarget, "line" | "column"> => (
+      Boolean(target)
+      && typeof target === "object"
+      && Number.isInteger((target as { line?: unknown }).line)
+      && Number.isInteger((target as { column?: unknown }).column)
+    ));
+    return targets.length > 0
+      ? { slideIndex: candidate.slideIndex as number, targets }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storePreviewSelection(selection?: StoredPreviewSelection): void {
+  try {
+    if (selection) sessionStorage.setItem(previewSelectionKey, JSON.stringify(selection));
+    else sessionStorage.removeItem(previewSelectionKey);
+  } catch {
+    // Selection persistence is a convenience; restricted storage must not break editing.
+  }
+}
+
+type ArrangeAction =
+  | "align-left"
+  | "align-center"
+  | "align-right"
+  | "align-top"
+  | "align-middle"
+  | "align-bottom"
+  | "distribute-horizontal"
+  | "distribute-vertical";
+
 function parseSourceTarget(descriptor: string): SourceTarget | undefined {
   const [line, column, start, end] = descriptor.split(":").map(Number);
   if (![line, column, start, end].every((value) => Number.isFinite(value))) return undefined;
@@ -711,25 +781,372 @@ async function revealSource(target: SourceTarget): Promise<void> {
 }
 
 /** Alt-click any object in the live preview to open the line that wrote it. */
-function enableSourceReveal(root: HTMLElement): void {
+function enableSourceReveal(
+  root: HTMLElement,
+  navigate?: (index: number) => void,
+  signal?: AbortSignal,
+): void {
+  let focused: HTMLElement | undefined;
+  const selected = new Set<HTMLElement>();
+  let selectionSlideIndex: number | undefined;
+  document.querySelectorAll(".frameseq-selection-toolbar, .frameseq-selection-coordinates")
+    .forEach((element) => element.remove());
+  const selectionToolbar = document.createElement("div");
+  selectionToolbar.className = "frameseq-selection-toolbar";
+  selectionToolbar.innerHTML = `
+    <span class="frameseq-selection-path"></span>
+    <span class="frameseq-selection-tools" aria-label="Arrange selected components">
+      <button type="button" data-action="align-left" title="Align left" aria-label="Align left">↤</button>
+      <button type="button" data-action="align-center" title="Align horizontal centres" aria-label="Align horizontal centres">↔</button>
+      <button type="button" data-action="align-right" title="Align right" aria-label="Align right">↦</button>
+      <button type="button" data-action="align-top" title="Align top" aria-label="Align top">↥</button>
+      <button type="button" data-action="align-middle" title="Align vertical centres" aria-label="Align vertical centres">↕</button>
+      <button type="button" data-action="align-bottom" title="Align bottom" aria-label="Align bottom">↧</button>
+      <button type="button" data-action="distribute-horizontal" title="Distribute horizontally" aria-label="Distribute horizontally">H⋯</button>
+      <button type="button" data-action="distribute-vertical" title="Distribute vertically" aria-label="Distribute vertically">V⋮</button>
+    </span>
+    <button type="button" data-action="bind-region">Bind region</button>
+  `;
+  document.body.append(selectionToolbar);
+  const selectionCoordinates = document.createElement("div");
+  selectionCoordinates.className = "frameseq-selection-coordinates";
+  document.body.append(selectionCoordinates);
+  let keyboardNudge: {
+    elements: HTMLElement[];
+    fields: SourceFields[];
+    dx: number;
+    dy: number;
+    timer?: ReturnType<typeof setTimeout>;
+  } | undefined;
+  const focusCanvas = (): void => {
+    root.focus({ preventScroll: true });
+    setTimeout(() => root.focus({ preventScroll: true }), 0);
+  };
+
+  const clearFocused = (): void => {
+    focused?.classList.remove("is-frameseq-source-focus");
+    focused = undefined;
+  };
+  const clearSelection = (clearStored = true): void => {
+    selected.forEach((element) => element.classList.remove("is-frameseq-selected"));
+    selected.clear();
+    selectionSlideIndex = undefined;
+    if (clearStored) storePreviewSelection();
+    selectionToolbar.classList.remove("is-visible");
+    selectionCoordinates.classList.remove("is-visible");
+  };
+  const showCoordinates = (element?: HTMLElement, override?: Record<string, number>): void => {
+    if (!element || selected.size !== 1 || !selected.has(element)) {
+      selectionCoordinates.classList.remove("is-visible");
+      return;
+    }
+    const fields = parseSourceFields(element) ?? {};
+    const box = element.getBoundingClientRect();
+    const canvas = element.closest<HTMLElement>(".frameseq-slide");
+    const scale = elementCanvasScale(element);
+    const canvasBox = canvas?.getBoundingClientRect();
+    const x = override?.x ?? fields.x?.value
+      ?? (canvasBox ? (box.left - canvasBox.left) / scale : 0);
+    const y = override?.y ?? fields.y?.value
+      ?? (canvasBox ? (box.top - canvasBox.top) / scale : 0);
+    const width = override?.width ?? fields.width?.value ?? box.width / scale;
+    const height = override?.height ?? fields.height?.value ?? box.height / scale;
+    const positioned = Boolean(fields.x && fields.y);
+    selectionCoordinates.textContent = positioned
+      ? `Selected · x ${Math.round(x)} · y ${Math.round(y)} · ${Math.round(width)} × ${Math.round(height)}`
+      : "Selected · flow item · drag to reorder";
+    selectionCoordinates.classList.toggle("is-readonly", !positioned);
+    selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
+    selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
+    selectionCoordinates.classList.add("is-visible");
+  };
+  const selectionLabel = (element: HTMLElement): string => {
+    const parts = [...element.closest(".frameseq-slide")?.querySelectorAll<HTMLElement>("[data-frameseq-name]") ?? []]
+      .filter((candidate) => candidate === element || candidate.contains(element))
+      .map((candidate) => candidate.dataset.frameseqName as string);
+    const own = element.dataset.frameseqName ?? element.dataset.frameseqNode ?? "component";
+    if (parts.at(-1) !== own) parts.push(own);
+    return parts.join(" / ");
+  };
+  const hasNestedSelection = (elements: HTMLElement[]): boolean => elements.some((element) => (
+    elements.some((candidate) => candidate !== element && element.contains(candidate))
+  ));
+  const canArrange = (elements: HTMLElement[], axis: "x" | "y", minimum = 2): boolean => (
+    elements.length >= minimum
+    && !hasNestedSelection(elements)
+    && elements.every((element) => Boolean(parseSourceFields(element)?.[axis]))
+  );
+  const updateArrangeButtons = (elements: HTMLElement[]): void => {
+    const horizontal = canArrange(elements, "x");
+    const vertical = canArrange(elements, "y");
+    selectionToolbar.querySelectorAll<HTMLButtonElement>("[data-action^='align-']")
+      .forEach((button) => {
+        const action = button.dataset.action ?? "";
+        button.disabled = action === "align-left" || action === "align-center" || action === "align-right"
+          ? !horizontal
+          : !vertical;
+      });
+    const distributeHorizontal = selectionToolbar.querySelector<HTMLButtonElement>(
+      '[data-action="distribute-horizontal"]',
+    );
+    const distributeVertical = selectionToolbar.querySelector<HTMLButtonElement>(
+      '[data-action="distribute-vertical"]',
+    );
+    if (distributeHorizontal) distributeHorizontal.disabled = !canArrange(elements, "x", 3);
+    if (distributeVertical) distributeVertical.disabled = !canArrange(elements, "y", 3);
+  };
+  const notifySelection = (): void => {
+    const elements = [...selected];
+    const targets = elements
+      .map((element) => parseSourceTarget(element.dataset.frameseqSource ?? ""))
+      .filter((target): target is SourceTarget => Boolean(target));
+    const frame = elements.at(-1)?.closest<HTMLElement>(".frameseq-slide-frame");
+    const slideIndex = Number(frame?.dataset.index);
+    selectionSlideIndex = Number.isInteger(slideIndex) ? slideIndex : undefined;
+    if (selectionSlideIndex !== undefined && targets.length > 0) {
+      storePreviewSelection({
+        slideIndex: selectionSlideIndex,
+        targets: targets.map(({ line, column }) => ({ line, column })),
+      });
+    } else {
+      storePreviewSelection();
+    }
+    if (targets.length < 2) {
+      selectionToolbar.classList.remove("is-visible");
+      showCoordinates(elements[0]);
+    } else {
+      selectionCoordinates.classList.remove("is-visible");
+      const primary = elements.at(-1) as HTMLElement;
+      const path = selectionToolbar.querySelector<HTMLElement>(".frameseq-selection-path");
+      if (path) path.textContent = `${targets.length} selected · ${selectionLabel(primary)}`;
+      updateArrangeButtons(elements);
+      selectionToolbar.classList.add("is-visible");
+    }
+    const bind = selectionToolbar.querySelector<HTMLButtonElement>('[data-action="bind-region"]');
+    if (bind) bind.hidden = targets.length < 2;
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "frameseq.select", targets }, "*");
+    }
+  };
+  const focusSource = (message: unknown): void => {
+    const request = message as {
+      type?: unknown;
+      line?: unknown;
+      column?: unknown;
+      name?: unknown;
+      slideIndex?: unknown;
+      clear?: unknown;
+    } | null;
+    if (request?.type !== "frameseq.focus-source") return;
+
+    if (request.clear === true) {
+      clearFocused();
+      return;
+    }
+    clearFocused();
+    if (typeof request.slideIndex === "number") navigate?.(request.slideIndex - 1);
+
+    const scope = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active") ?? root;
+    let match: HTMLElement | undefined;
+    if (typeof request.name === "string") {
+      match = [...scope.querySelectorAll<HTMLElement>("[data-frameseq-name]")]
+        .find((element) => element.dataset.frameseqName === request.name);
+    } else if (typeof request.line === "number") {
+      const candidates = [...scope.querySelectorAll<HTMLElement>("[data-frameseq-source]")];
+      match = candidates.find((element) => {
+        const target = parseSourceTarget(element.dataset.frameseqSource ?? "");
+        if (!target) return false;
+        return target.line === request.line
+          && (typeof request.column !== "number" || target.column === request.column);
+      }) ?? candidates.find((element) => (
+        parseSourceTarget(element.dataset.frameseqSource ?? "")?.line === request.line
+      ));
+    }
+    if (!match) return;
+    focused = match;
+    focused.classList.add("is-frameseq-source-focus");
+    focused.scrollIntoView({ block: "nearest", inline: "nearest" });
+  };
+  addEventListener("message", (event) => focusSource(event.data), { signal });
+
   root.addEventListener("click", (event) => {
-    if (!event.altKey || event.button !== 0) return;
+    if (event.button !== 0) return;
     const element = event.target instanceof Element
       ? event.target.closest<HTMLElement>("[data-frameseq-source]")
       : undefined;
     const target = element && parseSourceTarget(element.dataset.frameseqSource ?? "");
-    if (!target) return;
+    if (!target) {
+      clearFocused();
+      if (document.documentElement.classList.contains("frameseq-edit-mode")) clearSelection();
+      return;
+    }
+    if (!event.altKey && document.documentElement.classList.contains("frameseq-edit-mode")) {
+      clearFocused();
+      if (element.classList.contains("frameseq-slide")) {
+        clearSelection();
+        return;
+      }
+      if (!(event.ctrlKey || event.metaKey)) clearSelection();
+      if (selected.has(element)) {
+        selected.delete(element);
+        element.classList.remove("is-frameseq-selected");
+      } else {
+        selected.add(element);
+        element.classList.add("is-frameseq-selected");
+      }
+      focusCanvas();
+      event.preventDefault();
+      event.stopPropagation();
+      notifySelection();
+      return;
+    }
+    if (!event.altKey) {
+      clearFocused();
+      return;
+    }
+    clearFocused();
+    focused = element;
+    focused.classList.add("is-frameseq-source-focus");
     event.preventDefault();
     event.stopPropagation();
     void revealSource(target);
   });
 
+  selectionToolbar.addEventListener("click", (event) => {
+    const button = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>("button[data-action]")
+      : null;
+    if (!button || button.disabled || selected.size < 2) return;
+    focusCanvas();
+    const targets = [...selected]
+      .map((element) => parseSourceTarget(element.dataset.frameseqSource ?? ""))
+      .filter((target): target is SourceTarget => Boolean(target));
+    if (button.dataset.action === "bind-region" && window.parent !== window) {
+      window.parent.postMessage({ type: "frameseq.bind-selection", targets }, "*");
+      return;
+    }
+    arrangeSelected([...selected], button.dataset.action as ArrangeAction);
+  });
+
+  addEventListener("frameseq-editing-change", ((event: CustomEvent<boolean>) => {
+    if (!event.detail) clearSelection();
+  }) as EventListener, { signal });
+  addEventListener("frameseq-slide-change", ((event: CustomEvent<number>) => {
+    clearFocused();
+    if (selectionSlideIndex !== undefined && selectionSlideIndex !== event.detail) clearSelection();
+  }) as EventListener, { signal });
+  addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && (focused || selected.size > 0)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearFocused();
+      clearSelection();
+      return;
+    }
+    if (!document.documentElement.classList.contains("frameseq-edit-mode")) return;
+    if (!event.key.startsWith("Arrow") || selected.size === 0) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const axis = event.key === "ArrowLeft" || event.key === "ArrowRight" ? "x" : "y";
+    const elements = [...selected];
+    const fields = elements.map((element) => parseSourceFields(element) ?? {});
+    if (fields.some((candidate) => !candidate[axis])) {
+      selectionCoordinates.textContent = axis === "x"
+        ? "Selected · no literal x coordinate"
+        : "Selected · no literal y coordinate";
+      selectionCoordinates.classList.add("is-visible", "is-readonly");
+      return;
+    }
+    const step = event.shiftKey ? 10 : 1;
+    const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -step : step;
+    if (!keyboardNudge
+      || keyboardNudge.elements.length !== elements.length
+      || keyboardNudge.elements.some((element, index) => elements[index] !== element)) {
+      if (keyboardNudge?.timer) clearTimeout(keyboardNudge.timer);
+      keyboardNudge = { elements, fields, dx: 0, dy: 0 };
+    }
+    if (axis === "x") keyboardNudge.dx += delta;
+    else keyboardNudge.dy += delta;
+    for (const [index, element] of elements.entries()) {
+      const source = fields[index];
+      if (source.x) element.style.left = `${source.x.value + keyboardNudge.dx}px`;
+      if (source.y) element.style.top = `${source.y.value + keyboardNudge.dy}px`;
+    }
+    showCoordinates(elements.length === 1 ? elements[0] : undefined, {
+      x: (fields[0].x?.value ?? 0) + keyboardNudge.dx,
+      y: (fields[0].y?.value ?? 0) + keyboardNudge.dy,
+    });
+    if (keyboardNudge.timer) clearTimeout(keyboardNudge.timer);
+    keyboardNudge.timer = setTimeout(() => {
+      const pending = keyboardNudge;
+      keyboardNudge = undefined;
+      if (!pending) return;
+      const edits: IncomingSourceEdit[] = [];
+      pending.fields.forEach((source) => {
+        if (pending.dx && source.x) {
+          const edit = arrangementEdit(source.x, source.x.value + pending.dx);
+          if (edit) edits.push(edit);
+        }
+        if (pending.dy && source.y) {
+          const edit = arrangementEdit(source.y, source.y.value + pending.dy);
+          if (edit) edits.push(edit);
+        }
+      });
+      if (edits.length > 0) sendSourceRequest({ edits });
+    }, 140);
+  }, { signal });
+  addEventListener("frameseq-layout-preview", ((event: CustomEvent<{
+    element: HTMLElement;
+    values: Record<string, number>;
+  }>) => {
+    showCoordinates(event.detail.element, event.detail.values);
+  }) as EventListener, { signal });
+
   const hint = (active: boolean): void => {
     document.documentElement.classList.toggle("frameseq-source-hint", active);
   };
-  addEventListener("keydown", (event) => hint(event.altKey));
-  addEventListener("keyup", (event) => hint(event.altKey));
-  addEventListener("blur", () => hint(false));
+  addEventListener("keydown", (event) => hint(event.altKey), { signal });
+  addEventListener("keyup", (event) => hint(event.altKey), { signal });
+  addEventListener("blur", () => hint(false), { signal });
+  signal?.addEventListener("abort", () => {
+    selectionToolbar.remove();
+    selectionCoordinates.remove();
+  }, { once: true });
+
+  // A source edit hot-swaps the rendered deck (or reloads as a fallback). Restore the
+  // source-backed selection so repeated arrow presses keep operating on the same component.
+  setTimeout(() => {
+    if (signal?.aborted) return;
+    const stored = readPreviewSelection();
+    if (!stored || !document.documentElement.classList.contains("frameseq-edit-mode")) return;
+    const frame = root.querySelector<HTMLElement>(
+      `.frameseq-slide-frame.is-active[data-index="${stored.slideIndex}"]`,
+    );
+    if (!frame) {
+      storePreviewSelection();
+      return;
+    }
+    const candidates = [...frame.querySelectorAll<HTMLElement>("[data-frameseq-source]")]
+      .filter((element) => !element.classList.contains("frameseq-slide"));
+    for (const storedTarget of stored.targets) {
+      const element = candidates.find((candidate) => {
+        if (selected.has(candidate)) return false;
+        const target = parseSourceTarget(candidate.dataset.frameseqSource ?? "");
+        return target?.line === storedTarget.line && target.column === storedTarget.column;
+      });
+      if (!element) continue;
+      selected.add(element);
+      element.classList.add("is-frameseq-selected");
+    }
+    if (selected.size === 0) {
+      storePreviewSelection();
+      return;
+    }
+    selectionSlideIndex = stored.slideIndex;
+    notifySelection();
+    focusCanvas();
+  }, 0);
 }
 
 type SourceFields = Record<string, SourceField>;
@@ -762,6 +1179,89 @@ function parseSourceFields(element: HTMLElement): SourceFields | undefined {
   } catch {
     return undefined;
   }
+}
+
+function elementCanvasScale(element: HTMLElement): number {
+  const canvas = element.closest<HTMLElement>(".frameseq-slide");
+  if (!canvas) return 1;
+  return canvas.getBoundingClientRect().width / canvas.offsetWidth || 1;
+}
+
+function arrangementEdit(field: SourceField, value: number): IncomingSourceEdit | undefined {
+  const rounded = Math.round(value);
+  if (rounded === Math.round(field.value)) return undefined;
+  return {
+    start: field.start,
+    end: field.end,
+    expected: field.text,
+    value: rounded,
+  };
+}
+
+interface IncomingSourceEdit {
+  start: number;
+  end: number;
+  expected: string;
+  value: number;
+}
+
+/** Align or distribute positioned selections by rewriting only their literal x or y values. */
+function arrangeSelected(elements: HTMLElement[], action: ArrangeAction): void {
+  const horizontal = action === "align-left"
+    || action === "align-center"
+    || action === "align-right"
+    || action === "distribute-horizontal";
+  const axis = horizontal ? "x" : "y";
+  if (elements.length < 2 || elements.some((element) => (
+    elements.some((candidate) => candidate !== element && element.contains(candidate))
+  ))) return;
+
+  const items = elements.map((element) => ({
+    element,
+    field: parseSourceFields(element)?.[axis],
+    box: element.getBoundingClientRect(),
+    scale: elementCanvasScale(element),
+  }));
+  if (items.some((item) => !item.field)) return;
+
+  const start = (item: typeof items[number]): number => horizontal ? item.box.left : item.box.top;
+  const end = (item: typeof items[number]): number => horizontal ? item.box.right : item.box.bottom;
+  const size = (item: typeof items[number]): number => horizontal ? item.box.width : item.box.height;
+  const edits: IncomingSourceEdit[] = [];
+  const moveStartTo = (item: typeof items[number], target: number): void => {
+    const edit = arrangementEdit(item.field as SourceField, (item.field as SourceField).value
+      + (target - start(item)) / item.scale);
+    if (edit) edits.push(edit);
+  };
+
+  if (action === "distribute-horizontal" || action === "distribute-vertical") {
+    if (items.length < 3) return;
+    const ordered = [...items].sort((a, b) => start(a) - start(b));
+    const first = start(ordered[0]);
+    const last = end(ordered.at(-1) as typeof ordered[number]);
+    const occupied = ordered.reduce((sum, item) => sum + size(item), 0);
+    const gap = (last - first - occupied) / (ordered.length - 1);
+    let cursor = first;
+    ordered.forEach((item, index) => {
+      if (index > 0 && index < ordered.length - 1) moveStartTo(item, cursor);
+      cursor += size(item) + gap;
+    });
+  } else {
+    const first = Math.min(...items.map(start));
+    const last = Math.max(...items.map(end));
+    const target = action === "align-left" || action === "align-top"
+      ? first
+      : (action === "align-right" || action === "align-bottom" ? last : (first + last) / 2);
+    for (const item of items) {
+      const itemTarget = action === "align-right" || action === "align-bottom"
+        ? target - size(item)
+        : (action === "align-center" || action === "align-middle" ? target - size(item) / 2 : target);
+      moveStartTo(item, itemTarget);
+    }
+  }
+
+  const unique = new Map(edits.map((edit) => [`${edit.start}:${edit.end}`, edit]));
+  if (unique.size === edits.length && edits.length > 0) sendSourceRequest({ edits: [...unique.values()] });
 }
 
 /** How long an embedded preview waits for its host to say it applied a drag. */
@@ -862,11 +1362,14 @@ interface LayoutDrag {
   index?: number;
   target?: number;
   pointerId: number;
+  captured: boolean;
   originX: number;
   originY: number;
   scale: number;
   moved: boolean;
   values: Record<string, number>;
+  originBox: DOMRect;
+  peerBoxes: DOMRect[];
 }
 
 /**
@@ -879,15 +1382,72 @@ const dragThreshold = 4;
  * Drag an object on a canvas slide to change the coordinates its command states, and drag the
  * corner handle to change its size. Returns the switch that turns the mode on and off.
  */
-function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: boolean) => void {
+function createLayoutEditor(
+  root: HTMLElement,
+  canvasWidth: number,
+  signal?: AbortSignal,
+): (active: boolean) => void {
   const handle = document.createElement("div");
   handle.className = "frameseq-edit-handle";
   handle.setAttribute("aria-hidden", "true");
   const insertion = document.createElement("div");
   insertion.className = "frameseq-insertion-marker";
   insertion.setAttribute("aria-hidden", "true");
+  const verticalGuide = document.createElement("div");
+  verticalGuide.className = "frameseq-smart-guide is-vertical";
+  const horizontalGuide = document.createElement("div");
+  horizontalGuide.className = "frameseq-smart-guide is-horizontal";
   let editing = false;
   let drag: LayoutDrag | undefined;
+
+  const clearSmartGuides = (): void => {
+    verticalGuide.remove();
+    horizontalGuide.remove();
+  };
+
+  function snapMove(
+    current: LayoutDrag,
+    x: number,
+    y: number,
+    disabled: boolean,
+  ): { x: number; y: number } {
+    clearSmartGuides();
+    if (disabled || current.peerBoxes.length === 0) return { x, y };
+    const canvas = current.element.closest<HTMLElement>(".frameseq-slide");
+    const canvasBox = canvas?.getBoundingClientRect();
+    if (!canvasBox) return { x, y };
+    const movedLeft = current.originBox.left + (x - current.fields.x.value) * current.scale;
+    const movedTop = current.originBox.top + (y - current.fields.y.value) * current.scale;
+    const movingX = [movedLeft, movedLeft + current.originBox.width / 2, movedLeft + current.originBox.width];
+    const movingY = [movedTop, movedTop + current.originBox.height / 2, movedTop + current.originBox.height];
+    const peerX = current.peerBoxes.flatMap((box) => [box.left, box.left + box.width / 2, box.right]);
+    const peerY = current.peerBoxes.flatMap((box) => [box.top, box.top + box.height / 2, box.bottom]);
+    const closest = (moving: number[], peers: number[]): { delta: number; at: number } | undefined => {
+      let best: { delta: number; at: number } | undefined;
+      for (const from of moving) for (const at of peers) {
+        const delta = at - from;
+        if (Math.abs(delta) <= 6 && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, at };
+      }
+      return best;
+    };
+    const snappedX = closest(movingX, peerX);
+    const snappedY = closest(movingY, peerY);
+    if (snappedX) {
+      x += snappedX.delta / current.scale;
+      verticalGuide.style.left = `${snappedX.at}px`;
+      verticalGuide.style.top = `${canvasBox.top}px`;
+      verticalGuide.style.height = `${canvasBox.height}px`;
+      document.body.append(verticalGuide);
+    }
+    if (snappedY) {
+      y += snappedY.delta / current.scale;
+      horizontalGuide.style.top = `${snappedY.at}px`;
+      horizontalGuide.style.left = `${canvasBox.left}px`;
+      horizontalGuide.style.width = `${canvasBox.width}px`;
+      document.body.append(horizontalGuide);
+    }
+    return { x, y };
+  }
 
   /**
    * Draw where the object would land. The marker is placed against the viewport and lives
@@ -937,9 +1497,14 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     // Alt is the shortcut for opening the source, so it never starts a drag.
     if (!editing || event.button !== 0 || event.altKey || !(event.target instanceof Element)) return;
     const resizing = Boolean(event.target.closest(".frameseq-edit-handle"));
-    const element = resizing
+    const region = event.shiftKey
+      ? event.target.closest<HTMLElement>(
+        ":is(.frameseq-row,.frameseq-column,.frameseq-stack)[data-frameseq-name][data-frameseq-edit]",
+      )
+      : null;
+    const element = region ?? (resizing
       ? handle.parentElement
-      : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-statement]");
+      : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-statement]"));
     if (!element) return;
 
     const fields = parseSourceFields(element) ?? {};
@@ -960,21 +1525,37 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
       siblings,
       index: siblings.indexOf(element),
       pointerId: event.pointerId,
+      captured: false,
       originX: event.clientX,
       originY: event.clientY,
       scale: canvasScale(element),
       moved: false,
       values: {},
+      originBox: element.getBoundingClientRect(),
+      peerBoxes: [...(element.closest(".frameseq-slide")?.querySelectorAll<HTMLElement>("[data-frameseq-edit]") ?? [])]
+        .filter((candidate) => candidate !== element
+          && !candidate.contains(element)
+          && !element.contains(candidate))
+        .map((candidate) => candidate.getBoundingClientRect()),
     };
-    root.setPointerCapture(event.pointerId);
-    element.classList.add(mode === "reorder" ? "is-frameseq-reordering" : "is-frameseq-dragging");
   });
 
-  root.addEventListener("pointermove", (event) => {
+  addEventListener("pointermove", (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     const travelled = Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY);
     if (!drag.moved && travelled < dragThreshold) return;
-    drag.moved = true;
+    if (!drag.moved) {
+      drag.moved = true;
+      try {
+        root.setPointerCapture(event.pointerId);
+        drag.captured = root.hasPointerCapture(event.pointerId);
+      } catch {
+        drag.captured = false;
+      }
+      drag.element.classList.add(
+        drag.mode === "reorder" ? "is-frameseq-reordering" : "is-frameseq-dragging",
+      );
+    }
 
     if (drag.mode === "reorder") {
       const siblings = drag.siblings ?? [];
@@ -991,12 +1572,18 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     const dy = (event.clientY - drag.originY) / drag.scale;
 
     if (drag.mode === "move") {
-      drag.values = {
-        x: Math.round(drag.fields.x.value + dx),
-        y: Math.round(drag.fields.y.value + dy),
-      };
+      const snapped = snapMove(
+        drag,
+        drag.fields.x.value + dx,
+        drag.fields.y.value + dy,
+        event.ctrlKey || event.metaKey,
+      );
+      drag.values = { x: Math.round(snapped.x), y: Math.round(snapped.y) };
       drag.element.style.left = `${drag.values.x}px`;
       drag.element.style.top = `${drag.values.y}px`;
+      dispatchEvent(new CustomEvent("frameseq-layout-preview", {
+        detail: { element: drag.element, values: drag.values },
+      }));
       return;
     }
 
@@ -1006,18 +1593,24 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
       drag.values.height = Math.max(8, Math.round(drag.fields.height.value + dy));
       drag.element.style.height = `${drag.values.height}px`;
     }
-  });
+    dispatchEvent(new CustomEvent("frameseq-layout-preview", {
+      detail: { element: drag.element, values: drag.values },
+    }));
+  }, { signal });
 
   function endDrag(event: PointerEvent): void {
     if (!drag || event.pointerId !== drag.pointerId) return;
     const finished = drag;
     drag = undefined;
-    root.releasePointerCapture(event.pointerId);
+    if (finished.captured && root.hasPointerCapture(event.pointerId)) {
+      root.releasePointerCapture(event.pointerId);
+    }
     finished.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
     insertion.remove();
+    clearSmartGuides();
     if (!finished.moved) return;
 
-    // The slide document is written for us, which reloads the page with the new layout.
+    // The slide document is written for us, which hot-swaps a newly laid-out canvas.
     if (finished.mode !== "reorder") {
       sendSourceEdits(finished.fields, finished.values);
       return;
@@ -1031,8 +1624,8 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     if (landing) sendSourceMove(statement, target < siblings.length ? landing.start : landing.end);
   }
 
-  root.addEventListener("pointerup", endDrag);
-  root.addEventListener("pointercancel", endDrag);
+  addEventListener("pointerup", endDrag, { signal });
+  addEventListener("pointercancel", endDrag, { signal });
 
   /** Abandon a drag whose pointer was lost, so a later click can never commit a stale one. */
   function abandonDrag(): void {
@@ -1041,19 +1634,20 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     drag = undefined;
     abandoned.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
     insertion.remove();
+    clearSmartGuides();
     if (abandoned.moved) location.reload();
   }
 
-  addEventListener("blur", abandonDrag);
+  addEventListener("blur", abandonDrag, { signal });
   addEventListener("pointerup", (event) => {
     // A release the deck never saw means the pointer left it mid-drag.
     if (drag && event.pointerId === drag.pointerId && !root.contains(event.target as Node)) {
       abandonDrag();
     }
-  });
+  }, { signal });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) abandonDrag();
-  });
+  }, { signal });
 
   /**
    * Undo the last drag. A browser has no editor to undo into, so the development server keeps
@@ -1065,18 +1659,26 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
     if (event.key.toLowerCase() !== "z") return;
     event.preventDefault();
     import.meta.hot?.send(sourceUndoEvent, {});
-  });
+  }, { signal });
 
-  import.meta.hot?.on(sourceEditResultEvent, (result: unknown) => {
+  const receiveEditResult = (result: unknown): void => {
     const outcome = result as { ok?: unknown; undo?: unknown } | undefined;
     // A refused drag leaves the preview showing a position the source does not state, so it
     // has to be redrawn. Nothing left to undo is not a mismatch, and needs no reload.
     if (outcome?.ok === false && outcome.undo !== true) location.reload();
-  });
+  };
+  import.meta.hot?.on(sourceEditResultEvent, receiveEditResult);
+  signal?.addEventListener("abort", () => {
+    import.meta.hot?.off(sourceEditResultEvent, receiveEditResult);
+    handle.remove();
+    insertion.remove();
+    clearSmartGuides();
+  }, { once: true });
 
   return (active: boolean): void => {
     editing = active;
     document.documentElement.classList.toggle("frameseq-edit-mode", active);
+    dispatchEvent(new CustomEvent("frameseq-editing-change", { detail: active }));
     if (!active) {
       handle.remove();
       insertion.remove();
@@ -1084,7 +1686,13 @@ function createLayoutEditor(root: HTMLElement, canvasWidth: number): (active: bo
   };
 }
 
+let activeMountController: AbortController | undefined;
+
 export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
+  activeMountController?.abort();
+  const mountController = new AbortController();
+  const { signal } = mountController;
+  activeMountController = mountController;
   resolveAnchors(slidesDocument.node);
   collectSharedSpans(slidesDocument.node);
   document.title = slidesDocument.title;
@@ -1117,6 +1725,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   const root = document.createElement("main");
   root.className = "frameseq-slides";
+  root.tabIndex = -1;
+  root.setAttribute("aria-label", "FrameSeq slide canvas");
   applyStyles(root, slidesDocument.node.styles);
 
   const slides = slidesDocument.slides.map((slide, index) => {
@@ -1152,7 +1762,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     return;
   }
 
-  if (import.meta.hot) enableSourceReveal(root);
+  if (import.meta.hot) enableSourceReveal(root, goTo, signal);
 
   const laserPointers = slides.map(({ canvas }) => {
     const pointer = document.createElement("span");
@@ -1185,9 +1795,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   const setLayoutEditing = localEditingAvailable && !presenter && !remote
-    ? createLayoutEditor(root, slidesDocument.canvasWidth)
+    ? createLayoutEditor(root, slidesDocument.canvasWidth, signal)
     : undefined;
-  // Writing the slide document reloads the page, so the mode has to outlive the reload.
+  // Editing mode survives both a hot canvas swap and a fallback page reload.
   let layoutEditing = readLayoutEditing();
 
   function updateLayoutEditing(active: boolean): void {
@@ -1195,9 +1805,14 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     layoutEditing = active;
     storeLayoutEditing(active);
     setLayoutEditing(active);
-    controls
-      .querySelector<HTMLButtonElement>('[data-action="edit-toggle"]')
-      ?.setAttribute("aria-pressed", String(active));
+    const button = controls.querySelector<HTMLButtonElement>('[data-action="edit-toggle"]');
+    button?.setAttribute("aria-pressed", String(active));
+    if (button) {
+      button.title = active
+        ? "Editing on · click to select, Ctrl/Command-click to multi-select, Escape to leave"
+        : "Enter editing mode";
+      button.setAttribute("aria-label", active ? "Layout editing on" : "Layout editing off");
+    }
   }
 
   updateLayoutEditing(layoutEditing);
@@ -1222,6 +1837,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
+    if (!presenter && !remote) fitAudienceFrame(frame, root, slidesDocument);
     scaleCanvas(canvas, frame, slidesDocument);
   }
 
@@ -1324,6 +1940,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   function update(shouldBroadcast = true): void {
+    dispatchEvent(new CustomEvent("frameseq-slide-change", { detail: currentSlide }));
     hidePointer(Boolean(presenter) && shouldBroadcast);
     slides.forEach(({ frame, canvas }, index) => {
       const active = index === currentSlide;
@@ -1675,24 +2292,33 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   syncChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
     handleSyncMessage(event.data, "broadcast");
-  });
+  }, { signal });
 
-  import.meta.hot?.on(remoteSyncEvent, (payload: unknown) => {
+  const receiveRemoteSync = (payload: unknown): void => {
     if (!payload || typeof payload !== "object") return;
     const envelope = payload as { session?: unknown; sender?: unknown; message?: unknown };
     if (!remoteSession
       || envelope.session !== remoteSession
       || envelope.sender === syncClientId) return;
     handleSyncMessage(envelope.message, "remote");
-  });
-  import.meta.hot?.on("vite:ws:connect", () => {
+  };
+  const receiveConnect = (): void => {
     if (!remote || !remoteSession) return;
     setRemoteConnection("Waiting for presentation…", "waiting");
     postSyncMessage({ type: "request-state" });
-  });
-  import.meta.hot?.on("vite:ws:disconnect", () => {
+  };
+  const receiveDisconnect = (): void => {
     if (remote) setRemoteConnection("Disconnected", "disconnected");
-  });
+  };
+  import.meta.hot?.on(remoteSyncEvent, receiveRemoteSync);
+  import.meta.hot?.on("vite:ws:connect", receiveConnect);
+  import.meta.hot?.on("vite:ws:disconnect", receiveDisconnect);
+  signal.addEventListener("abort", () => {
+    syncChannel?.close();
+    import.meta.hot?.off(remoteSyncEvent, receiveRemoteSync);
+    import.meta.hot?.off("vite:ws:connect", receiveConnect);
+    import.meta.hot?.off("vite:ws:disconnect", receiveDisconnect);
+  }, { once: true });
 
   if (remote) {
     if (!localRemoteAvailable) {
@@ -1733,7 +2359,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       event.preventDefault();
       (presenter?.laserToggle ?? remote?.laserToggle)?.click();
     }
-  });
+  }, { signal });
 
   const initialSlide = Math.min(
     Math.max(Number(location.hash.slice(1) || 1) - 1, 0),
@@ -1746,6 +2372,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   });
   resizeObserver.observe(presenter?.currentHost ?? remote?.currentHost ?? root);
   if (presenter) resizeObserver.observe(presenter.nextFrame);
+  signal.addEventListener("abort", () => resizeObserver.disconnect(), { once: true });
   update(false);
   postSyncMessage({ type: "request-state" });
   document.documentElement.dataset.ready = "true";
