@@ -66,7 +66,10 @@ assert.deepEqual(
   ["/work/talks/2026/kickoff/slides.ts"],
 );
 
-const extensionSource = await readFile(resolve(extensionRoot, "src", "extension.ts"), "utf8");
+// These assertions describe the source, not its line endings, and Git hands Windows a
+// CRLF checkout, so normalise before matching or every multi-line claim fails there.
+const extensionSource = (await readFile(resolve(extensionRoot, "src", "extension.ts"), "utf8"))
+  .replace(/\r\n/g, "\n");
 assert.ok(extensionSource.includes("async function resolveRoot"));
 assert.ok(extensionSource.includes("async function discoverEntry"));
 assert.ok(extensionSource.includes("lastResolvedEntry"));

@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const extensionRoot = resolve(packageRoot, "packages", "vscode-frameseq");
 const manifest = JSON.parse(await readFile(resolve(extensionRoot, "package.json"), "utf8"));
-const source = await readFile(resolve(extensionRoot, "src", "extension.ts"), "utf8");
+// A CRLF checkout on Windows must not fail a claim about the source itself.
+const source = (await readFile(resolve(extensionRoot, "src", "extension.ts"), "utf8"))
+  .replace(/\r\n/g, "\n");
 const rootPackage = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
 
 assert.equal(manifest.publisher, "pride7");
