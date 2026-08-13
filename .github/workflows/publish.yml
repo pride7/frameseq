@@ -86,3 +86,25 @@ jobs:
           else
             npm publish --access=public
           fi
+
+  publish-vscode-extension:
+    needs: release-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install extension dependencies
+        working-directory: packages/vscode-frameseq
+        run: npm ci
+      - name: Publish VS Code extension
+        working-directory: packages/vscode-frameseq
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx @vscode/vsce publish --no-dependencies --skip-duplicate
