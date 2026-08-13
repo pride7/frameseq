@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,11 +35,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Verify release tag and package versions
+        if: github.event_name == 'push'
         run: npm run release:tag-check -- "${{ github.ref_name }}"
       - name: Run release checks
         run: npm run release:check
 
   publish-frameseq:
+    if: github.event_name == 'push'
     needs: release-check
     runs-on: ubuntu-latest
     steps:
@@ -64,6 +67,7 @@ jobs:
           fi
 
   publish-create-frameseq:
+    if: github.event_name == 'push'
     needs: release-check
     runs-on: ubuntu-latest
     steps:
