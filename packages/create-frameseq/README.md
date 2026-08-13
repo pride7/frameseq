@@ -18,6 +18,10 @@ components/
 slides.ts
 ```
 
+The project also includes `AGENTS.md` with FrameSeq syntax, layout, formula,
+and validation guidance for coding agents. `CLAUDE.md` imports that same file,
+so Codex, Claude Code, and compatible tools follow one shared authoring contract.
+
 Use `content.ts` for reusable presentation objects and `theme.ts` for project-wide colors, fonts, and theme settings. No `index.ts` barrel is generated; import each module directly from `slides.ts`.
 
 Press `P` in the presentation to open the synchronized presenter view.

@@ -11,6 +11,7 @@ import { inspectSlides } from "./frameseq-inspect.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import { exportTypst } from "./typst-export.mjs";
+import { agentsMarkdown, claudeMarkdown } from "../packages/create-frameseq/project-instructions.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -104,7 +105,26 @@ bullets(
   "Third point",
 );
 `, "utf8");
+  await writeProjectInstructions(dirname(target));
   console.log(`Created ${target}`);
+}
+
+async function writeFileIfMissing(target, content) {
+  try {
+    await writeFile(target, content, { encoding: "utf8", flag: "wx" });
+    console.log(`Created ${target}`);
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST")) {
+      throw error;
+    }
+  }
+}
+
+async function writeProjectInstructions(directory) {
+  await Promise.all([
+    writeFileIfMissing(resolve(directory, "AGENTS.md"), agentsMarkdown),
+    writeFileIfMissing(resolve(directory, "CLAUDE.md"), claudeMarkdown),
+  ]);
 }
 
 async function startDevelopmentServer(

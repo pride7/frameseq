@@ -138,6 +138,8 @@ const generatedTsconfig = JSON.parse(await readFile(
   "utf8",
 ));
 const generatedSlides = await readFile(resolve(appDirectory, "slides.ts"), "utf8");
+const generatedAgents = await readFile(resolve(appDirectory, "AGENTS.md"), "utf8");
+const generatedClaude = await readFile(resolve(appDirectory, "CLAUDE.md"), "utf8");
 const generatedContent = await readFile(
   resolve(appDirectory, "components", "content.ts"),
   "utf8",
@@ -166,6 +168,13 @@ if (!generatedTsconfig.include?.includes("components/**/*.ts")
   || !generatedTheme.includes("export const projectTheme")
   || existsSync(resolve(appDirectory, "components", "index.ts"))) {
   throw new Error("Generated project did not include the direct theme.ts and content.ts component structure");
+}
+if (!generatedAgents.includes("## Syntax quick reference")
+  || !generatedAgents.includes("## Regions and `at()`")
+  || !generatedAgents.includes("## Formulas and complex typesetting")
+  || !generatedAgents.includes("npm run check")
+  || generatedClaude.trim() !== "@AGENTS.md") {
+  throw new Error("Generated project did not include reusable AI authoring instructions");
 }
 runNpm(["install", "--save-dev", frameSeqTarball], appDirectory);
 const installedCli = resolve(
@@ -264,6 +273,30 @@ runNpm(["run", "pdf", "--", "--output", "output/installed-package.pdf"], appDire
 runNpm(["run", "pptx", "--", "--output", "output/installed-package.pptx"], appDirectory);
 runNpm(["run", "typst", "--", "--output", "output/installed-package.typ"], appDirectory);
 runNpm(["exec", "--", "frameseq", "new", "extra.slides.ts"], appDirectory);
+
+const agentsAfterNew = await readFile(resolve(appDirectory, "AGENTS.md"), "utf8");
+if (agentsAfterNew !== generatedAgents) {
+  throw new Error("frameseq new overwrote an existing AGENTS.md file");
+}
+
+const singleFileDirectory = resolve(harnessDirectory, "single-file-project");
+await mkdir(singleFileDirectory, { recursive: true });
+run(
+  process.execPath,
+  [installedCli, "new", "talk.slides.ts"],
+  singleFileDirectory,
+);
+const singleFileAgents = await readFile(
+  resolve(singleFileDirectory, "AGENTS.md"),
+  "utf8",
+);
+const singleFileClaude = await readFile(
+  resolve(singleFileDirectory, "CLAUDE.md"),
+  "utf8",
+);
+if (singleFileAgents !== generatedAgents || singleFileClaude !== generatedClaude) {
+  throw new Error("frameseq new did not create the shared AI authoring instructions");
+}
 
 for (const expected of [
   resolve(appDirectory, "dist", "index.html"),

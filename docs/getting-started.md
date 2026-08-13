@@ -17,6 +17,8 @@ The generated project keeps the slide sequence in `slides.ts` and reusable proje
 
 ```text
 my-talk/
+├─ AGENTS.md
+├─ CLAUDE.md
 ├─ components/
 │  ├─ content.ts
 │  └─ theme.ts
@@ -28,6 +30,8 @@ my-talk/
 - `slides.ts` describes the presentation and its slide sequence.
 - `components/content.ts` contains reusable content functions such as project-specific cards or callouts.
 - `components/theme.ts` contains the project's theme, colors, fonts, and other design defaults.
+- `AGENTS.md` tells coding agents how to use FrameSeq syntax, regions, formulas, and validation in this project.
+- `CLAUDE.md` imports `AGENTS.md`, giving Claude Code the same instructions without maintaining a second copy.
 
 There is deliberately no `components/index.ts`; `slides.ts` imports the two modules directly so each dependency stays visible.
 

@@ -6,6 +6,8 @@ FrameSeq is designed to be a practical target language for coding agents. Its so
 
 Ask the agent to read [`llms.txt`](../llms.txt) before it writes any source. The file is intentionally compact enough to use as model context and ships in the npm package.
 
+Projects created with `npm create frameseq` also include a checked-in `AGENTS.md`. Codex and compatible agents discover it from the project root before working. It contains the high-frequency authoring rules for linear slide ownership, `at()` regions, formulas, diagrams, and required validation. `CLAUDE.md` imports that file with `@AGENTS.md`, so Claude Code receives the same guidance without a duplicated prompt. Customize `AGENTS.md` with presentation-specific facts, sources, terminology, and acceptance criteria; keep framework-wide API detail in `llms.txt`.
+
 For an agent that can read URLs, start with:
 
 ```text
