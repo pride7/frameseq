@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-12
+
+- Find decks kept in subdirectories: entry discovery now searches the whole workspace for `slides.ts` as well as `*.slides.ts`, prefers the deck closest to the file being edited, and falls back to a visible or open slides document.
+- Add **FrameSeq: Select Entry**, a picker over every deck in the workspace. The choice is remembered per workspace, shown beside the Slides view title, outranks the active editor until cleared, and moves a running preview to the selected deck.
+- Run commands from the deck's own project root — the closest directory above the entry carrying the FrameSeq CLI, otherwise the closest `package.json` — so a deck nested in a monorepo uses its own dependencies.
+
 ## 0.3.0 - 2026-08-12
 
 - Synchronise Current Slide components with the live preview in both directions: selecting a region or object highlights it on the slide, while Alt-clicking a preview object selects its inspector entry as well as opening its source.

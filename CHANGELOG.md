@@ -4,9 +4,16 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.31.0] - 2026-08-12
+
 ### Added
 
 - Generate a shared `AGENTS.md` authoring guide and a thin `CLAUDE.md` import in both new FrameSeq projects and `frameseq new`, covering the linear DSL, persistent `at()` cursor, formula input, diagram structure, editing discipline, and required rendered-layout validation without overwriting existing project instructions.
+- Add **FrameSeq: Select Entry** to the VS Code extension for workspaces holding several presentations, remembering the picked deck per workspace and moving a running preview to it.
+
+### Fixed
+
+- Discover VS Code decks kept outside the workspace root: the extension now searches every directory for `slides.ts` and `*.slides.ts`, prefers the deck closest to the file being edited, and runs commands from that deck's own project root.
 
 ## [0.30.0] - 2026-08-12
 

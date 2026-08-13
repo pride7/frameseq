@@ -20,6 +20,7 @@ assert.ok(manifest.contributes.views.frameseq.some((view) => view.id === "frames
 const commandIds = new Set(manifest.contributes.commands.map((command) => command.command));
 for (const command of [
   "frameseq.refresh",
+  "frameseq.selectEntry",
   "frameseq.openSlide",
   "frameseq.focusComponent",
   "frameseq.editProperty",

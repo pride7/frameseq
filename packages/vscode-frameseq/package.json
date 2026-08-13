@@ -2,7 +2,7 @@
   "name": "frameseq",
   "displayName": "FrameSeq",
   "description": "Edit FrameSeq presentations with a split live preview, slide navigation, validation, snippets, and exports.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "pride7",
   "license": "MIT",
   "repository": {
@@ -67,7 +67,7 @@
     "viewsWelcome": [
       {
         "view": "frameseq.slides",
-        "contents": "Open a FrameSeq `slides.ts` or `*.slides.ts` document.\n[Refresh slides](command:frameseq.refresh)"
+        "contents": "Open a FrameSeq `slides.ts` or `*.slides.ts` document. Decks in subdirectories are found automatically; pick one yourself when the workspace holds several.\n[Select entry](command:frameseq.selectEntry)\n[Refresh slides](command:frameseq.refresh)"
       },
       {
         "view": "frameseq.currentSlide",
@@ -79,6 +79,11 @@
         "command": "frameseq.refresh",
         "title": "FrameSeq: Refresh Slides",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "frameseq.selectEntry",
+        "title": "FrameSeq: Select Entry",
+        "icon": "$(list-selection)"
       },
       {
         "command": "frameseq.openSlide",
@@ -193,6 +198,11 @@
           "group": "navigation@5"
         },
         {
+          "command": "frameseq.selectEntry",
+          "when": "view == frameseq.slides",
+          "group": "1_entry@1"
+        },
+        {
           "command": "frameseq.previewCurrentSlide",
           "when": "view == frameseq.currentSlide",
           "group": "navigation@1"
@@ -271,7 +281,7 @@
         "frameseq.entry": {
           "type": "string",
           "default": "slides.ts",
-          "description": "FrameSeq entry file relative to the workspace folder. An active *.slides.ts editor takes precedence."
+          "description": "FrameSeq entry file, relative to the workspace folder or absolute. An active slides editor takes precedence, and any nested slides.ts or *.slides.ts in the workspace is discovered when the configured path does not exist."
         },
         "frameseq.previewUrl": {
           "type": "string",

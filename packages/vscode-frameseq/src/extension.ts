@@ -1,8 +1,15 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { access } from "node:fs/promises";
-import { isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import * as vscode from "vscode";
+import {
+  ancestorDirectories,
+  entryExcludeGlob,
+  entrySearchGlob,
+  isSlidesPath,
+  rankEntryCandidates,
+} from "./entry";
 import {
   cursorRegionAt,
   formatPropertyValue,
@@ -84,7 +91,7 @@ interface LayoutReport {
 
 interface EntryDocument {
   uri: vscode.Uri;
-  folder: vscode.WorkspaceFolder;
+  root: string;
 }
 
 interface CliResult {
@@ -110,6 +117,9 @@ let editorSelectionTimer: NodeJS.Timeout | undefined;
 let lastEditorSelectionId: string | undefined;
 let previewLineDecoration: vscode.TextEditorDecorationType | undefined;
 let previewSourceMarker: { uri: string; line: number; slideIndex: number; label: string } | undefined;
+let lastResolvedEntry: EntryDocument | undefined;
+let entryStore: vscode.Memento | undefined;
+const pinnedEntryKey = "frameseq.pinnedEntry";
 
 interface PreviewComponentTarget {
   slideIndex: number;
@@ -171,7 +181,7 @@ function refreshPreviewSourceMarker(provider: SlidesProvider): void {
 }
 
 function isSlidesDocument(uri: vscode.Uri): boolean {
-  return uri.scheme === "file" && /(?:^|[\\/])(?:slides|[^\\/]+\.slides)\.ts$/i.test(uri.fsPath);
+  return uri.scheme === "file" && isSlidesPath(uri.fsPath);
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -183,45 +193,183 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * The directory FrameSeq commands run from: the closest ancestor of the entry that
+ * carries the CLI, otherwise the closest package, otherwise the workspace folder.
+ * A deck nested in a subdirectory therefore keeps working without configuration.
+ */
+async function resolveRoot(uri: vscode.Uri): Promise<string> {
+  const workspaceRoot = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+  const directories = ancestorDirectories(dirname(uri.fsPath), workspaceRoot);
+  for (const directory of directories) {
+    const installedCli = join(directory, "node_modules", "@pride7", "frameseq", "scripts", "frameseq.mjs");
+    if (await fileExists(installedCli)) return directory;
+    if (await fileExists(join(directory, "scripts", "frameseq.mjs"))) return directory;
+  }
+  for (const directory of directories) {
+    if (await fileExists(join(directory, "package.json"))) return directory;
+  }
+  return workspaceRoot ?? dirname(uri.fsPath);
+}
+
+async function entryFor(uri: vscode.Uri): Promise<EntryDocument> {
+  const entry: EntryDocument = { uri, root: await resolveRoot(uri) };
+  lastResolvedEntry = entry;
+  return entry;
+}
+
+function configuredEntries(): { folder: vscode.WorkspaceFolder; entry: string }[] {
+  return (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+    folder,
+    entry: vscode.workspace
+      .getConfiguration("frameseq", folder.uri)
+      .get<string>("entry", "slides.ts")
+      .trim() || "slides.ts",
+  }));
+}
+
+/** Every deck the workspace offers, closest to the current file first. */
+async function entryCandidates(): Promise<vscode.Uri[]> {
+  const found = await vscode.workspace.findFiles(
+    entrySearchGlob(configuredEntries().map(({ entry }) => entry)),
+    entryExcludeGlob,
+    64,
+  );
+  const byPath = new Map(found.map((uri) => [uri.fsPath, uri]));
+  for (const { folder, entry } of configuredEntries()) {
+    const configuredPath = isAbsolute(entry) ? entry : join(folder.uri.fsPath, entry);
+    if (!byPath.has(configuredPath) && await fileExists(configuredPath)) {
+      byPath.set(configuredPath, vscode.Uri.file(configuredPath));
+    }
+  }
+  for (const document of vscode.workspace.textDocuments) {
+    if (isSlidesDocument(document.uri)) byPath.set(document.uri.fsPath, document.uri);
+  }
+  const reference = vscode.window.activeTextEditor?.document.uri.fsPath
+    ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  return rankEntryCandidates([...byPath.keys()], reference)
+    .map((path) => byPath.get(path))
+    .filter((uri): uri is vscode.Uri => uri !== undefined);
+}
+
+async function discoverEntry(): Promise<vscode.Uri | undefined> {
+  return (await entryCandidates())[0];
+}
+
+function pinnedEntryPath(): string | undefined {
+  return entryStore?.get<string>(pinnedEntryKey) || undefined;
+}
+
+async function pinEntry(path: string | undefined): Promise<void> {
+  await entryStore?.update(pinnedEntryKey, path);
+}
+
 async function resolveEntry(): Promise<EntryDocument | undefined> {
-  const activeUri = vscode.window.activeTextEditor?.document.uri;
-  if (activeUri && isSlidesDocument(activeUri)) {
-    const folder = vscode.workspace.getWorkspaceFolder(activeUri);
-    if (folder) return { uri: activeUri, folder };
+  const pinned = pinnedEntryPath();
+  if (pinned) {
+    if (await fileExists(pinned)) return entryFor(vscode.Uri.file(pinned));
+    await pinEntry(undefined);
   }
 
-  for (const folder of vscode.workspace.workspaceFolders ?? []) {
-    const configured = vscode.workspace
-      .getConfiguration("frameseq", folder.uri)
-      .get<string>("entry", "slides.ts");
+  const activeUri = vscode.window.activeTextEditor?.document.uri;
+  if (activeUri && isSlidesDocument(activeUri)) return entryFor(activeUri);
+
+  for (const editor of vscode.window.visibleTextEditors) {
+    if (isSlidesDocument(editor.document.uri)) return entryFor(editor.document.uri);
+  }
+
+  for (const { folder, entry: configured } of configuredEntries()) {
     const configuredPath = isAbsolute(configured)
       ? configured
       : join(folder.uri.fsPath, configured);
     if (await fileExists(configuredPath)) {
-      return { uri: vscode.Uri.file(configuredPath), folder };
+      return entryFor(vscode.Uri.file(configuredPath));
     }
   }
 
-  const candidates = await vscode.workspace.findFiles(
-    "**/*.slides.ts",
-    "**/{node_modules,dist,tmp,output}/**",
-    1,
-  );
-  const uri = candidates[0];
-  const folder = uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined;
-  return uri && folder ? { uri, folder } : undefined;
+  const discovered = await discoverEntry();
+  if (discovered) return entryFor(discovered);
+
+  // The preview panel or a settings tab can be focused while a deck is still open.
+  for (const document of vscode.workspace.textDocuments) {
+    if (isSlidesDocument(document.uri)) return entryFor(document.uri);
+  }
+
+  if (lastResolvedEntry && await fileExists(lastResolvedEntry.uri.fsPath)) {
+    return lastResolvedEntry;
+  }
+  return undefined;
+}
+
+function entryLabel(uri: vscode.Uri): string {
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  return folder ? relative(folder.uri.fsPath, uri.fsPath) : uri.fsPath;
+}
+
+function entryDescription(entry: EntryDocument | undefined): string | undefined {
+  if (!entry) return undefined;
+  const label = entryLabel(entry.uri);
+  return pinnedEntryPath() ? `${label} (selected)` : label;
+}
+
+/**
+ * Pick which deck the outline, preview, checks, and exports follow. The choice is
+ * remembered per workspace and outranks the active editor until it is cleared.
+ */
+async function selectEntry(provider: SlidesProvider): Promise<boolean> {
+  const candidates = await entryCandidates();
+  if (candidates.length === 0) {
+    void vscode.window.showInformationMessage(
+      "FrameSeq: no slides.ts or *.slides.ts document was found in this workspace.",
+    );
+    return false;
+  }
+
+  const pinned = pinnedEntryPath();
+  const current = provider.entry?.uri.fsPath;
+  const items: (vscode.QuickPickItem & { path?: string })[] = candidates.map((uri) => ({
+    label: entryLabel(uri),
+    description: uri.fsPath === pinned
+      ? "selected"
+      : (uri.fsPath === current ? "in use" : undefined),
+    detail: vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 1
+      ? vscode.workspace.getWorkspaceFolder(uri)?.name
+      : undefined,
+    path: uri.fsPath,
+  }));
+  if (pinned) {
+    items.unshift({
+      label: "$(history) Follow the active editor",
+      detail: "Clear the selected deck and resolve the entry from the editor again.",
+    });
+  }
+
+  const picked = await vscode.window.showQuickPick(items, {
+    title: "FrameSeq: Select Entry",
+    placeHolder: "Choose the presentation the FrameSeq views and commands follow",
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!picked) return false;
+
+  await pinEntry(picked.path);
+  if (picked.path) {
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(picked.path));
+    await vscode.window.showTextDocument(document, { preview: false });
+  }
+  return true;
 }
 
 async function cliInvocation(entry: EntryDocument, args: string[]): Promise<{ command: string; args: string[] }> {
   const installedCli = join(
-    entry.folder.uri.fsPath,
+    entry.root,
     "node_modules",
     "@pride7",
     "frameseq",
     "scripts",
     "frameseq.mjs",
   );
-  const repositoryCli = join(entry.folder.uri.fsPath, "scripts", "frameseq.mjs");
+  const repositoryCli = join(entry.root, "scripts", "frameseq.mjs");
   const cli = await fileExists(installedCli)
     ? installedCli
     : (await fileExists(repositoryCli) ? repositoryCli : undefined);
@@ -242,7 +390,7 @@ async function runCli(
   const invocation = await cliInvocation(entry, args);
   return new Promise((resolveResult, reject) => {
     const child = spawn(invocation.command, invocation.args, {
-      cwd: entry.folder.uri.fsPath,
+      cwd: entry.root,
       env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
       windowsHide: true,
     });
@@ -539,7 +687,7 @@ class SlidesProvider implements vscode.TreeDataProvider<OutlineItem> {
     }
 
     try {
-      const relativeEntry = relative(entry.folder.uri.fsPath, entry.uri.fsPath);
+      const relativeEntry = relative(entry.root, entry.uri.fsPath);
       const result = await runCli(entry, ["inspect", relativeEntry, "--json"], this.output, 30_000);
       if (result.code !== 0) throw new Error(result.stderr.trim() || "FrameSeq inspect failed.");
       this.report = parseJson<InspectReport>(result.stdout);
@@ -1507,14 +1655,14 @@ async function startPreview(provider: SlidesProvider, output: vscode.OutputChann
     return;
   }
 
-  const relativeEntry = relative(entry.folder.uri.fsPath, entry.uri.fsPath);
+  const relativeEntry = relative(entry.root, entry.uri.fsPath);
   const invocation = await cliInvocation(entry, ["dev", relativeEntry, "--no-open"]);
   output.clear();
   output.appendLine(`> ${invocation.command} ${invocation.args.join(" ")}`);
   previewWasStopped = false;
   let openedUrl: string | undefined;
   const child = spawn(invocation.command, invocation.args, {
-    cwd: entry.folder.uri.fsPath,
+    cwd: entry.root,
     env: {
       ...process.env,
       BROWSER: "none",
@@ -1629,7 +1777,7 @@ async function checkLayout(
   const entry = provider.entry;
   const inspect = provider.report;
   if (!entry || !inspect) return;
-  const relativeEntry = relative(entry.folder.uri.fsPath, entry.uri.fsPath);
+  const relativeEntry = relative(entry.root, entry.uri.fsPath);
   output.clear();
   output.appendLine(`Checking ${relativeEntry}...`);
 
@@ -1685,7 +1833,7 @@ async function exportPresentation(
     void vscode.window.showErrorMessage("FrameSeq: no slides entry file was found.");
     return;
   }
-  const relativeEntry = relative(entry.folder.uri.fsPath, entry.uri.fsPath);
+  const relativeEntry = relative(entry.root, entry.uri.fsPath);
   output.clear();
   output.show(true);
   await vscode.window.withProgress(
@@ -1720,6 +1868,7 @@ async function chooseExportFormat(
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  entryStore = context.workspaceState;
   const output = vscode.window.createOutputChannel("FrameSeq");
   const diagnostics = vscode.languages.createDiagnosticCollection("frameseq");
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -1762,11 +1911,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(provider.onDidChangeMessage((message) => {
     tree.message = message;
   }));
+  context.subscriptions.push(provider.onDidChangeTreeData(() => {
+    tree.description = entryDescription(provider.entry);
+  }));
   context.subscriptions.push(vscode.commands.registerCommand("frameseq.refresh", async () => {
     await provider.refresh(true);
     refreshPreviewSourceMarker(provider);
     updateStatusBar(status, provider);
     updateCurrentSlide(current, provider);
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand("frameseq.selectEntry", async () => {
+    const previous = provider.entry?.uri.toString();
+    if (!await selectEntry(provider)) return;
+    await provider.refresh(true);
+    const changed = provider.entry !== undefined && provider.entry.uri.toString() !== previous;
+    if (changed) {
+      diagnostics.clear();
+      provider.setIssues([]);
+      previewSlideIndex = 1;
+      previewSourceMarker = undefined;
+      applyPreviewSourceMarker();
+      // A running preview still serves the previous deck, so move it to the new one.
+      if (previewProcess) {
+        await stopPreview();
+        await startPreview(provider, output);
+      }
+    }
+    refreshPreviewSourceMarker(provider);
+    updateStatusBar(status, provider);
+    updateCurrentSlide(current, provider);
+    if (provider.entry) {
+      void vscode.window.showInformationMessage(
+        pinnedEntryPath()
+          ? `FrameSeq follows ${entryLabel(provider.entry.uri)} until you select another entry.`
+          : "FrameSeq follows the active editor again.",
+      );
+    }
   }));
   context.subscriptions.push(vscode.commands.registerCommand(
     "frameseq.openSlide",

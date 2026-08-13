@@ -56,21 +56,26 @@ The preview page always keeps the presentation's configured ratio (`16:9`, `4:3`
 
 ## Entry selection
 
-The active `slides.ts` or `*.slides.ts` editor takes precedence. Otherwise, the extension uses the path in the `frameseq.entry` setting:
+The active `slides.ts` or `*.slides.ts` editor takes precedence, followed by a slides editor that is visible in another group. Otherwise, the extension uses the path in the `frameseq.entry` setting, which may be relative to the workspace folder or absolute:
 
 ```json
 {
-  "frameseq.entry": "slides.ts"
+  "frameseq.entry": "decks/kickoff/slides.ts"
 }
 ```
 
-If that file does not exist, the extension looks for the first `*.slides.ts` document in the workspace.
+If that file does not exist, the extension searches the whole workspace for `slides.ts` and `*.slides.ts` documents, skipping `node_modules`, `dist`, `out`, `tmp`, and `output`. A deck in a subdirectory therefore needs no configuration. When several decks exist, the one closest to the file being edited wins, then the shallowest path.
+
+Run **FrameSeq: Select Entry** — from the palette, the Slides view title menu, or the empty-view link — to choose the deck yourself. The picker lists every deck it found, marks the one in use, and remembers the choice for the workspace, so it outranks the active editor until you pick **Follow the active editor** to clear it. The Slides view title shows the entry in use and appends `(selected)` while a choice is pinned. Switching entries clears the previous layout diagnostics and moves a running preview to the new deck.
+
+Commands run from the deck's own project root: the closest directory above the entry that carries the FrameSeq CLI, otherwise the closest `package.json`, otherwise the workspace folder. A deck kept in a subdirectory of a monorepo therefore runs against its own dependencies.
 
 ## Commands
 
 Open the Command Palette and run:
 
 - `FrameSeq: Refresh Slides`
+- `FrameSeq: Select Entry`
 - `FrameSeq: Preview`
 - `FrameSeq: Preview Current Slide`
 - `FrameSeq: Previous Slide`

@@ -40,11 +40,12 @@ Open a project containing FrameSeq and install its dependencies:
 npm install
 ```
 
-The active `slides.ts` or `*.slides.ts` editor is used automatically. You can set `frameseq.entry` when the entry file has another name.
+The active `slides.ts` or `*.slides.ts` editor is used automatically, including one kept in a subdirectory. Otherwise the extension searches the workspace for `slides.ts` and `*.slides.ts` documents. Run **FrameSeq: Select Entry** to choose between several decks; the choice is remembered per workspace until you switch back to following the active editor. Set `frameseq.entry` when the entry file has another name.
 
 ## Commands
 
 - `FrameSeq: Refresh Slides`
+- `FrameSeq: Select Entry`
 - `FrameSeq: Preview`
 - `FrameSeq: Preview Current Slide`
 - `FrameSeq: Previous Slide`
