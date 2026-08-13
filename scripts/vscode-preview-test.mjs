@@ -140,6 +140,68 @@ try {
     "A tall editor pane should letterbox the slide instead of stretching its frame",
   );
 
+  const initialPreviewWidth = fittedFrame.width;
+  const initialZoomLabel = await frame.$eval(".frameseq-zoom-value", (element) => element.textContent);
+  assert.equal(
+    initialZoomLabel,
+    `${Math.round(initialPreviewWidth / 1280 * 100)}%`,
+    "The preview should display its fitted scale",
+  );
+  const slideSurface = await frame.$(".frameseq-slide-frame.is-active");
+  assert.ok(slideSurface, "The active preview slide should accept real pointer input");
+  await slideSurface.hover();
+  await page.mouse.wheel({ deltaY: -100 });
+  assert.ok(
+    Math.abs(
+      await frame.$eval(".frameseq-slide-frame.is-active", (element) => element.getBoundingClientRect().width)
+        - initialPreviewWidth,
+    ) < 1,
+    "Scrolling without Ctrl/Command must not zoom the preview",
+  );
+  await page.keyboard.down("Control");
+  await page.mouse.wheel({ deltaY: -100 });
+  await page.keyboard.up("Control");
+  await frame.waitForFunction(
+    (width) => (document.querySelector(".frameseq-slide-frame.is-active")?.getBoundingClientRect().width ?? 0) > width,
+    { timeout: 10_000 },
+    initialPreviewWidth,
+  );
+  const zoomedFrame = await frame.$eval(".frameseq-slide-frame.is-active", (element) => {
+    const bounds = element.getBoundingClientRect();
+    return { left: bounds.left, right: innerWidth - bounds.right, width: bounds.width };
+  });
+  assert.ok(zoomedFrame.width > initialPreviewWidth, "Ctrl/Command+scroll up should zoom into the VS Code preview");
+  assert.ok(
+    Math.abs(zoomedFrame.left - zoomedFrame.right) < 1,
+    "Wheel zoom should keep the preview horizontally centred",
+  );
+  assert.notEqual(
+    await frame.$eval(".frameseq-zoom-value", (element) => element.textContent),
+    initialZoomLabel,
+    "The zoom readout should follow Ctrl/Command+wheel",
+  );
+  await frame.click('[data-action="zoom-fit"]');
+  await frame.waitForFunction(
+    (width) => Math.abs(
+      (document.querySelector(".frameseq-slide-frame.is-active")?.getBoundingClientRect().width ?? 0) - width,
+    ) < 1,
+    { timeout: 10_000 },
+    initialPreviewWidth,
+  );
+  await frame.click('[data-action="zoom-reset"]');
+  await frame.waitForFunction(
+    () => Math.abs(
+      (document.querySelector(".frameseq-slide-frame.is-active")?.getBoundingClientRect().width ?? 0) - 1280,
+    ) < 1,
+    { timeout: 10_000 },
+  );
+  assert.equal(
+    await frame.$eval(".frameseq-zoom-value", (element) => element.textContent),
+    "100%",
+    "The reset control should restore the original canvas scale",
+  );
+  await frame.click('[data-action="zoom-fit"]');
+
   // Alt-clicking inside the preview reaches the extension instead of the development server.
   await frame.evaluate(() => {
     const target = document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-source]");
@@ -449,7 +511,7 @@ try {
     /A fixed canvas with time/,
   );
   assert.deepEqual(errors, []);
-  console.log("VS Code preview test passed: ratio fitting, navigation, focus, direct selection, and multi-bind cross the iframe.");
+  console.log("VS Code preview test passed: ratio fitting, zoom, navigation, focus, direct selection, and multi-bind cross the iframe.");
 } finally {
   clearTimeout(timeout);
   await browser?.close();

@@ -55,6 +55,10 @@ assert.ok(source.includes('BROWSER: "none"'));
 assert.ok(source.includes('searchParams.set("frameseq-preview"'));
 assert.ok(source.includes("vscode.window.createWebviewPanel"));
 assert.ok(source.includes('"frameseq.preview"'));
+assert.ok(
+  source.includes("margin: 0; padding: 0; overflow: hidden"),
+  "The preview webview must remove VS Code's body padding so its left and right gutters match",
+);
 assert.ok(source.includes('type: "frameseq.navigate"'));
 assert.ok(source.includes('message.type === "frameseq.navigate"'));
 assert.ok(source.includes('"frameseq.reveal", "frameseq.edit", "frameseq.select", "frameseq.bind-selection"'));

@@ -54,6 +54,8 @@ The `slide()` call for the page currently shown in the preview receives a persis
 
 The preview page always keeps the presentation's configured ratio (`16:9`, `4:3`, or an explicit canvas size). A narrow or tall editor pane adds stage space around the page instead of stretching its rounded frame to the pane. The fixed canvas is then scaled uniformly inside that frame, so layout editing and exported coordinates still use the document's native canvas units.
 
+Hold `Ctrl` (or `Command` on macOS) while scrolling over an interactive preview to zoom the canvas. The bottom controls show the true scale and provide `−`, `+`, **Fit**, and **1:1** actions; **Fit** follows the editor pane as it resizes, while **1:1** restores the native 100% canvas size. `Ctrl`/`Command`+`0` also restores 100%. Preview zoom never changes the source document or export dimensions.
+
 ## Entry selection
 
 The active `slides.ts` or `*.slides.ts` editor takes precedence, followed by a slides editor that is visible in another group. Otherwise, the extension uses the path in the `frameseq.entry` setting, which may be relative to the workspace folder or absolute:

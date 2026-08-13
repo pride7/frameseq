@@ -4,6 +4,16 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.32.0] - 2026-08-12
+
+### Added
+
+- Add centred Ctrl/Command+mouse-wheel zoom to interactive previews, with a visible percentage plus fit-to-window and 100% reset controls.
+
+### Fixed
+
+- Keep the VS Code live-preview canvas horizontally centred by clearing the webview's injected body padding, restoring equal left and right gutters.
+
 ## [0.31.0] - 2026-08-12
 
 ### Added

@@ -1017,6 +1017,37 @@ button {
   text-align: center;
 }
 
+.frameseq-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--frameseq-border);
+  border-radius: var(--frameseq-radius-pill);
+  background: var(--frameseq-surface);
+}
+
+.frameseq-controls .frameseq-zoom-controls button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--frameseq-radius-pill);
+  background: transparent;
+}
+
+.frameseq-controls .frameseq-zoom-controls button[data-action="zoom-fit"],
+.frameseq-controls .frameseq-zoom-controls button[data-action="zoom-reset"] {
+  width: auto;
+  padding: 0 8px;
+}
+
+.frameseq-zoom-value {
+  min-width: 42px;
+  color: var(--frameseq-foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .frameseq-remote-dialog {
   width: min(440px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);

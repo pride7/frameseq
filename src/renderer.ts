@@ -400,7 +400,8 @@ function fitAudienceFrame(
   frame: HTMLElement,
   host: HTMLElement,
   slides: SlidesRootDefinition,
-): void {
+  requestedScale?: number,
+): number {
   const horizontalMargin = 18;
   const topMargin = 18;
   const controlsSpace = 58;
@@ -410,14 +411,16 @@ function fitAudienceFrame(
     availableWidth / slides.canvasWidth,
     availableHeight / slides.canvasHeight,
   );
-  const width = slides.canvasWidth * scale;
-  const height = slides.canvasHeight * scale;
+  const appliedScale = requestedScale ?? scale;
+  const width = slides.canvasWidth * appliedScale;
+  const height = slides.canvasHeight * appliedScale;
 
   frame.style.inset = "auto";
   frame.style.width = `${width}px`;
   frame.style.height = `${height}px`;
   frame.style.left = `${(host.clientWidth - width) / 2}px`;
   frame.style.top = `${topMargin + (availableHeight - height) / 2}px`;
+  return appliedScale;
 }
 
 interface PresenterElements {
@@ -1703,6 +1706,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const pptxMode = printMode && searchParams.has("pptx");
   const remoteMode = !printMode && searchParams.get("remote") === "1";
   const presenterMode = !printMode && !remoteMode && searchParams.has("presenter");
+  const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode;
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
   document.documentElement.classList.toggle("frameseq-remote-mode", remoteMode);
@@ -1787,6 +1791,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       <button type="button" data-action="previous" aria-label="Previous slide">←</button>
       <span class="frameseq-counter"></span>
       <button type="button" data-action="next" aria-label="Next slide">→</button>
+      ${interactivePreview ? `
+        <span class="frameseq-zoom-controls" aria-label="Preview zoom">
+          <button type="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+          <span class="frameseq-zoom-value" aria-live="polite">100%</span>
+          <button type="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-fit" aria-label="Fit slide to window" title="Fit slide to window">Fit</button>
+          <button type="button" data-action="zoom-reset" aria-label="Reset slide to 100%" title="Reset slide to 100%">1:1</button>
+        </span>
+      ` : ""}
       ${localRemoteAvailable ? '<button type="button" data-action="remote-pair" aria-label="Pair phone remote" title="Pair phone remote">R</button>' : ""}
       ${localEditingAvailable ? '<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="Toggle layout editing" title="Drag objects to rewrite their coordinates (Escape to leave)">E</button>' : ""}
       <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
@@ -1799,6 +1812,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     : undefined;
   // Editing mode survives both a hot canvas swap and a fallback page reload.
   let layoutEditing = readLayoutEditing();
+  let audienceZoom: number | undefined;
+  let currentAudienceScale = 1;
 
   function updateLayoutEditing(active: boolean): void {
     if (!setLayoutEditing) return;
@@ -1837,8 +1852,17 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
-    if (!presenter && !remote) fitAudienceFrame(frame, root, slidesDocument);
+    if (!presenter && !remote) {
+      currentAudienceScale = fitAudienceFrame(frame, root, slidesDocument, audienceZoom);
+      const value = controls.querySelector<HTMLElement>(".frameseq-zoom-value");
+      if (value) value.textContent = `${Math.round(currentAudienceScale * 100)}%`;
+    }
     scaleCanvas(canvas, frame, slidesDocument);
+  }
+
+  function setAudienceZoom(zoom?: number): void {
+    audienceZoom = zoom === undefined ? undefined : Math.min(Math.max(zoom, 0.1), 3);
+    updateScale();
   }
 
   function updatePresenter(): void {
@@ -2131,6 +2155,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (button?.dataset.action === "remote-pair") void openRemotePairing();
     if (button?.dataset.action === "remote-here") switchMode("remote");
     if (button?.dataset.action === "edit-toggle") updateLayoutEditing(!layoutEditing);
+    if (button?.dataset.action === "zoom-out") setAudienceZoom(currentAudienceScale / 1.1);
+    if (button?.dataset.action === "zoom-in") setAudienceZoom(currentAudienceScale * 1.1);
+    if (button?.dataset.action === "zoom-fit") setAudienceZoom();
+    if (button?.dataset.action === "zoom-reset") setAudienceZoom(1);
   });
 
   remote?.shell.addEventListener("click", (event) => {
@@ -2332,6 +2360,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   addEventListener("keydown", (event) => {
     const modified = event.ctrlKey || event.altKey || event.metaKey;
+    if (interactivePreview
+      && event.code === "Digit0"
+      && (event.ctrlKey || event.metaKey)
+      && !event.altKey
+      && !event.shiftKey) {
+      event.preventDefault();
+      setAudienceZoom(1);
+      return;
+    }
     if (event.key === "Escape" && layoutEditing) {
       event.preventDefault();
       updateLayoutEditing(false);
@@ -2360,6 +2397,14 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       (presenter?.laserToggle ?? remote?.laserToggle)?.click();
     }
   }, { signal });
+
+  if (interactivePreview) {
+    root.addEventListener("wheel", (event) => {
+      if (event.deltaY === 0 || (!event.ctrlKey && !event.metaKey)) return;
+      event.preventDefault();
+      setAudienceZoom(currentAudienceScale * Math.exp(-event.deltaY * 0.0015));
+    }, { passive: false, signal });
+  }
 
   const initialSlide = Math.min(
     Math.max(Number(location.hash.slice(1) || 1) - 1, 0),
