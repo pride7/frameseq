@@ -49,6 +49,33 @@ text("94.6% accuracy").width(520);
 
 `grow()` lets that region take the height left over, so `center()` has room to work in.
 
+## Which axis a modifier moves
+
+Every region is a row or a column, and each modifier works on one of its two axes. Choosing the wrong one is the most common layout surprise, so read this table by asking "am I moving the objects along the region, or across it?"
+
+| Goal | In a column | In a row |
+| --- | --- | --- |
+| Move every child across the region | `align()` | `align()` |
+| Move one child across the region | `selfAlign()` / `centerSelf()` | `selfAlign()` / `centerSelf()` |
+| Space the children along the region | `justify()` | `justify()` |
+| Push one child to the far end | `spacer()` before it | `spacer()` before it |
+| Move the text inside an object | `textAlign()` | `textAlign()` |
+
+`align()` and `selfAlign()` work **across** the region: horizontally in a column, vertically in a row. `justify()` works **along** it: vertically in a column, horizontally in a row. So bottom-aligning one card in a column is `justify()` on the column or a `spacer()`, never `selfAlign("end")`.
+
+A modifier used where it cannot mean anything — `align()` on a `text()`, `grow()` inside a `stack()` — is silently ignored by the browser. `frameseq check` reports those as `inert-modifier`; see [AI-friendly layout checks](layout-checks.md).
+
+## Push objects apart
+
+```ts
+at("footer").row().gap(0);
+text("FrameSeq").caption();
+spacer();
+text("2026").caption();
+```
+
+`spacer()` is empty space that takes whatever room is left over, which pushes what follows it to the far end of the region. Two spacers of the same size split the free space evenly, and `spacer(2)` takes twice the share of `spacer(1)`.
+
 ## Split page
 
 ```ts
@@ -91,6 +118,18 @@ metric("99.9%", "Uptime");
 ```
 
 Grid indices start at zero. A grid accepts 1–12 columns. Content written before `grid()` moves into cell `0`.
+
+`grid()` states the columns, not how many cells the page needs, so a cell beyond the first row is created when it is first addressed and wraps onto the next row:
+
+```ts
+slide("Six results").grid(3, 20);
+
+cell(0);
+metric("42%", "Growth");
+// …
+cell(5);
+metric("4.8", "Rating");   // second row, third column
+```
 
 ## Local grid section
 
@@ -220,9 +259,10 @@ main();
 
 ```ts
 gap(24);
+gap(12, 40);   // rows, then columns
 ```
 
-`gap()` changes the spacing between children in the current region. Numbers are pixels; unit helpers are also accepted.
+`gap()` changes the spacing between children in the current region. Numbers are pixels; unit helpers are also accepted. A second value spaces the columns separately from the rows, which a grid or a wrapped row needs.
 
 ## Full-bleed image
 

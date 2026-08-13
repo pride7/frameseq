@@ -78,7 +78,7 @@ try {
     });
   });
 
-  assert.equal(measured.length, 13, "Every connector in the fixture should be rendered");
+  assert.equal(measured.length, 15, "Every connector in the fixture should be rendered");
 
   const tolerance = 1;
   const edgeDistance = (point, box) => {
@@ -172,6 +172,16 @@ try {
   assert.deepEqual([named.get("l1").x, named.get("l1").y], [0, 0]);
   assert.deepEqual([named.get("l2").x, named.get("l2").y], [0, 116]);
   assert.deepEqual([named.get("r1").x, named.get("r1").y], [188, 0]);
+
+  // Asymmetric padding places the first child by the leading sides only, and the row
+  // advances by the column gap rather than the row gap.
+  assert.deepEqual([named.get("e1").x, named.get("e1").y], [44, 20]);
+  assert.deepEqual([named.get("e2").x, named.get("e2").y], [44 + 150 + 36, 20]);
+
+  // space-evenly splits the free space into one more share than there are items.
+  const share = (720 - 160 * 2) / 3;
+  assert.equal(Math.round(named.get("v1").x), Math.round(share));
+  assert.equal(Math.round(named.get("v2").x), Math.round(share * 2 + 160));
 
   // A grid divides its declared width into equal tracks and starts a new row after
   // the column count, so the fourth item sits under the first.

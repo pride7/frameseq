@@ -13,6 +13,7 @@ import {
   type Length,
   Rect,
   ShapeBuilder,
+  Spacer,
   Text,
   Typst,
   type SlideOptions,
@@ -285,6 +286,14 @@ export function metric(value: string, label: string): GroupBuilder {
   return attach(Metric(value, label));
 }
 
+/**
+ * Add empty space that takes whatever room is left over, which pushes the objects on
+ * either side of it apart. Two spacers of the same size split the free space evenly.
+ */
+export function spacer(size = 1): ElementBuilder {
+  return attach(Spacer(size));
+}
+
 function findNamed(node: FrameSeqNode, name: string): FrameSeqNode | undefined {
   for (const child of node.children) {
     if (child.props.name === name) return child;
@@ -419,8 +428,7 @@ function layoutRegion(segment: string): RegionBuilder | undefined {
     return slide.cell(index);
   } catch {
     throw new Error(
-      `at("${segment}") needs a grid with at least ${index + 1} cells; `
-      + `call slide().grid(columns) first`,
+      `at("${segment}") needs a grid layout; call slide().grid(columns) first`,
     );
   }
 }
@@ -459,6 +467,6 @@ export function at(path: string): RegionBuilder {
   return region as RegionBuilder;
 }
 
-export function gap(value: Length): RegionBuilder {
-  return currentRegion().gap(value) as RegionBuilder;
+export function gap(value: Length, horizontal?: Length): RegionBuilder {
+  return currentRegion().gap(value, horizontal) as RegionBuilder;
 }

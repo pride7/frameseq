@@ -431,6 +431,8 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
       const textTypes = new Set(["text", "code", "equation", "rect", "circle"]);
       const containerTypes = new Set(["row", "column", "stack"]);
       const clippingValues = new Set(["hidden", "clip"]);
+      // Displays that place their children, which is what align(), gap(), and grow() need.
+      const arrangingDisplays = new Set(["flex", "inline-flex", "grid", "inline-grid"]);
 
       const rounded = (value) => Math.round(value * 10) / 10;
       const excerpt = (element) => (element.textContent ?? "")
@@ -593,6 +595,67 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
               ],
             });
             break;
+          }
+        }
+
+        // A layout modifier only means something in a particular context: align() needs
+        // the object to lay out children, selfAlign() and grow() need its container to.
+        // Written anywhere else the browser ignores it in silence, which is the hardest
+        // kind of layout mistake to see, so report it against the object that wrote it.
+        for (const element of nodes) {
+          const type = element.dataset.frameseqNode ?? "unknown";
+          if (type === "slide") continue;
+          const own = getComputedStyle(element);
+          if (own.display === "none") continue;
+          const parent = element.parentElement;
+          const parentDisplay = parent ? getComputedStyle(parent).display : "";
+          const arranges = arrangingDisplays.has(own.display);
+          const inParent = arrangingDisplays.has(parentDisplay);
+          const flexes = own.display === "flex" || own.display === "inline-flex";
+
+          // Some of these are asked of the object itself and the rest of its container,
+          // and only the alignment ones have a near neighbour worth suggesting.
+          const arrangesChildren = "Add row(), column(), or grid() to this object so it arranges its children.";
+          const arrangingParent = "Give the container that holds it a layout: row(), column(), or grid().";
+          const nearest = "To place this object inside its container, use selfAlign() or centerSelf(); to move the text inside it, use textAlign().";
+          const inert = [];
+          if (element.style.alignItems && !arranges) {
+            inert.push(["align()", false, [arrangesChildren, nearest]]);
+          }
+          if (element.style.justifyContent && !arranges) {
+            inert.push(["justify()", false, [arrangesChildren, nearest]]);
+          }
+          if ((element.style.gap || element.style.rowGap || element.style.columnGap) && !arranges) {
+            inert.push(["gap()", false, [arrangesChildren]]);
+          }
+          if (element.style.flexWrap && !flexes) inert.push(["wrap()", false, [arrangesChildren]]);
+          if (element.style.alignContent && !(own.display.endsWith("grid")
+            || (flexes && own.flexWrap === "wrap"))) {
+            inert.push(["alignContent()", false, ["Add wrap() to this row or column, or use align() for a single line."]]);
+          }
+          if (element.style.alignSelf && !inParent) {
+            inert.push(["selfAlign()", true, [arrangingParent, nearest]]);
+          }
+          if (element.style.flexGrow && element.style.flexGrow !== "0" && !inParent) {
+            inert.push([type === "spacer" ? "spacer()" : "grow()", true, [arrangingParent]]);
+          }
+
+          for (const [modifier, needsContainer, suggestions] of inert) {
+            issues.push({
+              severity: "warning",
+              rule: "inert-modifier",
+              slide,
+              element: {
+                type,
+                path: element.dataset.frameseqPath ?? "unknown",
+                text: excerpt(element),
+              },
+              message: needsContainer
+                ? `${modifier} has no effect: the ${parentDisplay || "unknown"} container holding this object is not a row(), column(), or grid().`
+                : `${modifier} has no effect: this object is not a row(), column(), or grid().`,
+              details: { modifier, display: own.display, parentDisplay },
+              suggestions,
+            });
           }
         }
 

@@ -152,11 +152,17 @@ function body(slideNode) {
   assert.throws(() => at("2fast"), /expects segments separated by "\/"/);
   assert.throws(() => at("has space"), /expects segments separated by "\/"/);
   assert.throws(() => at("left"), /needs a split layout/);
-  assert.throws(() => at("cell2"), /needs a grid with at least 3 cells/);
+  assert.throws(() => at("cell2"), /needs a grid layout/);
 
-  slide("Grid errors").grid(2);
-  assert.throws(() => at("cell5"), /needs a grid with at least 6 cells/);
+  // A grid states its columns, so a cell past the first row is created on demand and
+  // wraps: two columns and six cells is a three-row matrix.
+  const page = slide("Grid rows").grid(2);
   assert.doesNotThrow(() => at("cell1"));
+  at("cell5");
+  text("Last cell");
+  assert.equal(body(page.node).children.length, 6);
+  assert.equal(at("cell5").node, page.cell(5).node);
+  assert.throws(() => page.cell(-1), /whole index from 0/);
 }
 
 console.log("region-path-test: all checks passed");

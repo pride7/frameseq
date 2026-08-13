@@ -68,12 +68,14 @@ Presentation: `presentation(options)`
 
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`, `note(content)`
 
-Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`, `spacer()`
 Diagram references: `.as(name)`, `.rightOf()`, `.leftOf()`, `.above()`, `.below()`, `.centerOn()`, `.alignTop()`, `.alignLeft()`, `line().from(ref)`, `line().to(ref)`
 
-Regions: `main()`, `left()`, `right()`, `cell(index)`, `at(path)`, `gap(value)`
+Regions: `main()`, `left()`, `right()`, `cell(index)`, `at(path)`, `gap(rows, columns?)`
 
-Common modifiers: `.hero()`, `.subtitle()`, `.lead()`, `.caption()`, `.quote()`, `.size()`, `.weight()`, `.bold()`, `.color()`, `.background()`, `.width()`, `.height()`, `.padding()`, `.margin()`, `.position()`, `.style()`, `.showAt()`
+Common modifiers: `.hero()`, `.subtitle()`, `.lead()`, `.caption()`, `.quote()`, `.size()`, `.weight()`, `.bold()`, `.color()`, `.background()`, `.width()`, `.height()`, `.maxWidth()`, `.padding()`, `.margin()`, `.selfAlign()`, `.centerSelf()`, `.position()`, `.style()`, `.showAt()`
+
+Layout axes: `align()` and `selfAlign()` move objects **across** a region (horizontally in a column, vertically in a row); `justify()` distributes them **along** it. To push one object to the far end, put `spacer()` before it. `align()`, `justify()`, `gap()`, and `wrap()` need the object itself to be a `row()`/`column()`/grid; `selfAlign()`, `grow()`, and `spacer()` need its container to be one. Anywhere else the browser ignores them and `frameseq check` reports `inert-modifier`.
 
 Centre one object inside its region with `.centerSelf()` (or `.selfAlign("start" | "center" | "end" | "stretch")`) instead of centring the whole region with `.center()`. It needs a size of its own: `.width()` in a column, `.height()` in a row. `.textAlign("center")` centres the words inside an object rather than the object itself.
 
@@ -102,6 +104,7 @@ slide("Results").grid(3);
 cell(0); metric("42%", "Faster");
 cell(1); metric("18K", "Samples");
 cell(2); metric("3", "Outputs");
+cell(3); metric("4.8", "Rating");   // cells past the first row wrap onto the next one
 ```
 
 Use a region path when one region needs its own group of objects. Each segment is a container that is created on first use, so grouping never needs nested source. The first segment may be `main`, `left`, `right`, or `cell<n>`; revisiting a path appends to the same region; paths reset with the next `slide()`:

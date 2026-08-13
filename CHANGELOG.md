@@ -4,6 +4,21 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.34.0] - 2026-08-13
+
+### Added
+
+- Report `inert-modifier` from `frameseq check`: a layout modifier that lands where the browser cannot honour it — `align()` on a leaf object, `selfAlign()` or `grow()` inside a block container — is now named along with the nearest modifier that would have worked, instead of being dropped in silence.
+- Add `spacer(size?)` to the linear document API, so the room left over in a row or column can push the objects after it to the far end.
+- Add `.maxWidth()` and `.maxHeight()`, which is how a paragraph is held to a readable measure.
+- Accept individual sides in `.padding()` and `.margin()`, a second value in `.gap()` for column spacing, `"space-evenly"` in `.justify()`, and a new `.alignContent()` for wrapped rows and columns. The build-time layout engine resolves all of them, including the `space-around` distribution it previously refused.
+- Create slide grid cells on demand, so `cell(5)` on a three-column grid opens a second row instead of failing.
+
+### Fixed
+
+- Resolve asymmetric padding correctly at build time: a container's inner size and intrinsic size now use each side of the padding rather than assuming the leading side is repeated, so anchors and connectors inside a padded row or column land where the browser puts them.
+
+
 ## [0.33.0] - 2026-08-12
 
 ### Added

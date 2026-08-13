@@ -14,8 +14,18 @@ The checker builds the slides, opens them in a headless browser at their native 
 - `font-too-small` — body or code text is below 14px, or a slide heading is below 24px.
 - `empty-region` — a named region created by `at()` never received any content.
 - `similar-name` — two names on the same slide are one edit apart, which usually means one of them is a mistyped `at()` path or `.as()` name.
+- `inert-modifier` — a layout modifier landed somewhere it cannot mean anything, so the browser ignores it.
 
-Canvas overflow and clipped text are errors. Empty slides, small text, empty regions, and near-identical names are warnings. Strict mode fails for any warning.
+Canvas overflow and clipped text are errors. Empty slides, small text, empty regions, near-identical names, and inert modifiers are warnings. Strict mode fails for any warning.
+
+A layout modifier only works in one context: `align()`, `justify()`, `gap()`, and `wrap()` need the object itself to be a `row()`, `column()`, or grid, while `selfAlign()`, `centerSelf()`, `grow()`, and `spacer()` need the container holding it to be one. Written anywhere else they are dropped in silence, which is why the checker names the modifier and the nearest one that would have worked:
+
+```text
+WARNING Slide 2 "Result" [inert-modifier]
+  align() has no effect: this object is not a row(), column(), or grid().
+  Suggestion: Add row(), column(), or grid() to this object so it arranges its children.
+  Suggestion: To place this object inside its container, use selfAlign() or centerSelf(); to move the text inside it, use textAlign().
+```
 
 A mistyped path is invisible at runtime because `at()` creates whatever it is given, so these two rules catch the case where `at("cell0/nwo")` was meant to return to `at("cell0/now")`:
 

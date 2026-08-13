@@ -24,6 +24,7 @@ const documentedFunctions = [
   "bullets",
   "steps",
   "metric",
+  "spacer",
   "card",
   "group",
   "ref",

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/layout.md sha256:07a5f2ef47ad99e2 -->
+<!-- translation-of: docs/layout.md sha256:38582bdf32329dad -->
 
 # 布局
 
@@ -51,6 +51,33 @@ text("94.6% accuracy").width(520);
 
 `grow()` 让这个区域吃掉剩余的高度,`center()` 才有垂直方向的空间可用。
 
+## 各个修饰符动的是哪根轴
+
+每个区域不是行就是列,每个修饰符只作用在它的其中一根轴上。选错轴是最常见的布局意外,所以看下表时先问自己:我是要让对象**沿着**区域移动,还是**横跨**区域移动?
+
+| 目标 | 在列里 | 在行里 |
+| --- | --- | --- |
+| 让所有子对象横跨区域对齐 | `align()` | `align()` |
+| 只让一个子对象横跨区域对齐 | `selfAlign()` / `centerSelf()` | `selfAlign()` / `centerSelf()` |
+| 沿着区域分布子对象 | `justify()` | `justify()` |
+| 把某个子对象顶到最远端 | 在它前面写 `spacer()` | 在它前面写 `spacer()` |
+| 移动对象**里面**的文字 | `textAlign()` | `textAlign()` |
+
+`align()` 和 `selfAlign()` 作用在**横跨**区域的方向:列里是水平,行里是垂直。`justify()` 作用在**沿着**区域的方向:列里是垂直,行里是水平。所以"把列里的某张卡片压到底部"要用列的 `justify()` 或 `spacer()`,绝不是 `selfAlign("end")`。
+
+修饰符写在它不可能生效的地方——比如 `text()` 上的 `align()`、`stack()` 里的 `grow()`——浏览器会一声不响地忽略它。`frameseq check` 会把这类问题报成 `inert-modifier`,见 [AI-friendly layout checks](../layout-checks.md)(英文)。
+
+## 把对象推开
+
+```ts
+at("footer").row().gap(0);
+text("FrameSeq").caption();
+spacer();
+text("2026").caption();
+```
+
+`spacer()` 是一段占据所有剩余空间的空白,它会把后面的内容顶到区域的最远端。两个同样大小的 spacer 平分剩余空间,`spacer(2)` 拿到的份额是 `spacer(1)` 的两倍。
+
 ## 分栏页
 
 ```ts
@@ -93,6 +120,18 @@ metric("99.9%", "Uptime");
 ```
 
 格子序号从 0 开始,列数支持 1–12。写在 `grid()` 之前的内容会移进第 `0` 格。
+
+`grid()` 声明的是列数,而不是这一页最终需要几个格子,所以第一行之外的格子会在第一次被寻址时创建,并自动换到下一行:
+
+```ts
+slide("Six results").grid(3, 20);
+
+cell(0);
+metric("42%", "Growth");
+// …
+cell(5);
+metric("4.8", "Rating");   // 第二行第三列
+```
 
 ## 局部网格
 
@@ -222,9 +261,10 @@ main();
 
 ```ts
 gap(24);
+gap(12, 40);   // 先行间距,后列间距
 ```
 
-`gap()` 改变当前区域内子对象之间的间距。数字是像素,也接受单位助手。
+`gap()` 改变当前区域内子对象之间的间距。数字是像素,也接受单位助手。第二个值让列间距和行间距分开设置,网格和会换行的行需要它。
 
 ## 满版图片
 

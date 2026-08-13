@@ -1,4 +1,4 @@
-<!-- translation-of: docs/styling.md sha256:fdd370acb480a1d3 -->
+<!-- translation-of: docs/styling.md sha256:0c5e85bcd47b0077 -->
 
 # 样式
 
@@ -74,12 +74,19 @@ vh(30)
 .height(percent(100))
 .minWidth(200)
 .minHeight(120)
+.maxWidth(720)
+.maxHeight(400)
 .padding(24)
-.padding(16, 24)   // 纵向, 横向
+.padding(16, 24)               // 纵向, 横向
+.padding({ top: 8, left: 16 }) // 单独设置某几边
 .margin(12)
-.margin(8, 16)     // 纵向, 横向
+.margin(8, 16)                 // 纵向, 横向
+.margin({ bottom: 24 })        // 单独设置某几边
 .gap(20)
+.gap(12, 40)                   // 先行间距,后列间距
 ```
+
+`maxWidth()` 是把一段正文限制在易读行宽内的办法。`padding()` 和 `margin()` 的对象形式里,没写的边是 0——和 CSS 简写一样:`padding({ top: 8 })` 会把其余三边设为 0,而不是保持不变。
 
 ## 外观
 
@@ -123,7 +130,7 @@ vh(30)
 
 ## 弹性布局
 
-容器组件支持:
+下面这些修饰符每个对象都能调用,但它们是被布局的不同部分回答的。这三类作用于**对象自己的子对象**,所以需要它本身是行、列或网格:
 
 ```ts
 .row()
@@ -133,20 +140,25 @@ vh(30)
 .center()
 .align("center")
 .justify("space-between")
-.grow()
 .wrap()
+.alignContent("center")
 ```
 
-`align()` 接受 `"start"`、`"center"`、`"end"`、`"stretch"`;`justify()` 另外接受 `"space-between"` 和 `"space-around"`。
-
-任何对象也可以在所属容器的交叉轴上对齐自己,这会覆盖该容器对这一个对象的 `align()`:
+另外这几个描述的是**这个对象在容器里怎么摆**,所以需要**那个容器**是行、列或网格:
 
 ```ts
 .selfAlign("center")
 .centerSelf()
+.grow()
 ```
 
-`selfAlign()` 接受和 `align()` 一样的取值。对象默认在交叉轴上拉伸,所以只有当它自己有尺寸时才会移动——在列里是 `width()`,在行里是 `height()`。什么时候该用它、什么时候该用 `center()` 或 `textAlign()`,见[只让一个对象居中](layout.md#只让一个对象居中)。
+`align()`、`selfAlign()`、`alignContent()` 接受 `"start"`、`"center"`、`"end"`、`"stretch"`;`justify()` 接受 `"start"`、`"center"`、`"end"`、`"space-between"`、`"space-around"`、`"space-evenly"`,`alignContent()` 也接受这些分布方式,并且只有开了 `wrap()` 才有意义。
+
+`align()` 和 `selfAlign()` 作用在**横跨**区域的方向——列里是水平,行里是垂直——而 `justify()` 作用在**沿着**区域的方向。完整对照表见[各个修饰符动的是哪根轴](layout.md#各个修饰符动的是哪根轴);只居中一个对象而不是整个区域,见[只让一个对象居中](layout.md#只让一个对象居中)。
+
+对象默认在交叉轴上拉伸,所以只有当它自己有尺寸时 `selfAlign()` 才会让它移动——在列里是 `width()`,在行里是 `height()`。
+
+修饰符落到不可能生效的地方时,浏览器会一声不响地忽略它。`frameseq check` 会把这类问题报成 `inert-modifier`,而不是让渲染结果和源码悄悄对不上。
 
 ## 定位与变换
 

@@ -70,12 +70,19 @@ These helpers return CSS length strings and can be used anywhere a `Length` is a
 .height(percent(100))
 .minWidth(200)
 .minHeight(120)
+.maxWidth(720)
+.maxHeight(400)
 .padding(24)
-.padding(16, 24)   // vertical, horizontal
+.padding(16, 24)              // vertical, horizontal
+.padding({ top: 8, left: 16 }) // individual sides
 .margin(12)
-.margin(8, 16)     // vertical, horizontal
+.margin(8, 16)                // vertical, horizontal
+.margin({ bottom: 24 })       // individual sides
 .gap(20)
+.gap(12, 40)                  // rows, then columns
 ```
+
+`maxWidth()` is how a paragraph is held to a readable measure. In the object form of `padding()` and `margin()`, a side that is left out is zero, exactly as in the CSS shorthand — `padding({ top: 8 })` sets the other three to zero rather than leaving them alone.
 
 ## Appearance
 
@@ -119,29 +126,35 @@ Text roles are available on objects returned by the lowercase `text()` authoring
 
 ## Flex layout
 
-Container components support:
+Every modifier below is available on every object, but each one is answered by a different part of the layout. Three of them arrange the object's own children, so they need it to be a row, column, or grid:
 
 ```ts
 .row()
 .column()
 .stack()
+.grid(3)
 .center()
 .align("center")
 .justify("space-between")
-.grow()
 .wrap()
+.alignContent("center")
 ```
 
-`align()` accepts `"start"`, `"center"`, `"end"`, or `"stretch"`. `justify()` also accepts `"space-between"` and `"space-around"`.
-
-Any object can also align itself across the axis of the container that holds it, which overrides that container's `align()` for that one object:
+The other two describe how this object sits inside the container that holds it, so they need **that** container to be a row, column, or grid:
 
 ```ts
 .selfAlign("center")
 .centerSelf()
+.grow()
 ```
 
-`selfAlign()` accepts the same values as `align()`. Objects stretch across the axis by default, so an object moves only once it has a size of its own — `width()` in a column, `height()` in a row. See [Center one object](layout.md#center-one-object) for when to reach for this instead of `center()` or `textAlign()`.
+`align()`, `selfAlign()`, and `alignContent()` accept `"start"`, `"center"`, `"end"`, and `"stretch"`. `justify()` accepts `"start"`, `"center"`, `"end"`, `"space-between"`, `"space-around"`, and `"space-evenly"`; `alignContent()` accepts those distributions too, and only means something once `wrap()` is on.
+
+`align()` and `selfAlign()` work across the region — horizontally in a column, vertically in a row — while `justify()` works along it. [Which axis a modifier moves](layout.md#which-axis-a-modifier-moves) is the full table; [Center one object](layout.md#center-one-object) covers centring one thing rather than the whole region.
+
+Objects stretch across the axis by default, so `selfAlign()` moves an object only once it has a size of its own — `width()` in a column, `height()` in a row.
+
+A modifier that lands somewhere it cannot mean anything is ignored by the browser without a word. `frameseq check` reports those as `inert-modifier` rather than letting the page quietly disagree with the source.
 
 ## Position and transform
 

@@ -110,6 +110,24 @@ export interface GridPosition {
   y?: Length;
 }
 
+/** Individual sides for padding() and margin(). A side left out is zero. */
+export interface Edges {
+  top?: Length;
+  right?: Length;
+  bottom?: Length;
+  left?: Length;
+}
+
+export type Alignment = "start" | "center" | "end" | "stretch";
+
+export type Distribution =
+  | "start"
+  | "center"
+  | "end"
+  | "space-between"
+  | "space-around"
+  | "space-evenly";
+
 export interface LinePoints {
   x1: number;
   y1: number;
@@ -209,12 +227,23 @@ function alignValue(value: "start" | "center" | "end" | "stretch"): string {
   return value;
 }
 
-function justifyValue(
-  value: "start" | "center" | "end" | "space-between" | "space-around",
-): string {
+function justifyValue(value: Distribution): string {
   if (value === "start") return "flex-start";
   if (value === "end") return "flex-end";
   return value;
+}
+
+/**
+ * One CSS shorthand covers both call forms, so a value that reaches the browser also
+ * reaches the build-time layout engine, which reads the shorthand rather than the
+ * per-side properties. Sides left out of the object form are zero, as in CSS.
+ */
+function edges(value: Length | Edges, symmetric?: Length): string {
+  if (typeof value === "number" || typeof value === "string") {
+    return symmetric === undefined ? length(value) : `${length(value)} ${length(symmetric)}`;
+  }
+  const { top = 0, right = 0, bottom = 0, left = 0 } = value;
+  return `${length(top)} ${length(right)} ${length(bottom)} ${length(left)}`;
 }
 
 export class ElementBuilder {
@@ -337,22 +366,36 @@ export class ElementBuilder {
     return this;
   }
 
-  padding(value: Length, horizontal?: Length): this {
-    this.node.styles.padding = horizontal === undefined
-      ? length(value)
-      : `${length(value)} ${length(horizontal)}`;
+  /** Cap the width, which is how a line of text is kept to a readable measure. */
+  maxWidth(value: Length): this {
+    this.node.styles.maxWidth = length(value);
     return this;
   }
 
-  margin(value: Length, horizontal?: Length): this {
-    this.node.styles.margin = horizontal === undefined
-      ? length(value)
-      : `${length(value)} ${length(horizontal)}`;
+  maxHeight(value: Length): this {
+    this.node.styles.maxHeight = length(value);
     return this;
   }
 
-  gap(value: Length): this {
-    this.node.styles.gap = length(value);
+  padding(value: Length, horizontal?: Length): this;
+  padding(sides: Edges): this;
+  padding(value: Length | Edges, horizontal?: Length): this {
+    this.node.styles.padding = edges(value, horizontal);
+    return this;
+  }
+
+  margin(value: Length, horizontal?: Length): this;
+  margin(sides: Edges): this;
+  margin(value: Length | Edges, horizontal?: Length): this {
+    this.node.styles.margin = edges(value, horizontal);
+    return this;
+  }
+
+  /** Spacing between the children of a row, column, or grid. */
+  gap(value: Length, horizontal?: Length): this {
+    this.node.styles.gap = horizontal === undefined
+      ? length(value)
+      : `${length(value)} ${length(horizontal)}`;
     return this;
   }
 
@@ -412,7 +455,7 @@ export class ElementBuilder {
    * Align this object across the axis of the row or column that holds it, without
    * moving its siblings. A column aligns horizontally and a row aligns vertically.
    */
-  selfAlign(value: "start" | "center" | "end" | "stretch"): this {
+  selfAlign(value: Alignment): this {
     this.node.styles.alignSelf = alignValue(value);
     return this;
   }
@@ -422,13 +465,23 @@ export class ElementBuilder {
     return this.selfAlign("center");
   }
 
-  align(value: "start" | "center" | "end" | "stretch"): this {
+  /** Align the children of this row or column across its axis: down a row, across a column. */
+  align(value: Alignment): this {
     this.node.styles.alignItems = alignValue(value);
     return this;
   }
 
-  justify(value: "start" | "center" | "end" | "space-between" | "space-around"): this {
+  /** Distribute the children of this row or column along its axis: across a row, down a column. */
+  justify(value: Distribution): this {
     this.node.styles.justifyContent = justifyValue(value);
+    return this;
+  }
+
+  /** Align the lines of a wrapped row or column against each other. Needs wrap(). */
+  alignContent(value: Alignment | "space-between" | "space-around" | "space-evenly"): this {
+    this.node.styles.alignContent = value === "start"
+      ? "flex-start"
+      : value === "end" ? "flex-end" : value;
     return this;
   }
 

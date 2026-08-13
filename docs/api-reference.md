@@ -227,6 +227,14 @@ text("...").caption()
 text("...").quote()
 ```
 
+### `spacer(size?)`
+
+```ts
+spacer(size?: number): ElementBuilder
+```
+
+Adds empty space that takes the room left over in the current region, pushing what follows it to the far end. `size` is the share relative to other spacers in the same region and defaults to `1`. It only has an effect inside a `row()`, `column()`, or grid.
+
 ### `image(src, alt?)`
 
 ```ts
@@ -400,13 +408,13 @@ at(path: string): RegionBuilder
 
 Selects the region addressed by a `/` separated path and creates the containers it names. The first segment may be `main`, `left`, `right`, or `cell<n>`; every other segment is created on first use. An empty path is the same as `main()`. Revisiting a path selects the same region, paths are scoped to the current slide, and each path is registered as an anchor name.
 
-### `gap(value)`
+### `gap(rows, columns?)`
 
 ```ts
-gap(value: Length): RegionBuilder
+gap(rows: Length, columns?: Length): RegionBuilder
 ```
 
-Sets the child gap on the active region.
+Sets the child gap on the active region. One value covers both axes; a second value spaces the columns separately from the rows.
 
 ## Slide layouts
 
@@ -461,9 +469,13 @@ width(value: Length): this
 height(value: Length): this
 minWidth(value: Length): this
 minHeight(value: Length): this
+maxWidth(value: Length): this
+maxHeight(value: Length): this
 padding(value: Length, horizontal?: Length): this
+padding(sides: { top?: Length; right?: Length; bottom?: Length; left?: Length }): this
 margin(value: Length, horizontal?: Length): this
-gap(value: Length): this
+margin(sides: { top?: Length; right?: Length; bottom?: Length; left?: Length }): this
+gap(rows: Length, columns?: Length): this
 background(value: string): this
 color(value: string): this
 border(value: string): this
@@ -478,7 +490,8 @@ textAlign(value: "left" | "center" | "right"): this
 selfAlign(value: "start" | "center" | "end" | "stretch"): this
 centerSelf(): this
 align(value: "start" | "center" | "end" | "stretch"): this
-justify(value: "start" | "center" | "end" | "space-between" | "space-around"): this
+justify(value: "start" | "center" | "end" | "space-between" | "space-around" | "space-evenly"): this
+alignContent(value: "start" | "center" | "end" | "stretch" | "space-between" | "space-around" | "space-evenly"): this
 grow(value?: number): this
 wrap(enabled?: boolean): this
 opacity(value: number): this

@@ -68,6 +68,7 @@ const documentCommands = [
   "bullets",
   "steps",
   "metric",
+  "spacer",
   "group",
   "ref",
   "card",

@@ -81,6 +81,23 @@ rect("R1").as("r1").width(140).height(100);
 at("cols");
 line().from("l1").to("r1").arrow("end");
 
+// Padding is not always symmetric, and a row is spaced by the column gap.
+slide("Edges").canvas();
+
+at("edges").row().gap(12, 36).padding({ top: 20, right: 8, bottom: 4, left: 44 })
+  .position({ x: 60, y: 120 });
+rect("E1").as("e1").width(150).height(90);
+rect("E2").as("e2").width(150).height(90);
+line().from("e1").to("e2").arrow("end");
+
+// space-evenly gives the outside the same share as the space between.
+slide("Evenly").canvas();
+
+at("evenly").row().gap(0).width(720).justify("space-evenly").position({ x: 100, y: 300 });
+rect("V1").as("v1").width(160).height(90);
+rect("V2").as("v2").width(160).height(90);
+line().from("v1").to("v2").arrow("end");
+
 // A grid places its contents by column count instead of nested rows.
 slide("Grid").canvas();
 

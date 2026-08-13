@@ -102,4 +102,31 @@ assert.deepEqual(names.report.issues[1].details, { name: "cell0/nwo", other: "ce
 const strictNames = runCheck("layout-names.slides.ts", "--strict");
 assert.equal(strictNames.status, 1);
 
-console.log("Layout check test passed: overflow, clipping, font size, empty slides, region names, automatic covers, local grids, JSON, and strict mode.");
+// A layout modifier the browser silently ignores is reported against the object that
+// wrote it, and the same modifiers are left alone where they do mean something.
+const inert = runCheck("layout-inert.slides.ts");
+assert.equal(inert.status, 0);
+assert.deepEqual(inert.report.summary, {
+  slides: 3,
+  errors: 0,
+  warnings: 4,
+});
+assert.deepEqual(
+  inert.report.issues.map((issue) => [issue.slide.label, issue.details.modifier]),
+  [
+    ["Ignored by the container", "selfAlign()"],
+    ["Ignored by the container", "grow()"],
+    ["Ignored by the object", "align()"],
+    ["Ignored by the object", "gap()"],
+  ],
+);
+assert.deepEqual([...new Set(inert.report.issues.map((issue) => issue.rule))], ["inert-modifier"]);
+assert.equal(inert.report.issues[0].element.type, "text");
+assert.match(inert.report.issues[0].message, /container holding this object is not a row\(\)/);
+assert.match(inert.report.issues[2].message, /this object is not a row\(\)/);
+assert.ok(inert.report.issues[2].suggestions.some((hint) => hint.includes("centerSelf()")));
+
+const strictInert = runCheck("layout-inert.slides.ts", "--strict");
+assert.equal(strictInert.status, 1);
+
+console.log("Layout check test passed: overflow, clipping, font size, empty slides, region names, inert modifiers, automatic covers, local grids, JSON, and strict mode.");

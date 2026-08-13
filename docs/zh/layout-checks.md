@@ -1,4 +1,4 @@
-<!-- translation-of: docs/layout-checks.md sha256:54aa0b43628b28ae -->
+<!-- translation-of: docs/layout-checks.md sha256:52a6e9ca51044bab -->
 
 # 面向 AI 的布局检查
 
@@ -16,8 +16,18 @@ frameseq check slides.ts
 - `font-too-small` —— 正文或代码小于 14px,或者页面标题小于 24px。
 - `empty-region` —— `at()` 创建的命名区域从未收到任何内容。
 - `similar-name` —— 同一页上两个名字只差一次编辑,通常意味着某个 `at()` 路径或 `.as()` 名字拼错了。
+- `inert-modifier` —— 布局修饰符落在了它不可能生效的地方,浏览器会直接忽略它。
 
-**画布溢出和文字裁切是错误**;空白页、字号过小、空区域、近似重名是警告。严格模式下任何警告都会失败。
+**画布溢出和文字裁切是错误**;空白页、字号过小、空区域、近似重名、失效修饰符是警告。严格模式下任何警告都会失败。
+
+布局修饰符只在一种上下文里有效:`align()`、`justify()`、`gap()`、`wrap()` 需要**对象本身**是 `row()`、`column()` 或网格;`selfAlign()`、`centerSelf()`、`grow()`、`spacer()` 需要**容纳它的容器**是其中之一。写在别处它们会被悄悄丢弃,所以检查器会同时指出是哪个修饰符、以及最接近的那个本该生效的写法:
+
+```text
+WARNING Slide 2 "Result" [inert-modifier]
+  align() has no effect: this object is not a row(), column(), or grid().
+  Suggestion: Add row(), column(), or grid() to this object so it arranges its children.
+  Suggestion: To place this object inside its container, use selfAlign() or centerSelf(); to move the text inside it, use textAlign().
+```
 
 拼错的路径在运行时是看不出来的 —— `at()` 你给什么它就建什么 —— 所以上面这两条规则专门用来抓"本想回到 `at("cell0/now")`,却写成了 `at("cell0/nwo")`"这种情况:
 

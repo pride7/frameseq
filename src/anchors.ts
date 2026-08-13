@@ -70,12 +70,31 @@ function establishesFrame(node: FrameSeqNode): boolean {
 /** Classes whose padding comes from a theme token, so it is unknown before rendering. */
 const themePadded = ["frameseq-card", "frameseq-region-card", "frameseq-grid-cell"];
 
-interface FlowBox {
-  padding: { top: number; left: number };
-  inner: { width?: number; height?: number };
+/** Main-axis distributions the flow layout knows how to place. */
+const distributions = [
+  "flex-start",
+  "normal",
+  "center",
+  "flex-end",
+  "space-between",
+  "space-around",
+  "space-evenly",
+];
+
+interface Edges {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }
 
-function paddingOf(node: FrameSeqNode, describe: () => string): FlowBox["padding"] {
+/** The four sides of a CSS shorthand, which may state one, two, three, or four of them. */
+function shorthandEdges(parts: number[]): Edges {
+  const [top, right = top, bottom = top, left = right] = parts;
+  return { top, right, bottom, left };
+}
+
+function paddingOf(node: FrameSeqNode, describe: () => string): Edges {
   const shorthand = node.styles.padding;
   if (shorthand === undefined) {
     if (classList(node).some((name) => themePadded.includes(name))) {
@@ -84,15 +103,29 @@ function paddingOf(node: FrameSeqNode, describe: () => string): FlowBox["padding
         + "contents can be resolved, or position them individually",
       );
     }
-    return { top: 0, left: 0 };
+    return { top: 0, right: 0, bottom: 0, left: 0 };
   }
 
   const parts = shorthand.trim().split(/\s+/).map((part) => cssNumber(part));
-  if (parts.some((part) => part === undefined)) {
+  if (parts.length === 0 || parts.some((part) => part === undefined)) {
     throw new AnchorError(`the padding of ${describe()} is not a pixel value`);
   }
-  const [first, second = first] = parts as number[];
-  return { top: first, left: second };
+  return shorthandEdges(parts as number[]);
+}
+
+/**
+ * gap() takes one length for both axes or a row gap and a column gap, exactly as the CSS
+ * shorthand does. A row is spaced by its column gap and a column by its row gap.
+ */
+function gapOf(node: FrameSeqNode): { row?: number; column?: number } {
+  const shorthand = node.styles.gap;
+  if (shorthand === undefined) return {};
+  const parts = shorthand.trim().split(/\s+/).map((part) => cssNumber(part));
+  if (parts.length === 0 || parts.length > 2 || parts.some((part) => part === undefined)) {
+    return {};
+  }
+  const [row, column = row] = parts as number[];
+  return { row, column };
 }
 
 function sizeOf(node: FrameSeqNode): { width?: number; height?: number } {
@@ -329,17 +362,21 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
    * item without a size of its own fills its cell, which is what the browser does.
    */
   const gridLayout = (container: FrameSeqNode, label: () => string): Map<FrameSeqNode, Box> => {
-    const gap = cssNumber(container.styles.gap);
-    if (gap === undefined) {
+    const gaps = gapOf(container);
+    if (gaps.row === undefined || gaps.column === undefined) {
       throw new AnchorError(
         `the gap of ${label()} comes from the theme; call .gap(...) so its contents can be resolved`,
       );
     }
+    const rowGap = gaps.row;
+    const gap = gaps.column;
 
     const padding = paddingOf(container, label);
     const template = (container.styles.gridTemplateColumns ?? "").trim();
     const declaredWidth = cssNumber(container.styles.width);
-    const innerWidth = declaredWidth === undefined ? undefined : declaredWidth - padding.left * 2;
+    const innerWidth = declaredWidth === undefined
+      ? undefined
+      : declaredWidth - padding.left - padding.right;
 
     let tracks: number[];
     const equalColumns = /^repeat\((\d+),\s*minmax\(0,\s*1fr\)\)$/.exec(template);
@@ -398,7 +435,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
         + gap * column;
       const y = padding.top
         + rowHeights.slice(0, row).reduce((total, height) => total + height, 0)
-        + gap * row;
+        + rowGap * row;
       // Without a size of its own, an item stretches to fill its cell.
       layout.set(child, {
         x,
@@ -437,7 +474,10 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       && parent!.styles.display === "flex"
       && container.styles.position !== "absolute";
 
-    const gap = cssNumber(container.styles.gap);
+    const row = direction === "row";
+    const gaps = gapOf(container);
+    // The axis a row is spaced along is the column gap, and a column's is the row gap.
+    const gap = row ? gaps.column : gaps.row;
     if (gap === undefined) {
       throw new AnchorError(
         `the gap of ${label()} comes from the theme; call .gap(...) so its contents can be resolved`,
@@ -447,7 +487,6 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     const padding = paddingOf(container, label);
     const justify = container.styles.justifyContent ?? "flex-start";
     const align = container.styles.alignItems ?? "stretch";
-    const row = direction === "row";
     // Connectors are taken out of flow by the stylesheet, not by an inline style.
     const children = container.children.filter((child) =>
       child.type !== "line" && child.styles.position !== "absolute");
@@ -506,20 +545,27 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     const declaredCross = cssNumber(row ? container.styles.height : container.styles.width);
     const usedMain = sizes.reduce((total, size) => total + mainOf(size), 0)
       + gap * Math.max(sizes.length - 1, 0);
-    const innerMain = declaredMain === undefined
-      ? usedMain
-      : declaredMain - (row ? padding.left : padding.top) * 2;
+    const mainPadding = row ? padding.left + padding.right : padding.top + padding.bottom;
+    const crossPadding = row ? padding.top + padding.bottom : padding.left + padding.right;
+    const innerMain = declaredMain === undefined ? usedMain : declaredMain - mainPadding;
     const innerCross = declaredCross === undefined
       ? sizes.reduce((largest, size) => Math.max(largest, crossOf(size)), 0)
-      : declaredCross - (row ? padding.top : padding.left) * 2;
+      : declaredCross - crossPadding;
 
     const free = innerMain - usedMain;
+    const count = sizes.length;
     let cursor = row ? padding.left : padding.top;
     let between = gap;
     if (justify === "center") cursor += free / 2;
     else if (justify === "flex-end") cursor += free;
-    else if (justify === "space-between" && sizes.length > 1) between += free / (sizes.length - 1);
-    else if (justify !== "flex-start" && justify !== "normal") {
+    else if (justify === "space-between" && count > 1) between += free / (count - 1);
+    else if (justify === "space-around" && count > 0) {
+      cursor += free / (count * 2);
+      between += free / count;
+    } else if (justify === "space-evenly" && count > 0) {
+      cursor += free / (count + 1);
+      between += free / (count + 1);
+    } else if (!distributions.includes(justify)) {
       throw new AnchorError(`${label()} uses justify("${justify}"), which FrameSeq cannot resolve`);
     }
 
@@ -560,9 +606,11 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       width = Math.max(width, box.x + box.width);
       height = Math.max(height, box.y + box.height);
     }
+    // The children already start after the leading padding, so only the trailing side is
+    // still missing from the size the container ends up with.
     return {
-      width: declared.width ?? width + padding.left,
-      height: declared.height ?? height + padding.top,
+      width: declared.width ?? width + padding.right,
+      height: declared.height ?? height + padding.bottom,
     };
   }
 

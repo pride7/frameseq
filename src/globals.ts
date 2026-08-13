@@ -18,6 +18,7 @@ declare global {
   const bullets: typeof import("./script").bullets;
   const steps: typeof import("./script").steps;
   const metric: typeof import("./script").metric;
+  const spacer: typeof import("./script").spacer;
   const group: typeof import("./script").group;
   const ref: typeof import("./script").ref;
   const card: typeof import("./script").card;

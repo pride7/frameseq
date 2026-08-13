@@ -390,6 +390,66 @@ function named(document, name) {
   );
 }
 
+// Padding does not have to be symmetric, and a row is spaced by the column gap while a
+// column is spaced by the row gap.
+{
+  const document = presentation("Edges test");
+  slide("Row").canvas();
+
+  at("row").row().gap(10, 40).padding({ top: 12, left: 30, bottom: 4, right: 8 })
+    .position({ x: 0, y: 0 });
+  rect("First").as("first").width(100).height(60);
+  rect("Second").as("second").width(100).height(60);
+  const connector = line().from("first").to("second");
+
+  at("");
+  at("column").column().gap(10, 40).padding({ top: 25, left: 5 }).position({ x: 500, y: 0 });
+  rect("Top").as("top").width(100).height(60);
+  rect("Bottom").as("bottom").width(100).height(60);
+  const vertical = line().from("top").to("bottom");
+
+  resolveAnchors(document.node);
+
+  // The row starts after the left padding and advances by the column gap, not the row gap.
+  assert.deepEqual(
+    [connector.node.props.x1, connector.node.props.y1,
+      connector.node.props.x2, connector.node.props.y2],
+    [130, 42, 170, 42],
+  );
+  // The column starts after its own top padding and advances by the row gap.
+  assert.deepEqual(
+    [vertical.node.props.x1, vertical.node.props.y1,
+      vertical.node.props.x2, vertical.node.props.y2],
+    [55, 85, 55, 95],
+  );
+}
+
+// Every distribution the DSL accepts is placed rather than refused.
+{
+  const document = presentation("Distribution test");
+  slide("Spread").canvas();
+
+  at("evenly").row().gap(0).width(700).justify("space-evenly").position({ x: 0, y: 0 });
+  rect("A").as("a").width(100).height(50);
+  rect("B").as("b").width(100).height(50);
+  const evenly = line().from("a").to("b");
+
+  at("");
+  at("around").row().gap(0).width(700).justify("space-around").position({ x: 0, y: 200 });
+  rect("C").as("c").width(100).height(50);
+  rect("D").as("d").width(100).height(50);
+  const around = line().from("c").to("d");
+
+  resolveAnchors(document.node);
+
+  // Three equal spaces of 500 / 3 for space-evenly.
+  assert.equal(Math.round(evenly.node.props.x1), Math.round(500 / 3 + 100));
+  assert.equal(Math.round(evenly.node.props.x2), Math.round(500 / 3 * 2 + 100));
+  // Half a share on the outside and a full share between for space-around.
+  assert.equal(Math.round(around.node.props.x1), Math.round(125 + 100));
+  assert.equal(Math.round(around.node.props.x2), Math.round(125 + 100 + 250));
+}
+
 // Layouts that cannot be resolved exactly are reported instead of guessed.
 {
   const document = presentation("Flow limits test");

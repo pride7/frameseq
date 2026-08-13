@@ -832,6 +832,25 @@ rect("Cache").as("cache").rightOf("enc", 60).alignTop("enc");
 
 - `name` — `string`, required.
 
+### `spacer()`
+
+Adds empty space that takes whatever room is left over, which pushes the objects after it to the far end of the region.
+
+```ts
+at("footer").row().gap(0);
+text("FrameSeq").caption();
+spacer();
+text("2026").caption();
+```
+
+**Signature** `spacer(size) → the spacer object`
+
+**Parameters**
+
+- `size` — `number`, optional. The share of the free space this spacer takes, relative to the other spacers in the same region. Defaults to `1`.
+
+A spacer only means something inside a `row()`, `column()`, or grid, because a block container has no free space to hand out. It renders nothing and is never reported as an empty slide.
+
 ### `.selfAlign()` and `.centerSelf()`
 
 Align one object across the axis of the row or column that holds it, without moving its siblings and without a canvas. A column aligns horizontally, a row aligns vertically.
@@ -847,7 +866,7 @@ image(logo, "Logo").width(160).selfAlign("end");
 
 - `value` — `"start" | "center" | "end" | "stretch"`, required. `.centerSelf()` is `.selfAlign("center")`.
 
-Objects stretch across the axis by default, so an object only moves once it has a size of its own: give it `.width(...)` in a column or `.height(...)` in a row. `.align()` sets the same alignment for every child of a container, while `.selfAlign()` overrides it for one object. To move the text inside an object instead of the object itself, use `.textAlign()`.
+Objects stretch across the axis by default, so an object only moves once it has a size of its own: give it `.width(...)` in a column or `.height(...)` in a row. `.align()` sets the same alignment for every child of a container, while `.selfAlign()` overrides it for one object. To move the text inside an object instead of the object itself, use `.textAlign()`; to move it along the region rather than across it, use `.justify()` on the container or a `spacer()`.
 
 ### `.anchor()`
 
@@ -932,9 +951,12 @@ Content functions return the object they create. These methods change that objec
 | `.background(value)` | `value: string` | Set the background. |
 | `.width(value)` / `.height(value)` | `value: Length` | Set object dimensions. |
 | `.minWidth(value)` / `.minHeight(value)` | `value: Length` | Set minimum dimensions. |
+| `.maxWidth(value)` / `.maxHeight(value)` | `value: Length` | Cap the dimensions; how text is kept to a readable measure. |
 | `.padding(vertical, horizontal)` | `vertical: Length`; `horizontal: Length`, optional | Set inner spacing. |
+| `.padding(sides)` | `sides: { top?, right?, bottom?, left? }` | Set inner spacing per side; an omitted side is zero. |
 | `.margin(vertical, horizontal)` | `vertical: Length`; `horizontal: Length`, optional | Set outer spacing. |
-| `.gap(value)` | `value: Length` | Set spacing between container children. |
+| `.margin(sides)` | `sides: { top?, right?, bottom?, left? }` | Set outer spacing per side; an omitted side is zero. |
+| `.gap(rows, columns)` | `rows: Length`; `columns: Length`, optional | Set spacing between container children; one value covers both axes. |
 | `.border(value)` | `value: string` | Set a complete CSS border. |
 | `.radius(value)` | `value: Length` | Set corner radius. |
 | `.lineHeight(value)` | `value: number \| string` | Set text line height. |
@@ -948,7 +970,7 @@ Content functions return the object they create. These methods change that objec
 | `.style(properties)` | `properties: CSS values` | Add inline CSS properties. |
 | `.className(value)` | `value: string` | Add one or more CSS classes. |
 
-All methods in this table return the same object. Container builders also provide `.align()`, `.justify()`, `.grow()`, `.wrap()`, and `.canvas()`. See [Styling](styling.md) for accepted values and precedence rules.
+All methods in this table return the same object. Objects also provide `.row()`, `.column()`, `.stack()`, `.grid()`, `.canvas()`, `.center()`, `.align()`, `.justify()`, `.wrap()`, and `.alignContent()`, which arrange their own children, plus `.selfAlign()`, `.centerSelf()`, and `.grow()`, which describe how they sit inside the container that holds them. See [Styling](styling.md) for accepted values and precedence rules, and [Which axis a modifier moves](layout.md#which-axis-a-modifier-moves) for choosing between them.
 
 ## Length helpers
 

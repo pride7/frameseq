@@ -9,6 +9,7 @@ import {
   rect,
   ref,
   slide,
+  spacer,
   text,
 } from "../lib/index.js";
 
@@ -124,4 +125,45 @@ const foreignObject = text("Cannot move across slides");
 assert.throws(() => group(panelTitle, foreignObject), /must belong to the current layout region/);
 assert.equal(foreignSlide.node.props.name, "Different slide");
 
-console.log("Section layout test passed: regrouping, named containers, local canvases, clipping, ordering, and validation.");
+// Spacing and sizing modifiers write the CSS shorthands that the layout engine reads,
+// so both call forms of padding() and gap() end up as one declaration.
+{
+  slide("Modifiers");
+  const box = text("Sized").maxWidth(720).maxHeight(200);
+  assert.equal(box.node.styles.maxWidth, "720px");
+  assert.equal(box.node.styles.maxHeight, "200px");
+
+  const symmetric = group().padding(16, 24).margin(8).gap(20);
+  assert.equal(symmetric.node.styles.padding, "16px 24px");
+  assert.equal(symmetric.node.styles.margin, "8px");
+  assert.equal(symmetric.node.styles.gap, "20px");
+
+  // Sides left out of the object form are zero, exactly as in a CSS shorthand.
+  const sides = group().padding({ top: 12, left: 30 }).margin({ bottom: 24 }).gap(10, 40);
+  assert.equal(sides.node.styles.padding, "12px 0px 0px 30px");
+  assert.equal(sides.node.styles.margin, "0px 0px 24px 0px");
+  assert.equal(sides.node.styles.gap, "10px 40px");
+
+  const spread = group().justify("space-evenly").alignContent("start").wrap();
+  assert.equal(spread.node.styles.justifyContent, "space-evenly");
+  assert.equal(spread.node.styles.alignContent, "flex-start");
+  assert.equal(spread.node.styles.flexWrap, "wrap");
+}
+
+// A spacer takes the room left over, so the objects on either side are pushed apart.
+{
+  slide("Spacer");
+  at("bar").row().gap(0);
+  const first = text("Left");
+  const middle = spacer();
+  const wide = spacer(2);
+  const last = text("Right");
+
+  const bar = ref("bar").node;
+  assert.deepEqual(bar.children, [first.node, middle.node, wide.node, last.node]);
+  assert.equal(middle.node.type, "spacer");
+  assert.equal(middle.node.styles.flexGrow, "1");
+  assert.equal(wide.node.styles.flexGrow, "2");
+}
+
+console.log("Section layout test passed: regrouping, named containers, local canvases, clipping, ordering, spacers, modifiers, and validation.");

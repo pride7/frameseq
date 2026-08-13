@@ -319,10 +319,21 @@ export class ContentSlideBuilder extends SlideBuilder {
     return this;
   }
 
+  /**
+   * A grid states its columns, not how many cells the page ends up needing, so a cell
+   * past the first row is created on demand and wraps onto the next row by itself.
+   */
   cell(index: number): RegionBuilder {
-    const cell = this.gridRegions?.[index];
-    if (!cell) throw new Error(`No grid cell ${index}; call grid() first`);
-    return cell;
+    if (!this.gridRegions) throw new Error(`No grid cell ${index}; call grid() first`);
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`cell() expects a whole index from 0, not ${index}`);
+    }
+    while (this.gridRegions.length <= index) {
+      const cell = region(`frameseq-grid-cell frameseq-grid-cell-${this.gridRegions.length}`);
+      this.content.add(cell);
+      this.gridRegions.push(cell);
+    }
+    return this.gridRegions[index];
   }
 
   override center(): this {
