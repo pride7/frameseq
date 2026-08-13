@@ -42,6 +42,7 @@
     "lib",
     "public",
     "scripts/frameseq.mjs",
+    "packages/create-frameseq/project-instructions.mjs",
     "scripts/frameseq-inspect.mjs",
     "scripts/pptx-export.mjs",
     "scripts/puppeteer-options.mjs",

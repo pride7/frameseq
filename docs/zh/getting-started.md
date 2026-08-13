@@ -1,4 +1,4 @@
-<!-- translation-of: docs/getting-started.md sha256:1bf7e3911169b4fd -->
+<!-- translation-of: docs/getting-started.md sha256:ad242317f71f99c9 -->
 
 # 快速上手
 
@@ -19,6 +19,8 @@ npm run dev
 
 ```text
 my-talk/
+├─ AGENTS.md
+├─ CLAUDE.md
 ├─ components/
 │  ├─ content.ts
 │  └─ theme.ts
@@ -30,6 +32,8 @@ my-talk/
 - `slides.ts` 描述整场演示和它的幻灯片顺序。
 - `components/content.ts` 放可复用的内容函数,比如项目特有的卡片或提示块。
 - `components/theme.ts` 放项目的主题、配色、字体和其它设计默认值。
+- `AGENTS.md` 告诉编码代理如何在当前项目中使用 FrameSeq 语法、区域、公式和校验流程。
+- `CLAUDE.md` 导入 `AGENTS.md`,让 Claude Code 使用同一套说明,不必维护第二份副本。
 
 这里刻意没有 `components/index.ts`:`slides.ts` 直接引入这两个模块,每一处依赖都看得见。
 

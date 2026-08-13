@@ -3,6 +3,7 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import process from "node:process";
+import { agentsMarkdown, claudeMarkdown } from "./project-instructions.mjs";
 
 const FRAMESEQ_VERSION = "^0.30.0";
 
@@ -177,6 +178,8 @@ jobs:
       "utf8",
     ),
     writeFile(resolve(targetDirectory, "slides.ts"), slides, "utf8"),
+    writeFile(resolve(targetDirectory, "AGENTS.md"), agentsMarkdown, "utf8"),
+    writeFile(resolve(targetDirectory, "CLAUDE.md"), claudeMarkdown, "utf8"),
     writeFile(resolve(targetDirectory, "components", "content.ts"), content, "utf8"),
     writeFile(resolve(targetDirectory, "components", "theme.ts"), theme, "utf8"),
     writeFile(

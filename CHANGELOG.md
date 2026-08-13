@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- Generate a shared `AGENTS.md` authoring guide and a thin `CLAUDE.md` import in both new FrameSeq projects and `frameseq new`, covering the linear DSL, persistent `at()` cursor, formula input, diagram structure, editing discipline, and required rendered-layout validation without overwriting existing project instructions.
+
 ## [0.30.0] - 2026-08-12
 
 ### Added

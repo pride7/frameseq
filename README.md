@@ -155,6 +155,8 @@ The generated project contains:
 
 ```text
 my-talk/
+├── AGENTS.md
+├── CLAUDE.md
 ├── components/
 │   ├── content.ts
 │   └── theme.ts
@@ -163,7 +165,7 @@ my-talk/
 └── tsconfig.json
 ```
 
-Edit `slides.ts`; the browser preview updates as the file changes. Put reusable content functions in `components/content.ts` and project-wide design settings in `components/theme.ts`. The entry imports these files directly, without an extra `index.ts` layer.
+Edit `slides.ts`; the browser preview updates as the file changes. Put reusable content functions in `components/content.ts` and project-wide design settings in `components/theme.ts`. The entry imports these files directly, without an extra `index.ts` layer. `AGENTS.md` gives coding agents the project's FrameSeq syntax, region, formula, and validation rules; `CLAUDE.md` imports the same instructions so they stay in sync.
 
 To use FrameSeq in an existing TypeScript project:
 

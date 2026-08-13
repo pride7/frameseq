@@ -1,4 +1,4 @@
-<!-- translation-of: docs/ai-generation.md sha256:a64ec4911cf85c1d -->
+<!-- translation-of: docs/ai-generation.md sha256:50ccc63c403b98f7 -->
 
 # 用 AI 生成演示
 
@@ -7,6 +7,8 @@ FrameSeq 被设计成一门**适合编码代理的目标语言**:页面边界显
 ## 先把 FrameSeq 的契约交给代理
 
 让代理在动手写代码之前先读 [`llms.txt`](../../llms.txt)。这个文件刻意压得足够紧凑,可以直接当作模型上下文,并且随 npm 包一起发布。
+
+用 `npm create frameseq` 创建的项目还会带一份纳入版本控制的 `AGENTS.md`。Codex 和兼容的代理会在工作前从项目根目录发现它。文件里放的是线性页面归属、`at()` 区域、公式、图示和强制校验等高频创作规则。`CLAUDE.md` 用 `@AGENTS.md` 导入同一文件,因此 Claude Code 也会获得相同指导,而不需要复制整份提示。可以在 `AGENTS.md` 里补充当前演示特有的事实、来源、术语和验收标准;框架级完整 API 细节继续放在 `llms.txt`。
 
 如果代理能读 URL,这样开头:
 
