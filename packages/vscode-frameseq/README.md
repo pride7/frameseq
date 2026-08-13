@@ -21,6 +21,7 @@ Edit FrameSeq presentations with `slides.ts` on the left and a live FrameSeq pre
 - Opens the exact `slide()` source line when an outline item is selected.
 - Keeps that source location obvious even when the preview owns focus, using a persistent whole-line highlight, accent edge, overview-ruler marker, and `Previewing slide` label.
 - Opens the development preview beside the source editor by default.
+- Keeps the canvas centred with equal gutters and adds Ctrl/Command+wheel zoom, a live percentage, Fit, and 1:1 controls.
 - Keeps outline navigation and the previewed slide in sync.
 - Adds current, previous, and next slide commands plus a current-slide status item.
 - Shows the active `at()` region in the status bar and jumps between named regions on the current slide.

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-08-12
+
+- Remove the VS Code webview's default body padding so the embedded preview has equal left and right gutters instead of overflowing and clipping its right edge.
+- Zoom the embedded slide with Ctrl/Command+mouse wheel, show its true scale, and provide zoom-out, zoom-in, fit-to-window, and 100% reset controls.
+
 ## 0.4.0 - 2026-08-12
 
 - Find decks kept in subdirectories: entry discovery now searches the whole workspace for `slides.ts` as well as `*.slides.ts`, prefers the deck closest to the file being edited, and falls back to a visible or open slides document.

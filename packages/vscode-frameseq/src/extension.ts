@@ -1566,7 +1566,7 @@ function previewWebviewHtml(url: string, focus?: PreviewComponentTarget): string
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src ${escapeAttribute(origin)}; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #09090b; }
+      html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #09090b; }
       iframe { display: block; width: 100%; height: 100%; border: 0; background: #09090b; }
     </style>
   </head>
