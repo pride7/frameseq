@@ -103,6 +103,14 @@ The elapsed timer starts when presenter view opens. Use:
 
 The timer is private to presenter view and does not affect slide timing or reveal state.
 
+## Notes text size
+
+How much of a note fits on screen at a readable size depends on the display and how far away it is. The **A−** and **A+** buttons in the **Speaker notes** heading step the notes text between 70% and 200% of its default size, with the current percentage between them. The `-` and `+` keys do the same thing.
+
+Only the notes panel changes. The current slide, the next-slide preview, and the audience window are untouched, so shrinking the text to fit a long script never changes what the audience sees.
+
+The chosen size is stored in the browser and applies to every deck opened in the same browser profile, including presenter view on a paired phone.
+
 ## Laser pointer
 
 Press `Ctrl+L` in presenter view or select `Laser: Off` to enable the virtual laser pointer. Move the pointer over the current-slide preview and a red laser dot appears at the corresponding position in the audience window. The position uses normalized slide coordinates, so it remains aligned when the two windows use different sizes or zoom levels.

@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.35.0] - 2026-08-13
+
+### Added
+
+- Add a notes text size control to presenter view: **A−** and **A+** in the **Speaker notes** heading, or the `-` and `+` keys, step the notes between 70% and 200% of their default size so a long script fits on screen or reads from a step back. The size is remembered per browser and changes nothing the audience sees.
+
 ## [0.34.0] - 2026-08-13
 
 ### Added

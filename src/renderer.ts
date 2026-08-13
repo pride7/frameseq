@@ -17,6 +17,14 @@ const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 const layoutEditingKey = "frameseq-layout-editing";
 const previewSelectionKey = "frameseq-preview-selection";
+const notesScaleKey = "frameseq-presenter-notes-scale";
+/**
+ * Notes are read at a glance from a lectern, so the useful range runs from "fit a long
+ * script on screen" to "readable from a step back". Discrete steps let a presenter reach
+ * either end with a couple of clicks and know when they are there.
+ */
+const notesScaleSteps = [0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2];
+const defaultNotesScaleIndex = notesScaleSteps.indexOf(1);
 const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
 /** Editing writes the slide document, so it only exists while a development server is serving. */
 const localEditingAvailable = Boolean(import.meta.hot);
@@ -429,6 +437,9 @@ interface PresenterElements {
   nextFrame: HTMLElement;
   nextLabel: HTMLElement;
   notes: HTMLElement;
+  notesSmaller: HTMLButtonElement;
+  notesLarger: HTMLButtonElement;
+  notesScaleValue: HTMLElement;
   currentLabel: HTMLElement;
   counter: HTMLElement;
   pageSelect: HTMLSelectElement;
@@ -505,7 +516,14 @@ function createPresenterView(
         <div class="frameseq-presenter-next-frame"></div>
       </section>
       <section class="frameseq-presenter-notes-panel">
-        <div class="frameseq-presenter-section-heading">Speaker notes</div>
+        <div class="frameseq-presenter-section-heading">
+          <span>Speaker notes</span>
+          <span class="frameseq-presenter-notes-size">
+            <button type="button" data-action="notes-smaller" title="Smaller notes text (-)" aria-label="Smaller speaker notes text">A−</button>
+            <span class="frameseq-presenter-notes-size-value" aria-live="off">100%</span>
+            <button type="button" data-action="notes-larger" title="Larger notes text (+)" aria-label="Larger speaker notes text">A+</button>
+          </span>
+        </div>
         <div class="frameseq-presenter-notes"></div>
       </section>
     </aside>
@@ -548,6 +566,9 @@ function createPresenterView(
     nextFrame: required<HTMLElement>(".frameseq-presenter-next-frame"),
     nextLabel: required<HTMLElement>(".frameseq-presenter-next-label"),
     notes: required<HTMLElement>(".frameseq-presenter-notes"),
+    notesSmaller: required<HTMLButtonElement>("[data-action='notes-smaller']"),
+    notesLarger: required<HTMLButtonElement>("[data-action='notes-larger']"),
+    notesScaleValue: required<HTMLElement>(".frameseq-presenter-notes-size-value"),
     currentLabel: required<HTMLElement>(".frameseq-presenter-title"),
     counter: required<HTMLElement>(".frameseq-counter"),
     pageSelect,
@@ -1171,6 +1192,27 @@ function storeLayoutEditing(active: boolean): void {
     sessionStorage.setItem(layoutEditingKey, active ? "1" : "0");
   } catch {
     // The mode simply will not survive a reload.
+  }
+}
+
+/**
+ * The notes size is a lasting preference about a presenter's eyesight and lectern
+ * distance, not a property of one deck, so it outlives the window that set it.
+ */
+function readNotesScaleIndex(): number {
+  try {
+    const index = notesScaleSteps.indexOf(Number(localStorage.getItem(notesScaleKey)));
+    return index < 0 ? defaultNotesScaleIndex : index;
+  } catch {
+    return defaultNotesScaleIndex;
+  }
+}
+
+function storeNotesScale(scale: number): void {
+  try {
+    localStorage.setItem(notesScaleKey, String(scale));
+  } catch {
+    // The size simply will not survive a reload.
   }
 }
 
@@ -2174,6 +2216,28 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     let timerElapsed = 0;
     let timerStarted = performance.now();
     let timerRunning = true;
+    let notesScaleIndex = readNotesScaleIndex();
+
+    const applyNotesScale = () => {
+      const scale = notesScaleSteps[notesScaleIndex];
+      presenter.shell.style.setProperty("--frameseq-notes-scale", String(scale));
+      presenter.notesScaleValue.textContent = `${Math.round(scale * 100)}%`;
+      presenter.notesSmaller.disabled = notesScaleIndex === 0;
+      presenter.notesLarger.disabled = notesScaleIndex === notesScaleSteps.length - 1;
+    };
+
+    const stepNotesScale = (direction: number) => {
+      const next = Math.min(
+        Math.max(notesScaleIndex + direction, 0),
+        notesScaleSteps.length - 1,
+      );
+      if (next === notesScaleIndex) return;
+      notesScaleIndex = next;
+      applyNotesScale();
+      storeNotesScale(notesScaleSteps[next]);
+    };
+
+    applyNotesScale();
 
     const updateTimer = () => {
       const elapsed = timerElapsed + (timerRunning ? performance.now() - timerStarted : 0);
@@ -2209,6 +2273,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         timerRunning = true;
         updateTimer();
       }
+      if (button?.dataset.action === "notes-smaller") stepNotesScale(-1);
+      if (button?.dataset.action === "notes-larger") stepNotesScale(1);
     });
     updateTimer();
     window.setInterval(updateTimer, 250);
@@ -2395,6 +2461,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       && !event.repeat) {
       event.preventDefault();
       (presenter?.laserToggle ?? remote?.laserToggle)?.click();
+    }
+    if (presenter
+      && !modified
+      && ["-", "+", "="].includes(event.key)
+      // The page selector answers a bare keypress with its own typeahead, and it is the
+      // one place in the presenter view that keyboard focus can rest inside.
+      && !(event.target as HTMLElement | null)?.closest("select, input, textarea")) {
+      event.preventDefault();
+      (event.key === "-" ? presenter.notesSmaller : presenter.notesLarger).click();
     }
   }, { signal });
 

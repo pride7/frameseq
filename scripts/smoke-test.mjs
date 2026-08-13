@@ -189,6 +189,54 @@ try {
     await presenterPage.$eval(".frameseq-presenter-notes", (element) => element.textContent),
     "Welcome the audience and introduce FrameSeq as a UI-style presentation framework.",
   );
+  const notesSize = () => presenterPage.evaluate(() => ({
+    label: document.querySelector(".frameseq-presenter-notes-size-value")?.textContent,
+    // Browsers quantise a computed font size, so compare it at the precision the
+    // scale itself is expressed in.
+    fontSize: Math.round(Number.parseFloat(
+      getComputedStyle(document.querySelector(".frameseq-presenter-notes")).fontSize,
+    ) * 10) / 10,
+    atSmallest: document.querySelector("[data-action='notes-smaller']").disabled,
+    atLargest: document.querySelector("[data-action='notes-larger']").disabled,
+    stored: localStorage.getItem("frameseq-presenter-notes-scale"),
+  }));
+
+  assert.deepEqual(await notesSize(), {
+    label: "100%",
+    fontSize: 19,
+    atSmallest: false,
+    atLargest: false,
+    stored: null,
+  });
+  await presenterPage.click("[data-action='notes-larger']");
+  await presenterPage.click("[data-action='notes-larger']");
+  assert.deepEqual(await notesSize(), {
+    label: "130%",
+    fontSize: 24.7,
+    atSmallest: false,
+    atLargest: false,
+    stored: "1.3",
+  });
+  await presenterPage.keyboard.press("Minus");
+  assert.equal((await notesSize()).label, "115%");
+  // Past the smallest step the button stops rather than running off the end of the scale.
+  for (let press = 0; press < 6; press += 1) await presenterPage.click("[data-action='notes-smaller']");
+  assert.deepEqual(await notesSize(), {
+    label: "70%",
+    fontSize: 13.3,
+    atSmallest: true,
+    atLargest: false,
+    stored: "0.7",
+  });
+  for (let press = 0; press < 3; press += 1) await presenterPage.keyboard.press("Equal");
+  assert.deepEqual(await notesSize(), {
+    label: "100%",
+    fontSize: 19,
+    atSmallest: false,
+    atLargest: false,
+    stored: "1",
+  });
+
   assert.equal(
     await presenterPage.$$eval(
       ".frameseq-presenter-current .frameseq-slide-frame.is-active",
