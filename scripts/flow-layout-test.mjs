@@ -78,7 +78,7 @@ try {
     });
   });
 
-  assert.equal(measured.length, 12, "Every connector in the fixture should be rendered");
+  assert.equal(measured.length, 13, "Every connector in the fixture should be rendered");
 
   const tolerance = 1;
   const edgeDistance = (point, box) => {
@@ -131,6 +131,17 @@ try {
   assert.equal(named.get("wide").height, 80);
   assert.equal(named.get("narrow").x, 80);
   assert.equal(named.get("narrow").y, 120);
+
+  // selfAlign() moves one child across the axis of a column that keeps its default
+  // stretch, so its siblings stay at the start and the vertical rhythm is unchanged.
+  assert.deepEqual(
+    [named.get("s1").x, named.get("s2").x, named.get("s3").x],
+    [0, 120, 240],
+  );
+  assert.deepEqual(
+    [named.get("s1").y, named.get("s2").y, named.get("s3").y],
+    [0, 110, 220],
+  );
 
   // Stretch gives a child without its own height the height of the line.
   assert.equal(named.get("tall").height, 160);

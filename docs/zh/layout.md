@@ -1,4 +1,4 @@
-<!-- translation-of: docs/layout.md sha256:b397050b924e158e -->
+<!-- translation-of: docs/layout.md sha256:07a5f2ef47ad99e2 -->
 
 # 布局
 
@@ -22,6 +22,34 @@ text("Simplicity is a feature.").quote();
 ```
 
 `center()` 把正常内容区域水平和垂直都居中。
+
+## 只让一个对象居中
+
+`center()` 居中的是整个区域。如果页面上其他内容应该待在原地,就只居中那一个对象:
+
+```ts
+slide("Result");
+text("The measurement that matters");
+text("94.6% accuracy").width(520).centerSelf();
+bullets("Held-out set", "Three seeds");
+```
+
+`centerSelf()` 让一个对象在所属区域的交叉轴上居中——在列里是水平居中,在行里是垂直居中——同级对象不受影响。`selfAlign("start" | "center" | "end" | "stretch")` 可以选其他对齐方式。
+
+对象默认在交叉轴上拉伸,所以只有当它自己有尺寸时才会移动:在列里是 `.width(...)`,在行里是 `.height(...)`。没有宽度时,对象本来就和区域一样宽,这时用 `textAlign("center")` 居中的是里面的文字:
+
+```ts
+text("Centered words in a full-width object").textAlign("center");
+```
+
+想让一个对象在两个轴上都居中、又不居中整个区域,就给它一个自己的区域:
+
+```ts
+at("hero").center().grow();
+text("94.6% accuracy").width(520);
+```
+
+`grow()` 让这个区域吃掉剩余的高度,`center()` 才有垂直方向的空间可用。
 
 ## 分栏页
 

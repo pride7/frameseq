@@ -21,6 +21,34 @@ text("Simplicity is a feature.").quote();
 
 `center()` centers the normal content region horizontally and vertically.
 
+## Center one object
+
+`center()` centers a whole region. When the rest of the page should stay where it is, center the one object instead:
+
+```ts
+slide("Result");
+text("The measurement that matters");
+text("94.6% accuracy").width(520).centerSelf();
+bullets("Held-out set", "Three seeds");
+```
+
+`centerSelf()` centers an object across the axis of the region that holds it — horizontally in a column, vertically in a row — and leaves its siblings untouched. `selfAlign("start" | "center" | "end" | "stretch")` picks any of the other alignments.
+
+An object stretches across the axis by default, so it only moves once it has a size of its own. In a column that means `.width(...)`; in a row, `.height(...)`. Without a width, a full-width object is already as wide as the region, and `textAlign("center")` is what centers the words inside it:
+
+```ts
+text("Centered words in a full-width object").textAlign("center");
+```
+
+To center an object on both axes without centering the whole region, give it a region of its own:
+
+```ts
+at("hero").center().grow();
+text("94.6% accuracy").width(520);
+```
+
+`grow()` lets that region take the height left over, so `center()` has room to work in.
+
 ## Split page
 
 ```ts

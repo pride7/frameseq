@@ -18,6 +18,15 @@ rect("Wide").as("wide").width(320).height(80);
 rect("Narrow").as("narrow").width(160).height(80);
 line().from("wide").to("narrow").arrow("end");
 
+// One child aligns itself across the axis without moving its siblings.
+slide("Self alignment").canvas();
+
+at("self").column().gap(30).width(400).position({ x: 120, y: 140 });
+rect("Start").as("s1").width(160).height(80);
+rect("Center").as("s2").width(160).height(80).centerSelf();
+rect("End").as("s3").width(160).height(80).selfAlign("end");
+line().from("s1").to("s2").arrow("end");
+
 // The default stretch makes a child without its own height fill the line.
 slide("Stretch").canvas();
 

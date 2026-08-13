@@ -832,6 +832,23 @@ rect("Cache").as("cache").rightOf("enc", 60).alignTop("enc");
 
 - `name` — `string`, required.
 
+### `.selfAlign()` and `.centerSelf()`
+
+Align one object across the axis of the row or column that holds it, without moving its siblings and without a canvas. A column aligns horizontally, a row aligns vertically.
+
+```ts
+text("A framed pull quote").width(520).centerSelf();
+image(logo, "Logo").width(160).selfAlign("end");
+```
+
+**Signature** `.selfAlign(value) → the same object`, `.centerSelf() → the same object`
+
+**Parameters**
+
+- `value` — `"start" | "center" | "end" | "stretch"`, required. `.centerSelf()` is `.selfAlign("center")`.
+
+Objects stretch across the axis by default, so an object only moves once it has a size of its own: give it `.width(...)` in a column or `.height(...)` in a row. `.align()` sets the same alignment for every child of a container, while `.selfAlign()` overrides it for one object. To move the text inside an object instead of the object itself, use `.textAlign()`.
+
 ### `.anchor()`
 
 Positions an object against its container instead of by coordinates.
@@ -922,6 +939,7 @@ Content functions return the object they create. These methods change that objec
 | `.radius(value)` | `value: Length` | Set corner radius. |
 | `.lineHeight(value)` | `value: number \| string` | Set text line height. |
 | `.textAlign(value)` | `value: left \| center \| right` | Set text alignment. |
+| `.selfAlign(value)` / `.centerSelf()` | `value: start \| center \| end \| stretch` | Align this object across the axis of its container. |
 | `.opacity(value)` | `value: number` | Set opacity, normally from `0` to `1`. |
 | `.clip(enabled)` | `enabled: boolean`, optional | Clip children to this object's bounds; defaults to `true`. |
 | `.position(bounds)` | `bounds: { x?: Length; y?: Length }` | Use absolute canvas coordinates. |

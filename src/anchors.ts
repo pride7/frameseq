@@ -447,21 +447,41 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     const padding = paddingOf(container, label);
     const justify = container.styles.justifyContent ?? "flex-start";
     const align = container.styles.alignItems ?? "stretch";
-    if (nested && (justify !== "flex-start" || align !== "stretch")
+    const row = direction === "row";
+    // Connectors are taken out of flow by the stylesheet, not by an inline style.
+    const children = container.children.filter((child) =>
+      child.type !== "line" && child.styles.position !== "absolute");
+
+    const crossAlignOf = (child: FrameSeqNode): string => {
+      const self = child.styles.alignSelf;
+      return self === undefined || self === "auto" ? align : self;
+    };
+    // selfAlign() measures the container's cross size the same way align() does, so it
+    // needs the container to be as measurable as align() does.
+    const selfAligned = children.some((child) => crossAlignOf(child) !== align);
+    if (nested && (justify !== "flex-start" || align !== "stretch" || selfAligned)
       && (container.styles.width === undefined || container.styles.height === undefined)) {
+      const used = justify !== "flex-start" || align !== "stretch"
+        ? "align() or justify()"
+        : "selfAlign()";
       throw new AnchorError(
         `${label()} sits inside another row or column, so its size is decided by that `
-        + "container; give it .width(...) and .height(...) to use align() or justify() here",
+        + `container; give it .width(...) and .height(...) to use ${used} here`,
       );
     }
     if (!["flex-start", "center", "flex-end", "stretch"].includes(align)) {
       throw new AnchorError(`${label()} uses align("${align}"), which FrameSeq cannot resolve`);
     }
+    for (const child of children) {
+      const self = child.styles.alignSelf;
+      if (self !== undefined
+        && !["auto", "flex-start", "center", "flex-end", "stretch"].includes(self)) {
+        throw new AnchorError(
+          `${describe(child)} uses selfAlign("${self}"), which FrameSeq cannot resolve`,
+        );
+      }
+    }
 
-    const row = direction === "row";
-    // Connectors are taken out of flow by the stylesheet, not by an inline style.
-    const children = container.children.filter((child) =>
-      child.type !== "line" && child.styles.position !== "absolute");
     const sizes = children.map((child) => {
       if (child.styles.flexGrow !== undefined && child.styles.flexGrow !== "0") {
         throw new AnchorError(
@@ -506,13 +526,15 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
     const layout = new Map<FrameSeqNode, Box>();
     for (const [index, child] of children.entries()) {
       const size = sizes[index];
+      // selfAlign() overrides the container for one child; everything else follows align().
+      const childAlign = crossAlignOf(child);
       // Under the default stretch, an item without its own cross size fills the line.
-      const stretched = align === "stretch"
+      const stretched = childAlign === "stretch"
         && (row ? child.styles.height : child.styles.width) === undefined;
       const cross = stretched ? innerCross : crossOf(size);
       let crossStart = row ? padding.top : padding.left;
-      if (!stretched && align === "center") crossStart += (innerCross - cross) / 2;
-      else if (!stretched && align === "flex-end") crossStart += innerCross - cross;
+      if (!stretched && childAlign === "center") crossStart += (innerCross - cross) / 2;
+      else if (!stretched && childAlign === "flex-end") crossStart += innerCross - cross;
 
       layout.set(child, row
         ? { x: cursor, y: crossStart, width: size.width, height: cross }

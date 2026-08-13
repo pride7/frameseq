@@ -408,6 +408,20 @@ export class ElementBuilder {
     return this;
   }
 
+  /**
+   * Align this object across the axis of the row or column that holds it, without
+   * moving its siblings. A column aligns horizontally and a row aligns vertically.
+   */
+  selfAlign(value: "start" | "center" | "end" | "stretch"): this {
+    this.node.styles.alignSelf = alignValue(value);
+    return this;
+  }
+
+  /** Centre this object across the axis of the row or column that holds it. */
+  centerSelf(): this {
+    return this.selfAlign("center");
+  }
+
   align(value: "start" | "center" | "end" | "stretch"): this {
     this.node.styles.alignItems = alignValue(value);
     return this;

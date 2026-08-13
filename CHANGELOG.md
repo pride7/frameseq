@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.33.0] - 2026-08-12
+
+### Added
+
+- Add `.selfAlign()` and `.centerSelf()` so a single object can be centred or aligned across the axis of the region that holds it, without centring the whole region and without dropping to `.style({ alignSelf: ... })`. The build-time layout engine resolves `alignSelf`, so anchors and connectors agree with the browser, and Typst export honours it.
+
 ## [0.32.0] - 2026-08-12
 
 ### Added

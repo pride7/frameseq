@@ -331,6 +331,65 @@ function named(document, name) {
   );
 }
 
+// selfAlign() moves one child across the axis of its container, and the container's
+// own align() still decides where every other child lands.
+{
+  const document = presentation("Self alignment test");
+  slide("Column").canvas();
+
+  at("column").column().gap(20).width(400).position({ x: 100, y: 50 });
+  rect("Start").as("start").width(160).height(80);
+  const middle = rect("Middle").as("middle").width(160).height(80).centerSelf();
+  const end = rect("End").as("end").width(160).height(80).selfAlign("end");
+  const connector = line().from("start").to("end");
+
+  resolveAnchors(document.node);
+
+  assert.equal(middle.node.styles.alignSelf, "center");
+  assert.equal(end.node.styles.alignSelf, "flex-end");
+
+  // The connector reports the resolved geometry: the first box keeps the start of the
+  // 400px axis, and the last one ends at it, so the two are 80px apart horizontally.
+  assert.deepEqual(
+    [connector.node.props.x1, connector.node.props.y1,
+      connector.node.props.x2, connector.node.props.y2],
+    [160, 40, 240, 240],
+  );
+}
+
+// A child cannot align itself inside a container whose size the browser decides.
+{
+  const document = presentation("Nested self alignment test");
+  slide("Matrix").canvas();
+
+  at("matrix").column().gap(20).position({ x: 0, y: 0 });
+  at("matrix/row").row().gap(10);
+  rect("A").as("a").centerSelf();
+  at("matrix");
+  line().from("a").to("a");
+
+  assert.throws(
+    () => resolveAnchors(document.node),
+    /so its size is decided by that container; give it \.width\(\.\.\.\) and \.height\(\.\.\.\) to use selfAlign\(\) here/,
+  );
+}
+
+// An alignment FrameSeq cannot resolve is reported against the object that asked for it.
+{
+  const document = presentation("Unknown self alignment test");
+  slide("Column").canvas();
+
+  at("column").column().gap(20).width(400).position({ x: 0, y: 0 });
+  rect("A").as("a").width(100).height(80).style({ alignSelf: "space-between" });
+  rect("B").as("b").width(100).height(80);
+  line().from("a").to("b");
+
+  assert.throws(
+    () => resolveAnchors(document.node),
+    /"a" uses selfAlign\("space-between"\), which FrameSeq cannot resolve/,
+  );
+}
+
 // Layouts that cannot be resolved exactly are reported instead of guessed.
 {
   const document = presentation("Flow limits test");

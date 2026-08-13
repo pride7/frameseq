@@ -46,6 +46,9 @@ assert.match(source, /#line\(start:/);
 assert.match(source, /#text\("Typst export fixture"\)/);
 assert.match(source, /\/\/ Speaker notes: Automatic title page and speaker note fixture\./);
 assert.match(source, /#place\(bottom \+ left\)/);
+// centerSelf() places the box itself, so the export centres the block rather than
+// only the text inside it.
+assert.match(source, /#align\(center\)\[#block\(width: 240pt\)/);
 assert.ok(result.warnings.some((warning) => warning.includes("text-blue-600")));
 assert.ok(result.warnings.some((warning) => warning.includes("arrowheads")));
 

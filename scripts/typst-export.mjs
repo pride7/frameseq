@@ -58,6 +58,7 @@ const semanticClasses = new Set([
 
 const supportedStyles = new Set([
   "alignItems",
+  "alignSelf",
   "background",
   "border",
   "borderColor",
@@ -411,7 +412,12 @@ function wrapCommon(node, content, context, defaults = {}) {
   if (blockArguments.length > 0) {
     result = `#block(${joinArguments(blockArguments)})[${result}]`;
   }
-  const align = styles.textAlign ?? styles.alignItems ?? defaults.align;
+  // selfAlign() places the box within its parent, so it wins over the styles that
+  // describe how the contents sit inside the box.
+  const self = styles.alignSelf === "auto" || styles.alignSelf === "stretch"
+    ? undefined
+    : styles.alignSelf;
+  const align = self ?? styles.textAlign ?? styles.alignItems ?? defaults.align;
   if (align && align !== "stretch") result = `#align(${textAlignment(align)})[${result}]`;
   const margin = inset(styles.margin, context);
   if (margin) result = `#pad(${margin})[${result}]`;

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/styling.md sha256:f4d77991a35b130e -->
+<!-- translation-of: docs/styling.md sha256:fdd370acb480a1d3 -->
 
 # 样式
 
@@ -138,6 +138,15 @@ vh(30)
 ```
 
 `align()` 接受 `"start"`、`"center"`、`"end"`、`"stretch"`;`justify()` 另外接受 `"space-between"` 和 `"space-around"`。
+
+任何对象也可以在所属容器的交叉轴上对齐自己,这会覆盖该容器对这一个对象的 `align()`:
+
+```ts
+.selfAlign("center")
+.centerSelf()
+```
+
+`selfAlign()` 接受和 `align()` 一样的取值。对象默认在交叉轴上拉伸,所以只有当它自己有尺寸时才会移动——在列里是 `width()`,在行里是 `height()`。什么时候该用它、什么时候该用 `center()` 或 `textAlign()`,见[只让一个对象居中](layout.md#只让一个对象居中)。
 
 ## 定位与变换
 

@@ -475,6 +475,8 @@ weight(value: number | string): this
 bold(): this
 lineHeight(value: number | string): this
 textAlign(value: "left" | "center" | "right"): this
+selfAlign(value: "start" | "center" | "end" | "stretch"): this
+centerSelf(): this
 align(value: "start" | "center" | "end" | "stretch"): this
 justify(value: "start" | "center" | "end" | "space-between" | "space-around"): this
 grow(value?: number): this

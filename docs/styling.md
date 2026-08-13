@@ -134,6 +134,15 @@ Container components support:
 
 `align()` accepts `"start"`, `"center"`, `"end"`, or `"stretch"`. `justify()` also accepts `"space-between"` and `"space-around"`.
 
+Any object can also align itself across the axis of the container that holds it, which overrides that container's `align()` for that one object:
+
+```ts
+.selfAlign("center")
+.centerSelf()
+```
+
+`selfAlign()` accepts the same values as `align()`. Objects stretch across the axis by default, so an object moves only once it has a size of its own — `width()` in a column, `height()` in a row. See [Center one object](layout.md#center-one-object) for when to reach for this instead of `center()` or `textAlign()`.
+
 ## Position and transform
 
 ```ts
