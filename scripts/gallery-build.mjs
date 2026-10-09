@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import katex from "katex";
 import { marked } from "marked";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import { documentationPages, locales, localisedGroups } from "./docs-structure.mjs";
+import { captureStudio } from "./gallery-studio.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(packageRoot, "dist");
@@ -232,6 +234,7 @@ async function captureSlides(slug) {
 for (const slug of new Set(documentationPages.map((page) => page.previews).filter(Boolean))) {
   await captureSlides(slug);
 }
+await captureStudio(resolve(galleryOutput, "images"));
 
 for (const page of documentationPages) {
   const markdown = await readFile(resolve(packageRoot, page.source), "utf8");
@@ -256,8 +259,31 @@ for (const page of chinesePages) {
 }
 console.log(`Documentation written: ${documentationPages.length} English, ${chinesePages.length} Chinese.`);
 
+/**
+ * Typeset every `data-tex` element on the landing page with KaTeX, using the options the
+ * runtime uses for `math`, so the page shows the formula FrameSeq itself would draw.
+ */
+function typesetLandingPage(html) {
+  return html.replace(
+    /<(\w+)([^>]*?) data-tex="([^"]*)"([^>]*)><\/\1>/g,
+    (_match, tag, before, tex, after) => {
+      const source = tex.replaceAll("&quot;", '"').replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+      const rendered = katex.renderToString(source, { displayMode: true, throwOnError: true, output: "htmlAndMathml" });
+      return `<${tag}${before}${after}>${rendered}</${tag}>`;
+    },
+  );
+}
+
+const katexDist = resolve(packageRoot, "node_modules", "katex", "dist");
+await mkdir(resolve(galleryOutput, "katex", "fonts"), { recursive: true });
+for (const font of (await readdir(resolve(katexDist, "fonts"))).filter((file) => file.endsWith(".woff2"))) {
+  await copyFile(resolve(katexDist, "fonts", font), resolve(galleryOutput, "katex", "fonts", font));
+}
+
 await Promise.all([
-  copyFile(resolve(packageRoot, "gallery", "index.html"), resolve(galleryOutput, "index.html")),
+  readFile(resolve(packageRoot, "gallery", "index.html"), "utf8")
+    .then((html) => writeFile(resolve(galleryOutput, "index.html"), typesetLandingPage(html), "utf8")),
+  copyFile(resolve(katexDist, "katex.min.css"), resolve(galleryOutput, "katex", "katex.min.css")),
   copyFile(resolve(packageRoot, "gallery", "styles.css"), resolve(galleryOutput, "styles.css")),
   copyFile(resolve(packageRoot, "gallery", "docs.css"), resolve(galleryOutput, "docs", "styles.css")),
   copyFile(resolve(packageRoot, "public", "favicon.svg"), resolve(galleryOutput, "favicon.svg")),

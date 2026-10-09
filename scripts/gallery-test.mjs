@@ -75,6 +75,40 @@ for (const [file, source] of docsSources) {
   }
 }
 
+// Every page the landing page sends a reader to has to exist, anchor included.
+const landing = await readFile(resolve(galleryOutput, "index.html"), "utf8");
+for (const match of landing.matchAll(/href="\.\/docs\/([^"#]*)(?:#([^"]+))?"/g)) {
+  const [, path, fragment] = match;
+  if (!path || path.endsWith("/")) continue;
+  const target = docsSources.get(path);
+  assert.ok(target, `The landing page links to a missing documentation page: ${path}`);
+  if (fragment) {
+    assert.ok(target.includes(`id="${fragment}"`), `The landing page links to a missing anchor: ${path}#${fragment}`);
+  }
+}
+
+// The Studio pictures are taken on every build; a link preview needs the card at its full size.
+const card = await stat(resolve(galleryOutput, "images", "studio-card.jpg"));
+assert.ok(card.size > 20_000, "The link-preview card is too small to be a picture of the Studio");
+assert.match(landing, /<meta property="og:image" content="https:\/\/pride7\.github\.io\/frameseq\/images\/studio-card\.jpg"/);
+
+// The landing page calls them slides throughout.
+assert.doesNotMatch(landing, /\bdecks?\b/i, "The landing page should say slides, not deck");
+
+/**
+ * The integral's limits reach past KaTeX's line box, so a scrolling box around the formula
+ * shows a vertical scroll bar. The box has to stay unscrolled and wide enough for the formula.
+ */
+function formulaFits(page) {
+  return page.$eval(".formula-tex", (box) => {
+    const range = document.createRange();
+    range.selectNodeContents(box.querySelector(".katex-html"));
+    const style = getComputedStyle(box);
+    return style.overflowX === "visible" && style.overflowY === "visible"
+      && range.getBoundingClientRect().width <= box.clientWidth;
+  });
+}
+
 const server = await preview({
   configFile: false,
   root: packageRoot,
@@ -95,7 +129,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => {
     const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.length === 10
+    return frames.length === 9
       && frames.every((frame) => frame.contentDocument?.querySelector(".frameseq-slide"));
   });
 
@@ -115,7 +149,7 @@ try {
   assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
   assert.equal(desktop.themeCards, 7);
   assert.equal(desktop.capabilityCards, 4);
-  assert.equal(desktop.frames, 10);
+  assert.equal(desktop.frames, 9);
   assert.ok(desktop.overflow <= 0);
   assert.match(desktop.languageHeading ?? "", /top to bottom/i);
   assert.match(desktop.outputHeading ?? "", /web/i);
@@ -128,6 +162,25 @@ try {
     await page.$eval(".ai-example-preview iframe", (frame) => frame.getAttribute("src")),
     "./examples/ai-research/#2",
   );
+  const studio = await page.$eval(".studio-window img", async (image) => {
+    await image.decode();
+    return { width: image.naturalWidth, height: image.naturalHeight, shown: image.getBoundingClientRect().width };
+  });
+  assert.ok(studio.width >= 2400 && studio.height >= 1400, `The Studio picture should be sharp, found ${studio.width}x${studio.height}`);
+  assert.ok(studio.shown > 1000, "The Studio picture should span the page on a desktop");
+  assert.equal(await page.$$eval("#studio .studio-feature", (cards) => cards.length), 6);
+  // The formula is typeset by KaTeX at build time and drawn in KaTeX's own fonts, not
+  // approximated with superscripts in the page's serif.
+  const formula = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return {
+      typeset: Boolean(document.querySelector(".formula-tex .katex-html")),
+      font: [...document.fonts].some((face) => face.family.replaceAll('"', "") === "KaTeX_Main" && face.status === "loaded"),
+    };
+  });
+  assert.ok(formula.typeset, "The typesetting card should show a formula typeset by KaTeX");
+  assert.ok(formula.font, "The KaTeX fonts should load with the landing page");
+  assert.ok(await formulaFits(page), "The formula should fit its card without a scroll bar");
   assert.deepEqual(desktop.themeLinks, [
     "./examples/blank/",
     "./examples/midnight/",
@@ -146,6 +199,7 @@ try {
   }));
   assert.ok(mobile.overflow <= 0);
   assert.ok(!mobile.columns.includes(" "));
+  assert.ok(await formulaFits(page), "The formula should fit its card on a phone without a scroll bar");
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto(new URL("docs/function-guide.html", url), { waitUntil: "networkidle0" });
@@ -259,4 +313,4 @@ try {
   await server.close();
 }
 
-console.log("Gallery test passed: product examples, seven themes, and the generated documentation fit desktop and mobile viewports.");
+console.log("Gallery test passed: the Studio picture, product examples, seven themes, and the generated documentation fit desktop and mobile viewports.");
