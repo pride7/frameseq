@@ -534,6 +534,19 @@ try {
   console.error(`Studio server output:\n${server.log()}`);
   const notices = await page?.$$eval(".studio-toast-text", (items) => items.map((item) => item.textContent)).catch(() => []);
   console.error(`Studio notices: ${JSON.stringify(notices)}`);
+  const state = await page?.evaluate(() => ({
+    saveState: document.querySelector("[data-slot='save-state']")?.textContent,
+    problems: [...document.querySelectorAll(".studio-problem")].map((row) => row.textContent),
+  })).catch((reason) => String(reason));
+  console.error(`Studio state: ${JSON.stringify(state)}`);
+  const frames = await Promise.all((page?.frames() ?? []).map((frame) => frame.evaluate(() => ({
+    url: location.href,
+    ready: document.readyState,
+    deck: document.documentElement.dataset.ready ?? "",
+    error: window.__frameseqError ?? "",
+    slides: document.querySelectorAll(".frameseq-slide").length,
+  })).catch((reason) => ({ url: frame.url(), unreachable: String(reason) }))));
+  console.error(`Studio frames: ${JSON.stringify(frames, null, 2)}`);
   throw error;
 } finally {
   await browser?.close();
