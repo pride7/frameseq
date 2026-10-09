@@ -13,7 +13,9 @@ const guidePath = resolve(packageRoot, "docs", "function-guide.md");
 const docsIndexPath = resolve(packageRoot, "docs", "README.md");
 const readmePath = resolve(packageRoot, "README.md");
 const guide = await readFile(guidePath, "utf8");
-const docsIndex = await readFile(docsIndexPath, "utf8");
+// Git hands Windows a CRLF checkout; the rendered index is compared by its text, not its bytes.
+const lf = (text) => text.replace(/\r\n/g, "\n");
+const docsIndex = lf(await readFile(docsIndexPath, "utf8"));
 const readme = await readFile(readmePath, "utf8");
 
 const documentedFunctions = [
@@ -137,7 +139,7 @@ assert.deepEqual(
 // The Chinese reading path must still say what the English pages say. Each translation
 // records the hash of the source it was written from; a changed source fails here.
 assert.equal(
-  await readFile(resolve(packageRoot, "docs", "zh", "README.md"), "utf8"),
+  lf(await readFile(resolve(packageRoot, "docs", "zh", "README.md"), "utf8")),
   renderDocumentationIndex("zh"),
   "docs/zh/README.md is out of date; run npm run docs:index",
 );
