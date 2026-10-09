@@ -335,7 +335,15 @@ export class ElementBuilder {
     return this;
   }
 
+  /**
+   * Add Tailwind utility classes, such as "text-[31px] font-bold", or inline CSS properties
+   * such as { letterSpacing: "2px" }.
+   */
   style(classes: string): this;
+  /**
+   * Add Tailwind utility classes, such as "text-[31px] font-bold", or inline CSS properties
+   * such as { letterSpacing: "2px" }.
+   */
   style(properties: Record<string, string | number>): this;
   style(value: string | Record<string, string | number>): this {
     if (typeof value === "string") return this.className(value);
@@ -346,21 +354,25 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Set the width. Numbers are pixels; strings may use any CSS length. */
   width(value: Length): this {
     this.node.styles.width = length(value);
     return this;
   }
 
+  /** Set the height. Numbers are pixels; strings may use any CSS length. */
   height(value: Length): this {
     this.node.styles.height = length(value);
     return this;
   }
 
+  /** Set the smallest width the object may shrink to. */
   minWidth(value: Length): this {
     this.node.styles.minWidth = length(value);
     return this;
   }
 
+  /** Set the smallest height the object may shrink to. */
   minHeight(value: Length): this {
     this.node.styles.minHeight = length(value);
     return this;
@@ -372,19 +384,36 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Cap the height. */
   maxHeight(value: Length): this {
     this.node.styles.maxHeight = length(value);
     return this;
   }
 
+  /**
+   * Set the inner spacing: one value for every side, two for vertical and horizontal, or
+   * { top, right, bottom, left }, where a side left out is zero.
+   */
   padding(value: Length, horizontal?: Length): this;
+  /**
+   * Set the inner spacing: one value for every side, two for vertical and horizontal, or
+   * { top, right, bottom, left }, where a side left out is zero.
+   */
   padding(sides: Edges): this;
   padding(value: Length | Edges, horizontal?: Length): this {
     this.node.styles.padding = edges(value, horizontal);
     return this;
   }
 
+  /**
+   * Set the outer spacing: one value for every side, two for vertical and horizontal, or
+   * { top, right, bottom, left }, where a side left out is zero.
+   */
   margin(value: Length, horizontal?: Length): this;
+  /**
+   * Set the outer spacing: one value for every side, two for vertical and horizontal, or
+   * { top, right, bottom, left }, where a side left out is zero.
+   */
   margin(sides: Edges): this;
   margin(value: Length | Edges, horizontal?: Length): this {
     this.node.styles.margin = edges(value, horizontal);
@@ -399,53 +428,64 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Set the background: a colour, a gradient, or an image. */
   background(value: string): this {
     this.node.styles.background = value;
     return this;
   }
 
+  /** Set the text and foreground colour. */
   color(value: string): this {
     this.node.styles.color = value;
     return this;
   }
 
+  /** Set a complete CSS border, such as "1px solid #e5e7eb". */
   border(value: string): this {
     this.node.styles.border = value;
     return this;
   }
 
+  /** Round the corners. */
   radius(value: Length): this {
     this.node.styles.borderRadius = length(value);
     return this;
   }
 
+  /** Set the font size. Numbers are pixels. */
   fontSize(value: Length): this {
     this.node.styles.fontSize = length(value);
     return this;
   }
 
+  /** Set the font size. Numbers are pixels. */
   size(value: Length): this {
     return this.fontSize(value);
   }
 
+  /** Set the font weight, such as 600 or "bold". */
   fontWeight(value: number | string): this {
     this.node.styles.fontWeight = String(value);
     return this;
   }
 
+  /** Set the font weight, such as 600 or "bold". */
   weight(value: number | string): this {
     return this.fontWeight(value);
   }
 
+  /** Set the font weight to 700. */
   bold(): this {
     return this.fontWeight(700);
   }
 
+  /** Set the line height of the text. */
   lineHeight(value: number | string): this {
     this.node.styles.lineHeight = String(value);
     return this;
   }
 
+  /** Align the text inside the object: "left", "center", or "right". */
   textAlign(value: "left" | "center" | "right"): this {
     this.node.styles.textAlign = value;
     return this;
@@ -485,16 +525,19 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Let the object take the room left over in the row or column that holds it. */
   grow(value = 1): this {
     this.node.styles.flexGrow = String(value);
     return this;
   }
 
+  /** Let a row or column wrap its children onto further lines. */
   wrap(enabled = true): this {
     this.node.styles.flexWrap = enabled ? "wrap" : "nowrap";
     return this;
   }
 
+  /** Set the opacity, from 0 for invisible to 1 for opaque. */
   opacity(value: number): this {
     this.node.styles.opacity = String(value);
     return this;
@@ -506,6 +549,10 @@ export class ElementBuilder {
     return this;
   }
 
+  /**
+   * Place the object at canvas coordinates, normally on a `.canvas()` slide. Numbers written
+   * here can be dragged in the live preview.
+   */
   position({ x = 0, y = 0 }: GridPosition): this {
     this.node.styles.position = "absolute";
     this.node.styles.left = length(x);
@@ -513,16 +560,22 @@ export class ElementBuilder {
     return this;
   }
 
+  /** Rotate the object, in degrees. */
   rotate(degrees: number): this {
     this.node.styles.transform = `rotate(${degrees}deg)`;
     return this;
   }
 
+  /**
+   * Reveal the object at a step, counted from 1. Print, PDF, and PPTX show every step.
+   * @example text("First result").showAt(1);
+   */
   showAt(step: number): this {
     this.node.props.step = step;
     return this;
   }
 
+  /** Add one or more CSS class names. */
   className(value: string): this {
     const current = typeof this.node.props.className === "string"
       ? this.node.props.className.split(/\s+/)
@@ -549,23 +602,27 @@ export function gridTemplate(columns: GridColumns): string {
 }
 
 export class ContainerBuilder extends ElementBuilder {
+  /** Append objects to this container. */
   add(...children: ElementBuilder[]): this {
     for (const child of children) attachNode(this.node, child.node);
     return this;
   }
 
+  /** Lay the children out left to right. */
   row(): this {
     this.node.styles.display = "flex";
     this.node.styles.flexDirection = "row";
     return this;
   }
 
+  /** Lay the children out top to bottom. */
   column(): this {
     this.node.styles.display = "flex";
     this.node.styles.flexDirection = "column";
     return this;
   }
 
+  /** Layer the children on top of one another. */
   stack(): this {
     this.node.styles.display = "block";
     return this;
@@ -588,6 +645,7 @@ export class ContainerBuilder extends ElementBuilder {
     return this;
   }
 
+  /** Center the children both ways. */
   center(): this {
     this.node.styles.alignItems = "center";
     this.node.styles.justifyContent = "center";
@@ -606,17 +664,20 @@ export class ShapeBuilder extends ElementBuilder {
     return super.height(value);
   }
 
+  /** Set the fill colour. */
   fill(value: string): this {
     this.node.styles.background = value;
     return this;
   }
 
+  /** Set the outline colour. */
   stroke(value: string): this {
     this.node.styles.borderColor = value;
     this.node.styles.borderStyle = "solid";
     return this;
   }
 
+  /** Set the outline width. */
   strokeWidth(value: Length): this {
     this.node.styles.borderWidth = length(value);
     return this;
@@ -624,16 +685,19 @@ export class ShapeBuilder extends ElementBuilder {
 }
 
 export class LineBuilder extends ElementBuilder {
+  /** Set the line colour. */
   stroke(value: string): this {
     this.node.props.stroke = value;
     return this;
   }
 
+  /** Set the line width. */
   strokeWidth(value: Length): this {
     this.node.props.strokeWidth = length(value);
     return this;
   }
 
+  /** Draw arrowheads at the "end" (the default), the "start", "both" ends, or "none". */
   arrow(value: ArrowPlacement = "end"): this {
     this.node.props.arrow = value;
     return this;
@@ -653,11 +717,16 @@ export class LineBuilder extends ElementBuilder {
 }
 
 export class SlideBuilder extends ContainerBuilder {
+  /**
+   * Set the slide's speaker notes. They appear in presenter view and PowerPoint, never on the
+   * audience page or in PDF output.
+   */
   notes(content: string): this {
     this.node.props.notes = content;
     return this;
   }
 
+  /** Mark the slide as blank on purpose, so the layout check does not report it. */
   allowEmpty(enabled = true): this {
     this.node.props.allowEmpty = enabled;
     return this;

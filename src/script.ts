@@ -38,6 +38,17 @@ import { attachNode, detachNode, nodeParent } from "./node-tree";
 let activeSlides: SlidesDefinition | undefined;
 let activeSlide: ContentSlideBuilder | undefined;
 let activeRegion: RegionBuilder | undefined;
+/** The top-level statement of the slide document running now, while a preview is served. */
+let runningStatement: { start: number; end: number } | undefined;
+
+/**
+ * @internal Records which top-level statement of the slide document is about to run. The
+ * development transform calls this before each one, so a slide made inside a loop or a helper
+ * function still knows the statement that made it, and an editor can move that statement whole.
+ */
+export function markStatement(start: number, end: number): void {
+  runningStatement = { start, end };
+}
 
 const textRoles = [
   "frameseq-body-copy",
@@ -104,40 +115,70 @@ export class TextBoxBuilder extends ElementBuilder {
     return this.className(className);
   }
 
+  /**
+   * Style the text as a normal paragraph, the default role. The last role called on a text object
+   * wins.
+   */
   body(): this {
     return this.role("frameseq-body-copy");
   }
 
+  /**
+   * Style the text as a manually placed slide heading. The last role called on a text object wins.
+   */
   title(): this {
     return this.role("frameseq-slide-title");
   }
 
+  /**
+   * Style the text as the primary title of a cover or section slide. The last role called on a text
+   * object wins.
+   */
   hero(): this {
     return this.role("frameseq-cover-title");
   }
 
+  /**
+   * Style the text as supporting copy below a hero title. The last role called on a text object
+   * wins.
+   */
   subtitle(): this {
     return this.role("frameseq-cover-subtitle");
   }
 
+  /**
+   * Style the text as an author or presenter name. The last role called on a text object wins.
+   */
   author(): this {
     return this.role("frameseq-cover-author");
   }
 
+  /**
+   * Style the text as a small uppercase section label. The last role called on a text object wins.
+   */
   eyebrow(): this {
     const content = this.node.props.content;
     if (typeof content === "string") this.node.props.content = content.toUpperCase();
     return this.role("frameseq-cover-eyebrow");
   }
 
+  /**
+   * Style the text as the leading statement of a content slide. The last role called on a text
+   * object wins.
+   */
   lead(): this {
     return this.role("frameseq-slide-lead");
   }
 
+  /**
+   * Style the text as a source note, footnote, or image caption. The last role called on a text
+   * object wins.
+   */
   caption(): this {
     return this.role("frameseq-caption");
   }
 
+  /** Style the text as a short quotation. The last role called on a text object wins. */
   quote(): this {
     return this.role("frameseq-quote");
   }
@@ -157,6 +198,8 @@ export function getActivePresentation(): SlidesDefinition {
   if (!activeSlides) {
     throw new Error("This slide document must begin with presentation()");
   }
+  // The document has finished running; the next run announces its own statements.
+  runningStatement = undefined;
   return activeSlides;
 }
 
@@ -166,6 +209,7 @@ export function slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBu
     throw new Error("Create a presentation with presentation() before calling slide()");
   }
   activeSlide = activeSlides.slide(nameOrOptions);
+  if (runningStatement) activeSlide.node.props.sourceStatement = runningStatement;
   activeRegion = undefined;
   pathRegions.clear();
   return activeSlide;
@@ -183,7 +227,21 @@ export function note(content: string): ContentSlideBuilder {
   );
 }
 
+/**
+ * Add a text object to the current region.
+ *
+ * Inline `$...$` renders as math. Write it as a tagged template, text`...`, to keep LaTeX
+ * backslashes intact. Roles such as `.lead()`, `.hero()`, and `.caption()` set its typography.
+ * @example text("Latency fell by 42%.").lead();
+ */
 export function text(content: string): TextBoxBuilder;
+/**
+ * Add a text object to the current region.
+ *
+ * Inline `$...$` renders as math. Write it as a tagged template, text`...`, to keep LaTeX
+ * backslashes intact. Roles such as `.lead()`, `.hero()`, and `.caption()` set its typography.
+ * @example text("Latency fell by 42%.").lead();
+ */
 export function text(strings: TemplateStringsArray, ...values: unknown[]): TextBoxBuilder;
 export function text(
   contentOrStrings: string | TemplateStringsArray,
@@ -195,15 +253,37 @@ export function text(
   return attach(new TextBoxBuilder(Text(content).node).body());
 }
 
+/**
+ * Add an image to the current region.
+ * @param src An imported asset URL, a data URL, or a public URL.
+ * @param alt Alternative text for screen readers; empty by default.
+ */
 export function image(src: string, alt = ""): ElementBuilder {
   return attach(Image(src, alt).className("frameseq-semantic-image"));
 }
 
+/**
+ * Add a preformatted code block.
+ * @param content The code, shown exactly as written.
+ * @param language A language label, "ts" by default.
+ */
 export function code(content: string, language = "ts"): ElementBuilder {
   return attach(Code(content, language).className("frameseq-semantic-code"));
 }
 
+/**
+ * Add one standalone equation, rendered with KaTeX.
+ *
+ * Write the equation without `$$` delimiters; the tagged form, math`...`, keeps backslashes
+ * intact. For a formula inside a sentence, use `$...$` in text() instead.
+ */
 export function math(content: string): ElementBuilder;
+/**
+ * Add one standalone equation, rendered with KaTeX.
+ *
+ * Write the equation without `$$` delimiters; the tagged form, math`...`, keeps backslashes
+ * intact. For a formula inside a sentence, use `$...$` in text() instead.
+ */
 export function math(strings: TemplateStringsArray, ...values: unknown[]): ElementBuilder;
 export function math(
   contentOrStrings: string | TemplateStringsArray,
@@ -274,14 +354,28 @@ export function line(points: Partial<LinePoints> = {}): LineBuilder {
   return attach(Line(points).className("frameseq-semantic-line"));
 }
 
+/**
+ * Add an unordered list whose items are all visible at once.
+ * @example bullets("Readable source", "Useful defaults", "Portable output");
+ */
 export function bullets(...items: string[]): ElementBuilder {
   return attach(Bullets(...items));
 }
 
+/**
+ * Add a numbered list revealed one item per step. Print, PDF, and PPTX show every item.
+ * @example steps("Parse the source", "Build the slide tree", "Render the result");
+ */
 export function steps(...items: string[]): ElementBuilder {
   return attach(Steps(...items));
 }
 
+/**
+ * Show a prominent value with a short label beneath it.
+ * @param value The value to emphasise, such as "42%"; it is shown as written.
+ * @param label What the value means.
+ * @example metric("42%", "Revenue growth").card();
+ */
 export function metric(value: string, label: string): GroupBuilder {
   return attach(Metric(value, label));
 }
@@ -376,16 +470,22 @@ export function main(): RegionBuilder {
   return currentSlide().defaultContent;
 }
 
+/** Send the content that follows to the left region of a `.split()` slide. */
 export function left(): RegionBuilder {
   activeRegion = currentSlide().left;
   return activeRegion;
 }
 
+/** Send the content that follows to the right region of a `.split()` slide. */
 export function right(): RegionBuilder {
   activeRegion = currentSlide().right;
   return activeRegion;
 }
 
+/**
+ * Send the content that follows to one region of a `.grid()` slide.
+ * @param index The cell, counted from 0.
+ */
 export function cell(index: number): RegionBuilder {
   activeRegion = currentSlide().cell(index);
   return activeRegion;
@@ -467,6 +567,10 @@ export function at(path: string): RegionBuilder {
   return region as RegionBuilder;
 }
 
+/**
+ * Set the spacing between the children of the active region.
+ * @param value Pixels as a number, or any CSS length as a string.
+ */
 export function gap(value: Length, horizontal?: Length): RegionBuilder {
   return currentRegion().gap(value, horizontal) as RegionBuilder;
 }

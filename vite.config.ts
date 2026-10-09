@@ -9,9 +9,11 @@ import tailwindcss from "@tailwindcss/vite";
 import ts from "typescript";
 import { defineConfig, normalizePath } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
-import { applySourceEdits, markEdits, sourceMarks } from "./scripts/source-marks.mjs";
+import { applySourceEdits, markEdits, sourceMarks, statementEdits } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
 import { applyIncomingEdits, applyIncomingMove, undoLastEdit } from "./scripts/source-edits.mjs";
+// @ts-expect-error -- plain JavaScript, like the other server-side halves of the preview.
+import { studioPlugin } from "./scripts/studio-server.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -32,6 +34,21 @@ const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
   .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
 const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
 const openBrowser = process.env.FRAMESEQ_OPEN_BROWSER !== "0";
+// The Studio writes whole documents, so it exists only when `frameseq studio` asked for it.
+const studioEnabled = process.env.FRAMESEQ_STUDIO === "1";
+const studioRemote = process.env.FRAMESEQ_STUDIO_REMOTE === "1";
+/** Pre-bundled at startup so opening the Studio never triggers a dependency reload. */
+const studioDependencies = [
+  "@codemirror/autocomplete",
+  "@codemirror/commands",
+  "@codemirror/lang-javascript",
+  "@codemirror/language",
+  "@codemirror/lint",
+  "@codemirror/search",
+  "@codemirror/state",
+  "@codemirror/view",
+  "@lezer/highlight",
+];
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
 const sourceUndoEvent = "frameseq:undo-edit";
@@ -157,8 +174,11 @@ interface SourceMark {
 interface SourceEdit {
   start: number;
   end: number;
-  /** Orders edits that begin and end at the same offset: replacement, opening, closing. */
-  rank: 0 | 1 | 2;
+  /**
+   * Orders edits that begin and end at the same offset: replacement, opening, closing, and the
+   * announcement of a statement, which lands before all of them.
+   */
+  rank: 0 | 1 | 2 | 3;
   text: string;
 }
 
@@ -605,6 +625,7 @@ export default defineConfig({
             text: replacement.code,
           })),
           ...marks.flatMap((mark) => markEdits(mark) as SourceEdit[]),
+          ...(marksEnabled ? statementEdits(source, normalizedEntry) as SourceEdit[] : []),
         ];
         transformedSource = applySourceEdits(transformedSource, edits);
 
@@ -615,8 +636,8 @@ export default defineConfig({
         const latexImport = latexSourceReplacements.length > 0
           ? "import { latexSvg as __frameSeqLatexSvg } from \"@pride7/frameseq\";\n"
           : "";
-        const markImport = marks.length > 0
-          ? "import { markSource as __frameSeqMark } from \"@pride7/frameseq\";\n"
+        const markImport = marksEnabled
+          ? "import { markSource as __frameSeqMark, markStatement as __frameSeqStatement } from \"@pride7/frameseq\";\n"
           : "";
         const internalImports = `${typstImport}${latexImport}${markImport}`;
         if (importsFramework) {
@@ -631,8 +652,16 @@ export default defineConfig({
         return { code: `${internalImports}${prelude}${transformedSource}${postlude}`, map: null };
       },
     },
+    studioPlugin({
+      entry,
+      packageRoot,
+      cliPath: resolve(packageRoot, "scripts", "frameseq.mjs"),
+      enabled: studioEnabled,
+      allowRemote: studioRemote,
+    }),
     tailwindcss(),
   ],
+  optimizeDeps: studioEnabled ? { include: studioDependencies } : undefined,
   server: {
     open: openBrowser,
     fs: {

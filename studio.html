@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0e17" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>FrameSeq Studio</title>
+    <script>
+      // Apply the chosen palette before the first paint, so a light Studio never flashes dark.
+      try {
+        var choice = localStorage.getItem("frameseq-studio-theme");
+        var light = choice === "light"
+          || (choice !== "dark" && matchMedia("(prefers-color-scheme: light)").matches);
+        if (light) document.documentElement.dataset.theme = "light";
+      } catch (error) {}
+    </script>
+  </head>
+  <body>
+    <div id="studio" class="studio is-loading">
+      <div class="studio-splash">Starting FrameSeq Studio…</div>
+    </div>
+    <script type="module" src="/src/studio/main.ts"></script>
+  </body>
+</html>

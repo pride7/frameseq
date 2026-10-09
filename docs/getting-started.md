@@ -78,6 +78,8 @@ npm run dev
 
 The browser opens automatically and updates when the source file changes. Use Arrow keys, Page Up, Page Down, or Space to navigate. Incremental content created with `steps()` or `showAt()` is revealed before navigation continues to the next page.
 
+To write, preview, and check in one window instead, run `npm run studio`. [FrameSeq Studio](studio.md) adds a TypeScript editor, live slide thumbnails, and live layout checks beside the same preview.
+
 Press `P` to open the synchronized [presenter view](presenter.md) in a second window. Speaker notes never appear on the audience page or in PDF output; PPTX export preserves them as PowerPoint speaker notes.
 
 To present with a phone remote, start the local-network server:

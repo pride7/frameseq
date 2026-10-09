@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:dd5404701fdf531f -->
+<!-- translation-of: docs/cli.md sha256:369e70759af77f80 -->
 
 # CLI 参考
 
@@ -49,6 +49,22 @@ frameseq dev talk.slides.ts --remote
 ```
 
 手机和演示电脑必须在同一个局域网。这个模式包含 `--host` 的行为,并为翻页、揭示步骤和激光笔启用一个本地 WebSocket 中继;**不使用任何 FrameSeq 云服务**。
+
+## 打开 FrameSeq Studio
+
+```bash
+frameseq studio [file] [--host] [--no-open] [--tab]
+```
+
+这条命令启动开发服务器，并打开 [FrameSeq Studio](studio.md)：幻灯片栏、TypeScript 编辑器、实时预览和实时布局检查都在一个窗口里。
+
+```bash
+frameseq studio talk.slides.ts
+```
+
+装了 Chrome、Edge、Chromium 或 Brave 时，Studio 以独立的应用窗口打开，否则在默认浏览器里打开。`--tab` 总是使用浏览器标签页，`--no-open` 什么都不打开。
+
+Studio 会写入幻灯片文档，所以它的接口只响应这台电脑。`--host` 把它共享到网络上，供容器或浏览器 IDE 使用；这样一来，任何能访问这个地址的人都可以编辑这份演示。
 
 ## 构建静态 HTML
 
@@ -157,6 +173,7 @@ frameseq inspect talk.slides.ts --json
 
 ```bash
 npm run dev
+npm run studio
 npm run present
 npm run build
 npm run build:single

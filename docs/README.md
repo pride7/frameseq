@@ -48,6 +48,7 @@ Deliver the talk and hand the file over afterwards.
 
 Drive FrameSeq from the tools you already use.
 
+- [FrameSeq Studio](studio.md) — Edit, preview, check, and export a deck in one window.
 - [VS Code extension](vscode.md) — Split view, slide navigation, diagnostics, and export commands.
 - [CLI reference](cli.md) — Development, remote control, HTML, PDF, PPTX, Typst, inspection, and checking.
 

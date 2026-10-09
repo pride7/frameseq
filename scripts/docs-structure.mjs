@@ -151,6 +151,12 @@ export const documentationGroups = [
     summary: "Drive FrameSeq from the tools you already use.",
     pages: [
       {
+        slug: "studio",
+        source: "docs/studio.md",
+        label: "FrameSeq Studio",
+        blurb: "Edit, preview, check, and export a deck in one window.",
+      },
+      {
         slug: "vscode",
         source: "docs/vscode.md",
         label: "VS Code extension",
@@ -251,6 +257,7 @@ const chinese = {
     presenter: { label: "演讲者视图与遥控", blurb: "备注、下一页预览、计时器、同步控制和手机遥控。" },
     deployment: { label: "部署 HTML", blurb: "发布静态演示、用 GitHub Pages,或构建单个可移植文件。" },
     pptx: { label: "导出 PowerPoint", blurb: "可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。" },
+    studio: { label: "FrameSeq Studio", blurb: "在一个窗口里编辑、预览、检查和导出一场演示。" },
     vscode: { label: "VS Code 扩展", blurb: "分屏、页面导航、诊断和导出命令。" },
     cli: { label: "CLI 参考", blurb: "开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。" },
     advanced: { label: "高级组合", blurb: "大写的对象 API 与底层组件。" },

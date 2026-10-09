@@ -60,6 +60,7 @@ No imports, wrapper components, nested DOM, or export statement are required in 
   - [Shapes and connectors](#shapes-and-connectors)
 - [Styling](#styling)
 - [Themes and typography](#themes-and-typography)
+- [FrameSeq Studio](#frameseq-studio)
 - [Visual Studio Code extension](#visual-studio-code-extension)
 - [Preview, build, and export](#preview-build-and-export)
 - [AI-friendly layout checks](#ai-friendly-layout-checks)
@@ -584,6 +585,26 @@ const ocean = defineTheme({
 
 presentation({ title: "Ocean Research", theme: ocean });
 ```
+
+## FrameSeq Studio
+
+FrameSeq Studio puts the whole loop of writing a talk in one window, with nothing to install beyond FrameSeq itself:
+
+```bash
+frameseq studio talk.slides.ts
+```
+
+It opens as an app window of its own (or in the default browser when no Chromium browser is installed): live slide thumbnails on the left, the `.slides.ts` source in a TypeScript editor in the middle, the interactive preview on the right, and one list of problems beneath them.
+
+- The editor completes FrameSeq commands and methods, underlines type errors, and shows each command's documentation and parameters, all read from the project's own `tsconfig.json`.
+- Auto-save writes only text that parses, so the preview never flashes a build error while a line is half-typed.
+- The rules of `frameseq check` run against the live deck after every save, so overflow, clipped text, and inert modifiers appear while the slide is being written.
+- Moving the cursor shows the slide that holds it. Alt-clicking or dragging in the preview edits the source through the editor, so `Ctrl+Z` undoes it.
+- Thumbnails can be dragged to reorder slides, and duplicated, inserted, or deleted from their menu, each as one undoable edit.
+- A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
+- **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
+
+The complete guide is [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html).
 
 ## Visual Studio Code extension
 

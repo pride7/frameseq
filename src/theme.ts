@@ -451,6 +451,11 @@ export function resolveTheme(theme: ThemeInput = "blank"): ThemeDefinition {
   return cloneTheme(definition);
 }
 
+/**
+ * Create a reusable theme by overriding selected tokens of a built-in theme or another one.
+ * @example
+ * const ocean = defineTheme({ name: "ocean", extends: "blank", colors: { accent: "#007c91" } });
+ */
 export function defineTheme(options: ThemeOptions): ThemeDefinition {
   const base = resolveTheme(options.extends ?? "blank");
 

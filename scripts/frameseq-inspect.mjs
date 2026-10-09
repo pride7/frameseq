@@ -331,7 +331,14 @@ function presentationMetadata(sourceFile) {
 }
 
 export async function inspectSlides(entry, cwd = process.cwd()) {
-  const source = await readFile(entry, "utf8");
+  return inspectSource(entry, await readFile(entry, "utf8"), cwd);
+}
+
+/**
+ * Inspect slide document text that has not necessarily been saved, such as the buffer an
+ * editor holds. Offsets and lines in the report refer to that text.
+ */
+export function inspectSource(entry, source, cwd = process.cwd()) {
   const sourceFile = ts.createSourceFile(
     entry,
     source,

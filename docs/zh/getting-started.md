@@ -1,4 +1,4 @@
-<!-- translation-of: docs/getting-started.md sha256:ad242317f71f99c9 -->
+<!-- translation-of: docs/getting-started.md sha256:4a2c97a50e88ae1f -->
 
 # 快速上手
 
@@ -79,6 +79,8 @@ npm run dev
 ```
 
 浏览器会自动打开,源文件一改就更新。用方向键、Page Up、Page Down 或空格翻页。用 `steps()` 或 `showAt()` 写的渐进内容会先逐条显示,然后才翻到下一页。
+
+如果想在一个窗口里同时编写、预览和检查，运行 `npm run studio`。[FrameSeq Studio](studio.md) 在同一个预览旁边加上 TypeScript 编辑器、实时缩略图和实时布局检查。
 
 按 `P` 在第二个窗口打开同步的[演讲者视图](../presenter.md)(英文)。备注不会出现在观众页面和 PDF 里;PPTX 导出会把它们保留为 PowerPoint 的演讲者备注。
 

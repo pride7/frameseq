@@ -8,7 +8,16 @@ const app = document.querySelector<HTMLElement>("#app");
 if (!app) throw new Error("Missing #app element");
 const appRoot = app;
 
+/**
+ * Tell an embedding host, such as FrameSeq Studio, that the deck on screen is new, or that the
+ * slide document could not be run and the previous deck is still showing.
+ */
+function announce(type: "frameseq.rendered" | "frameseq.render-failed"): void {
+  if (import.meta.hot && window.parent !== window) window.parent.postMessage({ type }, "*");
+}
+
 mountSlides(slides, appRoot);
+announce("frameseq.rendered");
 let replacementVersion = 0;
 
 /**
@@ -44,10 +53,13 @@ async function replaceSlides(nextSlides: SlidesRootDefinition): Promise<void> {
     appRoot.querySelector<HTMLElement>(".frameseq-slides")?.focus({ preventScroll: true });
   }
   dispatchEvent(new Event("resize"));
+  announce("frameseq.rendered");
 }
 
 if (import.meta.hot) {
   import.meta.hot.accept("virtual:frameseq-entry", (entry) => {
+    // Vite hands over no module when the new one threw while it was being run.
     if (entry?.default) void replaceSlides(entry.default);
+    else announce("frameseq.render-failed");
   });
 }

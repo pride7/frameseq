@@ -10,6 +10,7 @@ import type {
 } from "./core";
 import { resolveAnchors } from "./anchors";
 import { themeCssVariables } from "./theme";
+import { mountThumbnails } from "./thumbnails";
 
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
@@ -382,6 +383,9 @@ function renderSlideCanvas(
   const canvas = renderNode(slide, String(index));
   addThemeChrome(canvas, slide, index, slides);
   canvas.dataset.frameseqSlideLabel = label;
+  // The top-level statement that made the slide, which a loop or a helper shares between several.
+  const statement = slide.props.sourceStatement as { start: number; end: number } | undefined;
+  if (statement) canvas.dataset.frameseqSlideStatement = `${statement.start}:${statement.end}`;
   if (slide.props.allowEmpty === true) {
     canvas.dataset.frameseqAllowEmpty = "true";
   }
@@ -958,6 +962,7 @@ function enableSourceReveal(
       line?: unknown;
       column?: unknown;
       name?: unknown;
+      path?: unknown;
       slideIndex?: unknown;
       clear?: unknown;
     } | null;
@@ -975,6 +980,9 @@ function enableSourceReveal(
     if (typeof request.name === "string") {
       match = [...scope.querySelectorAll<HTMLElement>("[data-frameseq-name]")]
         .find((element) => element.dataset.frameseqName === request.name);
+    } else if (typeof request.path === "string") {
+      match = [...scope.querySelectorAll<HTMLElement>("[data-frameseq-path]")]
+        .find((element) => element.dataset.frameseqPath === request.path);
     } else if (typeof request.line === "number") {
       const candidates = [...scope.querySelectorAll<HTMLElement>("[data-frameseq-source]")];
       match = candidates.find((element) => {
@@ -1748,6 +1756,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const pptxMode = printMode && searchParams.has("pptx");
   const remoteMode = !printMode && searchParams.get("remote") === "1";
   const presenterMode = !printMode && !remoteMode && searchParams.has("presenter");
+  // Every slide at once, small, for the rail in FrameSeq Studio. Only a development server
+  // offers it, so a built presentation carries none of it.
+  const thumbnailMode = localEditingAvailable && !printMode && !remoteMode && !presenterMode
+    && searchParams.has("thumbnails");
+  document.documentElement.classList.toggle("frameseq-thumbnail-mode", thumbnailMode);
   const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode;
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
@@ -1808,7 +1821,19 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     return;
   }
 
-  if (import.meta.hot) enableSourceReveal(root, goTo, signal);
+  if (import.meta.hot && thumbnailMode) {
+    mountThumbnails(target, root, slides, (canvas, frame) => scaleCanvas(canvas, frame, slidesDocument), signal);
+    document.documentElement.dataset.ready = "true";
+    return;
+  }
+
+  // Asked to show an object, the preview stays where it is when that object is already on
+  // screen, so following the editor never resets the reveal steps of the current slide.
+  if (import.meta.hot) {
+    enableSourceReveal(root, (index) => {
+      if (index !== currentSlide) goTo(index);
+    }, signal);
+  }
 
   const laserPointers = slides.map(({ canvas }) => {
     const pointer = document.createElement("span");
@@ -2028,6 +2053,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       counter.textContent = `${currentSlide + 1}/${slides.length}${stepSuffix}`;
     }
     history.replaceState(null, "", `#${currentSlide + 1}`);
+    if (import.meta.hot && window.parent !== window && !presenter && !remote) {
+      window.parent.postMessage({
+        type: "frameseq.slide",
+        index: currentSlide,
+        step: currentStep,
+        count: slides.length,
+        label: slides[currentSlide].label,
+      }, "*");
+    }
     updatePresenter();
     updateRemote();
     if (shouldBroadcast) broadcastNavigation();
@@ -2425,6 +2459,20 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   addEventListener("keydown", (event) => {
+    // An embedded preview has no document of its own to save or undo, so it hands those
+    // shortcuts to the editor around it instead of letting the browser act on the page.
+    if (import.meta.hot && window.parent !== window && !presenter && !remote
+      && (event.ctrlKey || event.metaKey) && !event.altKey) {
+      const key = event.key.toLowerCase();
+      const command = key === "s"
+        ? "save"
+        : (key === "z" ? (event.shiftKey ? "redo" : "undo") : (key === "y" && !event.shiftKey ? "redo" : undefined));
+      if (command) {
+        event.preventDefault();
+        window.parent.postMessage({ type: "frameseq.command", command }, "*");
+        return;
+      }
+    }
     const modified = event.ctrlKey || event.altKey || event.metaKey;
     if (interactivePreview
       && event.code === "Digit0"

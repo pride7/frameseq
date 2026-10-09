@@ -5,7 +5,7 @@ import { basename, resolve } from "node:path";
 import process from "node:process";
 import { agentsMarkdown, claudeMarkdown } from "./project-instructions.mjs";
 
-const FRAMESEQ_VERSION = "^0.35.0";
+const FRAMESEQ_VERSION = "^0.36.0";
 
 function projectName(directory) {
   const name = basename(directory)
@@ -42,6 +42,7 @@ try {
     type: "module",
     scripts: {
       dev: "frameseq dev slides.ts",
+      studio: "frameseq studio slides.ts",
       present: "frameseq dev slides.ts --remote",
       build: "frameseq build slides.ts",
       "build:single": "frameseq build slides.ts --single-file",

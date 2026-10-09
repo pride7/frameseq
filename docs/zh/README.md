@@ -48,6 +48,7 @@
 
 在你已有的工具里驱动 FrameSeq。
 
+- [FrameSeq Studio](studio.md) — 在一个窗口里编辑、预览、检查和导出一场演示。
 - [VS Code 扩展](vscode.md) — 分屏、页面导航、诊断和导出命令。
 - [CLI 参考](cli.md) — 开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。
 

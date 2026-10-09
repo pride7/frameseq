@@ -216,6 +216,63 @@ export function sourceMarks(source, fileName = "slides.ts") {
   return marks;
 }
 
+/** Statements that do something when the document runs, as opposed to declaring something. */
+function runs(statement) {
+  if (statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword)) return false;
+  return ts.isExpressionStatement(statement)
+    || ts.isVariableStatement(statement)
+    || ts.isIfStatement(statement)
+    || ts.isIterationStatement(statement, false)
+    || ts.isBlock(statement)
+    || ts.isSwitchStatement(statement)
+    || ts.isLabeledStatement(statement)
+    || ts.isTryStatement(statement)
+    || ts.isThrowStatement(statement);
+}
+
+/**
+ * The top-level statements of a slide document in order, each with its range and whether it
+ * runs. A directive such as "use strict" at the top is left out, since nothing may precede it.
+ */
+export function documentStatements(source, fileName = "slides.ts") {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let prologue = true;
+  return sourceFile.statements.map((statement) => {
+    const directive = prologue
+      && ts.isExpressionStatement(statement)
+      && ts.isStringLiteral(statement.expression);
+    if (!directive) prologue = false;
+    return {
+      start: statement.getStart(sourceFile),
+      end: statement.getEnd(),
+      runs: !directive && runs(statement),
+    };
+  });
+}
+
+/**
+ * A zero-width edit before each top-level statement that runs, announcing it to the runtime,
+ * so every slide can say which statement made it even when a loop or a helper did. Inserted on
+ * the statement's own line, it leaves every line number as it was.
+ */
+export function statementEdits(source, fileName = "slides.ts") {
+  return documentStatements(source, fileName)
+    .filter((statement) => statement.runs)
+    .map((statement) => ({
+      start: statement.start,
+      end: statement.start,
+      // Placed before any wrapper that opens at the same offset.
+      rank: 3,
+      text: `__frameSeqStatement(${statement.start},${statement.end});`,
+    }));
+}
+
 /**
  * The pair of zero-width edits that wrap one command in a call recording where it was written.
  * Wrapping keeps every line number intact, so the transformed file still matches the source.

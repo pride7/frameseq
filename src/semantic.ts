@@ -71,12 +71,17 @@ export function Steps(...items: string[]): ElementBuilder {
 }
 
 export class GroupBuilder extends ContainerBuilder {
+  /** Give the group a card surface: padding, a border, and a background. */
   card(): this {
     return this.className("frameseq-card");
   }
 }
 
 export class GridSectionBuilder extends ContainerBuilder {
+  /**
+   * Set the columns of the local grid.
+   * @param value An integer from 1 to 12 for equal columns, or CSS tracks such as "1fr 2fr".
+   */
   columns(value: GridColumns): this {
     this.node.styles.gridTemplateColumns = gridTemplate(value);
     return this;
@@ -119,61 +124,73 @@ export function GridSection(
 }
 
 export class RegionBuilder extends ContainerBuilder {
+  /** Add a lead statement to this region. */
   lead(content: string): this {
     this.add(Text(content).className("frameseq-slide-lead"));
     return this;
   }
 
+  /** Add a paragraph to this region. */
   text(content: string): this {
     this.add(Text(content).className("frameseq-body-copy"));
     return this;
   }
 
+  /** Add an unordered list to this region. */
   bullets(...items: string[]): this {
     this.add(Bullets(...items));
     return this;
   }
 
+  /** Add a numbered list, revealed one item per step, to this region. */
   steps(...items: string[]): this {
     this.add(Steps(...items));
     return this;
   }
 
+  /** Add a code block to this region. */
   code(content: string, language = "ts"): this {
     this.add(Code(content, language).className("frameseq-semantic-code"));
     return this;
   }
 
+  /** Add a standalone equation to this region. */
   math(content: string): this {
     this.add(Equation(content).className("frameseq-semantic-math"));
     return this;
   }
 
+  /** Add an image to this region. */
   image(src: string, alt = ""): this {
     this.add(Image(src, alt).className("frameseq-semantic-image"));
     return this;
   }
 
+  /** Add a caption to this region. */
   caption(content: string): this {
     this.add(Text(content).className("frameseq-caption"));
     return this;
   }
 
+  /** Add a quotation to this region. */
   quote(content: string): this {
     this.add(Text(content).className("frameseq-quote"));
     return this;
   }
 
+  /** Add a value with its label to this region. */
   metric(value: string, label: string): this {
     this.add(Metric(value, label));
     return this;
   }
 
+  /** Add a card with a title and optional text to this region. */
   card(): this {
     this.className("frameseq-region-card");
     return this;
   }
 
+  /** Add objects built with the object API to this region. */
   custom(...elements: ElementBuilder[]): this {
     this.add(...elements);
     return this;
@@ -212,6 +229,12 @@ export class ContentSlideBuilder extends SlideBuilder {
     return this.defaultRegion();
   }
 
+  /**
+   * Lay the slide out as a cover.
+   *
+   * It shows no title by itself: write the cover with text roles such as `.hero()`,
+   * `.subtitle()`, and `.author()`.
+   */
   cover(): this {
     const classes = typeof this.node.props.className === "string"
       ? this.node.props.className.split(/\s+/).filter((name) => name !== "frameseq-content-slide")
@@ -221,61 +244,78 @@ export class ContentSlideBuilder extends SlideBuilder {
     return this;
   }
 
+  /** Add a lead statement to the slide body. */
   lead(content: string): this {
     this.defaultRegion().lead(content);
     return this;
   }
 
+  /** Add a paragraph to the slide body. */
   text(content: string): this {
     this.defaultRegion().text(content);
     return this;
   }
 
+  /** Add an unordered list to the slide body. */
   bullets(...items: string[]): this {
     this.defaultRegion().bullets(...items);
     return this;
   }
 
+  /** Add a numbered list, revealed one item per step, to the slide body. */
   steps(...items: string[]): this {
     this.defaultRegion().steps(...items);
     return this;
   }
 
+  /** Add a code block to the slide body. */
   code(content: string, language = "ts"): this {
     this.defaultRegion().code(content, language);
     return this;
   }
 
+  /** Add a standalone equation to the slide body. */
   math(content: string): this {
     this.defaultRegion().math(content);
     return this;
   }
 
+  /** Add an image to the slide body. */
   image(src: string, alt = ""): this {
     this.defaultRegion().image(src, alt);
     return this;
   }
 
+  /** Add a caption to the slide body. */
   caption(content: string): this {
     this.defaultRegion().caption(content);
     return this;
   }
 
+  /** Add a quotation to the slide body. */
   quote(content: string): this {
     this.defaultRegion().quote(content);
     return this;
   }
 
+  /** Add a value with its label to the slide body. */
   metric(value: string, label: string): this {
     this.defaultRegion().metric(value, label);
     return this;
   }
 
+  /** Add objects built with the object API to the slide body. */
   custom(...elements: ElementBuilder[]): this {
     this.defaultRegion().custom(...elements);
     return this;
   }
 
+  /**
+   * Divide the slide body into a left and a right region.
+   *
+   * Content written so far, and what follows, goes to the left; call right() to switch.
+   * @param ratio "40:60", 0.4, 40, or [2, 3]; equal halves by default.
+   */
   split(ratio: SplitRatio = "1:1"): this {
     const existing = this.takeExistingContent("split");
     const left = region("frameseq-region-left");
@@ -299,6 +339,11 @@ export class ContentSlideBuilder extends SlideBuilder {
     return this.splitRegions[1];
   }
 
+  /**
+   * Divide the slide body into equal-width regions; pick one with cell(index).
+   * @param columns An integer from 1 to 12.
+   * @param gap Space between the regions; the theme supplies the default.
+   */
   grid(columns: number, gap?: Length): this {
     if (!Number.isInteger(columns) || columns < 1 || columns > 12) {
       throw new Error("grid() columns must be an integer from 1 to 12");
@@ -336,17 +381,28 @@ export class ContentSlideBuilder extends SlideBuilder {
     return this.gridRegions[index];
   }
 
+  /** Center the slide body both ways, for one key message or quotation. */
   override center(): this {
     this.content.className("frameseq-layout-center").center();
     return this;
   }
 
+  /**
+   * Fill the slide body with one image.
+   * @param src The image URL.
+   * @param alt Alternative text for screen readers; empty by default.
+   */
   fullBleed(src: string, alt = ""): this {
     this.content.className("frameseq-layout-full-bleed");
     this.content.add(Image(src, alt).className("frameseq-full-bleed-image"));
     return this;
   }
 
+  /**
+   * Turn the slide body into a freeform canvas, where objects are placed with
+   * `.position({ x, y })` in canvas units, 1600 × 900 by default. Prefer normal flow,
+   * `.split()`, or `.grid()` for ordinary content.
+   */
   canvas(): this {
     this.content.className("frameseq-layout-canvas").stack();
     return this;
@@ -354,21 +410,25 @@ export class ContentSlideBuilder extends SlideBuilder {
 }
 
 export class CoverSlideBuilder extends RegionBuilder {
+  /** Set the cover's speaker notes, shown in presenter view and PPTX. */
   notes(content: string): this {
     this.node.props.notes = content;
     return this;
   }
 
+  /** Add a small uppercase label above the cover title. */
   eyebrow(content: string): this {
     this.add(Text(content.toUpperCase()).className("frameseq-cover-eyebrow"));
     return this;
   }
 
+  /** Add supporting copy below the cover title. */
   subtitle(content: string): this {
     this.add(Text(content).className("frameseq-cover-subtitle"));
     return this;
   }
 
+  /** Add the author or presenter name to the cover. */
   author(content: string): this {
     this.add(Text(content).className("frameseq-cover-author"));
     return this;
@@ -376,6 +436,7 @@ export class CoverSlideBuilder extends RegionBuilder {
 }
 
 export class SlidesDefinition extends SlidesRootDefinition {
+  /** Add a cover slide with this title. */
   cover(title: string): CoverSlideBuilder {
     const slide = new CoverSlideBuilder(Slide({ name: "Cover", title }).node)
       .className("frameseq-cover-slide");
@@ -384,6 +445,7 @@ export class SlidesDefinition extends SlidesRootDefinition {
     return slide;
   }
 
+  /** Add a content slide; a string names it and becomes its title. */
   override slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBuilder {
     const options = typeof nameOrOptions === "string"
       ? { name: nameOrOptions, title: nameOrOptions }

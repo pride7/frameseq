@@ -4,6 +4,26 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.36.0] - 2026-10-09
+
+### Added
+
+- Add FrameSeq Studio, started with `frameseq studio talk.slides.ts` or `npm run studio` in a generated project. One window, opened as an app window when Chrome, Edge, Chromium, or Brave is installed, holds live slide thumbnails, the slide document in a TypeScript editor, the interactive preview, and one Problems list.
+  - The editor completes FrameSeq commands and methods, underlines errors, and shows documentation and parameter hints, all from the project's own `tsconfig.json`.
+  - Auto-save writes only text that parses, so the preview never shows a half-typed line as a build error; `Ctrl+S` always saves.
+  - The rules of `frameseq check` run against the live deck after every save, and each finding leads to its slide and source line. Build errors and errors thrown while the deck runs join the same list.
+  - Preview drags, Alt-clicks, and **Bind region** act through the editor, so `Ctrl+Z` undoes them even while the preview has focus. The cursor shows the slide that holds it.
+  - Thumbnails reorder slides by dragging, and duplicate, insert, or delete them from a menu, each as one undoable edit. Slides made by a loop or a helper call move, repeat, and disappear together as the statement that made them, and the slides around them still move one at a time.
+  - A theme button switches the Studio between following the system, light, and dark.
+  - A change made on disk, by a coding agent for instance, reloads into a clean editor; with unsaved edits, the Studio asks which version to keep.
+  - **Present** opens presenter view, and **Export** runs every CLI export to its usual location.
+  - The Studio's interface exists only on a server started by `frameseq studio`, answers only this computer unless `--host` is given, and refuses requests from any other page.
+- Document the authoring commands, text roles, slide layouts, and chainable modifiers in the type declarations, so an editor's hover and completion explain what each one does rather than only showing its type.
+
+### Fixed
+
+- Keep the reveal step of the slide on screen when an editor asks the live preview to show an object on that same slide, so following the cursor no longer resets `steps()` to the start.
+
 ## [0.35.0] - 2026-08-13
 
 ### Added

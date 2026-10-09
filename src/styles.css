@@ -1832,3 +1832,153 @@ button {
   opacity: 1;
   transform: none;
 }
+
+/*
+ * FrameSeq Studio's slide rail: every slide at once, small, in one scrolling column. The
+ * colours belong to the Studio around it rather than to the deck, since the rail is part of
+ * the editor and not of the presentation.
+ */
+.frameseq-thumbnail-mode {
+  --rail-background: #0f1420;
+  --rail-number: #64748b;
+  --rail-number-current: #e2e8f0;
+  --rail-label: #94a3b8;
+  --rail-border: rgb(148 163 184 / 0.16);
+  --rail-border-hover: rgb(148 163 184 / 0.42);
+  --rail-accent: #22d3ee;
+  --rail-accent-glow: rgb(34 211 238 / 0.45);
+  --rail-group: rgb(34 211 238 / 0.35);
+}
+
+/* The Studio sets the theme it shows, so the rail matches the editor beside it. */
+.frameseq-thumbnail-mode[data-studio-theme="light"] {
+  --rail-background: #f6f8fb;
+  --rail-number: #64748b;
+  --rail-number-current: #0f172a;
+  --rail-label: #475569;
+  --rail-border: rgb(15 23 42 / 0.14);
+  --rail-border-hover: rgb(15 23 42 / 0.32);
+  --rail-accent: #0891b2;
+  --rail-accent-glow: rgb(8 145 178 / 0.35);
+  --rail-group: rgb(8 145 178 / 0.4);
+}
+
+.frameseq-thumbnail-mode,
+.frameseq-thumbnail-mode body,
+.frameseq-thumbnail-mode #app {
+  height: auto;
+  min-width: 0;
+  min-height: 100%;
+  overflow: visible;
+  background: var(--rail-background);
+}
+
+.frameseq-thumbnail-mode .frameseq-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: auto;
+  box-sizing: border-box;
+  padding: 10px 12px 28px 4px;
+}
+
+.frameseq-thumbnail {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.frameseq-thumbnail-number {
+  padding-top: 1px;
+  color: var(--rail-number);
+  font: 600 11px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.frameseq-thumbnail-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.frameseq-thumbnail-mode .frameseq-slide-frame {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--slide-ratio);
+  border: 1px solid var(--rail-border);
+  border-radius: 5px;
+  box-shadow: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.frameseq-thumbnail-mode .frameseq-slide {
+  pointer-events: none;
+}
+
+.frameseq-thumbnail:hover .frameseq-slide-frame {
+  border-color: var(--rail-border-hover);
+}
+
+.frameseq-thumbnail.is-current .frameseq-slide-frame {
+  border-color: var(--rail-accent);
+  box-shadow: 0 0 0 2px var(--rail-accent-glow);
+}
+
+.frameseq-thumbnail.is-current .frameseq-thumbnail-number {
+  color: var(--rail-number-current);
+}
+
+.frameseq-thumbnail-label {
+  overflow: hidden;
+  color: var(--rail-label);
+  font: 500 11px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frameseq-thumbnail.is-dragging {
+  opacity: 0.4;
+}
+
+/* Slides made by one statement, a loop or a helper call, are bracketed together in the rail. */
+.frameseq-thumbnail.is-grouped {
+  position: relative;
+}
+
+.frameseq-thumbnail.is-grouped::before {
+  position: absolute;
+  top: 2px;
+  bottom: -14px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--rail-group);
+  content: "";
+}
+
+.frameseq-thumbnail.is-grouped.is-group-end::before {
+  bottom: 2px;
+}
+
+.frameseq-thumbnail-dragging,
+.frameseq-thumbnail-dragging * {
+  cursor: grabbing !important;
+}
+
+.frameseq-thumbnail-insertion {
+  position: absolute;
+  z-index: 10;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rail-accent);
+  box-shadow: 0 0 10px var(--rail-accent-glow);
+  pointer-events: none;
+}

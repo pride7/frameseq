@@ -5,7 +5,9 @@ import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import puppeteer from "puppeteer";
+import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const testRoot = resolve(packageRoot, "tmp", "package-test");
@@ -88,6 +90,57 @@ function run(command, args, cwd) {
   }
 }
 
+/**
+ * Open FrameSeq Studio from the installed package: every file it loads in the browser and
+ * every dependency it resolves must ship in the tarball, and the editor must find the
+ * FrameSeq globals through the generated project's tsconfig.json.
+ */
+async function checkInstalledStudio(cli, cwd) {
+  const child = spawn(process.execPath, [cli, "studio", "slides.ts", "--no-open"], {
+    cwd,
+    env: { ...process.env, BROWSER: "none", FORCE_COLOR: "0", NO_COLOR: "1" },
+    windowsHide: true,
+  });
+  let output = "";
+  let browser;
+  try {
+    const url = await new Promise((resolveUrl, rejectUrl) => {
+      const timer = setTimeout(() => rejectUrl(new Error(`Installed Studio did not start.\n${output}`)), 90_000);
+      const read = (chunk) => {
+        output += chunk.toString();
+        const match = output.match(/Studio:\s+(https?:\/\/\S+studio\.html)/);
+        if (match) {
+          clearTimeout(timer);
+          resolveUrl(match[1]);
+        }
+      };
+      child.stdout.on("data", read);
+      child.stderr.on("data", read);
+      child.on("close", (code) => rejectUrl(new Error(`Installed Studio exited with ${code}.\n${output}`)));
+    });
+    browser = await puppeteer.launch(puppeteerLaunchOptions());
+    const page = await browser.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.waitForFunction(
+      () => document.querySelector("[data-slot='check-state']")?.textContent?.includes("Layout checked"),
+      { timeout: 120_000 },
+    );
+    const rail = page.frames().find((frame) => frame.url().includes("thumbnails=1"));
+    const thumbnails = await rail?.$$eval(".frameseq-thumbnail", (items) => items.length);
+    // TypeScript reports through the linter shortly after the editor opens.
+    await new Promise((resolveWait) => setTimeout(resolveWait, 3000));
+    const problems = await page.$$eval(".studio-problem", (rows) => rows.map((row) => row.textContent));
+    if (thumbnails !== 3 || problems.length > 0 || errors.length > 0) {
+      throw new Error(`Installed Studio did not open the generated deck cleanly: ${JSON.stringify({ thumbnails, problems, errors })}`);
+    }
+  } finally {
+    await browser?.close();
+    child.kill();
+  }
+}
+
 function runNpm(args, cwd) {
   if (npmCli) {
     run(process.execPath, [npmCli, ...args], cwd);
@@ -151,6 +204,9 @@ const generatedTheme = await readFile(
 if (generatedPackageJson.scripts?.present !== "frameseq dev slides.ts --remote") {
   throw new Error("Generated project did not include the local phone-remote script");
 }
+if (generatedPackageJson.scripts?.studio !== "frameseq studio slides.ts") {
+  throw new Error("Generated project did not include the Studio script");
+}
 if (generatedPackageJson.scripts?.pptx !== "frameseq pptx slides.ts") {
   throw new Error("Generated project did not include the PPTX export script");
 }
@@ -210,6 +266,7 @@ if (!installedLlms.includes("## Authoring model")
   throw new Error("Packed FrameSeq package did not include a complete llms.txt contract");
 }
 runNpm(["run", "check"], appDirectory);
+await checkInstalledStudio(installedCli, appDirectory);
 run(
   process.execPath,
   [
@@ -310,4 +367,4 @@ for (const expected of [
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }
 
-console.log("Package test passed: project components, types, layout checks, imports, portable and single-file HTML, GitHub Pages, PDF, PPTX, and Typst.");
+console.log("Package test passed: project components, types, layout checks, the installed Studio, imports, portable and single-file HTML, GitHub Pages, PDF, PPTX, and Typst.");
