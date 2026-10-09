@@ -20,6 +20,8 @@ const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slid
 const buildDirectory = process.env.FRAMESEQ_BUILD_DIR ?? resolve(packageRoot, "dist");
 const virtualEntry = "virtual:frameseq-entry";
 const resolvedVirtualEntry = `\0${virtualEntry}`;
+const frameworkPackage = "@pride7/frameseq";
+const frameworkEntry = resolve(packageRoot, "lib", "index.js");
 const normalizedEntry = normalizePath(entry);
 const styleEntry = resolve(packageRoot, "src", "index.css");
 const normalizedStyleEntry = normalizePath(styleEntry);
@@ -466,8 +468,13 @@ export default defineConfig({
     {
       name: "frameseq-entry",
       enforce: "pre",
-      resolveId(id) {
-        return id === virtualEntry ? resolvedVirtualEntry : undefined;
+      async resolveId(id, importer, options) {
+        if (id === virtualEntry) return resolvedVirtualEntry;
+        if (id !== frameworkPackage) return undefined;
+        // A slide document outside any project has no node_modules of its own, so it uses the
+        // FrameSeq that is serving it.
+        const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
+        return resolved ?? frameworkEntry;
       },
       load(id) {
         if (id !== resolvedVirtualEntry) return undefined;

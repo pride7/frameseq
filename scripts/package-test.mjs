@@ -354,6 +354,13 @@ const singleFileClaude = await readFile(
 if (singleFileAgents !== generatedAgents || singleFileClaude !== generatedClaude) {
   throw new Error("frameseq new did not create the shared AI authoring instructions");
 }
+// A slide document with no project of its own, as a global install meets it, uses the
+// FrameSeq that runs it.
+if (existsSync(resolve(singleFileDirectory, "node_modules")) || existsSync(resolve(harnessDirectory, "node_modules", "@pride7"))) {
+  throw new Error("The single-file deck must have no FrameSeq installation of its own to find");
+}
+run(process.execPath, [installedCli, "check", "talk.slides.ts"], singleFileDirectory);
+run(process.execPath, [installedCli, "build", "talk.slides.ts", "--single-file"], singleFileDirectory);
 
 for (const expected of [
   resolve(appDirectory, "dist", "index.html"),
@@ -363,6 +370,7 @@ for (const expected of [
   resolve(appDirectory, "output", "installed-package.pptx"),
   resolve(appDirectory, "output", "installed-package.typ"),
   resolve(appDirectory, "extra.slides.ts"),
+  resolve(singleFileDirectory, "dist", "index.html"),
 ]) {
   if (!existsSync(expected)) throw new Error(`Expected package test output is missing: ${expected}`);
 }

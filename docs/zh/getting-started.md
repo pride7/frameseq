@@ -1,10 +1,22 @@
-<!-- translation-of: docs/getting-started.md sha256:4a2c97a50e88ae1f -->
+<!-- translation-of: docs/getting-started.md sha256:6bf4567f8ebef304 -->
 
 # 快速上手
 
 ## 在线试用
 
 打开 [StackBlitz 上的 FrameSeq Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground),可以直接在浏览器里编辑 `slides.ts` 并实时预览。保存时 StackBlitz 会创建你自己的副本,仓库里的示例不受影响。
+
+## 只写一个文件
+
+FrameSeq 装一次以后,任何文件夹里的 `.slides.ts` 文件都能单独使用,旁边不需要 `package.json`,也不需要 `node_modules`:
+
+```bash
+npm install --global @pride7/frameseq
+frameseq new talk.slides.ts
+frameseq studio talk.slides.ts
+```
+
+`frameseq new` 会写好一份起步用的幻灯片,并附上给编程助手看的 `AGENTS.md` 和 `CLAUDE.md`;自己新建的文件也一样能用。从 `dev`、`studio` 到 `check`、`pdf`、`pptx`,每个命令都接受这样的文件,输出写在运行命令的文件夹下。没有项目的文件使用运行它的那份 FrameSeq。等演示需要自己的组件、主题模块,或者要固定 FrameSeq 版本时,再建项目。
 
 ## 创建项目
 

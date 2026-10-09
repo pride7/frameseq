@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Fixed
+
+- A slide document with no project of its own, such as a file in any folder run by a global install, now previews, opens in the Studio, checks, builds, and exports. It failed to resolve `@pride7/frameseq`, so only `inspect` worked; it now uses the FrameSeq that runs it.
+
 ## [0.37.0] - 2026-10-09
 
 ### Added

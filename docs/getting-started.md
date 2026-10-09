@@ -4,6 +4,18 @@
 
 Open the [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) to edit `slides.ts` and use the live preview entirely in the browser. StackBlitz creates a personal fork when you save, so the repository example remains unchanged.
 
+## Write a single file
+
+Install FrameSeq once, and a `.slides.ts` file works on its own in any folder, with no `package.json` or `node_modules` beside it:
+
+```bash
+npm install --global @pride7/frameseq
+frameseq new talk.slides.ts
+frameseq studio talk.slides.ts
+```
+
+`frameseq new` writes a starter deck, with `AGENTS.md` and `CLAUDE.md` for coding agents; a file you create yourself works as well. Every command, from `dev` and `studio` to `check`, `pdf`, and `pptx`, accepts such a file, and writes its output under the folder it was run from. A file with no project of its own uses the FrameSeq that runs it. Create a project when the talk needs its own components, theme module, or a pinned FrameSeq version.
+
 ## Create a project
 
 ```bash

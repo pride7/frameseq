@@ -168,6 +168,13 @@ my-talk/
 
 Edit `slides.ts`; the browser preview updates as the file changes. Put reusable content functions in `components/content.ts` and project-wide design settings in `components/theme.ts`. The entry imports these files directly, without an extra `index.ts` layer. `AGENTS.md` gives coding agents the project's FrameSeq syntax, region, formula, and validation rules; `CLAUDE.md` imports the same instructions so they stay in sync.
 
+To write a single slide file in any folder, with no project around it, install FrameSeq once:
+
+```bash
+npm install --global @pride7/frameseq
+frameseq studio my-talk.slides.ts
+```
+
 To use FrameSeq in an existing TypeScript project:
 
 ```bash
