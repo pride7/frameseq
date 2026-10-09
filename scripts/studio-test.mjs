@@ -291,7 +291,12 @@ try {
   await page.keyboard.type("260");
   await page.keyboard.press("Enter");
   await waitFor(async () => (await read()).includes(".width(260).height(100);\r\n"), "the inspector to rewrite the width");
-  await retrying(() => page.focus("input.studio-property-input[aria-label='height']"));
+  // The inspector redraws after every edit, so find and focus the field in one step, and only
+  // press the key once the focus is known to be there.
+  await waitFor(() => page.evaluate(() => {
+    document.querySelector("input.studio-property-input[aria-label='height']")?.focus();
+    return document.activeElement?.getAttribute("aria-label") === "height";
+  }), "the height field to take focus");
   await page.keyboard.press("ArrowUp");
   await waitFor(async () => (await read()).includes(".width(260).height(101);\r\n"), "the arrow key to step the height");
   await waitFor(
