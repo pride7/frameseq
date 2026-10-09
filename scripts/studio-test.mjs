@@ -503,7 +503,10 @@ try {
   // A deck that throws before the preview has started is reported with its reason, and the
   // frames start again once the document is fixed, without reloading the Studio.
   const healthy = await read();
-  const healthySlides = (await railLabels()).length;
+  // The rail is still redrawing after the last undo; count its slides once it shows the deck.
+  const healthyLabels = "Intro|Alpha|Beta|Gamma|Part|Part, continued|End";
+  await waitFor(async () => (await railLabels()).join("|") === healthyLabels, "the rail to show the restored deck");
+  const healthySlides = healthyLabels.split("|").length;
   await writeFile(deck, healthy.replace('slide("Intro");', '(undefined as any).early();\r\nslide("Intro");'), "utf8");
   await delay(500);
   await page.reload({ waitUntil: "networkidle2" });
