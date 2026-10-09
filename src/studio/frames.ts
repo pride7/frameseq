@@ -242,15 +242,25 @@ export class StudioFrames {
   }
 
   /**
-   * Reload the frames whose page never started a deck. A page that failed while starting has
-   * no hot-update handler, so a fixed document would otherwise never reach it.
+   * Reload the frames whose page never started a deck, after the slide document changed at
+   * `changedAt`. A page that failed while starting has no hot-update handler, so the fixed
+   * document would otherwise never reach it. A page still loading is judged once it has loaded,
+   * and a page that began loading after the change already has it, which also keeps a deck that
+   * is still broken from reloading over and over.
    */
-  restartStalled(): void {
+  restartStalled(changedAt: number): void {
     for (const target of [this.preview, this.rail, this.check]) {
       const page = target.contentDocument;
-      if (!page || this.started.has(page) || page.readyState !== "complete") continue;
+      const view = target.contentWindow;
+      if (!page || !view || this.started.has(page)) continue;
+      // The server may take a moment to notice the change, so a page begun just after it may not.
+      if (view.performance.timeOrigin > changedAt + 300) continue;
+      if (page.readyState !== "complete") {
+        target.addEventListener("load", () => setTimeout(() => this.restartStalled(changedAt), 300), { once: true });
+        continue;
+      }
       try {
-        target.contentWindow?.location.reload();
+        view.location.reload();
       } catch {
         target.src = target.src;
       }

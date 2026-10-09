@@ -366,7 +366,8 @@ async function start(): Promise<void> {
     syncedDoc = Text.of(text.split("\n"));
     baseVersion = version;
     // Give the server a moment to see the new file, then restart any frame that never ran.
-    setTimeout(() => frames.restartStalled(), 400);
+    const changedAt = Date.now();
+    setTimeout(() => frames.restartStalled(changedAt), 400);
   }
 
   function scheduleSave(): void {
