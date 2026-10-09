@@ -65,6 +65,26 @@ export interface SignatureHelp {
   }>;
 }
 
+/** A value written literally in a command, which the inspector can rewrite in place. */
+export interface InspectProperty {
+  name: string;
+  kind: "number" | "string" | "boolean";
+  value: number | string | boolean;
+  source: { line: number; character: number; start: number; end: number };
+  /** The literal exactly as written, so a stale edit can be recognised and refused. */
+  expected: string;
+}
+
+/** A named at() region of a slide, with the literal properties of its container. */
+export interface InspectRegion {
+  id: string;
+  path: string;
+  source: { line: number; character: number; start?: number; end?: number };
+  sources?: Array<{ line: number; character: number; start?: number; end?: number }>;
+  properties?: InspectProperty[];
+  visits: number;
+}
+
 export interface InspectObject {
   id: string;
   type: string;
@@ -72,6 +92,7 @@ export interface InspectObject {
   name?: string;
   region: string;
   parentId?: string;
+  properties: InspectProperty[];
   source: {
     line: number;
     character: number;
@@ -89,7 +110,7 @@ export interface InspectSlide {
   notes: boolean;
   source: { line: number; character: number; endLine: number };
   objects: InspectObject[];
-  regions?: Array<{ path: string }>;
+  regions?: InspectRegion[];
   objectCount: number;
 }
 

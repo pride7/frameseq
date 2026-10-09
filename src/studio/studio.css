@@ -697,6 +697,243 @@ vite-error-overlay {
   outline: none;
 }
 
+/* ── Current slide inspector ───────────────────────────────────────────────────────────── */
+
+.studio-rail-body {
+  min-height: 90px;
+}
+
+.studio-rail > [data-splitter="inspector"] {
+  flex: none;
+  height: 5px;
+}
+
+.studio-inspector {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: var(--studio-inspector-height, 260px);
+  min-height: 0;
+  background: var(--studio-surface);
+}
+
+.studio-inspector .studio-pane-header {
+  gap: 4px;
+  padding-left: 4px;
+}
+
+.studio-inspector .studio-pane-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio.is-inspector-collapsed .studio-inspector {
+  height: 34px;
+}
+
+.studio.is-inspector-collapsed .studio-rail > [data-splitter="inspector"] {
+  visibility: hidden;
+}
+
+.studio.is-inspector-collapsed .studio-inspector-body {
+  display: none;
+}
+
+.studio-inspector-toggle {
+  font-size: 13px;
+}
+
+.studio.is-inspector-collapsed .studio-inspector-toggle {
+  transform: rotate(-90deg);
+}
+
+.studio-inspector-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0 14px;
+}
+
+.studio-inspector-summary,
+.studio-inspector-empty {
+  margin: 4px 12px 6px;
+  color: var(--studio-faint);
+  font-size: 11.5px;
+}
+
+.studio-inspector-note {
+  margin: 2px 10px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--studio-muted);
+  background: var(--studio-accent-soft);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.studio-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px 0 calc(4px + var(--depth, 0) * 14px);
+  cursor: pointer;
+  white-space: nowrap;
+  outline: none;
+}
+
+.studio-tree-row:hover {
+  background: var(--studio-surface-hover);
+}
+
+.studio-tree-row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--studio-accent);
+}
+
+.studio-tree-row.is-highlighted {
+  background: var(--studio-accent-soft);
+  box-shadow: inset 2px 0 0 var(--studio-accent);
+}
+
+.studio-tree-toggle {
+  display: grid;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  color: var(--studio-faint);
+  background: none;
+  font-size: 10px;
+}
+
+.studio-tree-toggle::before {
+  content: "▸";
+  transition: transform 0.12s ease;
+}
+
+.studio-tree-row[aria-expanded="true"] .studio-tree-toggle::before {
+  transform: rotate(90deg);
+}
+
+.studio-tree-toggle:disabled {
+  opacity: 1;
+}
+
+.studio-tree-toggle:disabled::before {
+  content: "";
+}
+
+.studio-tree-glyph {
+  flex: none;
+  width: 18px;
+  color: var(--studio-accent);
+  font: 600 11px/1 var(--studio-mono);
+  text-align: center;
+}
+
+.studio-tree-row[data-kind="region"] .studio-tree-glyph {
+  color: var(--syntax-keyword);
+}
+
+.studio-tree-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--studio-text);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+}
+
+.studio-tree-detail {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--syntax-type);
+  font: 11px var(--studio-mono);
+  text-overflow: ellipsis;
+}
+
+.studio-tree-meta {
+  flex: none;
+  margin-left: auto;
+  color: var(--studio-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-property-row {
+  gap: 6px;
+  padding-left: calc(25px + var(--depth, 0) * 14px);
+  cursor: default;
+}
+
+.studio-property-name {
+  flex: none;
+  min-width: 54px;
+  color: var(--studio-muted);
+  font: 11.5px var(--studio-mono);
+}
+
+.studio-property-input {
+  flex: 1;
+  min-width: 40px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font: 12px var(--studio-mono);
+}
+
+.studio-property-input.is-number {
+  color: var(--syntax-number);
+}
+
+.studio-property-input.is-string {
+  color: var(--syntax-string);
+}
+
+.studio-property-input:hover {
+  border-color: var(--studio-border-strong);
+}
+
+.studio-property-input:focus {
+  border-color: var(--studio-accent);
+  color: var(--studio-text);
+  background: var(--studio-editor);
+  outline: none;
+}
+
+.studio-property-input.is-invalid {
+  border-color: var(--studio-error);
+}
+
+.studio-property-swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.studio-property-swatch::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.studio-property-swatch::-webkit-color-swatch {
+  border: 0;
+  border-radius: 3px;
+}
+
+.studio-property-check {
+  accent-color: var(--studio-accent);
+}
+
 /* ── Editor gutter marks ───────────────────────────────────────────────────────────────── */
 
 .cm-slide-marker {

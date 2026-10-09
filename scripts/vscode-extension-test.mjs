@@ -34,6 +34,8 @@ for (const command of [
   "frameseq.goToRegion",
   "frameseq.bindSelectionToRegion",
   "frameseq.stopPreview",
+  "frameseq.openStudio",
+  "frameseq.stopStudio",
   "frameseq.check",
   "frameseq.export",
   "frameseq.exportHtml",
@@ -53,6 +55,11 @@ assert.ok(manifest.contributes.snippets.some((snippet) => snippet.language === "
 assert.ok(source.includes('["inspect", relativeEntry, "--json"]'));
 assert.ok(source.includes('["check", relativeEntry, "--json"]'));
 assert.ok(source.includes('["dev", relativeEntry, "--no-open"]'));
+assert.ok(source.includes('["studio", relativeEntry]'), "Open in Studio must run the project's own CLI");
+assert.ok(
+  manifest.contributes.menus["view/title"].some((item) => item.command === "frameseq.openStudio"),
+  "Open in Studio belongs on the Slides view toolbar",
+);
 assert.ok(source.includes('BROWSER: "none"'));
 assert.ok(source.includes('searchParams.set("frameseq-preview"'));
 assert.ok(source.includes("vscode.window.createWebviewPanel"));

@@ -2,7 +2,7 @@
   "name": "frameseq",
   "displayName": "FrameSeq",
   "description": "Edit FrameSeq presentations with a split live preview, slide navigation, validation, snippets, and exports.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "pride7",
   "license": "MIT",
   "repository": {
@@ -139,6 +139,16 @@
         "icon": "$(debug-stop)"
       },
       {
+        "command": "frameseq.openStudio",
+        "title": "FrameSeq: Open in Studio",
+        "icon": "$(window)"
+      },
+      {
+        "command": "frameseq.stopStudio",
+        "title": "FrameSeq: Stop Studio",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "frameseq.check",
         "title": "FrameSeq: Check Layout",
         "icon": "$(check-all)"
@@ -196,6 +206,11 @@
           "command": "frameseq.export",
           "when": "view == frameseq.slides",
           "group": "navigation@5"
+        },
+        {
+          "command": "frameseq.openStudio",
+          "when": "view == frameseq.slides",
+          "group": "navigation@6"
         },
         {
           "command": "frameseq.selectEntry",
@@ -272,6 +287,12 @@
           "command": "frameseq.check",
           "when": "view == frameseq.slides && viewItem == frameseqSlide",
           "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "frameseq.stopStudio",
+          "when": "frameseq.studioRunning"
         }
       ]
     },

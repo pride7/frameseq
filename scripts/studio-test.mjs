@@ -125,7 +125,7 @@ try {
 
   browser = await puppeteer.launch(puppeteerLaunchOptions());
   page = await browser.newPage();
-  await page.setViewport({ width: 1440, height: 900 });
+  await page.setViewport({ width: 1440, height: 1100 });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
@@ -272,6 +272,44 @@ try {
   // A thumbnail shows its slide and moves the editor to the line that starts it.
   await showSlide(1);
   assert.equal(await page.$eval("[data-slot='status-cursor']", (element) => element.textContent), "Ln 7, Col 1");
+
+  // The inspector lists the objects on the slide in the preview, shows where each was written,
+  // and rewrites the literals its commands state, one undoable edit at a time.
+  await waitFor(
+    async () => (await page.$eval("[data-slot='inspector-meta']", (element) => element.textContent)).startsWith("2 / 3"),
+    "the inspector to follow slide 2",
+  );
+  const beforeInspector = await read();
+  await retrying(async () => (await page.waitForSelector(".studio-tree-row[data-kind='rect']", { timeout: 5_000 })).click());
+  await waitFor(
+    async () => (await page.$eval("[data-slot='status-cursor']", (element) => element.textContent)) === "Ln 8, Col 1",
+    "choosing the rect to show its source line",
+  );
+  await retrying(() => page.click(".studio-tree-row[data-kind='rect'] .studio-tree-toggle"));
+  const width = await page.waitForSelector("input.studio-property-input[aria-label='width']");
+  await width.click({ clickCount: 3 });
+  await page.keyboard.type("260");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes(".width(260).height(100);\r\n"), "the inspector to rewrite the width");
+  await retrying(() => page.focus("input.studio-property-input[aria-label='height']"));
+  await page.keyboard.press("ArrowUp");
+  await waitFor(async () => (await read()).includes(".width(260).height(101);\r\n"), "the arrow key to step the height");
+  await waitFor(
+    () => preview.evaluate(() => document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-move='true']")?.style.width === "260px").catch(() => false),
+    "the preview to draw the new width",
+  );
+  await waitFor(async () => {
+    if ((await read()) === beforeInspector) return true;
+    await undoInEditor();
+    await delay(400);
+    return (await read()) === beforeInspector;
+  }, "undo to restore both values");
+  // Folded away, the inspector gives the slide rail its full height for the drags below.
+  await page.click("[data-action='toggle-inspector']");
+  await waitFor(
+    () => page.$eval(".studio-inspector", (inspector) => inspector.getBoundingClientRect().height < 40),
+    "the inspector to fold away",
+  );
 
   // Dragging in the preview becomes an ordinary editor edit, saved to the right characters.
   const beforeDrag = await read();
@@ -576,4 +614,4 @@ try {
   plain.child.kill();
 }
 
-console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, runtime and startup errors, exports, and API isolation.");
+console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, runtime and startup errors, exports, and API isolation.");

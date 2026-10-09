@@ -104,6 +104,9 @@ type OutlineItem = SlideItem | RegionItem | ObjectItem | IssueItem;
 type CurrentSlideItem = CurrentSlideSummaryItem | CurrentSlideSectionItem | RegionGroupItem | RegionPropertyItem | ObjectItem | PropertyItem;
 
 let previewProcess: ChildProcessWithoutNullStreams | undefined;
+let studioProcess: ChildProcessWithoutNullStreams | undefined;
+let studioAddress: string | undefined;
+let studioEntry: string | undefined;
 let previewWasStopped = false;
 let previewAddress: string | undefined;
 let previewOpenTimer: NodeJS.Timeout | undefined;
@@ -1614,6 +1617,76 @@ function previewWebviewHtml(url: string, focus?: PreviewComponentTarget): string
 </html>`;
 }
 
+/**
+ * Open the deck in FrameSeq Studio, which the project's own CLI serves and shows in a window of
+ * its own. A Studio already running for the deck is shown again rather than started twice, since
+ * two servers writing one document would contend; unsaved edits are saved first for the same
+ * reason.
+ */
+async function openStudio(provider: SlidesProvider, output: vscode.OutputChannel): Promise<void> {
+  const entry = provider.entry ?? await resolveEntry();
+  if (!entry) {
+    void vscode.window.showErrorMessage("FrameSeq: no slides entry file was found.");
+    return;
+  }
+  const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === entry.uri.toString());
+  if (open?.isDirty) await open.save();
+
+  if (studioProcess && studioEntry === entry.uri.fsPath) {
+    if (studioAddress) await vscode.env.openExternal(vscode.Uri.parse(studioAddress));
+    return;
+  }
+  studioProcess?.kill();
+
+  const relativeEntry = relative(entry.root, entry.uri.fsPath);
+  const invocation = await cliInvocation(entry, ["studio", relativeEntry]);
+  output.appendLine(`> ${invocation.command} ${invocation.args.join(" ")}`);
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: entry.root,
+    env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+    windowsHide: true,
+  });
+  studioProcess = child;
+  studioEntry = entry.uri.fsPath;
+  studioAddress = undefined;
+  await vscode.commands.executeCommand("setContext", "frameseq.studioRunning", true);
+
+  let log = "";
+  const handleOutput = (chunk: Buffer) => {
+    const text = chunk.toString();
+    log += text;
+    output.append(text);
+    studioAddress ??= text.match(/Studio:\s+(https?:\/\/\S+studio\.html)/)?.[1];
+  };
+  child.stdout.on("data", handleOutput);
+  child.stderr.on("data", handleOutput);
+  child.on("error", (error) => {
+    output.show(true);
+    void vscode.window.showErrorMessage(`FrameSeq Studio failed: ${error.message}`);
+  });
+  child.on("close", (code) => {
+    if (studioProcess !== child) return;
+    studioProcess = undefined;
+    studioAddress = undefined;
+    studioEntry = undefined;
+    void vscode.commands.executeCommand("setContext", "frameseq.studioRunning", false);
+    if (code === 0 || code === null) return;
+    output.show(true);
+    // A FrameSeq from before the Studio answers an unknown command with its usage text.
+    void vscode.window.showErrorMessage(log.includes("Usage:")
+      ? "FrameSeq: this project's FrameSeq has no Studio yet. Update it with: npm install -D @pride7/frameseq@latest"
+      : `FrameSeq Studio exited with code ${code}.`);
+  });
+}
+
+async function stopStudio(): Promise<void> {
+  studioProcess?.kill();
+  studioProcess = undefined;
+  studioAddress = undefined;
+  studioEntry = undefined;
+  await vscode.commands.executeCommand("setContext", "frameseq.studioRunning", false);
+}
+
 function schedulePreviewOpen(
   url: string,
   child: ChildProcessWithoutNullStreams,
@@ -1991,6 +2064,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   ));
   context.subscriptions.push(vscode.commands.registerCommand("frameseq.stopPreview", stopPreview));
   context.subscriptions.push(vscode.commands.registerCommand(
+    "frameseq.openStudio",
+    () => openStudio(provider, output),
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand("frameseq.stopStudio", stopStudio));
+  context.subscriptions.push(vscode.commands.registerCommand(
     "frameseq.check",
     async () => {
       try {
@@ -2127,6 +2205,8 @@ export function deactivate(): void {
   previewProcess?.kill();
   previewProcess = undefined;
   previewAddress = undefined;
+  studioProcess?.kill();
+  studioProcess = undefined;
   previewSourceMarker = undefined;
   previewLineDecoration = undefined;
   activeSlidesProvider = undefined;

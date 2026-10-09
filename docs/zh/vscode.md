@@ -1,4 +1,4 @@
-<!-- translation-of: docs/vscode.md sha256:ff991c87addf0146 -->
+<!-- translation-of: docs/vscode.md sha256:b1831e3d42851f3a -->
 
 # Visual Studio Code 扩展
 
@@ -20,6 +20,7 @@ FrameSeq 扩展给 VS Code 加上了理解演示结构的导航和命令,同时*
 - Slides 视图工具栏上的导出按钮,可选 HTML、PDF、PPTX 和可编辑 Typst。
 - 在预览里 Alt+点击,把光标移到画出该对象的那条命令上。
 - 在预览里拖拽,改变命令写下的坐标、或对象在邻居之间的位置,作为一次可撤销的编辑。
+- Slides 视图工具栏上的 **FrameSeq: Open in Studio**：在独立窗口里用 [FrameSeq Studio](studio.md) 打开这份演示。未保存的修改会先保存；同一份演示的 Studio 已在运行时只会重新显示，不会再启动一个。**FrameSeq: Stop Studio** 用来关闭它。
 
 扩展通过 `frameseq inspect --json` 读取大纲,并调用项目里已安装的 FrameSeq CLI 来预览、校验和导出。**它不会再打包一份渲染运行时。**
 

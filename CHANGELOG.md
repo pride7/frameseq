@@ -4,6 +4,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.37.0] - 2026-10-09
+
+### Added
+
+- Add a Current slide inspector to FrameSeq Studio, below the slide rail. It lists the objects on the slide in the preview by region, highlights the one under the cursor, shows each object's source and outlines it in the preview, and edits the literal values commands state: type a value, step numbers with the arrow keys, or pick a colour. Each edit is one undoable change.
+- Add **FrameSeq: Open in Studio** and **FrameSeq: Stop Studio** to the VS Code extension, which is now version 0.6.0.
+
 ## [0.36.0] - 2026-10-09
 
 ### Added

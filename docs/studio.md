@@ -15,6 +15,7 @@ The source stays the only description of the talk. Everything the Studio does, w
 | Area | What it holds |
 | --- | --- |
 | **Slides** (left) | Every slide, rendered by the same runtime as the preview and updated on every save. |
+| **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, with the values their commands state. |
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the deck ran. |
@@ -22,6 +23,17 @@ The source stays the only description of the talk. Everything the Studio does, w
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail and `Ctrl+J` hides the bottom panel. The sizes are remembered by the browser.
 
 The theme button beside **Auto-save** switches between following the system (◐), light (☀), and dark (☾). The slides themselves keep the presentation's own theme.
+
+## Current slide
+
+Below the slides, **Current slide** lists the objects on the slide the preview shows, grouped by the region they were written in, as the VS Code extension's Current Slide view does. Each row shows the kind of object, its text or name, and the line that wrote it; the row of the object under the editor's cursor is highlighted.
+
+- **Click** an object to put the cursor on its command and outline it in the preview. Click a named region to outline the whole region.
+- **Expand** an object or a named region to see the values its commands state literally: positions, sizes, spacing, colours, and the like. Edit one where it stands and press `Enter`; `Escape` puts it back. In a number, `↑` and `↓` step it by one, with `Shift` by ten and `Alt` by a tenth, and the preview follows each step. A colour written as `#rrggbb` has a colour picker beside it.
+
+Every change rewrites only that literal, as one step in the editor's history, so `Ctrl+Z` takes it back. A value the code computes, such as `x: left + 40`, is not listed, since no single literal stands for it. For a slide made in a loop or by a helper function, the inspector shows the objects written once in the loop or the helper, and says so.
+
+Drag the divider above **Current slide** to share the rail between it and the slides, or fold it away with the arrow beside its title.
 
 ## Editing and saving
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-09
+
+- Add **FrameSeq: Open in Studio** to the Slides view toolbar and the Command Palette. It saves the deck, runs the project's own `frameseq studio`, and shows a Studio already running for the deck instead of starting a second one. **FrameSeq: Stop Studio** ends it, and closing VS Code stops it too. A project whose FrameSeq predates the Studio is told to update.
+
 ## 0.5.0 - 2026-08-12
 
 - Remove the VS Code webview's default body padding so the embedded preview has equal left and right gutters instead of overflowing and clipping its right edge.

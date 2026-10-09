@@ -10,7 +10,9 @@ import {
   StudioRequestError,
   type ExportFormat,
   type ExportResult,
+  type InspectObject,
   type InspectReport,
+  type InspectSlide,
   type LanguageDiagnostic,
   type SaveResponse,
   type SourceResponse,
@@ -27,6 +29,7 @@ import {
 import { createEditor, setEditorDarkness, showPreviewSlide, showSlideMarks, type SlideMark } from "./editor";
 import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
 import { StudioFrames, type SourceTarget } from "./frames";
+import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import {
@@ -98,6 +101,15 @@ const shell = `
         <button type="button" class="studio-icon-button" data-action="new-slide" title="New slide after the current one">+</button>
       </header>
       <div class="studio-rail-body" data-slot="rail"></div>
+      <div class="studio-splitter is-horizontal" data-splitter="inspector"></div>
+      <section class="studio-inspector" aria-label="Current slide">
+        <header class="studio-pane-header">
+          <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="Show or hide the objects of the current slide">⌄</button>
+          <span class="studio-pane-title">Current slide</span>
+          <span class="studio-pane-meta" data-slot="inspector-meta"></span>
+        </header>
+        <div class="studio-inspector-body" data-slot="inspector" role="tree" aria-label="Objects on the current slide"></div>
+      </section>
     </section>
     <div class="studio-splitter" data-splitter="rail"></div>
     <section class="studio-editor-pane" aria-label="Editor">
@@ -270,6 +282,7 @@ async function start(): Promise<void> {
         showPreviewPosition();
         frames.markThumbnail(index);
         showPreviewSlide(view, index);
+        refreshInspector();
       },
       reveal: (target) => {
         const range = editorRange(target);
@@ -303,6 +316,7 @@ async function start(): Promise<void> {
         showMarks();
         showCursor();
         showPreviewPosition();
+        refreshInspector();
       },
       thumbnail: (index) => goToSlide(index, { focusEditor: false }),
       thumbnailMove: (from, to) => void rearrange("move", from, to),
@@ -330,6 +344,82 @@ async function start(): Promise<void> {
   systemLight.addEventListener("change", () => {
     if (themeChoice === "system") applyTheme();
   });
+
+  // ── Current slide ───────────────────────────────────────────────────────────────────────
+  const inspector = new SlideInspector(slot("inspector"), {
+    selectObject: (object) => {
+      const position = object.source.start ?? view.state.doc.line(Math.min(object.source.line, view.state.doc.lines)).from;
+      suppressFollow = true;
+      view.dispatch({
+        selection: EditorSelection.cursor(position),
+        effects: EditorView.scrollIntoView(position, { y: "center" }),
+      });
+      frames.focus({ slideIndex: previewSlide, ...savedLocation(position) });
+      inspector.highlight(object);
+    },
+    selectRegion: (region) => {
+      const position = region.source.start ?? view.state.doc.line(Math.min(region.source.line, view.state.doc.lines)).from;
+      suppressFollow = true;
+      view.dispatch({
+        selection: EditorSelection.cursor(position),
+        effects: EditorView.scrollIntoView(position, { y: "center" }),
+      });
+      frames.focus({ slideIndex: previewSlide, name: region.path });
+    },
+    editProperty: (property, literal) => {
+      const { start, end } = property.source;
+      // Only the literal the inspector read may be replaced; anything else has moved on.
+      if (end > view.state.doc.length || view.state.sliceDoc(start, end) !== property.expected) return false;
+      suppressFollow = true;
+      view.dispatch({ changes: { from: start, to: end, insert: literal }, userEvent: "input.inspector" });
+      return true;
+    },
+  });
+
+  /**
+   * The outline of the slide the preview shows: the statement whose lines hold the slide's own
+   * slide() call, which for a loop is the loop and for a helper the helper's body.
+   */
+  function inspectedSlide(): { slide?: InspectSlide; note: string } | undefined {
+    if (!report || reportText !== editorText()) return undefined;
+    const doc = view.state.doc;
+    const map = slideMap();
+    if (!map) {
+      if (outline) return undefined;
+      const index = slideIndexAt(view.state.selection.main.head);
+      return { slide: index === undefined ? undefined : report.slides[index], note: "" };
+    }
+    const groupIndex = map.groupOf[previewSlide];
+    const group = groupIndex === undefined ? undefined : map.groups[groupIndex];
+    if (!group) return { note: `Slide ${previewSlide + 1} is made outside ${session.name}.` };
+    const call = map.calls[previewSlide];
+    const callLine = call === undefined ? undefined : doc.lineAt(call).number;
+    const slide = (callLine === undefined ? undefined : report.slides.find((candidate) => (
+      callLine >= candidate.source.line && callLine <= candidate.source.endLine
+    ))) ?? report.slides.find((candidate) => {
+      const line = doc.line(Math.min(candidate.source.line, doc.lines));
+      return line.from >= group.from && line.from < group.to;
+    });
+    const anchorLine = doc.lineAt(group.anchor).number;
+    const inGroup = call !== undefined && call >= group.from && call < group.to;
+    const note = !inGroup && slide
+      ? `Made by the helper call on line ${anchorLine}; these objects are written in the helper.`
+      : (group.slides.length > 1
+        ? `Made by a statement on line ${anchorLine} with ${group.slides.length - 1} other slide${group.slides.length === 2 ? "" : "s"}; its objects are written once for all of them.`
+        : "");
+    return slide ? { slide, note } : { note: `Slide ${previewSlide + 1} is made by the statement on line ${anchorLine}.` };
+  }
+
+  function refreshInspector(): void {
+    const current = inspectedSlide();
+    if (!current) return;
+    inspector.show(current.slide, current.note);
+    const label = outline?.[previewSlide]?.label ?? current.slide?.label ?? "";
+    slot("inspector-meta").textContent = renderedCount > 0
+      ? `${previewSlide + 1} / ${renderedCount}${label ? ` · ${label}` : ""}`
+      : (label ? label : "");
+    inspector.highlight(objectAt(view.state.selection.main.head) as InspectObject | undefined);
+  }
 
   // ── Saving ──────────────────────────────────────────────────────────────────────────────
   function editorText(): string {
@@ -593,6 +683,7 @@ async function start(): Promise<void> {
       report = next;
       reportText = text;
       showMarks();
+      refreshInspector();
       showCursor();
       return next;
     } catch {
@@ -746,6 +837,7 @@ async function start(): Promise<void> {
     const label = outline?.[index]?.label ?? report?.slides[index]?.label ?? "";
     const object = objectAt(selection.head);
     crumb.textContent = `Slide ${index + 1}${label ? ` · ${label}` : ""}${object ? ` › ${object.type}` : ""}`;
+    inspector.highlight(object);
   }
 
   function showPreviewPosition(): void {
@@ -1108,10 +1200,21 @@ async function start(): Promise<void> {
     host: root,
     variable: "--studio-rail-width",
     axis: "x",
-    fallback: 210,
+    fallback: 240,
     minimum: 150,
     maximum: () => Math.max(160, workspace.clientWidth * 0.3),
   });
+  const rail = required<HTMLElement>(root, ".studio-rail");
+  splitter(required(root, "[data-splitter='inspector']"), {
+    host: root,
+    variable: "--studio-inspector-height",
+    axis: "y",
+    fallback: 260,
+    minimum: 110,
+    maximum: () => Math.max(120, rail.clientHeight - 140),
+    invert: true,
+  });
+  if (readPreference("inspector-collapsed", false)) root.classList.add("is-inspector-collapsed");
   splitter(required(root, "[data-splitter='preview']"), {
     host: root,
     variable: "--studio-preview-width",
@@ -1179,6 +1282,12 @@ async function start(): Promise<void> {
       case "toggle-panel":
         togglePanel();
         break;
+      case "toggle-inspector": {
+        const collapsed = root.classList.toggle("is-inspector-collapsed");
+        target.setAttribute("aria-expanded", String(!collapsed));
+        storePreference("inspector-collapsed", collapsed);
+        break;
+      }
       case "show-problems":
         showPanel("problems");
         break;

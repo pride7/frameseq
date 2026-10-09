@@ -601,10 +601,11 @@ It opens as an app window of its own (or in the default browser when no Chromium
 - The rules of `frameseq check` run against the live deck after every save, so overflow, clipped text, and inert modifiers appear while the slide is being written.
 - Moving the cursor shows the slide that holds it. Alt-clicking or dragging in the preview edits the source through the editor, so `Ctrl+Z` undoes it.
 - Thumbnails can be dragged to reorder slides, and duplicated, inserted, or deleted from their menu, each as one undoable edit.
+- Below them, **Current slide** lists every object on the slide in the preview, and edits the positions, sizes, and colours their commands state; numbers step with the arrow keys while the preview follows.
 - A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
 - **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
 
-The complete guide is [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html).
+The complete guide is [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html). In VS Code, **FrameSeq: Open in Studio** on the Slides view toolbar opens the same window.
 
 ## Visual Studio Code extension
 
