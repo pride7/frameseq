@@ -1257,7 +1257,21 @@ async function start(): Promise<void> {
   // For tests and automation: the editor only draws the lines in view, so its text is read here.
   Object.defineProperty(window, "frameseqStudio", {
     configurable: true,
-    value: { view, get text() { return editorText(); }, get saved() { return !isDirty(); } },
+    value: {
+      view,
+      get text() { return editorText(); },
+      get saved() { return !isDirty(); },
+      /** How the rendered slides line up with the text, or why they do not yet. */
+      get slides() {
+        const map = slideMap();
+        return {
+          outline: outline?.map((slide) => slide.statement ?? null) ?? null,
+          outlineCurrent: Boolean(report && reportText === editorText()),
+          statements: report?.statements.length ?? null,
+          groups: map?.groups.map((group) => group.slides) ?? null,
+        };
+      },
+    },
   });
 }
 

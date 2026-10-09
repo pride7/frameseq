@@ -129,6 +129,17 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
+  // Notices vanish after a few seconds, so keep every one for the report if a step fails.
+  await page.evaluateOnNewDocument(() => {
+    if (window.top !== window) return;
+    window.__studioNotices = [];
+    new MutationObserver(() => {
+      for (const notice of document.querySelectorAll(".studio-toast-text")) {
+        const text = notice.textContent ?? "";
+        if (text && window.__studioNotices.at(-1) !== text) window.__studioNotices.push(text);
+      }
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
   await page.goto(studioUrl, { waitUntil: "networkidle2" });
   await page.waitForFunction(
     () => document.querySelector("[data-slot='check-state']")?.textContent?.includes("Layout checked"),
@@ -537,6 +548,8 @@ try {
   const state = await page?.evaluate(() => ({
     saveState: document.querySelector("[data-slot='save-state']")?.textContent,
     problems: [...document.querySelectorAll(".studio-problem")].map((row) => row.textContent),
+    notices: window.__studioNotices,
+    slides: window.frameseqStudio?.slides,
   })).catch((reason) => String(reason));
   console.error(`Studio state: ${JSON.stringify(state)}`);
   const frames = await Promise.all((page?.frames() ?? []).map((frame) => frame.evaluate(() => ({
