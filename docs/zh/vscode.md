@@ -1,4 +1,4 @@
-<!-- translation-of: docs/vscode.md sha256:b1831e3d42851f3a -->
+<!-- translation-of: docs/vscode.md sha256:aa6d6c6b338f0285 -->
 
 # Visual Studio Code 扩展
 
@@ -22,7 +22,7 @@ FrameSeq 扩展给 VS Code 加上了理解演示结构的导航和命令,同时*
 - 在预览里拖拽,改变命令写下的坐标、或对象在邻居之间的位置,作为一次可撤销的编辑。
 - Slides 视图工具栏上的 **FrameSeq: Open in Studio**：在独立窗口里用 [FrameSeq Studio](studio.md) 打开这份演示。未保存的修改会先保存；同一份演示的 Studio 已在运行时只会重新显示，不会再启动一个。**FrameSeq: Stop Studio** 用来关闭它。
 
-扩展通过 `frameseq inspect --json` 读取大纲,并调用项目里已安装的 FrameSeq CLI 来预览、校验和导出。**它不会再打包一份渲染运行时。**
+扩展通过 `frameseq inspect --json` 读取大纲,并调用 FrameSeq CLI 来预览、校验和导出:项目里装了就用项目自己的,否则用全局安装的。**它不会再打包一份渲染运行时。**
 
 ## 本地构建与安装
 
@@ -45,7 +45,7 @@ output/vscode/frameseq-vscode.vsix
 code --install-extension output/vscode/frameseq-vscode.vsix
 ```
 
-安装之后打开一个 FrameSeq 项目。该项目必须已经装好 npm 依赖,扩展才能调用本地的 `frameseq` 可执行文件。
+安装之后打开一个 FrameSeq 项目。该项目必须已经装好 npm 依赖,扩展才能调用本地的 `frameseq` 可执行文件。没有自己项目的演示,也就是任意文件夹里的单个 `.slides.ts` 文件,会使用 `npm install --global @pride7/frameseq` 放到 PATH 上的 `frameseq` 命令,也就是终端会运行的那一个。两者都没有时,扩展会提示如何安装 FrameSeq。
 
 运行 **FrameSeq: Preview** 会把入口文档留在第一个编辑器组,并在旁边打开预览。如果你更希望预览出现在当前编辑器组里,把 `frameseq.previewBeside` 设为 `false`。在 FrameSeq 大纲里选中某一页会同时更新源码选区和实时预览,这个行为由 `frameseq.followOutline` 控制。
 

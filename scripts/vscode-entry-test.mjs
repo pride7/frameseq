@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { delimiter, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,6 +65,38 @@ assert.deepEqual(
   rankEntryCandidates(["/work/talks/2026/kickoff/slides.ts"], "/work"),
   ["/work/talks/2026/kickoff/slides.ts"],
 );
+
+// Commands run the project's own FrameSeq, and a deck with none uses a global install, found
+// from the `frameseq` command npm put on the PATH, as a terminal finds it.
+const { cliIn, findCli, globalCli } = require(resolve(extensionRoot, "out", "cli.js"));
+const cliSandbox = resolve(packageRoot, "tmp", "vscode-cli-test");
+if (!cliSandbox.startsWith(resolve(packageRoot, "tmp"))) throw new Error(`Unsafe CLI test path: ${cliSandbox}`);
+await rm(cliSandbox, { recursive: true, force: true });
+const project = resolve(cliSandbox, "project");
+const lone = resolve(cliSandbox, "lone");
+const prefix = resolve(cliSandbox, "global");
+const projectCli = cliIn(resolve(project, "node_modules"));
+// npm's global layout: the prefix itself on Windows, lib/ and a bin/ symlink elsewhere.
+const globalModules = process.platform === "win32" ? resolve(prefix, "node_modules") : resolve(prefix, "lib", "node_modules");
+const globalBin = process.platform === "win32" ? prefix : resolve(prefix, "bin");
+for (const cli of [projectCli, cliIn(globalModules)]) {
+  await mkdir(dirname(cli), { recursive: true });
+  await writeFile(cli, "", "utf8");
+}
+await mkdir(lone, { recursive: true });
+await mkdir(globalBin, { recursive: true });
+if (process.platform === "win32") await writeFile(resolve(globalBin, "frameseq.cmd"), "", "utf8");
+else await symlink(relative(globalBin, cliIn(globalModules)), resolve(globalBin, "frameseq"));
+const searchPath = [resolve(cliSandbox, "elsewhere"), globalBin].join(delimiter);
+// The shim on Windows names the prefix; the symlink elsewhere resolves to the script itself.
+const installedGlobalCli = process.platform === "win32" ? cliIn(globalModules) : await realpath(cliIn(globalModules));
+
+assert.equal(await globalCli(searchPath), installedGlobalCli);
+assert.equal(await globalCli(resolve(cliSandbox, "elsewhere")), undefined);
+assert.equal(await findCli(project, () => globalCli(searchPath)), projectCli, "the project's own FrameSeq comes first");
+assert.equal(await findCli(lone, () => globalCli(searchPath)), installedGlobalCli);
+assert.equal(await findCli(lone, async () => undefined), undefined, "no FrameSeq anywhere must be reported, not guessed");
+await rm(cliSandbox, { recursive: true, force: true });
 
 // These assertions describe the source, not its line endings, and Git hands Windows a
 // CRLF checkout, so normalise before matching or every multi-line claim fails there.

@@ -20,7 +20,7 @@ The FrameSeq extension adds presentation-aware navigation and commands to Visual
 - Dragging in the preview to change the coordinates a command states, or an object's place among its neighbours, as an undoable edit.
 - **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the deck in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the deck is shown again rather than started twice; **FrameSeq: Stop Studio** ends it.
 
-The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the project's installed FrameSeq CLI. It does not bundle another copy of the rendering runtime.
+The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the FrameSeq CLI: the project's own when it has one, otherwise a global install. It does not bundle another copy of the rendering runtime.
 
 ## Build and install locally
 
@@ -43,7 +43,7 @@ Install it from the VS Code Extensions view with **Install from VSIX...**, or us
 code --install-extension output/vscode/frameseq-vscode.vsix
 ```
 
-Open a FrameSeq project after installation. The project must already have its npm dependencies installed so the extension can call the local `frameseq` executable.
+Open a FrameSeq project after installation. The project must already have its npm dependencies installed so the extension can call the local `frameseq` executable. A deck with no project of its own, a single `.slides.ts` file in any folder, uses the `frameseq` command that `npm install --global @pride7/frameseq` put on the PATH, the one a terminal would run. With neither, the extension says how to install FrameSeq.
 
 Running **FrameSeq: Preview** keeps the entry document in the first editor group and opens the preview beside it. Set `frameseq.previewBeside` to `false` if you prefer the preview in the active editor group. Selecting a slide in the FrameSeq outline updates both the source selection and the live preview; this behavior is controlled by `frameseq.followOutline`.
 

@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { access } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import * as vscode from "vscode";
+import { cliIn, findCli, notInstalledMessage } from "./cli";
 import {
   ancestorDirectories,
   entryExcludeGlob,
@@ -205,8 +206,7 @@ async function resolveRoot(uri: vscode.Uri): Promise<string> {
   const workspaceRoot = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
   const directories = ancestorDirectories(dirname(uri.fsPath), workspaceRoot);
   for (const directory of directories) {
-    const installedCli = join(directory, "node_modules", "@pride7", "frameseq", "scripts", "frameseq.mjs");
-    if (await fileExists(installedCli)) return directory;
+    if (await fileExists(cliIn(join(directory, "node_modules")))) return directory;
     if (await fileExists(join(directory, "scripts", "frameseq.mjs"))) return directory;
   }
   for (const directory of directories) {
@@ -364,24 +364,22 @@ async function selectEntry(provider: SlidesProvider): Promise<boolean> {
 }
 
 async function cliInvocation(entry: EntryDocument, args: string[]): Promise<{ command: string; args: string[] }> {
-  const installedCli = join(
-    entry.root,
-    "node_modules",
-    "@pride7",
-    "frameseq",
-    "scripts",
-    "frameseq.mjs",
-  );
-  const repositoryCli = join(entry.root, "scripts", "frameseq.mjs");
-  const cli = await fileExists(installedCli)
-    ? installedCli
-    : (await fileExists(repositoryCli) ? repositoryCli : undefined);
+  const cli = await findCli(entry.root);
+  if (!cli) throw new Error(notInstalledMessage);
+  return { command: "node", args: [cli, ...args] };
+}
 
-  if (cli) return { command: "node", args: [cli, ...args] };
-  return {
-    command: process.platform === "win32" ? "npm.cmd" : "npm",
-    args: ["exec", "--offline", "--", "frameseq", "--", ...args],
-  };
+/** The invocation for a server the extension keeps running, or nothing once the user is told why. */
+async function serverInvocation(
+  entry: EntryDocument,
+  args: string[],
+): Promise<{ command: string; args: string[] } | undefined> {
+  try {
+    return await cliInvocation(entry, args);
+  } catch (error) {
+    void vscode.window.showErrorMessage(`FrameSeq: ${error instanceof Error ? error.message : String(error)}`);
+    return undefined;
+  }
 }
 
 async function runCli(
@@ -1636,10 +1634,11 @@ async function openStudio(provider: SlidesProvider, output: vscode.OutputChannel
     if (studioAddress) await vscode.env.openExternal(vscode.Uri.parse(studioAddress));
     return;
   }
+  const relativeEntry = relative(entry.root, entry.uri.fsPath);
+  const invocation = await serverInvocation(entry, ["studio", relativeEntry]);
+  if (!invocation) return;
   studioProcess?.kill();
 
-  const relativeEntry = relative(entry.root, entry.uri.fsPath);
-  const invocation = await cliInvocation(entry, ["studio", relativeEntry]);
   output.appendLine(`> ${invocation.command} ${invocation.args.join(" ")}`);
   const child = spawn(invocation.command, invocation.args, {
     cwd: entry.root,
@@ -1729,7 +1728,8 @@ async function startPreview(provider: SlidesProvider, output: vscode.OutputChann
   }
 
   const relativeEntry = relative(entry.root, entry.uri.fsPath);
-  const invocation = await cliInvocation(entry, ["dev", relativeEntry, "--no-open"]);
+  const invocation = await serverInvocation(entry, ["dev", relativeEntry, "--no-open"]);
+  if (!invocation) return;
   output.clear();
   output.appendLine(`> ${invocation.command} ${invocation.args.join(" ")}`);
   previewWasStopped = false;

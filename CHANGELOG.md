@@ -7,6 +7,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Fixed
 
 - A slide document with no project of its own, such as a file in any folder run by a global install, now previews, opens in the Studio, checks, builds, and exports. It failed to resolve `@pride7/frameseq`, so only `inspect` worked; it now uses the FrameSeq that runs it.
+- The VS Code extension runs such a deck through the `frameseq` command a global install put on the PATH, and says how to install FrameSeq when there is none, where on Windows it failed to start.
 
 ## [0.37.0] - 2026-10-09
 

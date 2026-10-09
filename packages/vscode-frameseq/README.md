@@ -32,7 +32,7 @@ Edit FrameSeq presentations with `slides.ts` on the left and a live FrameSeq pre
 - Opens the deck in FrameSeq Studio, a window of its own with live slide thumbnails, a TypeScript editor, the preview, and live layout checks, from the Slides-view toolbar. Needs `@pride7/frameseq` 0.36.0 or newer in the project.
 - Provides TypeScript snippets for presentations, slides, whole-page and local-grid layouts, bullets, LaTeX, and Typst.
 
-The extension uses the `@pride7/frameseq` CLI installed in the current project. It does not bundle a second renderer.
+The extension uses the `@pride7/frameseq` CLI installed in the current project, or a global install for a deck with no project. It does not bundle a second renderer.
 
 ## Requirements
 
@@ -40,6 +40,12 @@ Open a project containing FrameSeq and install its dependencies:
 
 ```bash
 npm install
+```
+
+To write a single `.slides.ts` file in any folder, with no project around it, install FrameSeq once instead:
+
+```bash
+npm install --global @pride7/frameseq
 ```
 
 The active `slides.ts` or `*.slides.ts` editor is used automatically, including one kept in a subdirectory. Otherwise the extension searches the workspace for `slides.ts` and `*.slides.ts` documents. Run **FrameSeq: Select Entry** to choose between several decks; the choice is remembered per workspace until you switch back to following the active editor. Set `frameseq.entry` when the entry file has another name.

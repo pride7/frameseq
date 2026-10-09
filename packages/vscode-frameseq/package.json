@@ -39,7 +39,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "FrameSeq commands execute the presentation project's local CLI."
+      "description": "FrameSeq commands execute the presentation project's local CLI, or a global install."
     }
   },
   "contributes": {
