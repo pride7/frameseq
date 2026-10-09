@@ -510,11 +510,23 @@ try {
   await waitFor(async () => (await problems()).some((row) => row.includes("early")), "the startup error to be reported");
   await writeFile(deck, healthy, "utf8");
   await waitFor(async () => (await problems()).length === 0, "the preview to restart after the fix", 30_000);
-  const restartedRail = page.frames().find((frame) => frame.url().includes("thumbnails=1"));
-  await waitFor(
-    async () => (await restartedRail.$$eval(".frameseq-thumbnail", (items) => items.length).catch(() => 0)) === healthySlides,
-    "the rail to restart after the fix",
-  );
+  const railFrame = () => page.frames().find((frame) => frame.url().includes("thumbnails=1"));
+  try {
+    await waitFor(
+      async () => (await railFrame()?.$$eval(".frameseq-thumbnail", (items) => items.length).catch(() => 0)) === healthySlides,
+      "the rail to restart after the fix",
+      40_000,
+    );
+  } catch (error) {
+    const frames = await Promise.all(page.frames().map((frame) => frame.evaluate(() => ({
+      url: location.href,
+      ready: document.readyState,
+      deck: document.documentElement.dataset.ready ?? "",
+      error: window.__frameseqError ?? "",
+      thumbnails: document.querySelectorAll(".frameseq-thumbnail").length,
+    })).catch((reason) => ({ url: frame.url(), unreachable: String(reason) }))));
+    throw new Error(`${error.message}\n${JSON.stringify(frames, null, 2)}`);
+  }
 } catch (error) {
   console.error(`Studio server output:\n${server.log()}`);
   const notices = await page?.$$eval(".studio-toast-text", (items) => items.map((item) => item.textContent)).catch(() => []);

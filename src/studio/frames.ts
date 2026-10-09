@@ -255,7 +255,9 @@ export class StudioFrames {
       if (!page || !view || this.started.has(page)) continue;
       // The server may take a moment to notice the change, so a page begun just after it may not.
       if (view.performance.timeOrigin > changedAt + 300) continue;
-      if (page.readyState !== "complete") {
+      // A frame whose first page has not arrived yet still shows the blank page it started with;
+      // reloading that would cancel the page on its way.
+      if (page.readyState !== "complete" || page.URL === "about:blank") {
         target.addEventListener("load", () => setTimeout(() => this.restartStalled(changedAt), 300), { once: true });
         continue;
       }
