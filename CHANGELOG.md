@@ -23,6 +23,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Fixed
 
 - Keep the reveal step of the slide on screen when an editor asks the live preview to show an object on that same slide, so following the cursor no longer resets `steps()` to the start.
+- Replace the slide document in one step when a preview drag or the Studio saves it, so a development server or an editor reading the file at that moment never finds it empty.
 
 ## [0.35.0] - 2026-08-13
 

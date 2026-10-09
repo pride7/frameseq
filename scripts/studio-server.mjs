@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
 import { documentStatements } from "./source-marks.mjs";
+import { writeDocument } from "./source-edits.mjs";
 import { createStudioLanguage } from "./studio-language.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
@@ -257,7 +258,7 @@ export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote
           if (body.force !== true && typeof body.base === "string" && version(current) !== body.base) {
             return { ok: false, conflict: true, version: version(current) };
           }
-          if (current !== body.text) await writeFile(entry, body.text, "utf8");
+          if (current !== body.text) await writeDocument(entry, body.text);
           return { ok: true, version: version(body.text) };
         },
 

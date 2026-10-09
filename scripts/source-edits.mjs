@@ -1,4 +1,34 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { lstat, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
+
+/**
+ * Replace the slide document in one step. Writing a file in place empties it before filling it
+ * again, and a development server or an editor that reads it in between sees no slides at all;
+ * a file renamed over it is seen as the old text or the new one, never as neither.
+ */
+export async function writeDocument(path, text) {
+  let mode;
+  try {
+    const info = await lstat(path);
+    // Renaming would replace a link with a plain file, so a link is written through instead.
+    if (info.isSymbolicLink()) {
+      await writeFile(path, text, "utf8");
+      return;
+    }
+    mode = info.mode;
+  } catch {
+    // A document that does not exist yet has no mode to keep.
+  }
+  const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.${Date.now().toString(36)}.tmp`);
+  await writeFile(temporary, text, { encoding: "utf8", mode });
+  try {
+    await rename(temporary, path);
+  } catch {
+    // Windows refuses to replace a file that another program holds open; write it in place then.
+    await rm(temporary, { force: true });
+    await writeFile(path, text, "utf8");
+  }
+}
 
 /** One keyboard gesture may update both coordinates on each of at most 50 selections. */
 const maximumEdits = 100;
@@ -67,7 +97,7 @@ export async function applyIncomingMove(entry, payload) {
   const updated = without.slice(0, landsAt) + block + without.slice(landsAt);
   if (updated === source) return { ok: true };
 
-  await writeFile(entry, updated, "utf8");
+  await writeDocument(entry, updated);
   // Undoing a move is the move back: lift the block out of where it landed and put it where it
   // came from. Moving it up shifted its old place along by its own length; moving it down did
   // not, because everything it passed over is now above it.
@@ -105,7 +135,7 @@ export async function undoLastEdit(entry) {
   for (const edit of [...batch].reverse()) {
     updated = updated.slice(0, edit.start) + edit.text + updated.slice(edit.end);
   }
-  await writeFile(entry, updated, "utf8");
+  await writeDocument(entry, updated);
   return { ok: true, undo: true };
 }
 
@@ -159,7 +189,7 @@ export async function applyIncomingEdits(entry, payload) {
   }
   if (updated === source) return { ok: true };
 
-  await writeFile(entry, updated, "utf8");
+  await writeDocument(entry, updated);
   pushUndo(entry, inverseEdits(edits));
   return { ok: true };
 }

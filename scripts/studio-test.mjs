@@ -140,7 +140,9 @@ try {
   const preview = page.frames().find((frame) => /frameseq-preview=studio(#|$)/.test(frame.url()));
   const rail = page.frames().find((frame) => frame.url().includes("thumbnails=1"));
   assert.ok(preview && rail, "the preview and the slide rail must be embedded");
-  const activeSlide = () => preview.evaluate(() => Number(document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index));
+  const activeSlide = () => preview
+    .evaluate(() => Number(document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index))
+    .catch(() => undefined);
   const placeCursor = (text, offset = 0) => page.evaluate((wanted, shift) => {
     const { view } = window.frameseqStudio;
     const index = view.state.doc.toString().indexOf(wanted);
@@ -148,17 +150,63 @@ try {
     view.dispatch({ selection: { anchor: index + shift } });
     view.focus();
   }, text, offset);
-  // Every save redraws the rail, so a thumbnail found a moment ago may already be replaced.
-  const clickThumbnail = async (index, options) => {
+  // Every save redraws the preview and the rail. A gesture waits for its frame to settle,
+  // retries when what it touched was replaced, and checks that it took effect.
+  const replaced = (error) => /detached|not clickable|Execution context|Cannot find context|Cannot read prop/.test(String(error));
+  const retrying = async (action) => {
     for (let attempt = 0; ; attempt += 1) {
       try {
-        await (await rail.$$(".frameseq-thumbnail"))[index].click(options);
-        return;
+        return await action();
       } catch (error) {
-        if (attempt >= 30 || !/detached|not clickable|Cannot read/.test(String(error))) throw error;
+        if (attempt >= 40 || !replaced(error)) throw error;
         await delay(100);
       }
     }
+  };
+  /** Wait until a frame has shown the same deck for a moment, so no gesture lands mid-swap. */
+  const settle = async (frame) => {
+    let previous;
+    await waitFor(async () => {
+      const probe = await frame.evaluate(() => {
+        const root = document.querySelector(".frameseq-slides");
+        if (!root) return undefined;
+        root.dataset.settleProbe ??= Math.random().toString(36).slice(2);
+        return root.dataset.settleProbe;
+      }).catch(() => undefined);
+      const settled = probe !== undefined && probe === previous;
+      previous = probe;
+      if (!settled) await delay(250);
+      return settled;
+    }, "a frame to settle");
+  };
+  const clickThumbnail = async (index, options) => {
+    await settle(rail);
+    await retrying(async () => (await rail.$$(".frameseq-thumbnail"))[index].click(options));
+  };
+  const showSlide = async (index) => {
+    await waitFor(async () => {
+      if ((await activeSlide()) === index) return true;
+      await clickThumbnail(index);
+      await delay(300);
+      return (await activeSlide()) === index;
+    }, `the preview to show slide ${index + 1}`);
+  };
+  const openSlideMenu = async (index) => {
+    await waitFor(async () => {
+      await clickThumbnail(index, { button: "right" });
+      return Boolean(await page.waitForSelector(".studio-menu", { timeout: 1500 }).catch(() => null));
+    }, `the menu of slide ${index + 1}`);
+  };
+  const setEditMode = async (on) => {
+    await waitFor(async () => {
+      await settle(preview);
+      const pressed = await preview
+        .$eval("[data-action='edit-toggle']", (button) => button.getAttribute("aria-pressed"))
+        .catch(() => undefined);
+      if (pressed === String(on)) return true;
+      await retrying(() => preview.click("[data-action='edit-toggle']"));
+      return false;
+    }, `layout editing to turn ${on ? "on" : "off"}`);
   };
   const undoInEditor = async (times = 1) => {
     await page.focus(".cm-content");
@@ -211,14 +259,14 @@ try {
   await waitFor(async () => (await saveState()) === "saved", "the document to be saved after undo");
 
   // A thumbnail shows its slide and moves the editor to the line that starts it.
-  await clickThumbnail(1);
-  await waitFor(async () => (await activeSlide()) === 1, "the preview to show slide 2");
+  await showSlide(1);
   assert.equal(await page.$eval("[data-slot='status-cursor']", (element) => element.textContent), "Ln 7, Col 1");
 
   // Dragging in the preview becomes an ordinary editor edit, saved to the right characters.
   const beforeDrag = await read();
-  await preview.click("[data-action='edit-toggle']");
-  const box = await (await preview.$(".frameseq-slide-frame.is-active [data-frameseq-move='true']")).boundingBox();
+  await setEditMode(true);
+  await settle(preview);
+  const box = await retrying(async () => (await preview.$(".frameseq-slide-frame.is-active [data-frameseq-move='true']")).boundingBox());
   const startX = box.x + box.width / 2;
   const startY = box.y + box.height / 2;
   await page.mouse.move(startX, startY);
@@ -231,22 +279,32 @@ try {
   assert.notEqual(dragged.match(/x: (\d+)/)[1], "120", "the drag must change x");
   assert.equal(lf(dragged), await editorText(), "the editor must hold the dragged numbers");
   // Undo from the preview goes to the editor, which owns the history.
-  await preview.focus(".frameseq-slides");
+  await settle(preview);
+  await retrying(() => preview.focus(".frameseq-slides"));
   await page.keyboard.down("Control");
   await page.keyboard.press("z");
   await page.keyboard.up("Control");
   await waitFor(async () => (await read()) === beforeDrag, "Ctrl+Z in the preview to undo the drag");
 
   // Objects selected together in the preview can be bound into one named region.
-  await clickThumbnail(0);
-  await waitFor(async () => (await activeSlide()) === 0, "the preview to show slide 1");
-  const texts = await preview.$$(".frameseq-slide-frame.is-active .frameseq-text[data-frameseq-source]");
-  await texts[0].click();
-  await page.keyboard.down("Control");
-  await texts[1].click();
-  await page.keyboard.up("Control");
-  await preview.waitForSelector(".frameseq-selection-toolbar.is-visible [data-action='bind-region']:not([hidden])");
-  await preview.click(".frameseq-selection-toolbar [data-action='bind-region']");
+  await showSlide(0);
+  await waitFor(async () => {
+    await settle(preview);
+    await retrying(async () => {
+      const texts = await preview.$$(".frameseq-slide-frame.is-active .frameseq-text[data-frameseq-source]");
+      await texts[0].click();
+      await page.keyboard.down("Control");
+      try {
+        await texts[1].click();
+      } finally {
+        await page.keyboard.up("Control");
+      }
+    });
+    return Boolean(await preview
+      .waitForSelector(".frameseq-selection-toolbar.is-visible [data-action='bind-region']:not([hidden])", { timeout: 1500 })
+      .catch(() => null));
+  }, "two objects to be selected in the preview");
+  await retrying(() => preview.click(".frameseq-selection-toolbar [data-action='bind-region']"));
   await page.waitForSelector(".studio-dialog input");
   assert.equal(await page.$eval(".studio-dialog input", (input) => input.value), "group");
   await page.click(".studio-dialog button[type='submit']");
@@ -256,7 +314,7 @@ try {
   );
   await undoInEditor();
   await waitFor(async () => (await read()) === beforeDrag, "undo to remove the binding");
-  await preview.click("[data-action='edit-toggle']");
+  await setEditMode(false);
 
   // An edit made outside the Studio, by an agent or another editor, reloads the clean buffer,
   // and the layout check measures it at once.
@@ -267,7 +325,7 @@ try {
   await writeFile(deck, overflowing, "utf8");
   await waitFor(async () => (await editorText()) === lf(overflowing), "the external edit to reload");
   await waitFor(async () => (await problems()).some((row) => row.includes("exceeds the slide canvas")), "a live layout problem");
-  await (await page.$(".studio-problem.is-error")).click();
+  await retrying(async () => (await page.$(".studio-problem.is-error")).click());
   await waitFor(async () => (await activeSlide()) === 2, "the problem to show its slide");
   await writeFile(deck, beforeDrag, "utf8");
   await waitFor(async () => (await editorText()) === lf(beforeDrag), "the deck to be restored");
@@ -288,8 +346,7 @@ try {
 
   // Slides can be duplicated and moved from the rail, and the editor's history undoes both.
   const beforeRail = await read();
-  await clickThumbnail(0, { button: "right" });
-  await page.waitForSelector(".studio-menu");
+  await openSlideMenu(0);
   const menu = await page.$$eval(".studio-menu-item", (items) => items.map((item) => item.textContent));
   await (await page.$$(".studio-menu-item"))[menu.findIndex((label) => label.startsWith("Duplicate"))].click();
   await waitFor(async () => ((await read()).match(/slide\("Intro"\)/g) ?? []).length === 2, "the duplicated slide");
@@ -298,6 +355,7 @@ try {
   await waitFor(async () => (await read()) === beforeRail, "undo to remove the duplicate");
 
   await waitFor(async () => (await rail.$$eval(".frameseq-thumbnail", (items) => items.length)) === 3, "the rail to settle");
+  await settle(rail);
   const thumbnails = await rail.$$(".frameseq-thumbnail");
   const third = await thumbnails[2].boundingBox();
   const first = await thumbnails[0].boundingBox();
@@ -379,8 +437,7 @@ try {
   );
 
   // A thumbnail made in a loop leads to the slide() call inside the loop.
-  await clickThumbnail(2);
-  await waitFor(async () => (await activeSlide()) === 2, "the preview to show Beta");
+  await showSlide(2);
   assert.equal(await page.$eval("[data-slot='status-cursor']", (element) => element.textContent), "Ln 8, Col 3");
   // The cursor on a helper call shows the first slide that call made.
   await placeCursor('section("Part");', 3);
@@ -388,8 +445,7 @@ try {
 
   // Moving the last slide up lands it before the helper call's two slides, and the helper's
   // declaration stays where it was.
-  await clickThumbnail(6, { button: "right" });
-  await page.waitForSelector(".studio-menu");
+  await openSlideMenu(6);
   let items = await page.$$eval(".studio-menu-item", (rows) => rows.map((row) => row.textContent));
   await (await page.$$(".studio-menu-item"))[items.findIndex((label) => label.startsWith("Move up"))].click();
   await waitFor(async () => (await slideOrder()).join() === "Intro,loop,End,Part", "End to move before the helper call");
@@ -401,7 +457,7 @@ try {
   // The menu of a slide made in a loop says the whole loop is affected, and duplicating it
   // repeats the loop.
   await waitFor(async () => (await railLabels()).length === 7, "the rail to settle");
-  await clickThumbnail(2, { button: "right" });
+  await openSlideMenu(2);
   await page.waitForSelector(".studio-menu-note");
   assert.match(await page.$eval(".studio-menu-note", (note) => note.textContent), /Made by line 7 with 2 other slides/);
   items = await page.$$eval(".studio-menu-item", (rows) => rows.map((row) => row.textContent));
@@ -413,6 +469,7 @@ try {
 
   // Dragging a slide made by the helper call moves both of its slides, before the loop.
   await waitFor(async () => (await railLabels()).length === 7, "the rail to settle again");
+  await settle(rail);
   const helperSlide = await (await rail.$$(".frameseq-thumbnail"))[5].boundingBox();
   const loopSlide = await (await rail.$$(".frameseq-thumbnail"))[1].boundingBox();
   await page.mouse.move(helperSlide.x + helperSlide.width / 2, helperSlide.y + helperSlide.height / 2);
@@ -431,8 +488,7 @@ try {
 
   // Deleting a slide made by the helper call removes the call, and says how many slides went.
   await waitFor(async () => (await railLabels()).length === 7, "the rail to settle once more");
-  await clickThumbnail(4, { button: "right" });
-  await page.waitForSelector(".studio-menu");
+  await openSlideMenu(4);
   items = await page.$$eval(".studio-menu-item", (rows) => rows.map((row) => row.textContent));
   await (await page.$$(".studio-menu-item"))[items.findIndex((label) => label.startsWith("Delete"))].click();
   await waitFor(async () => !(await read()).includes('section("Part");'), "the helper call to be deleted");
