@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-09
+
 - **FrameSeq: Open in Studio** asks a running Studio which presentation it shows, since the Studio can now open others itself, and starts it again on the deck asked for when it shows another.
 - Run a deck with no project of its own, a single `.slides.ts` file in any folder, through a global install of FrameSeq: the `frameseq` command that `npm install --global @pride7/frameseq` put on the PATH. With no FrameSeq at all, preview, Studio, check, and export say how to install it, instead of failing to start `npm exec`, which could not be started on Windows.
 
