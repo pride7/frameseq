@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:4f5ad3a9bf996582 -->
+<!-- translation-of: docs/studio.md sha256:2ec454312b6e61c1 -->
 
 # FrameSeq Studio
 
@@ -9,6 +9,12 @@ frameseq studio talk.slides.ts
 ```
 
 这条命令会启动开发服务器并打开 Studio。如果装了 Chrome、Edge、Chromium 或 Brave，Studio 会以一个独立的应用窗口打开，没有标签页也没有地址栏；否则在默认浏览器里打开。用 `npm create frameseq` 生成的项目可以用 `npm run studio` 做同样的事。
+
+不带文件运行、而且启动时所在的文件夹里没有 `slides.ts` 时，`frameseq studio` 会打开它的启动页：在那里新建演示、打开已有的演示，或者接着编辑最近用过的。想像其他程序一样打开 Studio、而不必经过终端，就[添加一个快捷方式](#快捷方式)：
+
+```bash
+frameseq shortcut
+```
 
 源码仍然是这场讲演唯一的描述。Studio 里的每个操作，无论是打字、在预览里拖拽，还是在左侧栏里调整页面顺序，最终都是对 `talk.slides.ts` 的一次编辑，编辑器自己的撤销就能把它撤回。
 
@@ -25,6 +31,26 @@ frameseq studio talk.slides.ts
 拖动分隔条可以调整各区域大小，双击分隔条恢复默认值。`Ctrl+B`（macOS 上为 `⌘B`）隐藏左侧幻灯片栏，`Ctrl+J` 隐藏底部面板。这些尺寸会被浏览器记住。
 
 **Auto-save** 旁边的主题按钮可以在跟随系统（◐）、浅色（☀）和深色（☾）之间切换。幻灯片本身仍然使用演示文稿自己的主题。
+
+## 演示文稿
+
+顶栏里的文件名会打开一个菜单：**New presentation…**、**Open…**（`Ctrl+O`）、最近打开过的演示，以及 **Show in folder**。启动页提供同样的操作，并列出最近的演示，每一项都有一个按钮可以把它从列表里移除。
+
+- **New presentation** 会询问标题和文件夹，按标题给文件命名，比如标题 *Quarterly review* 对应 `quarterly-review.slides.ts`，并在里面写好一页封面和第一页内容。同名的文件永远不会被覆盖；对话框会改为提供打开它。文件夹默认是上次用过的那个，否则是“文档”文件夹。
+- **Open** 会显示这台电脑自己的打开对话框。没有这种对话框时，比如 Linux 上既没有 `zenity` 也没有 `kdialog`，Studio 会改为让你输入文件路径；设置 `FRAMESEQ_NO_DIALOGS=1` 则总是让你输入。
+- 当前文档有未保存的修改时，Studio 会先问是否保存。选 **Cancel** 则留在当前文档。
+
+随后另一份演示会在同一个窗口里打开，从此 Studio 以它所在的文件夹为工作目录：它的导出会写在它旁边，即它自己的 `output/` 和 `dist/`。最近的演示记录在 FrameSeq 的设置文件夹里：Windows 上是 `%APPDATA%\FrameSeq`，macOS 上是 `~/Library/Application Support/FrameSeq`，Linux 上是 `~/.config/frameseq`；设置了 `FRAMESEQ_CONFIG_DIR` 时则用它。用 `--no-open` 启动的 Studio（脚本和测试就是这样启动的）不会改动这份列表。只有运行 Studio 的那台电脑能打开文件、显示对话框，即使加了 `--host` 也是如此。
+
+## 快捷方式
+
+```bash
+frameseq shortcut
+```
+
+这条命令会把带 FrameSeq 图标的 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式打开的是启动页。它运行的是 `frameseq studio --background`：不经过终端启动 Studio，并在它的窗口关闭后停止；服务器的输出写到设置文件夹里的 `studio.log`。`--background` 也可以和文件一起用：`frameseq studio talk.slides.ts --background`。
+
+快捷方式运行的是创建它的那份 FrameSeq，通常是全局安装的那份，所以移动或重新安装 FrameSeq 之后，要再运行一次 `frameseq shortcut`。`frameseq shortcut --remove` 会把它删掉。
 
 ## 当前页检查器
 
@@ -116,13 +142,14 @@ Studio 会监视幻灯片文档。当它在磁盘上被修改（比如由编程�
 | HTML 站点 | `dist/` |
 | Typst 源码 | `output/typst/<name>.typ` |
 
-这些路径相对于启动 Studio 时所在的目录。导出开始前会先保存文档。导出完成后，提示里会提供 **Download** 和 **Show in folder**；完整日志在 **Output** 标签页里。
+这些路径相对于启动 Studio 时所在的目录；如果演示是从 Studio 里打开的，则相对于这份演示所在的文件夹。导出开始前会先保存文档。导出完成后，提示里会提供 **Download** 和 **Show in folder**；完整日志在 **Output** 标签页里。
 
 ## 键盘快捷键
 
 | 快捷键 | 作用 |
 | --- | --- |
 | `Ctrl+S` | 保存 |
+| `Ctrl+O` | 打开另一份演示 |
 | `Ctrl+Z`、`Ctrl+Y` | 撤销与重做，在预览和幻灯片栏里同样有效 |
 | `Ctrl+Space` | 显示补全 |
 | `Ctrl+F` | 在编辑器里查找和替换 |

@@ -2,7 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { constants, existsSync } from "node:fs";
+import { constants, existsSync, openSync } from "node:fs";
 import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -12,6 +12,9 @@ import { inspectSlides } from "./frameseq-inspect.mjs";
 import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { starterDeck } from "./presentation-file.mjs";
+import { configDirectory } from "./studio-files.mjs";
+import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
 import { agentsMarkdown, claudeMarkdown } from "../packages/create-frameseq/project-instructions.mjs";
 
@@ -24,8 +27,11 @@ function help() {
 Usage:
   frameseq dev [file] [--host] [--remote] [--no-open]
                                       Preview slides with hot reload
-  frameseq studio [file] [--host] [--no-open] [--tab]
-                                      Edit, preview, check, and export in one window
+  frameseq studio [file] [--host] [--no-open] [--tab] [--background]
+                                      Edit, preview, check, and export in one window;
+                                      without a file, open its start page
+  frameseq shortcut [--remove]        Add FrameSeq Studio to the Start menu and desktop,
+                                      Applications, or the applications menu
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] Export slides to PDF
@@ -43,6 +49,8 @@ Examples:
   frameseq dev talk.slides.ts --host
   frameseq dev talk.slides.ts --remote
   frameseq studio talk.slides.ts
+  frameseq studio
+  frameseq shortcut
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
@@ -69,7 +77,7 @@ function positionalFile(args) {
     }
     if (!argument.startsWith("-")) return argument;
   }
-  return "slides.ts";
+  return undefined;
 }
 
 async function ensureFile(path) {
@@ -94,22 +102,7 @@ async function createSlidesFile(target) {
   }
 
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, `presentation("My Talk");
-
-slide({ name: "Cover" }).cover();
-text("Presentation title").hero();
-text("A short description").subtitle();
-text("Your name").author();
-
-slide("First idea")
-  .notes("Introduce the main idea and pause before the supporting points.");
-text("Explain the idea in one clear sentence.");
-bullets(
-  "First point",
-  "Second point",
-  "Third point",
-);
-`, "utf8");
+  await writeFile(target, starterDeck(), "utf8");
   await writeProjectInstructions(dirname(target));
   console.log(`Created ${target}`);
 }
@@ -182,9 +175,14 @@ async function openStudioWindow(url, { appWindow = true } = {}) {
 
 async function startDevelopmentServer(
   entry,
-  { hostEnabled = false, remoteEnabled = false, openBrowser = true, studio = false, appWindow = true } = {},
+  { hostEnabled = false, remoteEnabled = false, openBrowser = true, studio = false, appWindow = true, start = false } = {},
 ) {
   process.env.FRAMESEQ_ENTRY = entry;
+  if (start) process.env.FRAMESEQ_STUDIO_START = "1";
+  else delete process.env.FRAMESEQ_STUDIO_START;
+  // A Studio with no window of its own is run by a script or a test, not by the person whose
+  // recent presentations it would otherwise add to.
+  process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser ? "1" : "0";
   // The Studio opens its own window once the server is listening, so Vite opens nothing.
   process.env.FRAMESEQ_OPEN_BROWSER = openBrowser && !studio ? "1" : "0";
   if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
@@ -506,14 +504,59 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
   }
 }
 
+/**
+ * Start this same command again as a process of its own, with no console, and return. The
+ * Studio it starts stops when its window closes, since there is no terminal to stop it from.
+ */
+async function startInBackground() {
+  const log = join(configDirectory(), "studio.log");
+  await mkdir(dirname(log), { recursive: true });
+  const output = openSync(log, "w");
+  const child = spawn(
+    process.execPath,
+    [fileURLToPath(import.meta.url), ...process.argv.slice(2).filter((argument) => argument !== "--background")],
+    {
+      cwd: process.cwd(),
+      detached: true,
+      windowsHide: true,
+      stdio: ["ignore", output, output],
+      env: { ...process.env, FRAMESEQ_STUDIO_QUIT_ON_CLOSE: "1", FORCE_COLOR: "0", NO_COLOR: "1" },
+    },
+  );
+  child.unref();
+  console.log(`FrameSeq Studio is opening in a window of its own, and stops when that window closes.\nLog: ${log}`);
+}
+
 const [, , command] = process.argv;
-const file = positionalFile(process.argv.slice(3));
+const named = positionalFile(process.argv.slice(3));
+const file = named ?? "slides.ts";
 
 try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
   } else if (command === "new") {
     await createSlidesFile(resolve(process.cwd(), file));
+  } else if (command === "shortcut") {
+    const remove = process.argv.includes("--remove");
+    const cli = fileURLToPath(import.meta.url);
+    const paths = await studioShortcut({ cli, remove });
+    if (remove) {
+      console.log(`Removed the FrameSeq Studio shortcut:\n${paths.map((path) => `  ${path}`).join("\n")}`);
+    } else {
+      console.log(`Added FrameSeq Studio:\n${paths.map((path) => `  ${path}`).join("\n")}`);
+      console.log(`It runs FrameSeq from ${cli}; run this command again after moving or reinstalling FrameSeq.`);
+    }
+  } else if (command === "studio" && process.argv.includes("--background")) {
+    await startInBackground();
+  } else if (command === "studio" && !named && !existsSync(resolve(process.cwd(), "slides.ts"))) {
+    // No document to open: the start page offers a new presentation, an existing one, or a recent one.
+    await startDevelopmentServer(resolve(process.cwd(), "slides.ts"), {
+      hostEnabled: process.argv.includes("--host"),
+      openBrowser: !process.argv.includes("--no-open"),
+      appWindow: !process.argv.includes("--tab"),
+      studio: true,
+      start: true,
+    });
   } else if (command === "dev" || command === "studio" || command === "build" || command === "pdf" || command === "pptx" || command === "typst" || command === "check" || command === "inspect") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);

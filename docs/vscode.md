@@ -18,7 +18,7 @@ The FrameSeq extension adds presentation-aware navigation and commands to Visual
 - A visible export button in the Slides-view toolbar with HTML, PDF, PPTX, and editable Typst choices.
 - Alt-click in the preview to move the cursor to the command that drew an object.
 - Dragging in the preview to change the coordinates a command states, or an object's place among its neighbours, as an undoable edit.
-- **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the deck in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the deck is shown again rather than started twice; **FrameSeq: Stop Studio** ends it.
+- **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the deck in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the deck is shown again rather than started twice, unless it has since opened another presentation, in which case it starts again on this deck; **FrameSeq: Stop Studio** ends it.
 
 The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the FrameSeq CLI: the project's own when it has one, otherwise a global install. It does not bundle another copy of the rendering runtime.
 

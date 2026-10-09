@@ -4,6 +4,16 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- Open, create, and switch presentations inside FrameSeq Studio. The file name in the top bar opens a menu with **New presentation…**, **Open…** (`Ctrl+O`), the recent presentations, and **Show in folder**; the other presentation opens in the same window, and the Studio works from its folder, so its exports land beside it.
+  - **New presentation** takes a title and a folder, names the file after the title, writes a cover and a first slide, and never overwrites an existing file.
+  - **Open** uses the computer's own open dialog, or asks for the path where there is none.
+  - Unsaved edits are saved or set aside only when the person says so.
+- Start `frameseq studio` without a file to open the Studio's start page: a new presentation, an existing one, or a recent one.
+- Add `frameseq shortcut`, which puts FrameSeq Studio, with its icon, in the Start menu and on the desktop on Windows, in `~/Applications` on macOS, and in the applications menu on Linux. It opens the start page; `--remove` takes it away.
+- Add `frameseq studio --background`, which runs the Studio without a terminal and stops it once its window has closed. The shortcut uses it.
+
 ### Fixed
 
 - A slide document with no project of its own, such as a file in any folder run by a global install, now previews, opens in the Studio, checks, builds, and exports. It failed to resolve `@pride7/frameseq`, so only `inspect` worked; it now uses the FrameSeq that runs it.

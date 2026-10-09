@@ -611,6 +611,9 @@ It opens as an app window of its own (or in the default browser when no Chromium
 - Below them, **Current slide** lists every object on the slide in the preview, and edits the positions, sizes, and colours their commands state; numbers step with the arrow keys while the preview follows.
 - A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
 - **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
+- The file name in the top bar opens a menu that starts a new presentation, opens another, or returns to a recent one, in the same window.
+
+Run `frameseq studio` without a file to start from its start page, and `frameseq shortcut` to add FrameSeq Studio to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux, so it opens like any other program and stops when its window closes.
 
 The complete guide is [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html). In VS Code, **FrameSeq: Open in Studio** on the Slides view toolbar opens the same window.
 

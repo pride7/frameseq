@@ -1,12 +1,45 @@
 /** What the development server says about the Studio it is serving. */
 export interface StudioSession {
   token: string;
+  /** True on the start page, where no presentation is open and only the file routes answer. */
+  start: boolean;
+  /** True when the Studio stops once its window closes, as one started from a shortcut does. */
+  quitOnClose: boolean;
+  /** Whether the server can show this computer's own open and folder dialogs. */
+  dialogs: boolean;
   entry: string;
   /** The slide document relative to the directory the server runs in. */
   file: string;
   name: string;
   directory: string;
   version: string;
+}
+
+export interface RecentPresentation {
+  path: string;
+  name: string;
+  folder: string;
+}
+
+export interface FilesResponse {
+  recent: RecentPresentation[];
+  /** Where a new presentation goes unless the person picks another folder. */
+  folder: string;
+}
+
+/** A path chosen in a native dialog, or why there is none. */
+export interface ChooseResponse {
+  path?: string;
+  cancelled?: boolean;
+  unavailable?: boolean;
+}
+
+export interface OpenResponse {
+  ok: boolean;
+  path: string;
+  name: string;
+  /** The presentation asked for is the one already open. */
+  current?: boolean;
 }
 
 export interface SourceResponse {
@@ -136,7 +169,7 @@ export interface ExportResult {
 }
 
 export class StudioRequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly data: Record<string, unknown> = {}) {
     super(message);
   }
 }
@@ -170,7 +203,7 @@ export async function call<T>(
   });
   const data = await response.json().catch(() => ({})) as { error?: string };
   if (!response.ok) {
-    throw new StudioRequestError(data.error ?? `HTTP ${response.status}`, response.status);
+    throw new StudioRequestError(data.error ?? `HTTP ${response.status}`, response.status, data);
   }
   return data as T;
 }

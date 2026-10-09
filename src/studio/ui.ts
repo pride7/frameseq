@@ -112,7 +112,7 @@ let openMenu: { close: () => void } | undefined;
 export function showMenu(
   x: number,
   y: number,
-  items: Array<MenuItem | "separator" | { note: string }>,
+  items: Array<MenuItem | "separator" | { note: string } | { heading: string }>,
   label: string,
 ): void {
   openMenu?.close();
@@ -127,6 +127,10 @@ export function showMenu(
     }
     if ("note" in item) {
       menu.append(element("p", "studio-menu-note", item.note));
+      continue;
+    }
+    if ("heading" in item) {
+      menu.append(element("p", "studio-menu-heading", item.heading));
       continue;
     }
     const button = element("button", `studio-menu-item${item.danger ? " is-danger" : ""}`);
@@ -235,6 +239,42 @@ export function askText({
     dialog.showModal();
     check();
     input.select();
+  });
+}
+
+/** Ask a question with a few answers; resolves to the chosen one, or undefined on Escape. */
+export function askChoice<T extends string>({
+  title,
+  message,
+  choices,
+}: {
+  title: string;
+  message: string;
+  choices: Array<{ label: string; value: T; primary?: boolean }>;
+}): Promise<T | undefined> {
+  return new Promise((resolveAnswer) => {
+    const dialog = element("dialog", "studio-dialog");
+    const form = element("form");
+    form.method = "dialog";
+    const actions = element("div", "studio-dialog-actions");
+    const cancel = element("button", "studio-button", "Cancel");
+    cancel.type = "button";
+    cancel.addEventListener("click", () => dialog.close());
+    actions.append(cancel, ...choices.map((choice) => {
+      const button = element("button", `studio-button${choice.primary ? " is-primary" : ""}`, choice.label);
+      button.type = "submit";
+      button.value = choice.value;
+      return button;
+    }));
+    form.append(element("h2", "", title), element("p", "", message), actions);
+    dialog.append(form);
+    document.body.append(dialog);
+    dialog.addEventListener("close", () => {
+      dialog.remove();
+      resolveAnswer(choices.find((choice) => choice.value === dialog.returnValue)?.value);
+    }, { once: true });
+    dialog.showModal();
+    actions.querySelector<HTMLButtonElement>(".is-primary")?.focus();
   });
 }
 

@@ -1,11 +1,22 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
-import { basename, dirname, extname, relative, resolve } from "node:path";
+import { readFile, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
+import { presentationFileName, starterDeck } from "./presentation-file.mjs";
 import { documentStatements } from "./source-marks.mjs";
 import { writeDocument } from "./source-edits.mjs";
+import {
+  chooseWithDialog,
+  defaultFolder,
+  dialogsAvailable,
+  forgetPresentation,
+  isDirectory,
+  isFile,
+  recentPresentations,
+  rememberPresentation,
+} from "./studio-files.mjs";
 import { createStudioLanguage } from "./studio-language.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
@@ -142,6 +153,42 @@ function runCli(cliPath, args, cwd) {
   });
 }
 
+/** How long a Studio started to quit on close waits for its first window, and after its last. */
+const firstWindowWait = 120_000;
+const lastWindowGrace = 15_000;
+
+/**
+ * Stop the server once no page of it is open: the Studio window, its frames, a presenter
+ * window. Every page holds the development server's socket, so the sockets are the count. The
+ * count lives on the process, because opening another presentation restarts the server with a
+ * fresh copy of this plugin while the page reloads into it.
+ */
+function quitWhenClosed(server) {
+  const presence = globalThis[Symbol.for("frameseq.studio.presence")] ??= { pages: 0, timer: undefined };
+  const stopLater = (delay, reason) => {
+    clearTimeout(presence.timer);
+    presence.timer = setTimeout(() => {
+      if (presence.pages > 0) return;
+      server.config.logger.info(reason);
+      void server.close().finally(() => process.exit(0));
+    }, delay);
+  };
+  if (presence.pages === 0 && !presence.timer) {
+    stopLater(firstWindowWait, "FrameSeq Studio: no window opened, so the Studio stopped.");
+  }
+  server.ws.on("connection", (socket) => {
+    presence.pages += 1;
+    clearTimeout(presence.timer);
+    presence.timer = undefined;
+    socket.on("close", () => {
+      presence.pages = Math.max(0, presence.pages - 1);
+      if (presence.pages === 0) stopLater(lastWindowGrace, "FrameSeq Studio: the window closed, so the Studio stopped.");
+    });
+  });
+}
+
+const deckKey = (path) => (process.platform === "win32" ? resolve(path).toLowerCase() : resolve(path));
+
 function revealInFolder(path, directory) {
   const [command, args] = process.platform === "win32"
     ? ["explorer.exe", directory ? [path] : [`/select,${path}`]]
@@ -162,7 +209,16 @@ function revealInFolder(path, directory) {
  * only this machine unless that command was given --host, and refuses any request that another
  * page could have sent on the Studio's behalf.
  */
-export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote }) {
+export function studioPlugin({
+  entry,
+  packageRoot,
+  cliPath,
+  enabled,
+  allowRemote,
+  start = false,
+  quitOnClose = false,
+  remember = true,
+}) {
   return {
     name: "frameseq-studio",
     /**
@@ -198,6 +254,8 @@ export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote
         return language;
       };
 
+      if (quitOnClose) quitWhenClosed(server);
+
       const announce = async () => {
         try {
           const text = await readFile(entry, "utf8");
@@ -206,17 +264,54 @@ export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote
           server.ws.send(studioSourceEvent, { missing: true });
         }
       };
-      server.watcher.add(entry);
-      const onChange = (file) => {
-        const key = process.platform === "win32" ? resolve(file).toLowerCase() : resolve(file);
-        if (key === entryKey) void announce();
+      if (!start) {
+        server.watcher.add(entry);
+        const onChange = (file) => {
+          const key = process.platform === "win32" ? resolve(file).toLowerCase() : resolve(file);
+          if (key === entryKey) void announce();
+        };
+        server.watcher.on("change", onChange);
+        server.watcher.on("add", onChange);
+        server.watcher.on("unlink", onChange);
+        if (remember) void rememberPresentation(entry).catch(() => undefined);
+      }
+
+      /**
+       * Show another presentation. The server restarts on it, the page reloads into it, and the
+       * Studio works from its folder from then on, so its exports land beside it.
+       */
+      let choosing = false;
+      let switching = false;
+      const openPresentation = async (path) => {
+        if (exporting) return [409, { error: "An export is still running. Open the presentation once it has finished." }];
+        if (switching) return [409, { error: "Another presentation is already opening." }];
+        switching = true;
+        await rememberPresentation(path).catch(() => undefined);
+        process.env.FRAMESEQ_ENTRY = path;
+        delete process.env.FRAMESEQ_STUDIO_START;
+        process.chdir(dirname(path));
+        // Answer first: the restart closes the connection this request arrived on.
+        setTimeout(() => {
+          server.restart().catch((error) => {
+            server.config.logger.error(`FrameSeq Studio could not open ${path}: ${error instanceof Error ? error.message : error}`);
+          }).finally(() => {
+            // A restart that failed leaves this server running, ready to try again.
+            switching = false;
+          });
+        }, 50);
+        return { ok: true, path, name: basename(path) };
       };
-      server.watcher.on("change", onChange);
-      server.watcher.on("add", onChange);
-      server.watcher.on("unlink", onChange);
+      const currentFolder = () => defaultFolder(start ? undefined : entry);
 
       const routes = {
-        "GET /session": async () => {
+        "GET /session": async (_body, request) => {
+          const shared = {
+            token,
+            start,
+            quitOnClose,
+            dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
+          };
+          if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
           const text = await readFile(entry, "utf8");
           // Build the TypeScript program before the first completion needs it, but after the
           // frames have had their modules: building it holds up the server for a moment.
@@ -228,13 +323,70 @@ export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote
             }
           }, 1500);
           return {
-            token,
+            ...shared,
             entry,
             file: (relative(cwd, entry) || basename(entry)).replaceAll("\\", "/"),
             name: basename(entry),
             directory: cwd,
             version: version(text),
           };
+        },
+
+        // ── Presentations: the recent ones, opening one, and starting a new one ──────────
+        "GET /files": async () => ({ recent: await recentPresentations(), folder: await currentFolder() }),
+
+        /** Ask with the operating system's own dialog; the page asks for a path when there is none. */
+        "POST /files/choose": async (body) => {
+          if (choosing) return [409, { error: "A dialog is already open on this computer." }];
+          choosing = true;
+          try {
+            const asked = typeof body.folder === "string" && isAbsolute(body.folder) && await isDirectory(body.folder)
+              ? body.folder
+              : await currentFolder();
+            return await chooseWithDialog(body.kind === "folder" ? "folder" : "open", asked);
+          } finally {
+            choosing = false;
+          }
+        },
+
+        "POST /files/open": async (body) => {
+          const path = typeof body.path === "string" ? body.path.trim() : "";
+          if (!path || !isAbsolute(path)) return [400, { error: "Give the full path of the slide document." }];
+          const target = resolve(path);
+          if (extname(target).toLowerCase() !== ".ts") {
+            return [400, { error: "A FrameSeq presentation is a .ts file, such as talk.slides.ts." }];
+          }
+          if (!await isFile(target)) return [404, { error: `There is no file at ${target}.` }];
+          if (!start && deckKey(target) === deckKey(entry)) return { ok: true, path: target, name: basename(target), current: true };
+          return openPresentation(target);
+        },
+
+        /** Write a cover and a first slide under a file named after the title, then open it. */
+        "POST /files/create": async (body) => {
+          const title = typeof body.title === "string" ? body.title.trim() : "";
+          const folder = typeof body.folder === "string" ? body.folder.trim() : "";
+          if (!title) return [400, { error: "Give the presentation a title." }];
+          if (!folder || !isAbsolute(folder)) return [400, { error: "Choose the folder by its full path." }];
+          if (!await isDirectory(folder)) return [404, { error: `There is no folder at ${resolve(folder)}.` }];
+          const target = join(resolve(folder), presentationFileName(title));
+          try {
+            await writeFile(target, starterDeck(title), { encoding: "utf8", flag: "wx" });
+          } catch (error) {
+            if (error?.code !== "EEXIST") throw error;
+            return [409, { error: `${basename(target)} already exists in that folder.`, path: target }];
+          }
+          return openPresentation(target);
+        },
+
+        "POST /files/forget": async (body) => {
+          if (typeof body.path === "string" && isAbsolute(body.path)) await forgetPresentation(resolve(body.path));
+          return { recent: await recentPresentations() };
+        },
+
+        "POST /files/reveal": () => {
+          if (start) return [409, { error: "No presentation is open." }];
+          revealInFolder(entry, false);
+          return { ok: true };
         },
 
         "GET /source": async () => {
@@ -368,8 +520,18 @@ export function studioPlugin({ entry, packageRoot, cliPath, enabled, allowRemote
             send(response, 403, { error: "The Studio session token is missing or out of date. Reload the page." });
             return;
           }
+          const files = url.pathname === "/files" || url.pathname.startsWith("/files/");
+          // Opening files and showing dialogs belong to the person at this computer, even with --host.
+          if (files && !isLoopback(request.socket.remoteAddress)) {
+            send(response, 403, { error: "Presentations can only be opened on the computer running the Studio." });
+            return;
+          }
+          if (start && !files && url.pathname !== "/session") {
+            send(response, 409, { error: "No presentation is open. Open or create one first." });
+            return;
+          }
           const body = request.method === "GET" ? {} : await readJson(request);
-          const result = await route(body);
+          const result = await route(body, request);
           if (Array.isArray(result)) send(response, result[0], result[1]);
           else send(response, 200, result ?? {});
         })().catch((error) => {

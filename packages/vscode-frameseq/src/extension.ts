@@ -10,6 +10,7 @@ import {
   entrySearchGlob,
   isSlidesPath,
   rankEntryCandidates,
+  samePath,
 } from "./entry";
 import {
   cursorRegionAt,
@@ -367,6 +368,17 @@ async function cliInvocation(entry: EntryDocument, args: string[]): Promise<{ co
   const cli = await findCli(entry.root);
   if (!cli) throw new Error(notInstalledMessage);
   return { command: "node", args: [cli, ...args] };
+}
+
+/** The slide document a running Studio shows, or undefined when it does not say. */
+async function studioDocument(address: string): Promise<string | undefined> {
+  try {
+    const response = await fetch(new URL("/__frameseq/studio/session", address), { signal: AbortSignal.timeout(3000) });
+    const session = await response.json() as { entry?: unknown };
+    return typeof session.entry === "string" ? session.entry : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The invocation for a server the extension keeps running, or nothing once the user is told why. */
@@ -1631,8 +1643,12 @@ async function openStudio(provider: SlidesProvider, output: vscode.OutputChannel
   if (open?.isDirty) await open.save();
 
   if (studioProcess && studioEntry === entry.uri.fsPath) {
-    if (studioAddress) await vscode.env.openExternal(vscode.Uri.parse(studioAddress));
-    return;
+    // The Studio can open other presentations itself, so ask it which one it shows now.
+    const shown = studioAddress ? await studioDocument(studioAddress) : undefined;
+    if (!shown || samePath(shown, entry.uri.fsPath)) {
+      if (studioAddress) await vscode.env.openExternal(vscode.Uri.parse(studioAddress));
+      return;
+    }
   }
   const relativeEntry = relative(entry.root, entry.uri.fsPath);
   const invocation = await serverInvocation(entry, ["studio", relativeEntry]);

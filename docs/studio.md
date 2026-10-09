@@ -8,6 +8,12 @@ frameseq studio talk.slides.ts
 
 The command starts the development server and opens the Studio. When Chrome, Edge, Chromium, or Brave is installed, the Studio opens as an app window of its own, with no tabs or address bar; otherwise it opens in the default browser. A project generated with `npm create frameseq` runs the same thing with `npm run studio`.
 
+Without a file, and with no `slides.ts` in the folder it starts from, `frameseq studio` opens on its start page, where you start a new presentation, open one, or pick up a recent one. To open the Studio like any other program instead of from a terminal, [add a shortcut](#a-shortcut):
+
+```bash
+frameseq shortcut
+```
+
 The source stays the only description of the talk. Everything the Studio does, whether it is typing, dragging in the preview, or reordering slides in the rail, ends as an edit to `talk.slides.ts` that the editor's own undo can take back.
 
 ## The window
@@ -23,6 +29,26 @@ The source stays the only description of the talk. Everything the Studio does, w
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail and `Ctrl+J` hides the bottom panel. The sizes are remembered by the browser.
 
 The theme button beside **Auto-save** switches between following the system (◐), light (☀), and dark (☾). The slides themselves keep the presentation's own theme.
+
+## Presentations
+
+The file name in the top bar opens a menu: **New presentation…**, **Open…** (`Ctrl+O`), the presentations opened recently, and **Show in folder**. The start page offers the same, and lists the recent presentations with a button that removes one from the list.
+
+- **New presentation** asks for a title and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes a cover and a first slide into it. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
+- **Open** shows this computer's own open dialog. Where there is none, as on Linux without `zenity` or `kdialog`, the Studio asks for the file's path instead; `FRAMESEQ_NO_DIALOGS=1` makes it always ask.
+- When the open document has unsaved changes, the Studio asks whether to save them first. **Cancel** keeps the document open.
+
+The other presentation then opens in the same window, and the Studio works from its folder from then on: its exports land beside it, in its own `output/` and `dist/`. Recent presentations are kept in FrameSeq's settings folder, `%APPDATA%\FrameSeq` on Windows, `~/Library/Application Support/FrameSeq` on macOS, and `~/.config/frameseq` on Linux, or `FRAMESEQ_CONFIG_DIR` when it is set; a Studio started with `--no-open`, as scripts and tests start it, leaves the list alone. Only the computer the Studio runs on can open files and show dialogs, even with `--host`.
+
+## A shortcut
+
+```bash
+frameseq shortcut
+```
+
+This adds **FrameSeq Studio**, with the FrameSeq icon, to the Start menu and the desktop on Windows, to `~/Applications` on macOS, and to the applications menu on Linux. The shortcut opens the start page. It runs `frameseq studio --background`, which starts the Studio without a terminal and stops it once its window has closed; what the server prints goes to `studio.log` in the settings folder. `--background` works with a file as well: `frameseq studio talk.slides.ts --background`.
+
+The shortcut runs the FrameSeq that made it, usually a global install, so run `frameseq shortcut` again after moving or reinstalling FrameSeq. `frameseq shortcut --remove` takes it away.
 
 ## Current slide
 
@@ -114,13 +140,14 @@ The Studio watches the slide document. When it changes on disk, for example beca
 | HTML site | `dist/` |
 | Typst source | `output/typst/<name>.typ` |
 
-The paths are relative to the directory the Studio was started from. The document is saved before an export starts. When it finishes, the notice offers **Download** and **Show in folder**; the full log is in the **Output** tab.
+The paths are relative to the directory the Studio was started from, or to the folder of a presentation opened from the Studio. The document is saved before an export starts. When it finishes, the notice offers **Download** and **Show in folder**; the full log is in the **Output** tab.
 
 ## Keyboard shortcuts
 
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+S` | Save |
+| `Ctrl+O` | Open another presentation |
 | `Ctrl+Z`, `Ctrl+Y` | Undo and redo, also from the preview and the slide rail |
 | `Ctrl+Space` | Show completions |
 | `Ctrl+F` | Find and replace in the editor |

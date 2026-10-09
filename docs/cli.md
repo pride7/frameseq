@@ -51,7 +51,7 @@ The phone and presentation computer must be on the same local network. This mode
 ## Open FrameSeq Studio
 
 ```bash
-frameseq studio [file] [--host] [--no-open] [--tab]
+frameseq studio [file] [--host] [--no-open] [--tab] [--background]
 ```
 
 This starts the development server and opens [FrameSeq Studio](studio.md): the slide rail, a TypeScript editor, the live preview, and live layout checks in one window.
@@ -60,9 +60,19 @@ This starts the development server and opens [FrameSeq Studio](studio.md): the s
 frameseq studio talk.slides.ts
 ```
 
-The Studio opens as an app window when Chrome, Edge, Chromium, or Brave is installed, and in the default browser otherwise. `--tab` always uses a browser tab, and `--no-open` opens nothing.
+Without a file, and with no `slides.ts` in the current directory, the Studio opens on its start page, which creates new presentations and opens existing and recent ones.
+
+The Studio opens as an app window when Chrome, Edge, Chromium, or Brave is installed, and in the default browser otherwise. `--tab` always uses a browser tab, and `--no-open` opens nothing. `--background` returns at once and leaves the Studio running without a terminal until its window closes; its output goes to `studio.log` in FrameSeq's settings folder.
 
 The Studio writes the slide document, so its interface answers only this computer. `--host` shares it with the network for a container or a browser IDE; anyone who can reach the address can then edit the deck.
+
+## Add a shortcut
+
+```bash
+frameseq shortcut [--remove]
+```
+
+This adds **FrameSeq Studio** to the Start menu and the desktop on Windows, to `~/Applications` on macOS, and to the applications menu on Linux. The shortcut runs `frameseq studio --background` with this installation of FrameSeq and opens the start page. `--remove` deletes it again.
 
 ## Build static HTML
 

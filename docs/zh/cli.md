@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:369e70759af77f80 -->
+<!-- translation-of: docs/cli.md sha256:8edf9ab12fc6cc83 -->
 
 # CLI 参考
 
@@ -53,7 +53,7 @@ frameseq dev talk.slides.ts --remote
 ## 打开 FrameSeq Studio
 
 ```bash
-frameseq studio [file] [--host] [--no-open] [--tab]
+frameseq studio [file] [--host] [--no-open] [--tab] [--background]
 ```
 
 这条命令启动开发服务器，并打开 [FrameSeq Studio](studio.md)：幻灯片栏、TypeScript 编辑器、实时预览和实时布局检查都在一个窗口里。
@@ -62,9 +62,19 @@ frameseq studio [file] [--host] [--no-open] [--tab]
 frameseq studio talk.slides.ts
 ```
 
-装了 Chrome、Edge、Chromium 或 Brave 时，Studio 以独立的应用窗口打开，否则在默认浏览器里打开。`--tab` 总是使用浏览器标签页，`--no-open` 什么都不打开。
+不带文件、而且当前目录里没有 `slides.ts` 时，Studio 会打开它的启动页，在那里新建演示，或者打开已有的和最近用过的演示。
+
+装了 Chrome、Edge、Chromium 或 Brave 时，Studio 以独立的应用窗口打开，否则在默认浏览器里打开。`--tab` 总是使用浏览器标签页，`--no-open` 什么都不打开。`--background` 会立刻返回，让 Studio 不依赖终端继续运行，直到它的窗口关闭；它的输出写到 FrameSeq 设置文件夹里的 `studio.log`。
 
 Studio 会写入幻灯片文档，所以它的接口只响应这台电脑。`--host` 把它共享到网络上，供容器或浏览器 IDE 使用；这样一来，任何能访问这个地址的人都可以编辑这份演示。
+
+## 添加快捷方式
+
+```bash
+frameseq shortcut [--remove]
+```
+
+这条命令把 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式用这份安装的 FrameSeq 运行 `frameseq studio --background`，打开启动页。`--remove` 会把它删掉。
 
 ## 构建静态 HTML
 

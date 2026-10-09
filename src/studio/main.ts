@@ -27,12 +27,14 @@ import {
   type FileFormat,
 } from "./document";
 import { createEditor, setEditorDarkness, showPreviewSlide, showSlideMarks, type SlideMark } from "./editor";
+import { Presentations, showStartPage } from "./files";
 import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
 import { StudioFrames, type SourceTarget } from "./frames";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import {
+  askChoice,
   askText,
   element,
   formatDuration,
@@ -76,7 +78,7 @@ const shell = `
   <header class="studio-topbar">
     <div class="studio-brand">${logo}<span>FrameSeq <b>Studio</b></span></div>
     <div class="studio-file">
-      <span class="studio-file-name" data-slot="file"></span>
+      <button type="button" class="studio-file-button" data-action="file-menu" aria-haspopup="menu" title="New, open, or recent presentations (${mod}+O opens one)"><span class="studio-file-name" data-slot="file"></span><span class="studio-caret" aria-hidden="true"></span></button>
       <span class="studio-save-state" data-slot="save-state" data-state="saved"><i></i><span>Saved</span></span>
     </div>
     <div class="studio-actions">
@@ -178,6 +180,10 @@ async function start(): Promise<void> {
   let source: SourceResponse;
   try {
     session = await openSession();
+    if (session.start) {
+      await showStartPage(root, session, logo);
+      return;
+    }
     source = await call<SourceResponse>("GET", "source");
   } catch (error) {
     // A plain `frameseq dev` server serves this page but not the Studio behind it.
@@ -194,7 +200,7 @@ async function start(): Promise<void> {
   root.innerHTML = shell;
   document.title = `${session.name} · FrameSeq Studio`;
   slot("file").textContent = session.file;
-  slot("file").title = session.entry;
+  required<HTMLElement>(root, "[data-action='file-menu']").title = `${session.entry}\nNew, open, or recent presentations (${mod}+O opens one)`;
   slot("editor-title").textContent = session.name;
 
   // ── Document state ──────────────────────────────────────────────────────────────────────
@@ -231,7 +237,7 @@ async function start(): Promise<void> {
     themeChoice === "system" ? (systemLight.matches ? "light" : "dark") : themeChoice
   );
 
-  const stash = readStash(session.version);
+  const stash = readStash(session.entry, session.version);
   const initialText = stash?.text ?? syncedText;
 
   // ── Editor ──────────────────────────────────────────────────────────────────────────────
@@ -1100,6 +1106,38 @@ async function start(): Promise<void> {
     showMenu(x, y, items, `Slide ${index + 1}`);
   }
 
+  // ── Other presentations ─────────────────────────────────────────────────────────────────
+  /** Set once the person chose to drop unsaved edits, so leaving the page no longer warns. */
+  let leaving = false;
+
+  /** Settle unsaved edits before another presentation takes this one's place. */
+  async function confirmLeave(): Promise<boolean> {
+    if (saving) await saving;
+    if (!isDirty()) return true;
+    if (saveState === "conflict") {
+      toast(`${session.name} changed on disk. Choose which version to keep first.`, { tone: "warning" });
+      return false;
+    }
+    const choice = await askChoice({
+      title: "Save changes?",
+      message: `${session.name} has changes that are not saved.`,
+      choices: [
+        { label: "Don't save", value: "discard" },
+        { label: "Save", value: "save", primary: true },
+      ],
+    });
+    if (choice === "save") return save({ auto: false });
+    leaving = choice === "discard";
+    return leaving;
+  }
+
+  const presentations = new Presentations(session, {
+    leave: confirmLeave,
+    stay: () => {
+      leaving = false;
+    },
+  });
+
   // ── Exports and presenting ──────────────────────────────────────────────────────────────
   const exportFormats: Array<{ format: ExportFormat; label: string; hint: string }> = [
     { format: "pdf", label: "PDF", hint: "output/pdf" },
@@ -1258,6 +1296,9 @@ async function start(): Promise<void> {
     if (!target) return;
     if (target.dataset.tab === "problems" || target.dataset.tab === "output") showPanel(target.dataset.tab);
     switch (target.dataset.action) {
+      case "file-menu":
+        void presentations.showMenu(target);
+        break;
       case "export":
         showExportMenu();
         break;
@@ -1311,6 +1352,9 @@ async function start(): Promise<void> {
     } else if (primary && !event.altKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       void save({ auto: false });
+    } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "o") {
+      event.preventDefault();
+      void presentations.open();
     } else if (primary && (event.key === "PageDown" || event.key === "PageUp")) {
       event.preventDefault();
       const count = renderedCount || (report?.slides.length ?? 0);
@@ -1321,8 +1365,10 @@ async function start(): Promise<void> {
 
   // ── The development server ──────────────────────────────────────────────────────────────
   function writeStash(): void {
+    if (leaving) return;
     try {
       sessionStorage.setItem(stashKey, JSON.stringify({
+        entry: session.entry,
         base: baseVersion,
         text: editorText(),
         anchor: view.state.selection.main.anchor,
@@ -1336,7 +1382,7 @@ async function start(): Promise<void> {
 
   addEventListener("beforeunload", (event) => {
     writeStash();
-    if (isDirty()) event.preventDefault();
+    if (isDirty() && !leaving) event.preventDefault();
   });
 
   if (import.meta.hot) {
@@ -1385,6 +1431,7 @@ async function start(): Promise<void> {
 }
 
 interface Stash {
+  entry: string;
   base: string;
   text: string;
   anchor: number;
@@ -1392,13 +1439,17 @@ interface Stash {
   slide: number;
 }
 
-/** What the editor held before the page last reloaded, if it still applies to the same file. */
-function readStash(version: string): Stash | undefined {
+/**
+ * What the editor held before the page last reloaded, if it still applies to the same file. Two
+ * new presentations start with the same text, so the document is matched as well as its text.
+ */
+function readStash(entry: string, version: string): Stash | undefined {
   try {
     const value = JSON.parse(sessionStorage.getItem(stashKey) ?? "null") as Partial<Stash> | null;
     sessionStorage.removeItem(stashKey);
-    if (!value || value.base !== version || typeof value.text !== "string") return undefined;
+    if (!value || value.entry !== entry || value.base !== version || typeof value.text !== "string") return undefined;
     return {
+      entry: value.entry,
       base: value.base,
       text: value.text,
       anchor: Number(value.anchor) || 0,
