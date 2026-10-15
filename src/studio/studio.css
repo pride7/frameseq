@@ -526,7 +526,8 @@ body:has(.studio-topbar) .studio-window-drag {
   background: var(--studio-surface);
 }
 
-.studio-assistant-agent {
+.studio-assistant-agent,
+.studio-assistant-select {
   max-width: 170px;
   height: 24px;
   padding: 0 6px;
@@ -535,6 +536,61 @@ body:has(.studio-topbar) .studio-window-drag {
   color: var(--studio-text);
   background: var(--studio-surface-raised);
   font: 12px var(--studio-font);
+}
+
+/* Model, effort, and speed for the next request, and how much of the plan is used. */
+.studio-assistant-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.studio-assistant-select {
+  max-width: 150px;
+}
+
+.studio-assistant-select[hidden],
+.studio-assistant-agent[hidden] {
+  display: none;
+}
+
+.studio-assistant-fast {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--studio-muted);
+  font-size: 12px;
+}
+
+.studio-assistant-fast:has(input:disabled) {
+  opacity: 0.45;
+}
+
+.studio-assistant-usage {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--studio-faint);
+  background: transparent;
+  font: 11.5px var(--studio-font);
+  white-space: nowrap;
+}
+
+.studio-assistant-usage:hover {
+  color: var(--studio-text);
+  background: var(--studio-surface-hover);
+}
+
+.studio-assistant-usage.is-high {
+  color: var(--studio-warning);
+}
+
+.studio-assistant-usage.is-limited {
+  color: var(--studio-error);
 }
 
 .studio-assistant-log {

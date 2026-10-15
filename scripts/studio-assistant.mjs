@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, delimiter, dirname, join, relative } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline";
+import { configDirectory } from "./studio-files.mjs";
 
 /**
  * The Studio's assistant: Claude Code or Codex, whichever this computer has, run without a
@@ -52,6 +53,58 @@ export function findCommand(name) {
   return undefined;
 }
 
+const claudeModels = ["fable", "opus", "sonnet", "haiku"];
+const claudeEfforts = ["low", "medium", "high", "xhigh", "max"];
+const safeValue = (value) => typeof value === "string" && /^[\w.:-]{1,80}$/.test(value) ? value : undefined;
+
+/** Claude Code's own settings, for the model and effort a request uses when it names none. */
+function claudeSettings() {
+  const folder = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+  try {
+    return JSON.parse(readFileSync(join(folder, "settings.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Ask Codex's app server, over JSON-RPC on its standard input and output, for what a request
+ * cannot tell: the models this account has, the settings Codex uses by default, and how much
+ * of the plan is used. Nothing here runs a model.
+ */
+async function askCodex(questions) {
+  const command = findCommand("codex");
+  if (!command) return {};
+  const child = spawn(command.command, [...command.prefix, "app-server"], { stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
+  const waiting = new Map();
+  createInterface({ input: child.stdout }).on("line", (line) => {
+    try {
+      const message = JSON.parse(line);
+      if (message.id !== undefined) waiting.get(message.id)?.(message);
+    } catch {
+      // Not a message of the protocol.
+    }
+  });
+  let next = 1;
+  const ask = (method, params = {}) => new Promise((resolveAnswer) => {
+    const id = next++;
+    waiting.set(id, (message) => resolveAnswer(message.result));
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+    setTimeout(() => resolveAnswer(undefined), 15_000);
+  });
+  child.on("error", () => undefined);
+  child.stdin.on("error", () => undefined);
+  try {
+    await ask("initialize", { clientInfo: { name: "frameseq-studio", title: "FrameSeq Studio", version: "1" } });
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "initialized" })}\n`);
+    const answers = {};
+    for (const [name, method] of Object.entries(questions)) answers[name] = await ask(method);
+    return answers;
+  } finally {
+    stopTree(child);
+  }
+}
+
 /** Stop a process and the ones it started, as an agent's MCP server and the browser that serves. */
 function stopTree(child) {
   if (!child || child.exitCode !== null) return;
@@ -92,6 +145,66 @@ export function createAssistant({ cliPath, send }) {
   let stopped = false;
   let found;
 
+  // ── Models, effort, speed, and how much of the plan is used ─────────────────────────────
+  const usageFile = join(configDirectory(), "assistant-usage.json");
+  /** What each agent last said of its limits; Claude Code says it only while it answers. */
+  let usage = {};
+  try {
+    usage = JSON.parse(readFileSync(usageFile, "utf8"));
+  } catch {
+    // Nothing known yet.
+  }
+  const rememberUsage = (agent, value) => {
+    usage[agent] = { ...usage[agent], ...value, at: Date.now() };
+    void writeFile(usageFile, JSON.stringify(usage), "utf8").catch(() => undefined);
+    send({ type: "usage", agent, usage: usage[agent] });
+  };
+
+  let codexCatalog;
+  function codexOptions() {
+    codexCatalog ??= askCodex({ models: "model/list", config: "config/read" }).then((answers) => {
+      const models = (answers.models?.data ?? []).filter((model) => !model.hidden).map((model) => ({
+        id: model.model ?? model.id,
+        label: model.displayName ?? model.id,
+        efforts: (model.supportedReasoningEfforts ?? []).map((effort) => effort.reasoningEffort),
+        defaultEffort: model.defaultReasoningEffort,
+        fast: (model.serviceTiers?.length ?? 0) > 0 || (model.additionalSpeedTiers ?? []).includes("fast"),
+      }));
+      if (models.length === 0) codexCatalog = undefined;
+      const config = answers.config?.config ?? {};
+      return { models, defaults: { model: config.model, effort: config.model_reasoning_effort, fast: config.service_tier === "fast" || config.service_tier === "priority" } };
+    });
+    return codexCatalog;
+  }
+
+  /** The models, efforts, and speed an agent offers, and the ones it uses unless told otherwise. */
+  async function options(agent) {
+    if (agent === "codex") return codexOptions();
+    const settings = claudeSettings();
+    const defaultModel = typeof settings.model === "string" ? settings.model : undefined;
+    return {
+      // Fast mode is Opus's, so it is offered with Opus and with a default that is Opus.
+      models: claudeModels.map((id) => ({ id, label: id[0].toUpperCase() + id.slice(1), efforts: claudeEfforts, fast: id === "opus" })),
+      defaults: { model: defaultModel, effort: settings.effortLevel, fast: settings.fastMode === true, fastByDefault: !defaultModel || /opus/i.test(defaultModel) },
+    };
+  }
+
+  let codexUsageAt = 0;
+  /** How much of the plan is used: Codex says so whenever it is asked, Claude Code as it answers. */
+  async function readUsage(agent) {
+    if (agent === "codex" && Date.now() - codexUsageAt > 20_000) {
+      codexUsageAt = Date.now();
+      const limits = (await askCodex({ limits: "account/rateLimits/read" })).limits?.rateLimits;
+      if (limits) {
+        rememberUsage("codex", {
+          windows: [limits.primary, limits.secondary].filter(Boolean).map((window) => ({ minutes: window.windowDurationMins, used: (window.usedPercent ?? 0) / 100, resetsAt: window.resetsAt })),
+          limited: Boolean(limits.rateLimitReachedType),
+        });
+      }
+    }
+    return usage[agent];
+  }
+
   let startedAt = 0;
   const emit = (event) => {
     // Every request ends saying how long it took, whichever agent answered it.
@@ -121,7 +234,7 @@ export function createAssistant({ cliPath, send }) {
   /** The MCP server the agent starts: this FrameSeq, rendering in the Studio's own server. */
   const mcpArgs = (entry, preview) => [cliPath, "mcp", entry, ...(preview ? ["--preview", preview] : [])];
 
-  async function claudeCommand({ entry, preview, prompt, session }) {
+  async function claudeCommand({ entry, preview, prompt, session, settings }) {
     const config = join(tmpdir(), `frameseq-assistant-${process.pid}.json`);
     await writeFile(config, JSON.stringify({ mcpServers: { frameseq: { command: process.execPath, args: mcpArgs(entry, preview) } } }), "utf8");
     return {
@@ -131,6 +244,10 @@ export function createAssistant({ cliPath, send }) {
         "--allowedTools", "Read", "Edit", "MultiEdit", "Write", "Glob", "Grep", "mcp__frameseq",
         "--disallowedTools", "Bash",
         "--strict-mcp-config", "--mcp-config", config,
+        ...(safeValue(settings?.model) ? ["--model", settings.model] : []),
+        ...(claudeEfforts.includes(settings?.effort) ? ["--effort", settings.effort] : []),
+        // Said either way, so a fast mode turned on in Claude Code's own settings can be turned off here.
+        ...(typeof settings?.fast === "boolean" ? ["--settings", JSON.stringify({ fastMode: settings.fast })] : []),
         ...(session ? ["--resume", session] : []),
       ],
       input: prompt,
@@ -138,12 +255,18 @@ export function createAssistant({ cliPath, send }) {
     };
   }
 
-  function codexCommand({ entry, preview, prompt, session, folder }) {
-    const settings = [
+  function codexCommand({ entry, preview, prompt, session, settings }) {
+    // The sandbox is set as configuration, which `exec resume` takes as `exec` does; the
+    // agent works in the folder it is started in.
+    const options = [
+      "--json", "--skip-git-repo-check",
+      "-c", 'sandbox_mode="workspace-write"',
       "-c", `mcp_servers.frameseq.command=${JSON.stringify(process.execPath)}`,
       "-c", `mcp_servers.frameseq.args=${JSON.stringify(mcpArgs(entry, preview))}`,
+      ...(safeValue(settings?.model) ? ["-m", settings.model] : []),
+      ...(safeValue(settings?.effort) ? ["-c", `model_reasoning_effort=${JSON.stringify(settings.effort)}`] : []),
+      ...(typeof settings?.fast === "boolean" ? ["-c", `service_tier=${JSON.stringify(settings.fast ? "fast" : "default")}`] : []),
     ];
-    const options = ["--json", "--skip-git-repo-check", "-s", "workspace-write", "-C", folder, ...settings];
     return {
       args: session ? ["exec", "resume", ...options, session, "-"] : ["exec", ...options, "-"],
       input: prompt,
@@ -160,6 +283,18 @@ export function createAssistant({ cliPath, send }) {
       if (event.type === "system" && event.subtype === "init") {
         conversation.session = event.session_id;
         emit({ type: "session", id: event.session_id });
+      } else if (event.type === "rate_limit_event") {
+        const info = event.rate_limit_info ?? {};
+        const windows = Object.entries(info.unifiedWindows ?? {}).map(([id, window]) => ({
+          minutes: id === "five_hour" ? 300 : id === "seven_day" ? 10_080 : undefined,
+          used: window.utilization,
+          resetsAt: window.resetsAt,
+        }));
+        rememberUsage("claude", {
+          ...(windows.length > 0 ? { windows } : {}),
+          limited: info.status !== undefined && info.status !== "allowed",
+          ...(info.overageInUse !== undefined || info.isUsingOverage !== undefined ? { overage: Boolean(info.overageInUse || info.isUsingOverage) } : {}),
+        });
       } else if (event.type === "stream_event") {
         const delta = event.event?.delta;
         if (event.event?.type === "content_block_delta" && delta?.type === "text_delta" && delta.text) {
@@ -230,7 +365,7 @@ export function createAssistant({ cliPath, send }) {
     };
   }
 
-  async function sendMessage({ agent, text, context, entry, preview }) {
+  async function sendMessage({ agent, text, context, entry, preview, settings }) {
     if (running) throw Object.assign(new Error("The assistant is still working on the last request."), { status: 409 });
     const chosen = agents().find((candidate) => candidate.id === agent && candidate.available);
     if (!chosen) throw Object.assign(new Error(`${agent} was not found on this computer.`), { status: 404 });
@@ -241,8 +376,8 @@ export function createAssistant({ cliPath, send }) {
     const file = relative(folder, entry) || basename(entry);
     const prompt = composePrompt({ text, context, file, first: !conversation.session });
     const plan = agent === "claude"
-      ? await claudeCommand({ entry, preview, prompt, session: conversation.session })
-      : codexCommand({ entry, preview, prompt, session: conversation.session, folder });
+      ? await claudeCommand({ entry, preview, prompt, session: conversation.session, settings })
+      : codexCommand({ entry, preview, prompt, session: conversation.session, settings });
 
     emit({ type: "user", text, context: context?.summary });
     const child = spawn(command.command, [...command.prefix, ...plan.args], {
@@ -278,6 +413,11 @@ export function createAssistant({ cliPath, send }) {
       if (!finished) emit({ type: "done", ok: false, error: stopped ? "" : (stderr.trim().split("\n").slice(-6).join("\n") || `${chosen.name} stopped with code ${code}.`), stopped });
       stopped = false;
       send({ type: "idle" });
+      // Codex says nothing of its limits while it answers, so they are asked for afterwards.
+      if (agent === "codex") {
+        codexUsageAt = 0;
+        void readUsage("codex").catch(() => undefined);
+      }
     });
     return { started: true };
   }
@@ -293,7 +433,20 @@ export function createAssistant({ cliPath, send }) {
     conversation = { agent: undefined, session: undefined, events: [], file: undefined };
   }
 
-  return { state, send: sendMessage, stop, reset, refresh: () => { found = undefined; return agents(); }, close: stop };
+  return {
+    state,
+    options,
+    usage: readUsage,
+    send: sendMessage,
+    stop,
+    reset,
+    refresh: () => {
+      found = undefined;
+      codexCatalog = undefined;
+      return agents();
+    },
+    close: stop,
+  };
 }
 
 /** A short line about what a tool was given: the file it reads or changes, or the slide it shows. */

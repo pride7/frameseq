@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:6d2e57e7e26130ab -->
+<!-- translation-of: docs/studio.md sha256:ec89ffe8a1b135cb -->
 
 # FrameSeq Studio
 
@@ -197,6 +197,8 @@ Shell 会执行输入给它的任何命令，所以终端只会在运行 Studio 
 3. 每次修改都像磁盘上的其他改动一样重新载入编辑器,所以 `Ctrl+Z` 能撤回。代理工作时,编辑器不接受输入;点 **停止** 可以结束这次请求。
 
 对话会从一次请求延续到下一次,所以*再小一点*这样的追问知道指的是什么;点 **+** 开始新对话,在 Claude Code 和 Codex 之间切换也会开始新对话。
+
+在代理名称下方,可以为下一次请求选择**模型**、**推理强度**和**快速**;它们一开始都是代理自己的默认值,面板会为每个代理分别记住你的选择。Codex 会列出你的账号可用的模型和推理强度。Claude Code 提供 Fable、Opus、Sonnet 和 Haiku,快速模式只在 Opus 上提供;快速输出会消耗更多额度。面板右侧显示额度用了多少,比如 *5 小时 21% · 7 天 6%*,鼠标停在上面能看到重置时间。Codex 随时都能报告额度,Claude Code 只在回答时报告,所以它的数字要在第一次请求之后才出现;点击可以刷新。
 
 AI 助手用的是这台电脑上安装的代理,用它自己的登录和套餐,所以 Studio 不需要自己的密钥。安装 [Claude Code](https://claude.com/claude-code) 或 Codex(`npm install -g @openai/codex`),在终端里登录一次,面板就能找到它。代理只在演示所在的文件夹里工作:Claude Code 可以读写那里的文件、使用 FrameSeq 的工具,但不能运行命令;Codex 在它的 `workspace-write` 沙箱里运行。只有运行 Studio 的那台电脑能用 AI 助手,即使加了 `--host` 也是如此。
 

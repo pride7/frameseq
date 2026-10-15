@@ -35,7 +35,37 @@ type AssistantEvent =
   | { type: "file"; path: string }
   | { type: "notice"; text: string }
   | { type: "done"; ok: boolean; error?: string; seconds?: number; denied?: string[]; stopped?: boolean }
+  | { type: "usage"; agent: AgentId; usage: AgentUsage }
   | { type: "idle" };
+
+interface ModelChoice {
+  id: string;
+  label: string;
+  efforts: string[];
+  defaultEffort?: string;
+  fast: boolean;
+}
+
+/** The models, efforts, and speed an agent offers, and what it uses unless a request says. */
+interface AgentChoices {
+  models: ModelChoice[];
+  defaults: { model?: string; effort?: string; fast?: boolean; fastByDefault?: boolean };
+}
+
+/** How much of the plan is used, in windows such as five hours and seven days. */
+interface AgentUsage {
+  windows?: Array<{ minutes?: number; used: number; resetsAt?: number }>;
+  limited?: boolean;
+  overage?: boolean;
+  at?: number;
+}
+
+/** What a request asks for; an empty model or effort leaves the agent's own default. */
+interface AgentSettings {
+  model: string;
+  effort: string;
+  fast: boolean;
+}
 
 interface AssistantState {
   agents: AgentInfo[];
@@ -52,6 +82,15 @@ export interface AssistantOptions {
 }
 
 const agentKey = "frameseq-studio-assistant-agent";
+const settingsKey = "frameseq-studio-assistant-settings";
+
+function storedSettings(): Partial<Record<AgentId, AgentSettings>> {
+  try {
+    return JSON.parse(localStorage.getItem(settingsKey) ?? "{}") as Partial<Record<AgentId, AgentSettings>>;
+  } catch {
+    return {};
+  }
+}
 
 function storedAgent(): AgentId | undefined {
   try {
@@ -69,6 +108,12 @@ export class AssistantPanel {
   private readonly sendButton: HTMLButtonElement;
   private readonly contextToggle: HTMLInputElement;
   private readonly contextLabel: HTMLElement;
+  private readonly modelPicker: HTMLSelectElement;
+  private readonly effortPicker: HTMLSelectElement;
+  private readonly fastToggle: HTMLInputElement;
+  private readonly usageButton: HTMLButtonElement;
+  private readonly choices = new Map<AgentId, AgentChoices>();
+  private readonly usage = new Map<AgentId, AgentUsage | null>();
   private agents: AgentInfo[] = [];
   private loaded = false;
   private busy = false;
@@ -86,6 +131,12 @@ export class AssistantPanel {
         <button type="button" class="studio-icon-button" data-assistant="new" title="${t.assistant.newConversation}">+</button>
         <button type="button" class="studio-icon-button" data-assistant="close" title="${t.ui.close}">×</button>
       </header>
+      <div class="studio-assistant-settings">
+        <select class="studio-assistant-select" data-setting="model" aria-label="${t.assistant.model}" title="${t.assistant.model}"></select>
+        <select class="studio-assistant-select" data-setting="effort" aria-label="${t.assistant.effort}" title="${t.assistant.effort}"></select>
+        <label class="studio-assistant-fast" title="${t.assistant.fastTitle}"><input type="checkbox" data-setting="fast"><span>${t.assistant.fast}</span></label>
+        <button type="button" class="studio-assistant-usage" data-assistant="usage"></button>
+      </div>
       <div class="studio-assistant-log" role="log" aria-live="polite"></div>
       <form class="studio-assistant-composer">
         <label class="studio-assistant-context"><input type="checkbox" checked><span></span></label>
@@ -101,6 +152,17 @@ export class AssistantPanel {
     this.sendButton = host.querySelector<HTMLButtonElement>("button[type='submit']")!;
     this.contextToggle = host.querySelector<HTMLInputElement>(".studio-assistant-context input")!;
     this.contextLabel = host.querySelector<HTMLElement>(".studio-assistant-context span")!;
+    this.modelPicker = host.querySelector<HTMLSelectElement>("[data-setting='model']")!;
+    this.effortPicker = host.querySelector<HTMLSelectElement>("[data-setting='effort']")!;
+    this.fastToggle = host.querySelector<HTMLInputElement>("[data-setting='fast']")!;
+    this.usageButton = host.querySelector<HTMLButtonElement>("[data-assistant='usage']")!;
+    this.modelPicker.addEventListener("change", () => {
+      this.fillEfforts();
+      this.storeSettings();
+    });
+    this.effortPicker.addEventListener("change", () => this.storeSettings());
+    this.fastToggle.addEventListener("change", () => this.storeSettings());
+    this.usageButton.addEventListener("click", () => void this.loadUsage(true));
 
     host.querySelector("[data-assistant='close']")!.addEventListener("click", () => this.options.onClose());
     host.querySelector("[data-assistant='new']")!.addEventListener("click", () => void this.startOver());
@@ -110,6 +172,8 @@ export class AssistantPanel {
       } catch {
         // Only a convenience.
       }
+      void this.loadChoices();
+      void this.loadUsage();
     });
     host.querySelector("form")!.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -135,6 +199,8 @@ export class AssistantPanel {
       try {
         const state = await call<AssistantState>("GET", "assistant");
         this.setAgents(state.agents, state.conversation.agent);
+        void this.loadChoices();
+        void this.loadUsage();
         this.log.replaceChildren();
         for (const event of state.conversation.events) this.draw(event);
         this.setBusy(state.conversation.running);
@@ -165,6 +231,115 @@ export class AssistantPanel {
     this.picker.hidden = available.length === 0;
     this.input.disabled = available.length === 0;
     this.sendButton.disabled = available.length === 0;
+  }
+
+  private get agent(): AgentId | undefined {
+    const value = this.picker.value;
+    return value === "claude" || value === "codex" ? value : undefined;
+  }
+
+  /** The models and efforts of the chosen agent, asked for once. */
+  private async loadChoices(): Promise<void> {
+    const agent = this.agent;
+    if (!agent) return;
+    if (!this.choices.has(agent)) {
+      try {
+        this.choices.set(agent, await call<AgentChoices>("POST", "assistant/options", { agent }));
+      } catch {
+        this.choices.set(agent, { models: [], defaults: {} });
+      }
+    }
+    if (agent !== this.agent) return;
+    const choices = this.choices.get(agent)!;
+    const saved = storedSettings()[agent];
+    const option = (value: string, label: string) => {
+      const node = element("option", "", label);
+      node.value = value;
+      return node;
+    };
+    this.modelPicker.replaceChildren(
+      option("", t.assistant.byDefault(choices.defaults.model)),
+      ...choices.models.map((model) => option(model.id, model.label)),
+    );
+    this.modelPicker.value = saved?.model && choices.models.some((model) => model.id === saved.model) ? saved.model : "";
+    this.fillEfforts(saved?.effort);
+    this.fastToggle.checked = Boolean(saved?.fast ?? choices.defaults.fast) && !this.fastToggle.disabled;
+  }
+
+  /** The efforts the chosen model offers, and whether it has a fast mode. */
+  private fillEfforts(wanted = this.effortPicker.value): void {
+    const agent = this.agent;
+    const choices = agent ? this.choices.get(agent) : undefined;
+    if (!choices) return;
+    const model = choices.models.find((candidate) => candidate.id === this.modelPicker.value)
+      ?? choices.models.find((candidate) => candidate.id === choices.defaults.model);
+    const efforts = model?.efforts ?? choices.models[0]?.efforts ?? [];
+    const label = (effort: string) => t.assistant.efforts[effort] ?? effort;
+    const defaultEffort = choices.defaults.effort ?? model?.defaultEffort;
+    const options = [["", t.assistant.byDefault(defaultEffort ? label(defaultEffort) : undefined)], ...efforts.map((effort) => [effort, label(effort)])];
+    this.effortPicker.replaceChildren(...options.map(([value, text]) => {
+      const node = element("option", "", text);
+      node.value = value;
+      return node;
+    }));
+    this.effortPicker.value = wanted && efforts.includes(wanted) ? wanted : "";
+    this.effortPicker.hidden = efforts.length === 0;
+    const fast = this.modelPicker.value ? Boolean(model?.fast) : Boolean(choices.defaults.fastByDefault ?? model?.fast);
+    this.fastToggle.disabled = !fast;
+    if (!fast) this.fastToggle.checked = false;
+    this.modelPicker.hidden = choices.models.length === 0;
+  }
+
+  private settings(): AgentSettings {
+    return { model: this.modelPicker.value, effort: this.effortPicker.value, fast: this.fastToggle.checked && !this.fastToggle.disabled };
+  }
+
+  private storeSettings(): void {
+    const agent = this.agent;
+    if (!agent) return;
+    try {
+      localStorage.setItem(settingsKey, JSON.stringify({ ...storedSettings(), [agent]: this.settings() }));
+    } catch {
+      // Only a convenience.
+    }
+  }
+
+  /** How much of the plan the chosen agent has used; Codex can say at any time, Claude Code after a request. */
+  private async loadUsage(fresh = false): Promise<void> {
+    const agent = this.agent;
+    if (!agent) return;
+    if (fresh || !this.usage.has(agent)) {
+      try {
+        const { usage } = await call<{ usage: AgentUsage | null }>("POST", "assistant/usage", { agent });
+        this.usage.set(agent, usage);
+      } catch {
+        this.usage.set(agent, null);
+      }
+    }
+    this.drawUsage();
+  }
+
+  private drawUsage(): void {
+    const agent = this.agent;
+    const usage = agent ? this.usage.get(agent) : undefined;
+    const windows = usage?.windows ?? [];
+    this.usageButton.classList.toggle("is-high", windows.some((window) => window.used >= 0.8));
+    this.usageButton.classList.toggle("is-limited", Boolean(usage?.limited));
+    if (windows.length === 0) {
+      this.usageButton.textContent = t.assistant.usageUnknown;
+      this.usageButton.title = t.assistant.usageRefresh;
+      return;
+    }
+    const percent = (used: number) => Math.round(used * 100);
+    const when = (seconds?: number) => seconds ? new Date(seconds * 1000).toLocaleString(document.documentElement.lang || undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : undefined;
+    this.usageButton.textContent = windows.map((window) => `${t.assistant.window(window.minutes)} ${percent(window.used)}%`).join(" · ");
+    this.usageButton.title = [
+      ...windows.map((window) => t.assistant.usageLine(t.assistant.window(window.minutes), percent(window.used), when(window.resetsAt))),
+      ...(usage?.limited ? [t.assistant.limited] : []),
+      ...(usage?.overage ? [t.assistant.overage] : []),
+      ...(usage?.at ? [t.assistant.usageAt(new Date(usage.at).toLocaleString(document.documentElement.lang || undefined))] : []),
+      t.assistant.usageRefresh,
+    ].join("\n");
   }
 
   /** What the panel says before the first request: what it can do, or how to get an agent. */
@@ -221,7 +396,7 @@ export class AssistantPanel {
     this.log.querySelector(".studio-assistant-welcome")?.remove();
     this.setBusy(true);
     try {
-      await call("POST", "assistant/send", { agent: this.picker.value, text, context });
+      await call("POST", "assistant/send", { agent: this.picker.value, text, context, settings: this.settings() });
       this.input.value = "";
     } catch (error) {
       this.setBusy(false);
@@ -240,12 +415,19 @@ export class AssistantPanel {
     this.sendButton.textContent = busy ? t.assistant.stop : t.assistant.send;
     this.sendButton.classList.toggle("is-primary", !busy);
     this.picker.disabled = busy;
+    this.modelPicker.disabled = busy;
+    this.effortPicker.disabled = busy;
     this.options.onBusy(busy);
   }
 
   private receive(event: AssistantEvent): void {
     if (event.type === "idle") {
       this.setBusy(false);
+      return;
+    }
+    if (event.type === "usage") {
+      this.usage.set(event.agent, event.usage);
+      this.drawUsage();
       return;
     }
     if (event.type === "user") this.setBusy(true);

@@ -552,7 +552,15 @@ export function studioPlugin({
           if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
           // The agent's FrameSeq tools render the slides in this server, which already has them.
           const preview = (server.resolvedUrls?.local?.[0] ?? "").replace(/\/$/, "") || undefined;
-          return assistant.send({ agent: body.agent, text, context: body.context, entry, preview });
+          return assistant.send({ agent: body.agent, text, context: body.context, settings: body.settings, entry, preview });
+        },
+        "POST /assistant/options": async (body) => {
+          if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
+          return assistant.options(body.agent);
+        },
+        "POST /assistant/usage": async (body) => {
+          if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
+          return { usage: (await assistant.usage(body.agent)) ?? null };
         },
         "POST /assistant/stop": () => {
           assistant.stop();

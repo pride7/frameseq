@@ -52,6 +52,7 @@ const session = args.includes("--resume") ? args[args.indexOf("--resume") + 1] :
 const out = (event) => process.stdout.write(JSON.stringify(event) + "\\n");
 const wait = (ms) => new Promise((done) => setTimeout(done, ms));
 out({ type: "system", subtype: "init", session_id: session });
+out({ type: "rate_limit_event", rate_limit_info: { status: "allowed", unifiedWindows: { five_hour: { utilization: 0.21, resetsAt: 1792059600 }, seven_day: { utilization: 0.06, resetsAt: 1792645200 } } } });
 if (prompt.includes("slowly")) await wait(60_000);
 out({ type: "stream_event", api_message_id: "m1", event: { type: "content_block_delta", delta: { type: "text_delta", text: "Changing " } } });
 out({ type: "stream_event", api_message_id: "m1", event: { type: "content_block_delta", delta: { type: "text_delta", text: "the **title**." } } });
@@ -66,6 +67,10 @@ out({ type: "result", subtype: "success", is_error: false, session_id: session, 
 
 await mkdir(bin, { recursive: true });
 await mkdir(workspace, { recursive: true });
+// Claude Code's own settings, whose model and effort the panel offers as the defaults.
+const claudeHome = resolve(scratch, "claude");
+await mkdir(claudeHome, { recursive: true });
+await writeFile(join(claudeHome, "settings.json"), JSON.stringify({ model: "sonnet", effortLevel: "high" }), "utf8");
 await writeFile(deck, 'presentation("Assistant");\n\nslide({ name: "Cover" }).cover();\ntext("Old title").hero();\n\nslide("Second");\ntext("More");\n', "utf8");
 await writeFile(join(bin, "fake-claude.mjs"), fakeAgent, "utf8");
 if (process.platform === "win32") {
@@ -82,6 +87,7 @@ const environment = {
   [pathKey]: `${bin}${delimiter}${process.env[pathKey] ?? ""}`,
   FRAMESEQ_CONFIG_DIR: resolve(workspace, "config"),
   FAKE_AGENT_RECORD: record,
+  CLAUDE_CONFIG_DIR: claudeHome,
   FORCE_COLOR: "0",
   NO_COLOR: "1",
 };
@@ -114,6 +120,19 @@ try {
   assert.match(await page.$eval(".studio-assistant-agent option[value='claude']", (option) => option.textContent), /Claude Code 9\.9\.9/);
   await page.select(".studio-assistant-agent", "claude");
   assert.equal(await page.$$eval(".studio-assistant-example", (items) => items.length), 4);
+
+  // Model, effort, and speed: Claude Code's own defaults first, and fast mode only with Opus.
+  await waitFor(() => page.$("[data-setting='model'] option[value='opus']"), "the models to be offered");
+  const options = (selector) => page.$$eval(`${selector} option`, (items) => items.map((item) => item.textContent));
+  assert.deepEqual(await options("[data-setting='model']"), ["Default (sonnet)", "Fable", "Opus", "Sonnet", "Haiku"]);
+  assert.deepEqual(await options("[data-setting='effort']"), ["Default (High)", "Low", "Medium", "High", "Extra high", "Max"]);
+  const fastDisabled = () => page.$eval("[data-setting='fast']", (input) => input.disabled);
+  assert.equal(await fastDisabled(), true, "the default model, Sonnet, has no fast mode");
+  assert.equal(await page.$eval("[data-assistant='usage']", (button) => button.textContent), "Usage shows after a request");
+  await page.select("[data-setting='model']", "opus");
+  assert.equal(await fastDisabled(), false);
+  await page.select("[data-setting='effort']", "max");
+  await page.click("[data-setting='fast']");
 
   // A request carries the slide and the selected lines, and the edit reloads into the editor,
   // which takes no typing meanwhile.
@@ -150,6 +169,13 @@ try {
   assert.equal(resolve(server.args[2]), deck);
   assert.equal(server.args[3], "--preview");
   assert.equal(server.args[4], new URL(address).origin, "the agent's FrameSeq tools render in the Studio's own server");
+  const flag = (call, name) => call.args[call.args.indexOf(name) + 1];
+  assert.equal(flag(first, "--model"), "opus");
+  assert.equal(flag(first, "--effort"), "max");
+  assert.deepEqual(JSON.parse(flag(first, "--settings")), { fastMode: true });
+  // The limits Claude Code reports while it answers.
+  await waitFor(async () => (await page.$eval("[data-assistant='usage']", (button) => button.textContent)) === "5 h 21% · 7 d 6%", "the usage to show");
+  assert.match(await page.$eval("[data-assistant='usage']", (button) => button.title), /^5 h limit: 21% used, resets /);
 
   // A follow-up continues the conversation; a reload keeps it; a new one starts over.
   await page.click(".studio-assistant-composer textarea");
@@ -162,6 +188,10 @@ try {
   await page.reload({ waitUntil: "networkidle2" });
   await page.waitForSelector(".studio-assistant-user");
   assert.deepEqual(await users(), ["Give the cover a new title", "A bit shorter"], "the panel stays open and keeps the conversation");
+  await waitFor(async () => (await page.$eval("[data-setting='model']", (select) => select.value)) === "opus", "the chosen model to be remembered");
+  assert.equal(await page.$eval("[data-setting='effort']", (select) => select.value), "max");
+  assert.equal(await page.$eval("[data-setting='fast']", (input) => input.checked), true);
+  assert.equal(await page.$eval("[data-assistant='usage']", (button) => button.textContent), "5 h 21% · 7 d 6%", "the last usage is remembered");
   await page.click("[data-assistant='new']");
   await page.waitForSelector(".studio-assistant-welcome");
   await page.click(".studio-assistant-composer textarea");
@@ -206,4 +236,4 @@ try {
 }
 await rm(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => undefined);
 
-console.log("Studio assistant test passed: the panel and its agents, requests with their context, edits reloading while the editor waits, conversations carried on and started over, Stop, and the MCP server handed to the agent.");
+console.log("Studio assistant test passed: the panel and its agents, model, effort, fast mode, and usage, requests with their context, edits reloading while the editor waits, conversations carried on and started over, Stop, and the MCP server handed to the agent.");

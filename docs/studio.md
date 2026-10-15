@@ -196,6 +196,8 @@ A shell runs whatever is typed into it, so the terminal opens only in the Studio
 
 The conversation continues from one request to the next, so a follow-up such as *a little smaller* knows what it refers to; **+** starts a new one, as switching between Claude Code and Codex does.
 
+Under the agent's name, choose the **model**, the **effort**, and **Fast** for the next request; each starts as the agent's own default, and the panel remembers your choice for each agent. Codex lists the models and efforts your account has. Claude Code offers Fable, Opus, Sonnet, and Haiku, and Fast with Opus only; fast answers use more of the plan. At the right, the panel shows how much of the plan is used, such as *5 h 21% · 7 d 6%*, with the reset times on hover. Codex reports it at any time, and Claude Code while it answers, so its figures appear after the first request; click them to refresh.
+
 The assistant uses the agent installed on this computer, on its own sign-in and plan, so the Studio needs no key of its own. Install [Claude Code](https://claude.com/claude-code) or Codex (`npm install -g @openai/codex`), sign in once in a terminal, and the panel finds it. The agent works only in the presentation's folder: Claude Code may read and edit files there and use FrameSeq's tools, but not run commands, and Codex runs in its `workspace-write` sandbox. Only the computer running the Studio has the assistant, even with `--host`.
 
 ## Keyboard shortcuts
