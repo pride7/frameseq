@@ -130,6 +130,17 @@ const staleNotice = {
   zh: '<aside class="docs-stale">本页可能落后于英文原文,以 <a href="../{slug}.html">英文版</a> 为准。</aside>',
 };
 
+/** The page's sections, from its second-level headings, for the list beside a wide article. */
+function pageSections(html, locale) {
+  const sections = [...html.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<a class="heading-anchor"/g)]
+    .map(([, id, title]) => ({ id, title: title.replace(/<[^>]+>/g, "").trim() }));
+  if (sections.length < 2) return "";
+  return `<aside class="docs-toc" aria-label="${locale === "en" ? "On this page" : "本页内容"}">
+        <p>${locale === "en" ? "On this page" : "本页内容"}</p>
+        ${sections.map(({ id, title }) => `<a href="#${id}">${title}</a>`).join("\n        ")}
+      </aside>`;
+}
+
 function documentationPage({ slug, label, source, previews }, content, locale = "en") {
   const stale = /^<!-- translation-of: \S+ sha256:stale -->/.test(content);
   const rendered = withSlidePreviews(
@@ -139,12 +150,14 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
   );
   const other = locale === "en" ? locales.zh : locales.en;
   const switchHref = locale === "en" ? `zh/${slug}.html` : `../${slug}.html`;
+  // The landing page in the documentation's language.
+  const home = locale === "en" ? "../" : "../../zh/";
   return `<!doctype html>
 <html lang="${locales[locale].htmlLang}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f2ea" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="${escapeHtml(label)} — FrameSeq documentation." />
     <link rel="icon" href="${locale === "en" ? ".." : "../.."}/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${locale === "en" ? "." : ".."}/styles.css?v=${fingerprint(docsStyles)}" />
@@ -152,9 +165,10 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
   </head>
   <body>
     <header class="docs-header">
-      <a class="docs-brand" href="${locale === "en" ? "../" : "../../zh/"}" aria-label="FrameSeq Gallery home">
+      <a class="docs-brand" href="${home}" aria-label="${locale === "en" ? "FrameSeq home" : "FrameSeq 首页"}">
         <span class="docs-brand-mark" aria-hidden="true"></span>
         <span>FrameSeq</span>
+        <span class="docs-brand-tag">${locale === "en" ? "Docs" : "文档"}</span>
       </a>
       <label class="docs-nav-button" for="docs-nav">
         <span class="docs-nav-icon" aria-hidden="true"></span>
@@ -162,9 +176,10 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
       </label>
       <nav aria-label="Documentation navigation">
         <a class="docs-nav-home" href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
-        <a class="docs-nav-gallery" href="${locale === "en" ? "../" : "../../zh/"}">${locale === "en" ? "Gallery" : "首页"}</a>
+        <a class="docs-nav-gallery" href="${home}">${locale === "en" ? "Home" : "首页"}</a>
         <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
         <a class="docs-nav-external" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="docs-nav-download" href="${home}download/">${locale === "en" ? "Download" : "下载"}</a>
       </nav>
     </header>
     <input class="docs-nav-state" id="docs-nav" type="checkbox" aria-label="${locale === "en" ? "Show the documentation contents" : "显示文档目录"}" />
@@ -175,10 +190,11 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
       <main class="docs-main">
         <article class="docs-article">${stale ? staleNotice[locale].replace("{slug}", slug) : ""}${rendered}</article>
         <footer class="docs-footer">
-          <span>FrameSeq documentation</span>
-          <a href="https://github.com/pride7/frameseq/blob/main/${source}">Edit this page on GitHub ↗</a>
+          <span>${locale === "en" ? "FrameSeq documentation" : "FrameSeq 文档"}</span>
+          <a href="https://github.com/pride7/frameseq/blob/main/${source}">${locale === "en" ? "Edit this page on GitHub" : "在 GitHub 上编辑本页"} ↗</a>
         </footer>
       </main>
+      ${pageSections(rendered, locale)}
     </div>
   </body>
 </html>`;
@@ -354,12 +370,63 @@ for (const font of (await readdir(resolve(katexDist, "fonts"))).filter((file) =>
   await copyFile(resolve(katexDist, "fonts", font), resolve(galleryOutput, "katex", "fonts", font));
 }
 
+/** The app for each system, by the name of its file in a release. */
+const appDownloads = {
+  "win-setup": /^FrameSeq-Setup-.+-win-x64\.exe$/,
+  "win-zip": /^FrameSeq-.+-win-x64\.zip$/,
+  "mac-arm64": /^FrameSeq-.+-mac-arm64\.dmg$/,
+  "mac-x64": /^FrameSeq-.+-mac-x64\.dmg$/,
+  "linux-x64": /^FrameSeq-.+-linux-x64\.tar\.gz$/,
+  "linux-arm64": /^FrameSeq-.+-linux-arm64\.tar\.gz$/,
+};
+const releasesPage = "https://github.com/pride7/frameseq/releases/latest";
+
 /**
- * A landing page as published: its formula typeset, and its stylesheets and script asked for by
- * their content. `root` is the way from the page up to the site's root, "." or "..".
+ * The newest release, which the download pages offer: its version, its date, and the app for each
+ * system, read from GitHub as the site is built. When GitHub cannot be asked, as offline, the pages
+ * send people to the releases page for every system and name the version in package.json.
+ */
+async function latestRelease() {
+  const packageVersion = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8")).version;
+  try {
+    const response = await fetch("https://api.github.com/repos/pride7/frameseq/releases/latest", {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`GitHub answered ${response.status}`);
+    const release = await response.json();
+    const files = {};
+    for (const [key, pattern] of Object.entries(appDownloads)) {
+      const asset = release.assets.find((candidate) => pattern.test(candidate.name));
+      if (asset) files[key] = { url: asset.browser_download_url, size: `${Math.round(asset.size / 1048576)} MB` };
+    }
+    return { version: release.tag_name.replace(/^v/, ""), date: release.published_at.slice(0, 10), files };
+  } catch (error) {
+    console.warn(`The download pages link to the releases page: the latest release could not be read (${error.message}).`);
+    return { version: packageVersion, date: "", files: {} };
+  }
+}
+
+const release = await latestRelease();
+
+/** Put the release into a download page's {{version}}, {{date}}, {{download:…}}, and {{size:…}}. */
+function fillRelease(html) {
+  return html
+    .replaceAll("{{version}}", release.version)
+    .replaceAll("{{date}}", release.date)
+    .replace(/\{\{download:([a-z0-9-]+)\}\}/g, (_match, key) => release.files[key]?.url ?? releasesPage)
+    .replace(/\{\{size:([a-z0-9-]+)\}\}/g, (_match, key) => release.files[key]?.size ?? "");
+}
+
+/**
+ * A landing page as published: its formula typeset, its release filled in, and its stylesheets
+ * and script asked for by their content. `root` is the way from the page up to the site's root.
  */
 async function writeLandingPage(source, output, root) {
-  const html = typesetLandingPage(await readFile(resolve(packageRoot, "gallery", source), "utf8"))
+  const html = fillRelease(typesetLandingPage(await readFile(resolve(packageRoot, "gallery", source), "utf8")))
     .replace(`href="${root}/styles.css"`, `href="${root}/styles.css?v=${fingerprint(galleryStyles)}"`)
     .replace(`href="${root}/katex/katex.min.css"`, `href="${root}/katex/katex.min.css?v=${fingerprint(katexStyles)}"`)
     .replace(`src="${root}/site.js"`, `src="${root}/site.js?v=${fingerprint(siteScript)}"`);
@@ -370,6 +437,8 @@ async function writeLandingPage(source, output, root) {
 await Promise.all([
   writeLandingPage("index.html", "index.html", "."),
   writeLandingPage("zh/index.html", "zh/index.html", ".."),
+  writeLandingPage("download/index.html", "download/index.html", ".."),
+  writeLandingPage("zh/download/index.html", "zh/download/index.html", "../.."),
   writeFile(resolve(galleryOutput, "site.js"), siteScript, "utf8"),
   writeFile(resolve(galleryOutput, "katex", "katex.min.css"), katexStyles, "utf8"),
   writeFile(resolve(galleryOutput, "styles.css"), galleryStyles, "utf8"),

@@ -2042,3 +2042,316 @@ html:lang(zh-Hans) body {
     width: 100%;
   }
 }
+
+/*
+ * On the narrowest phones the header keeps the logo without its name: the documentation, the
+ * other language, and the download matter more there, and a wider fallback font, such as
+ * Linux's DejaVu Sans, leaves no room for all four.
+ */
+@media (max-width: 430px) {
+  .site-header .brand > span:not(.brand-mark) {
+    display: none;
+  }
+}
+
+/* ── Download ─────────────────────────────────────────────────────────────────────────── */
+
+.dl-hero {
+  padding-bottom: 8px;
+}
+
+.dl-mark {
+  width: 84px;
+  height: 84px;
+  margin-bottom: 28px;
+  background: url("favicon.svg") center / contain no-repeat;
+  filter: drop-shadow(0 18px 32px rgb(37 99 235 / 0.28));
+}
+
+.dl-hero h1 {
+  font-size: clamp(40px, 6.4vw, 72px);
+}
+
+.dl-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 34px;
+}
+
+.dl-choice {
+  gap: 14px;
+  min-height: 66px;
+  padding: 0 28px 0 22px;
+  text-align: left;
+}
+
+.dl-choice svg {
+  width: 26px;
+  height: 26px;
+}
+
+.button svg .fill,
+.dl-os svg .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.dl-choice-text {
+  display: grid;
+  line-height: 1.3;
+}
+
+.dl-choice-text strong {
+  font-size: 17px;
+  font-weight: 680;
+}
+
+.dl-choice-text small {
+  color: rgb(255 255 255 / 0.7);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* A size the build could not read leaves nothing behind, not even its separator. */
+.dl-size:not(:empty)::before {
+  content: " · ";
+}
+
+/* Once the page knows the computer, it offers that computer's download alone. */
+[data-download][data-system="windows"] .dl-choice:not([data-for="windows"]),
+[data-download][data-system="mac"] .dl-choice:not([data-for="mac"]),
+[data-download][data-system="linux"] .dl-choice:not([data-for="linux"]) {
+  display: none;
+}
+
+.dl-meta a {
+  color: var(--blue);
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.dl-meta a:hover {
+  text-decoration: underline;
+}
+
+.dl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.dl-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.04);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.dl-card.is-yours {
+  border-color: rgb(37 99 235 / 0.45);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1), var(--shadow-card);
+}
+
+.dl-card-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.dl-os {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.dl-card.is-yours .dl-os {
+  background: var(--brand);
+  color: #fff;
+}
+
+.dl-os svg,
+.dl-file svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dl-card-head h3 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dl-card-head p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.dl-file {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.dl-file:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-soft);
+}
+
+.dl-file > span {
+  display: grid;
+}
+
+.dl-file strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.dl-file small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dl-file svg {
+  color: var(--blue);
+}
+
+.dl-note {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dl-note code,
+.dl-panel code,
+.dl-all code {
+  color: var(--blue);
+  font-size: 0.9em;
+}
+
+.dl-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.dl-panel {
+  min-width: 0;
+  padding: 32px;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.section .dl-panel h2,
+.section .dl-npm-card h2 {
+  font-size: clamp(26px, 2.6vw, 32px);
+  line-height: 1.15;
+}
+
+.dl-steps {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.dl-steps li {
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.dl-steps li > b:first-child {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ink);
+}
+
+.dl-panel .check-list {
+  margin-top: 22px;
+}
+
+.dl-panel .check-list li {
+  font-size: 15px;
+}
+
+.dl-panel-note {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.dl-npm-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  padding: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.dl-npm-card p:not(.eyebrow) {
+  margin: 14px 0 18px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.dl-npm-card .terminal {
+  font-size: 14px;
+}
+
+@media (max-width: 1080px) {
+  .dl-grid,
+  .dl-details-grid,
+  .dl-npm-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dl-grid {
+    max-width: 640px;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .dl-choices {
+    width: 100%;
+  }
+
+  .dl-choice {
+    flex: 1 1 100%;
+  }
+
+  .dl-panel,
+  .dl-npm-card {
+    padding: 22px;
+  }
+}

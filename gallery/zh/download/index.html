@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="下载适用于 Windows、macOS 和 Linux 的 FrameSeq：一个安装包里有 FrameSeq Studio、Node.js、Typst 编译器和 Tectonic，不需要先安装任何东西。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="下载 FrameSeq" />
+    <meta property="og:description" content="适用于 Windows、macOS 和 Linux 的 FrameSeq Studio，一个安装包装下它需要的一切。" />
+    <meta property="og:url" content="https://pride7.github.io/frameseq/zh/download/" />
+    <meta property="og:image" content="https://pride7.github.io/frameseq/images/zh/studio-card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="alternate" hreflang="en" href="https://pride7.github.io/frameseq/download/" />
+    <link rel="alternate" hreflang="zh-Hans" href="https://pride7.github.io/frameseq/zh/download/" />
+    <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../../styles.css" />
+    <script>document.documentElement.classList.add("js");</script>
+    <title>下载 FrameSeq</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="../" aria-label="FrameSeq 首页">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>FrameSeq</span>
+        </a>
+        <nav class="site-nav" aria-label="网站导航">
+          <a href="../#studio">Studio</a>
+          <a href="../#ai">AI 助手</a>
+          <a href="../#present">放映</a>
+          <a href="../#language">代码</a>
+          <a href="../#themes">主题</a>
+          <a class="nav-docs" href="../../docs/zh/">文档</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-link lang-switch" href="../../download/" lang="en" hreflang="en">English</a>
+          <a class="header-link" href="https://github.com/pride7/frameseq" aria-label="GitHub 上的 FrameSeq">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            <span>GitHub</span>
+          </a>
+          <a class="button button-small button-dark" href="./" aria-current="page">下载</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero dl-hero" aria-labelledby="download-title" data-download>
+        <div class="hero-copy">
+          <span class="dl-mark" aria-hidden="true"></span>
+          <h1 id="download-title">下载 FrameSeq</h1>
+          <p class="hero-lede">
+            一个安装包装下 FrameSeq Studio 和它需要的一切。Node.js、Typst 编译器和 Tectonic 都已自带，不需要先安装任何东西。
+          </p>
+          <div class="dl-choices">
+            <a class="button button-primary dl-choice" data-for="windows" href="{{download:win-setup}}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M3 5.5 10.5 4.4v7.1H3Zm8.5-1.25L21 3v8.5h-9.5ZM3 12.5h7.5v7.1L3 18.5Zm8.5 0H21V21l-9.5-1.25Z" /></svg>
+              <span class="dl-choice-text"><strong>下载 Windows 版</strong><small>安装程序<span class="dl-size">{{size:win-setup}}</span></small></span>
+            </a>
+            <a class="button button-primary dl-choice" data-for="mac" href="{{download:mac-arm64}}" data-intel-href="{{download:mac-x64}}" data-intel-label="Intel 芯片" data-intel-size="{{size:mac-x64}}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3Z" /></svg>
+              <span class="dl-choice-text"><strong>下载 macOS 版</strong><small data-mac-label>Apple 芯片<span class="dl-size">{{size:mac-arm64}}</span></small></span>
+            </a>
+            <a class="button button-primary dl-choice" data-for="linux" href="{{download:linux-x64}}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 4 4-4 4M12 17h7" /></svg>
+              <span class="dl-choice-text"><strong>下载 Linux 版</strong><small>x64<span class="dl-size">{{size:linux-x64}}</span></small></span>
+            </a>
+          </div>
+          <p class="hero-meta dl-meta">
+            版本 {{version}} · <a href="#all">其他系统</a> · <a href="../../docs/changelog.html">更新内容</a> · <a href="https://github.com/pride7/frameseq/releases">所有版本</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="section dl-all" id="all" aria-labelledby="all-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">全部下载</p>
+          <h2 id="all-title">Windows、<wbr />macOS&nbsp;和&nbsp;Linux&nbsp;都有。</h2>
+          <p>每个版本里都是同一个 FrameSeq，Studio 旁边还有 <code>frameseq</code> 命令。</p>
+        </div>
+        <div class="dl-grid reveal">
+          <article class="dl-card" data-system-card="windows">
+            <div class="dl-card-head">
+              <span class="dl-os" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="fill" d="M3 5.5 10.5 4.4v7.1H3Zm8.5-1.25L21 3v8.5h-9.5ZM3 12.5h7.5v7.1L3 18.5Zm8.5 0H21V21l-9.5-1.25Z" /></svg></span>
+              <div><h3>Windows</h3><p>64 位</p></div>
+            </div>
+            <a class="dl-file" href="{{download:win-setup}}">
+              <span><strong>安装程序</strong><small>.exe<span class="dl-size">{{size:win-setup}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <a class="dl-file" href="{{download:win-zip}}">
+              <span><strong>便携版</strong><small>.zip<span class="dl-size">{{size:win-zip}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <p class="dl-note">安装程序不需要管理员权限，装好后 FrameSeq Studio 会出现在开始菜单。便携版什么都不安装：解压到任意位置，运行 <code>bin\frameseq.cmd</code>。</p>
+          </article>
+          <article class="dl-card" data-system-card="mac">
+            <div class="dl-card-head">
+              <span class="dl-os" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3Z" /></svg></span>
+              <div><h3>macOS</h3><p>Apple 芯片和 Intel 芯片</p></div>
+            </div>
+            <a class="dl-file" href="{{download:mac-arm64}}">
+              <span><strong>Apple 芯片</strong><small>.dmg<span class="dl-size">{{size:mac-arm64}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <a class="dl-file" href="{{download:mac-x64}}">
+              <span><strong>Intel 芯片</strong><small>.dmg<span class="dl-size">{{size:mac-x64}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <p class="dl-note">打开磁盘映像，把 FrameSeq Studio 拖进“应用程序”。它自带用于导出的浏览器。</p>
+          </article>
+          <article class="dl-card" data-system-card="linux">
+            <div class="dl-card-head">
+              <span class="dl-os" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 8 4 4-4 4M12 17h7" /></svg></span>
+              <div><h3>Linux</h3><p>x64 和 ARM64</p></div>
+            </div>
+            <a class="dl-file" href="{{download:linux-x64}}">
+              <span><strong>x64</strong><small>.tar.gz<span class="dl-size">{{size:linux-x64}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <a class="dl-file" href="{{download:linux-arm64}}">
+              <span><strong>ARM64</strong><small>.tar.gz<span class="dl-size">{{size:linux-arm64}}</span></small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+            </a>
+            <p class="dl-note">解压后运行 <code>./FrameSeq/install.sh</code>。Studio 的窗口需要 WebKitGTK 4.1，大多数桌面环境都已自带。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section dl-details" aria-labelledby="first-title">
+        <div class="dl-details-grid">
+          <article class="dl-panel reveal">
+            <p class="eyebrow">第一次打开时</p>
+            <h2 id="first-title">应用目前还没有签名。</h2>
+            <ul class="dl-steps">
+              <li><b>Windows</b> 运行安装程序前，SmartScreen 可能会询问：选择 <b>更多信息 › 仍要运行</b>。开启了智能应用控制时，Windows 偶尔会拒绝运行；稍后再试一次，或者改用便携版 zip。</li>
+              <li><b>macOS</b> 第一次打开时需要确认：在访达里 <b>按住 Control 点按 › 打开</b> FrameSeq Studio。</li>
+              <li><b>Linux</b> 直接就能运行。Studio 的窗口打不开时，会改在浏览器的应用窗口里打开。</li>
+            </ul>
+            <a class="text-link" href="../../docs/zh/app.html">阅读应用说明 <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="dl-panel reveal">
+            <p class="eyebrow">安装包里有什么</p>
+            <h2>FrameSeq 需要的都在这里。</h2>
+            <ul class="check-list">
+              <li>FrameSeq Studio，有自己的窗口</li>
+              <li><code>frameseq</code> 命令，用来导出和检查</li>
+              <li>Node.js，只供 FrameSeq 使用</li>
+              <li>Typst 编译器和 Tectonic，用于 Typst 和 LaTeX</li>
+              <li>macOS 和 Linux 上用于导出的浏览器；Windows 使用 Edge</li>
+            </ul>
+            <p class="dl-panel-note">有新版本的 FrameSeq 时，FrameSeq Studio 会提醒你。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section dl-npm" aria-labelledby="npm-title">
+        <div class="dl-npm-card reveal">
+          <div>
+            <p class="eyebrow">更喜欢 npm？</p>
+            <h2 id="npm-title">在你自己的工具链里新建项目。</h2>
+            <p>电脑上已经有 Node.js 的话，新项目里会带上 Studio、一个主题，以及每种导出的脚本。</p>
+            <a class="text-link" href="../../docs/zh/getting-started.html">快速上手 <span aria-hidden="true">→</span></a>
+          </div>
+          <pre class="terminal"><code><span class="t-prompt">$</span> npm create frameseq@latest my-talk
+<span class="t-prompt">$</span> cd my-talk
+<span class="t-prompt">$</span> npm install
+<span class="t-prompt">$</span> npm run studio</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>FrameSeq</span></a>
+          <p>用鼠标做幻灯片，每一页都是读得懂的代码。</p>
+        </div>
+        <nav class="footer-links" aria-label="页脚">
+          <div>
+            <h2>产品</h2>
+            <a href="../../docs/zh/studio.html">Studio</a>
+            <a href="./">下载</a>
+            <a href="../../docs/changelog.html">更新日志</a>
+          </div>
+          <div>
+            <h2>学习</h2>
+            <a href="../../docs/zh/">文档</a>
+            <a href="../../docs/zh/recipes.html">示例</a>
+            <a href="../../download/" lang="en">English</a>
+          </div>
+          <div>
+            <h2>链接</h2>
+            <a href="https://github.com/pride7/frameseq">GitHub</a>
+            <a href="https://marketplace.visualstudio.com/items?itemName=pride7.frameseq">VS Code</a>
+            <a href="../../llms.txt">llms.txt</a>
+          </div>
+        </nav>
+      </div>
+      <p class="footer-note">MIT 开源许可。下载文件来自 FrameSeq 在 GitHub 上发布的版本。</p>
+    </footer>
+
+    <script src="../../site.js"></script>
+  </body>
+</html>

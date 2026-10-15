@@ -54,3 +54,32 @@ if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: re
 } else {
   for (const element of reveals) element.classList.add("is-visible");
 }
+
+// The download page offers the app for the computer it is opened on, and on a Mac whose browser
+// says it has an Intel processor, the Intel build. A phone or tablet is offered every system.
+const download = document.querySelector("[data-download]");
+if (download) {
+  const agent = `${navigator.userAgentData?.platform ?? ""} ${navigator.platform ?? ""} ${navigator.userAgent}`.toLowerCase();
+  const touch = navigator.maxTouchPoints > 1;
+  const system = /android|iphone|ipad|ipod/.test(agent) ? ""
+    : /win/.test(agent) ? "windows"
+      : /mac/.test(agent) ? (touch ? "" : "mac")
+        : /linux|x11|cros/.test(agent) ? "linux"
+          : "";
+  if (system) {
+    download.dataset.system = system;
+    document.querySelector(`[data-system-card="${system}"]`)?.classList.add("is-yours");
+  }
+  if (system === "mac") {
+    navigator.userAgentData?.getHighEntropyValues?.(["architecture"]).then(({ architecture }) => {
+      if (architecture !== "x86") return;
+      const choice = download.querySelector("[data-for='mac']");
+      const label = choice.querySelector("[data-mac-label]");
+      const size = document.createElement("span");
+      size.className = "dl-size";
+      size.textContent = choice.dataset.intelSize ?? "";
+      choice.href = choice.dataset.intelHref;
+      label.replaceChildren(choice.dataset.intelLabel, size);
+    }).catch(() => {});
+  }
+}

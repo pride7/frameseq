@@ -112,6 +112,26 @@ const chineseCard = await stat(resolve(galleryOutput, "images", "zh", "studio-ca
 assert.ok(chineseCard.size > 20_000, "The Chinese link-preview card is too small to be a picture of the Studio");
 assert.match(chineseLanding, /<meta property="og:image" content="https:\/\/pride7\.github\.io\/frameseq\/images\/zh\/studio-card\.jpg"/);
 
+// Every Download button leads to a download page, which offers the latest release's app for each
+// system straight from GitHub, or the releases page where the build could not read the release.
+assert.ok(!landing.includes("docs/app.html"), "The landing page's downloads should go to the download page");
+assert.match(landing, /class="button button-primary" href="\.\/download\/"/);
+assert.match(chineseLanding, /class="button button-primary" href="\.\/download\/"/);
+for (const [page, lang] of [["download/index.html", "en"], ["zh/download/index.html", "zh-Hans"]]) {
+  const html = await readFile(resolve(galleryOutput, page), "utf8");
+  assert.match(html, new RegExp(`<html lang="${lang}"`));
+  assert.ok(!html.includes("{{"), `${page} should have its release filled in`);
+  const files = [...html.matchAll(/class="dl-file" href="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(files.length, 6, `${page} should offer six downloads`);
+  for (const file of files) {
+    assert.match(file, /^https:\/\/github\.com\/pride7\/frameseq\/releases\//, `${page} offers a download from elsewhere: ${file}`);
+  }
+  for (const [, target] of html.matchAll(/href="((?:\.\.\/)+docs\/[^"#]+)"/g)) {
+    const file = resolve(galleryOutput, dirname(page), target.endsWith("/") ? `${target}index.html` : target);
+    assert.ok(await stat(file).catch(() => false), `${page} links to a missing page: ${target}`);
+  }
+}
+
 // Every page asks for its stylesheet by content, so a browser holding the previous release's
 // stylesheet fetches the new one instead of styling new markup with old rules.
 const fingerprint = (text) => createHash("sha256").update(text).digest("hex").slice(0, 10);
@@ -200,7 +220,7 @@ try {
     "https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground",
   );
   assert.equal(desktop.docsLink, "./docs/");
-  assert.equal(desktop.download, "./docs/app.html");
+  assert.equal(desktop.download, "./download/");
   assert.equal(
     await page.$eval(".language-stage iframe", (frame) => frame.getAttribute("src")),
     "./examples/atlas/?show#3",
@@ -341,9 +361,23 @@ try {
   assert.ok(chineseDesktop.overflow <= 0);
   assert.equal(chineseDesktop.bentoCards, 5);
   assert.equal(chineseDesktop.themeCards, 8);
-  assert.equal(chineseDesktop.download, "../docs/zh/app.html");
+  assert.equal(chineseDesktop.download, "./download/");
   await page.click("#tab-menu");
   assert.deepEqual(await shownPanels(), ["panel-menu"]);
+
+  // The download page offers the computer's own system first, and only that one.
+  await page.goto(new URL("download/", url).href, { waitUntil: "networkidle0" });
+  const offered = await page.evaluate(() => ({
+    choices: [...document.querySelectorAll(".dl-choice")]
+      .filter((choice) => getComputedStyle(choice).display !== "none")
+      .map((choice) => ({ system: choice.dataset.for, href: choice.getAttribute("href") })),
+    yours: document.querySelector(".dl-card.is-yours")?.dataset.systemCard,
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+  }));
+  assert.equal(offered.choices.length, 1, `The download page should offer one system, found ${offered.choices.length}`);
+  assert.equal(offered.choices[0].system, offered.yours, "The offered download and the highlighted system should agree");
+  assert.match(offered.choices[0].href, /^https:\/\/github\.com\/pride7\/frameseq\/releases\//);
+  assert.ok(offered.overflow <= 0);
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
@@ -359,6 +393,11 @@ try {
     overflow: document.documentElement.scrollWidth - window.innerWidth,
   }));
   assert.equal(docsDesktop.title, "Function reference — FrameSeq docs");
+  assert.equal(
+    await page.$eval(".docs-nav-download", (link) => link.getAttribute("href")),
+    "../download/",
+    "The documentation should lead to the download page",
+  );
   assert.equal(docsDesktop.groups, documentationGroups.length);
   assert.equal(docsDesktop.active, "Function reference");
   assert.match(docsDesktop.metric ?? "", /metric/i);
