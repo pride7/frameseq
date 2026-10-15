@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.38.1] - 2026-10-15
+
+### Fixed
+
+- FrameSeq Studio and `frameseq dev` follow a slide document written twice in quick succession. The file watcher reported only the first of two writes within 50 ms, so after **Keep my version** in a conflict, or when a formatter or an agent wrote the file twice, the preview and the slide rail went on showing the earlier text, and the rail could not duplicate or move slides until the next save.
+
 ## [0.38.0] - 2026-10-15
 
 ### Added
