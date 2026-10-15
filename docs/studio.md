@@ -192,7 +192,8 @@ A shell runs whatever is typed into it, so the terminal opens only in the Studio
 
 1. The Studio saves the editor's text and sends the request with where you are: the slide in the preview with its lines, the lines you selected, and the problems in the list. Clear **Include** to send the request alone.
 2. The agent reads the document and edits it, using [`frameseq mcp`](cli.md#serve-the-slides-to-a-coding-agent), which the Studio gives it, to check the slides and look at them. The panel shows each step as it happens.
-3. Each edit reloads into the editor like any other change on disk, so `Ctrl+Z` takes it back. While the agent works, the editor takes no typing, and **Stop** ends the request.
+3. Each edit reloads into the editor, and the preview shows it at once. While the agent works, the editor takes no typing, and **Stop** ends the request.
+4. When the agent has finished, the editor shows what it changed against the text before the request: the replaced text in red, the new text in green, and **Accept** and **Reject** beside each change. The editor's header, and the panel, count the changes left and offer **Accept all** and **Reject all**; **↑** and **↓** move between changes. A rejected change is put back in the file, and `Ctrl+Z` takes back either choice. Further requests before the review is settled add to the same review.
 
 The conversation continues from one request to the next, so a follow-up such as *a little smaller* knows what it refers to; **+** starts a new one, as switching between Claude Code and Codex does.
 

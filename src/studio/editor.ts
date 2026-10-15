@@ -16,6 +16,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language";
 import { lintGutter, lintKeymap, linter, type Diagnostic } from "@codemirror/lint";
+import { getChunks, goToNextChunk, goToPreviousChunk, unifiedMergeView } from "@codemirror/merge";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, RangeSet, StateEffect, StateField, type Range } from "@codemirror/state";
 import {
@@ -255,6 +256,9 @@ const darkness = new Compartment();
 /** Holds typing off while the assistant edits the file, so the two never write over each other. */
 const locked = new Compartment();
 
+/** The assistant's changes, shown against the text before them, each to keep or undo. */
+const review = new Compartment();
+
 export interface EditorOptions {
   doc: string;
   onUpdate: (update: ViewUpdate) => void;
@@ -323,6 +327,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
         studioTheme,
         darkness.of(EditorView.darkTheme.of(options.dark)),
         locked.of(EditorState.readOnly.of(false)),
+        review.of([]),
         keymap.of([
           { key: "Mod-s", run: () => { options.onSave(); return true; }, preventDefault: true },
           ...closeBracketsKeymap,
@@ -359,6 +364,52 @@ export function currentSlideMarks(view: EditorView): SlideMark[] {
 /** Underline FrameSeq's findings again, after they changed without the text changing. */
 export function refreshDocumentDiagnostics(view: EditorView): void {
   view.dispatch({ effects: refreshFindings.of(null) });
+}
+
+export interface ReviewLabels {
+  accept: string;
+  reject: string;
+}
+
+/**
+ * Show how the text differs from `original`: what was removed in red above what replaced it,
+ * with buttons on each change to keep it or put the original back.
+ */
+export function startReview(view: EditorView, original: string, labels: ReviewLabels): void {
+  view.dispatch({
+    effects: review.reconfigure(unifiedMergeView({
+      original,
+      // Replaced lines stand in a block of their own above the new ones, with the buttons in it,
+      // so neither covers the code in a narrow editor.
+      gutter: true,
+      mergeControls: (type, action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.name = type;
+        button.className = `cm-review-button is-${type}`;
+        // Small marks rather than words, so the buttons cover as little of a long line as they can.
+        button.textContent = type === "accept" ? "✓" : "✕";
+        button.title = type === "accept" ? labels.accept : labels.reject;
+        button.setAttribute("aria-label", button.title);
+        button.onmousedown = action;
+        return button;
+      },
+    })),
+  });
+}
+
+export function endReview(view: EditorView): void {
+  view.dispatch({ effects: review.reconfigure([]) });
+}
+
+/** How many changes are still to review, or undefined when no review is shown. */
+export function reviewChanges(view: EditorView): number | undefined {
+  return getChunks(view.state)?.chunks.length;
+}
+
+export function goToChange(view: EditorView, direction: 1 | -1): void {
+  (direction === 1 ? goToNextChunk : goToPreviousChunk)(view);
+  view.focus();
 }
 
 /** Keep the person from typing, while the text can still be replaced from the file on disk. */

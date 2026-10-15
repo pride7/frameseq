@@ -177,11 +177,29 @@ try {
   await waitFor(async () => (await page.$eval("[data-assistant='usage']", (button) => button.textContent)) === "5 h 21% · 7 d 6%", "the usage to show");
   assert.match(await page.$eval("[data-assistant='usage']", (button) => button.title), /^5 h limit: 21% used, resets /);
 
+  // The change is reviewed against the text before the request: the original line is shown,
+  // and Reject all puts it back, in the editor and in the file.
+  const reviewText = () => page.$eval("[data-slot='review']", (bar) => (bar.hidden ? "" : bar.querySelector("[data-slot='review-count']").textContent));
+  await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the change to be offered for review");
+  assert.equal(await page.$eval(".studio-assistant-review", (bar) => bar.hidden), false, "the panel offers the review too");
+  // A change within a line shows the text it replaced in the same line.
+  assert.match(await page.$eval(".cm-content", (content) => content.textContent), /Old title/);
+  await page.click("[data-action='review-reject']");
+  await waitFor(async () => (await text()).includes('text("Old title").hero()'), "Reject all to restore the editor");
+  await waitFor(async () => (await readFile(deck, "utf8")).includes('text("Old title").hero()'), "Reject all to restore the file");
+  assert.equal(await reviewText(), "");
+  assert.equal(await page.$eval(".studio-assistant-review", (bar) => bar.hidden), true);
+
   // A follow-up continues the conversation; a reload keeps it; a new one starts over.
   await page.click(".studio-assistant-composer textarea");
   await page.keyboard.type("A bit shorter");
   await page.keyboard.press("Enter");
   await waitFor(async () => (await page.$$(".studio-assistant-done")).length === 2, "the follow-up to finish");
+  // One change accepted on its own ends the review and keeps it.
+  await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the follow-up's change to be offered");
+  await page.click(".cm-review-button.is-accept");
+  await waitFor(async () => (await reviewText()) === "", "accepting the only change to end the review");
+  assert.match(await text(), /text\("Title \d+"\)\.hero\(\)/);
   const second = (await calls())[1];
   assert.equal(second.args[second.args.indexOf("--resume") + 1], (await page.evaluate(() => fetch("/__frameseq/studio/session").then((response) => response.json()).then((session) => fetch("/__frameseq/studio/assistant", { headers: { "X-FrameSeq-Studio": session.token } })).then((response) => response.json()))).conversation.session);
   assert.equal(second.prompt.includes("FrameSeq Studio"), false, "the task is explained once");
@@ -200,6 +218,7 @@ try {
   await waitFor(async () => (await calls()).length === 3, "the third request");
   assert.equal((await calls())[2].args.includes("--resume"), false, "a new conversation has no session to resume");
   await page.waitForSelector(".studio-assistant-done", { timeout: 30_000 });
+  await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the third request's change to be offered");
 
   // Stop ends a request that takes too long, and the editor takes typing again.
   await waitFor(async () => !(await locked()), "the editor to be free before the slow request");
@@ -211,6 +230,12 @@ try {
   await page.click(".studio-assistant-composer button[type='submit']");
   await waitFor(async () => (await page.$$eval(".studio-assistant-notice", (items) => items.map((item) => item.textContent))).includes("Stopped."), "Stop to end the request");
   await waitFor(async () => !(await locked()), "the editor to take typing after Stop");
+  // The review waits while the agent works, and covers both requests since it began.
+  await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the unreviewed change to be offered again");
+  const beforeAccept = await text();
+  await page.click("[data-review='accept']");
+  await waitFor(async () => (await reviewText()) === "", "Accept all in the panel to end the review");
+  assert.equal(await text(), beforeAccept, "Accept all keeps the text");
 
   // An empty request is refused; Ctrl+Alt+I folds the panel away.
   const refused = await page.evaluate(async () => {

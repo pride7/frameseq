@@ -78,6 +78,8 @@ export interface AssistantOptions {
   beforeSend: () => Promise<boolean>;
   /** The agent started or stopped working, for the editor to hold typing off meanwhile. */
   onBusy: (busy: boolean) => void;
+  /** Keep or undo every change still under review. */
+  review: (keep: boolean) => void;
   onClose: () => void;
 }
 
@@ -112,6 +114,7 @@ export class AssistantPanel {
   private readonly effortPicker: HTMLSelectElement;
   private readonly fastToggle: HTMLInputElement;
   private readonly usageButton: HTMLButtonElement;
+  private readonly reviewBar: HTMLElement;
   private readonly choices = new Map<AgentId, AgentChoices>();
   private readonly usage = new Map<AgentId, AgentUsage | null>();
   private agents: AgentInfo[] = [];
@@ -139,6 +142,11 @@ export class AssistantPanel {
       </div>
       <div class="studio-assistant-log" role="log" aria-live="polite"></div>
       <form class="studio-assistant-composer">
+        <div class="studio-assistant-review" hidden>
+          <span class="studio-assistant-review-text"></span>
+          <button type="button" class="studio-button" data-review="reject">${t.review.rejectAll}</button>
+          <button type="button" class="studio-button is-primary" data-review="accept">${t.review.acceptAll}</button>
+        </div>
         <label class="studio-assistant-context"><input type="checkbox" checked><span></span></label>
         <textarea rows="3" placeholder="${t.assistant.placeholder}"></textarea>
         <div class="studio-assistant-actions">
@@ -156,6 +164,9 @@ export class AssistantPanel {
     this.effortPicker = host.querySelector<HTMLSelectElement>("[data-setting='effort']")!;
     this.fastToggle = host.querySelector<HTMLInputElement>("[data-setting='fast']")!;
     this.usageButton = host.querySelector<HTMLButtonElement>("[data-assistant='usage']")!;
+    this.reviewBar = host.querySelector<HTMLElement>(".studio-assistant-review")!;
+    this.reviewBar.querySelector("[data-review='accept']")!.addEventListener("click", () => this.options.review(true));
+    this.reviewBar.querySelector("[data-review='reject']")!.addEventListener("click", () => this.options.review(false));
     this.modelPicker.addEventListener("change", () => {
       this.fillEfforts();
       this.storeSettings();
@@ -212,6 +223,12 @@ export class AssistantPanel {
       if (this.log.childElementCount === 0) this.showWelcome();
     }
     this.input.focus();
+  }
+
+  /** How many of the agent's changes wait in the editor to be kept or undone, if any. */
+  setReview(count: number | undefined): void {
+    this.reviewBar.hidden = count === undefined;
+    if (count !== undefined) this.reviewBar.querySelector(".studio-assistant-review-text")!.textContent = `${t.review.changes(count)} · ${t.review.inEditor}`;
   }
 
   refreshContext(): void {

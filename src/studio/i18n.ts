@@ -373,6 +373,17 @@ const en = {
     },
   },
 
+  review: {
+    changes: (count: number) => `${count} change${count === 1 ? "" : "s"} by the assistant`,
+    inEditor: "accept or reject each in the editor",
+    accept: "Accept",
+    reject: "Reject",
+    acceptAll: "Accept all",
+    rejectAll: "Reject all",
+    previous: "Previous change",
+    next: "Next change",
+  },
+
   ui: {
     dismiss: "Dismiss",
     cancel: "Cancel",
@@ -740,6 +751,17 @@ const zh: Catalog = {
       guide: "阅读 FrameSeq 指南",
       command: (command) => `运行 ${command}`,
     },
+  },
+
+  review: {
+    changes: (count) => `AI 改了 ${count} 处`,
+    inEditor: "可在编辑器里逐处接受或拒绝",
+    accept: "接受",
+    reject: "拒绝",
+    acceptAll: "全部接受",
+    rejectAll: "全部拒绝",
+    previous: "上一处修改",
+    next: "下一处修改",
   },
 
   ui: {

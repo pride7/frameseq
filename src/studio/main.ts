@@ -33,6 +33,10 @@ import {
   refreshDocumentDiagnostics,
   setEditorDarkness,
   setEditorLocked,
+  startReview,
+  endReview,
+  reviewChanges,
+  goToChange,
   showPreviewSlide,
   showSlideMarks,
   type SlideMark,
@@ -134,6 +138,13 @@ const shell = `
         <span class="studio-pane-title" data-slot="editor-title"></span>
         <span class="studio-breadcrumb" data-slot="breadcrumb"></span>
         <span class="studio-assistant-working" data-slot="assistant-working" hidden>${t.assistant.working}</span>
+        <span class="studio-review" data-slot="review" hidden>
+          <span class="studio-review-count" data-slot="review-count"></span>
+          <button type="button" class="studio-icon-button" data-action="review-previous" title="${t.review.previous}">↑</button>
+          <button type="button" class="studio-icon-button" data-action="review-next" title="${t.review.next}">↓</button>
+          <button type="button" class="studio-button" data-action="review-reject">${t.review.rejectAll}</button>
+          <button type="button" class="studio-button is-primary" data-action="review-accept">${t.review.acceptAll}</button>
+        </span>
       </header>
       <div class="studio-editor" data-slot="editor"></div>
     </section>
@@ -253,6 +264,10 @@ async function start(): Promise<void> {
   let exporting = false;
   /** The assistant's panel, made the first time it is opened. */
   let assistant: AssistantPanel | undefined;
+  /** The text before the assistant's first change not yet reviewed, and whether the review shows. */
+  let reviewBase: string | undefined;
+  let reviewing = false;
+  let assistantBusy = false;
 
   // ── Theme ───────────────────────────────────────────────────────────────────────────────
   let themeChoice = readThemeChoice();
@@ -611,7 +626,8 @@ async function start(): Promise<void> {
       return;
     }
     replaceFromDisk(latest);
-    toast(t.save.reloaded(session.name), { tone: "info", timeout: 2600, key: "disk-reload" });
+    // The assistant's own edits say so in its panel and in the review.
+    if (!assistantBusy && reviewBase === undefined) toast(t.save.reloaded(session.name), { tone: "info", timeout: 2600, key: "disk-reload" });
   }
 
   function replaceFromDisk(latest: SourceResponse): void {
@@ -625,6 +641,8 @@ async function start(): Promise<void> {
     sinceSync = ChangeSet.empty(text.length);
     hideBanner();
     setSaveState("saved");
+    // The agent's last edit can reach the editor after the agent has finished.
+    if (reviewBase !== undefined && !assistantBusy && !reviewing) showReview();
   }
 
   function showConflict(): void {
@@ -923,6 +941,7 @@ async function start(): Promise<void> {
       if (isDirty()) scheduleSave();
       scheduleInspect();
     }
+    if (reviewing) refreshReview();
     if (update.selectionSet || update.docChanged) {
       assistant?.refreshContext();
       showCursor();
@@ -1651,6 +1670,18 @@ async function start(): Promise<void> {
       case "toggle-assistant":
         toggleAssistant();
         break;
+      case "review-accept":
+        settleReview(true);
+        break;
+      case "review-reject":
+        settleReview(false);
+        break;
+      case "review-next":
+        goToChange(view, 1);
+        break;
+      case "review-previous":
+        goToChange(view, -1);
+        break;
       case "toggle-inspector":
         toggleInspector();
         break;
@@ -1745,18 +1776,111 @@ async function start(): Promise<void> {
           toast(t.assistant.resolveFirst, { tone: "warning" });
           return false;
         }
-        return flushSave();
+        if (!await flushSave()) return false;
+        // Changes are reviewed against the text before the first request since the last review.
+        if (reviewBase === undefined) {
+          reviewBase = editorText();
+          storeReviewBase();
+        }
+        return true;
       },
-      // The file is the agent's while it works: typing waits, and its edits arrive as reloads.
+      // The file is the agent's while it works: typing waits, its edits arrive as reloads, and
+      // the review waits until it has finished.
       onBusy: (busy) => {
+        assistantBusy = busy;
         setEditorLocked(view, busy);
         assistantWorking.hidden = !busy;
+        if (busy) pauseReview();
+        else showReview(true);
       },
+      review: (keep) => settleReview(keep),
       onClose: () => toggleAssistant(false),
     });
     void assistant.show();
   }
   if (readPreference("assistant-open", false)) toggleAssistant(true);
+
+  // ── Reviewing the assistant's changes ───────────────────────────────────────────────────
+  const reviewKey = `frameseq-studio-review:${session.entry}`;
+  const reviewBar = slot("review");
+  function storeReviewBase(): void {
+    try {
+      if (reviewBase === undefined) sessionStorage.removeItem(reviewKey);
+      else sessionStorage.setItem(reviewKey, reviewBase);
+    } catch {
+      // A reload then forgets what to compare with, and the changes simply stay.
+    }
+  }
+
+  /**
+   * Show the changes since the review began, each to accept or reject, once the agent is done.
+   * Just after it finishes, its last edit may still be on its way from the disk, so an unchanged
+   * text is looked at once more before the review is given up.
+   */
+  function showReview(settling = false): void {
+    if (reviewBase === undefined || assistantBusy) return;
+    if (editorText() === reviewBase) {
+      if (settling) setTimeout(() => showReview(), 1500);
+      else finishReview();
+      return;
+    }
+    if (reviewing) {
+      refreshReview();
+      return;
+    }
+    startReview(view, reviewBase, { accept: t.review.accept, reject: t.review.reject });
+    reviewing = true;
+    refreshReview();
+  }
+
+  // Each sets \`reviewing\` before the view changes, since the change is itself an update.
+  function pauseReview(): void {
+    const shown = reviewing;
+    reviewing = false;
+    if (shown) endReview(view);
+    reviewBar.hidden = true;
+    assistant?.setReview(undefined);
+  }
+
+  /** Count what is left to review; with nothing left, the review is over. */
+  function refreshReview(): void {
+    const count = reviewChanges(view);
+    if (count === undefined) return;
+    if (count === 0) {
+      finishReview();
+      return;
+    }
+    reviewBar.hidden = false;
+    slot("review-count").textContent = t.review.changes(count);
+    assistant?.setReview(count);
+  }
+
+  function finishReview(): void {
+    const shown = reviewing;
+    reviewing = false;
+    if (shown) endReview(view);
+    reviewBase = undefined;
+    storeReviewBase();
+    reviewBar.hidden = true;
+    assistant?.setReview(undefined);
+  }
+
+  /** Keep every change, or put the text back as it was, as one step `Ctrl+Z` can take back. */
+  function settleReview(keep: boolean): void {
+    if (reviewBase === undefined) return;
+    const base = reviewBase;
+    finishReview();
+    if (!keep && editorText() !== base) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: base } });
+    view.focus();
+  }
+
+  // A review left open before a reload goes on where it was.
+  try {
+    reviewBase = sessionStorage.getItem(reviewKey) ?? undefined;
+  } catch {
+    reviewBase = undefined;
+  }
+  showReview();
 
   // ── The development server ──────────────────────────────────────────────────────────────
   function writeStash(): void {

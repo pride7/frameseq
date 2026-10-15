@@ -59,6 +59,7 @@ const studioDependencies = [
   "@codemirror/lang-javascript",
   "@codemirror/language",
   "@codemirror/lint",
+  "@codemirror/merge",
   "@codemirror/search",
   "@codemirror/state",
   "@codemirror/view",
