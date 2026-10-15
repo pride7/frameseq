@@ -316,12 +316,8 @@ export class StudioTerminal {
       case "gone":
         this.ended();
         this.state = "idle";
-        // A terminal on show starts a shell of its own in place of the one that ended. The server
-        // closes the socket that said so, which this page lets go of first.
-        if (this.term && this.host.offsetWidth > 0) {
-          this.socket = undefined;
-          this.connect(false);
-        }
+        // A terminal on show starts a shell of its own in place of the one that ended.
+        if (this.term && this.host.offsetWidth > 0) this.connect(false);
         break;
       case "error":
         this.ended();
@@ -331,9 +327,15 @@ export class StudioTerminal {
     }
   }
 
+  /**
+   * The shell is over, and the server closes the socket that said so. The page lets go of that
+   * socket at once rather than when it has closed, so a new shell can start in between, as when
+   * xterm.js finishes loading or a key is pressed meanwhile.
+   */
   private ended(): void {
     this.id = undefined;
     this.state = "exited";
+    this.socket = undefined;
     storeSession(this.options.entry, undefined);
   }
 
