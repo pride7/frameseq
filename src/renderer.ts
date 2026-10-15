@@ -1168,15 +1168,22 @@ function storePreviewSelection(selection?: StoredPreviewSelection): void {
   }
 }
 
-type ArrangeAction =
-  | "align-left"
-  | "align-center"
-  | "align-right"
-  | "align-top"
-  | "align-middle"
-  | "align-bottom"
-  | "distribute-horizontal"
-  | "distribute-vertical";
+const arrangeActions = [
+  "align-left",
+  "align-center",
+  "align-right",
+  "align-top",
+  "align-middle",
+  "align-bottom",
+  "distribute-horizontal",
+  "distribute-vertical",
+] as const;
+
+type ArrangeAction = (typeof arrangeActions)[number];
+
+const orderActions = ["bring-to-front", "bring-forward", "send-backward", "send-to-back"] as const;
+
+type OrderAction = (typeof orderActions)[number];
 
 function parseSourceTarget(descriptor: string): SourceTarget | undefined {
   const [line, column, start, end] = descriptor.split(":").map(Number);
@@ -1215,11 +1222,15 @@ async function revealSource(target: SourceTarget): Promise<void> {
   await fetch(`/__open-in-editor?file=${encodeURIComponent(file)}`).catch(() => undefined);
 }
 
-/** Alt-click any object in the live preview to open the line that wrote it. */
+/**
+ * Alt-click any object in the live preview to open the line that wrote it. `startEditing` turns
+ * layout editing on, which selecting an object from FrameSeq Studio's menu needs.
+ */
 function enableSourceReveal(
   root: HTMLElement,
   navigate?: (index: number) => void,
   signal?: AbortSignal,
+  startEditing?: () => void,
 ): void {
   let focused: HTMLElement | undefined;
   const selected = new Set<HTMLElement>();
@@ -1520,6 +1531,106 @@ function enableSourceReveal(
         .map(({ start, end, text }) => ({ start, end, expected: text })),
     });
   };
+
+  /**
+   * What FrameSeq Studio needs to know of the selection to offer what can be done with it: the
+   * objects, the lines that write each one when it stands on its own, and how they can be
+   * arranged and stacked.
+   */
+  const describeSelection = (): Record<string, unknown> => {
+    const elements = [...selected];
+    const frame = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
+    const stacking = elements.length === 1 ? stackingPeers(elements[0]) : undefined;
+    return {
+      slideIndex: Number(frame?.dataset.index ?? -1),
+      editing: document.documentElement.classList.contains("frameseq-edit-mode"),
+      objects: elements.flatMap((element) => {
+        const target = parseSourceTarget(element.dataset.frameseqSource ?? "");
+        return target ? [{ target, statement: parseSourceStatement(element) }] : [];
+      }),
+      arrange: {
+        x: canArrange(elements, "x"),
+        y: canArrange(elements, "y"),
+        distributeX: canArrange(elements, "x", 3),
+        distributeY: canArrange(elements, "y", 3),
+      },
+      stacking: stacking && {
+        layered: stacking.layered,
+        backward: stacking.index > 0,
+        forward: stacking.index < stacking.peers.length - 1,
+      },
+    };
+  };
+  const inStudio = window.parent !== window
+    && new URLSearchParams(location.search).get("frameseq-preview") === "studio";
+  if (inStudio) {
+    /**
+     * A right-click opens the Studio's own menu, for the object under the pointer or for the
+     * slide. An object not yet selected is selected first, alone, as a drawing program does,
+     * which turns layout editing on; a right-click on the slide itself clears the selection.
+     * Shift keeps the browser's own menu.
+     */
+    addEventListener("contextmenu", (event) => {
+      if (event.shiftKey) return;
+      event.preventDefault();
+      if (!(event.target instanceof Element) || !root.contains(event.target)) return;
+      const active = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
+      const hit = event.target.closest<HTMLElement>("[data-frameseq-source]");
+      const object = hit && !hit.classList.contains("frameseq-slide") && active?.contains(hit) ? hit : undefined;
+      const onSlide = Boolean(event.target.closest(".frameseq-slide"));
+      // The menu key gives no point; the menu then opens at the selection, or on the slide.
+      // Control-click, which opens menus on a Mac, is the left button.
+      const keyboard = event.button !== 2 && !event.ctrlKey;
+      let { clientX: x, clientY: y } = event;
+      clearFocused();
+      if (object) {
+        if (!selected.has(object)) {
+          startEditing?.();
+          clearSelection();
+          selected.add(object);
+          object.classList.add("is-frameseq-selected");
+          notifySelection();
+        }
+      } else if (onSlide && !keyboard) {
+        clearSelection();
+      }
+      if (keyboard || (!object && !onSlide)) {
+        const anchor = [...selected].at(-1) ?? active?.querySelector<HTMLElement>(".frameseq-slide");
+        const box = anchor?.getBoundingClientRect();
+        if (box) {
+          x = box.left + Math.min(box.width / 2, 24);
+          y = box.top + Math.min(box.height / 2, 24);
+        }
+      }
+      window.parent.postMessage({ type: "frameseq.context-menu", x, y, keyboard, ...describeSelection() }, "*");
+    }, { signal });
+    // Copied or cut, the selected objects' code goes to the clipboard as text, so it can also be
+    // pasted into the code or another program.
+    const carryCode = (event: ClipboardEvent): void => {
+      const statements = [...selected].map(parseSourceStatement);
+      if (statements.length === 0 || !event.clipboardData || statements.some((statement) => !statement)) return;
+      event.clipboardData.setData("text/plain", (statements as SourceStatement[])
+        .sort((a, b) => a.start - b.start)
+        .map(({ text }) => text.replace(/\r?\n$/, "").replace(/\r\n/g, "\n"))
+        .join("\n"));
+      event.preventDefault();
+    };
+    addEventListener("copy", carryCode, { signal });
+    addEventListener("cut", carryCode, { signal });
+    addEventListener("message", (event: MessageEvent<unknown>) => {
+      const data = event.data as { type?: unknown; action?: unknown } | null;
+      if (data?.type !== "frameseq.selection-action" || typeof data.action !== "string") return;
+      const elements = [...selected];
+      if (elements.length === 0) return;
+      if (data.action === "delete") deleteSelected();
+      else if ((orderActions as readonly string[]).includes(data.action)) {
+        if (elements.length === 1) orderObject(elements[0], data.action as OrderAction);
+      } else if ((arrangeActions as readonly string[]).includes(data.action)) {
+        arrangeSelected(elements, data.action as ArrangeAction);
+      }
+    }, { signal });
+  }
+
   addEventListener("keydown", (event) => {
     if (event.key === "Escape" && (focused || selected.size > 0)) {
       event.preventDefault();
@@ -1527,6 +1638,19 @@ function enableSourceReveal(
       clearFocused();
       clearSelection();
       return;
+    }
+    // Copying, cutting, and duplicating the selected objects, and pasting copied ones, are
+    // FrameSeq Studio's to do: it holds what was copied and writes the slide document.
+    if (inStudio && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+      const key = event.key.toLowerCase();
+      const command = key === "c" ? "copy" : key === "x" ? "cut" : key === "d" ? "duplicate" : key === "v" ? "paste" : undefined;
+      if (command && (command === "paste" || selected.size > 0)) {
+        // Copying and cutting go on to the clipboard events, which carry the objects' code.
+        if (command !== "copy" && command !== "cut") event.preventDefault();
+        event.stopImmediatePropagation();
+        window.parent.postMessage({ type: "frameseq.object-command", command, ...describeSelection() }, "*");
+        return;
+      }
     }
     if (!document.documentElement.classList.contains("frameseq-edit-mode")) return;
     if ((event.key === "Delete" || event.key === "Backspace") && selected.size > 0
@@ -1853,6 +1977,36 @@ function reorderSiblings(element: HTMLElement): HTMLElement[] {
     && child.dataset.frameseqRegion === region
     && Boolean(child.dataset.frameseqStatement)
   ));
+}
+
+/**
+ * The objects an object stacks with, in the order they are written. One placed by coordinates is
+ * drawn above those beside it that are placed so and written before it; one in the flow comes
+ * after the neighbours in the flow written before it. Either way, moving its lines past theirs
+ * moves it past them.
+ */
+function stackingPeers(element: HTMLElement): { peers: HTMLElement[]; index: number; layered: boolean } | undefined {
+  if (!parseSourceStatement(element)) return undefined;
+  const layered = (candidate: HTMLElement): boolean => ["absolute", "fixed"].includes(getComputedStyle(candidate).position);
+  const own = layered(element);
+  const peers = reorderSiblings(element).filter((sibling) => layered(sibling) === own);
+  const index = peers.indexOf(element);
+  return index < 0 ? undefined : { peers, index, layered: own };
+}
+
+/** Bring an object to the front or forward, or send it backward or to the back, by moving its lines. */
+function orderObject(element: HTMLElement, action: OrderAction): void {
+  const stacking = stackingPeers(element);
+  const statement = parseSourceStatement(element);
+  if (!stacking || !statement) return;
+  const { peers, index } = stacking;
+  const target = action === "bring-to-front" ? peers.length - 1
+    : action === "bring-forward" ? index + 1
+      : action === "send-backward" ? index - 1
+        : 0;
+  if (target === index || target < 0 || target >= peers.length) return;
+  const landing = parseSourceStatement(peers[target]);
+  if (landing) sendSourceMove(statement, target > index ? landing.end : landing.start);
 }
 
 /** Where the pointer sits among the neighbours, along whichever way they are laid out. */
@@ -2423,6 +2577,14 @@ function createPlacer(
     placed();
   }, { signal });
 
+  // A right-click puts the tool down, as Escape does.
+  root.addEventListener("contextmenu", (event) => {
+    if (!kind) return;
+    event.preventDefault();
+    event.stopPropagation();
+    stop(true);
+  }, { capture: true, signal });
+
   // The click that ends a placement is not a click on whatever lay beneath it.
   root.addEventListener("click", (event) => {
     if (!swallowClick) return;
@@ -2574,7 +2736,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   if (import.meta.hot && !showMode) {
     enableSourceReveal(root, (index) => {
       if (index !== currentSlide) goTo(index);
-    }, signal);
+    }, signal, () => updateLayoutEditing(true));
   }
 
   const laserPointers = slides.map(({ canvas }) => {
@@ -2652,6 +2814,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   updateLayoutEditing(layoutEditing);
+  // FrameSeq Studio's slide menu turns layout editing on and off.
+  addEventListener("message", (event: MessageEvent<unknown>) => {
+    const data = event.data as { type?: unknown; active?: unknown } | null;
+    if (data?.type === "frameseq.layout-editing" && typeof data.active === "boolean") updateLayoutEditing(data.active);
+  }, { signal });
   // An object drawn from the Studio is there to be arranged, so editing turns on once it lands.
   if (setLayoutEditing && window.parent !== window) {
     createPlacer(root, () => slides[currentSlide]?.canvas, () => updateLayoutEditing(true), signal);

@@ -2268,6 +2268,15 @@ textarea.studio-text-input[style*="height"] {
   min-width: 250px;
 }
 
+/* A right-click's menu has the focus itself until the arrow keys reach an item. */
+.studio-context-menu {
+  min-width: 230px;
+}
+
+.studio-context-menu:focus {
+  outline: none;
+}
+
 .studio-menu-check {
   width: 12px;
   margin-right: -10px;

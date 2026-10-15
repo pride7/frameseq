@@ -1,5 +1,5 @@
 import "./studio.css";
-import { redo, selectAll, undo } from "@codemirror/commands";
+import { redo, selectAll, toggleComment, undo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import { ChangeSet, EditorSelection, Text, type ChangeSpec, type TransactionSpec } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
@@ -45,11 +45,19 @@ import {
 import { Presentations, showStartPage } from "./files";
 import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
-import { MenuBar, type MenuEntry } from "./menubar";
+import { MenuBar, showContextMenu, type MenuEntry } from "./menubar";
 import { notesText, readNotes, SpeakerNotes } from "./notes";
 import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideGroup, type SlideMap } from "./outline";
-import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
-import { nameDiagnostics } from "../source-names";
+import {
+  StudioFrames,
+  type ObjectCommand,
+  type PreviewFailure,
+  type PreviewSelection,
+  type SelectionAction,
+  type SourceTarget,
+} from "./frames";
+import { nameDefinition, nameDiagnostics, prepareNameRename } from "../source-names";
+import { copiedCode, namesAt, pastedLines } from "./clipboard";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { chooseIcon } from "./icons";
@@ -418,13 +426,7 @@ async function start(): Promise<void> {
         showPreviewSlide(view, index);
         refreshInspector();
       },
-      reveal: (target) => {
-        const range = editorRange(target);
-        if (!range) return;
-        showEditor(true);
-        view.dispatch({ selection: EditorSelection.cursor(range.from), scrollIntoView: true });
-        view.focus();
-      },
+      reveal: (target) => revealTarget(target),
       select: (targets) => {
         const ranges = targets.map(editorRange).filter((range): range is { from: number; to: number } => Boolean(range));
         if (ranges.length === 0) return;
@@ -461,6 +463,8 @@ async function start(): Promise<void> {
       thumbnailMenu: (index, x, y) => showSlideMenu(index, x, y),
       thumbnailDelete: (index) => void rearrange("delete", index),
       checkRendered: (frame) => scheduleLayoutCheck(frame),
+      contextMenu: (x, y, selection, keyboard) => showPreviewMenu(x, y, selection, keyboard),
+      objectCommand: (command, selection) => runObjectCommand(command, selection),
     },
     previewSlide,
     resolvedTheme(),
@@ -527,57 +531,13 @@ async function start(): Promise<void> {
       });
       return true;
     },
-    reveal: (position) => {
-      if (position > view.state.doc.length) return;
-      showEditor(true);
-      suppressFollow = true;
-      view.dispatch({
-        selection: EditorSelection.cursor(position),
-        effects: EditorView.scrollIntoView(position, { y: "center" }),
-      });
-      view.focus();
-    },
+    reveal: (position) => revealPosition(position),
     choosePicture: () => choosePicture(),
-    duplicateObject: (object) => {
-      const doc = view.state.doc;
-      const statement = object.statement;
-      const start = object.source.start;
-      if (!statement || start === undefined) {
-        toast(t.inspector.cannotDuplicate, { tone: "warning" });
-        return;
-      }
-      if (statement.end > doc.length || doc.sliceString(start, start + object.type.length) !== object.type) {
-        toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
-        return;
-      }
-      // The copy is the statement's whole lines, written after them. A name is made unique, since
-      // two objects cannot share one, and a placed object steps aside so the copy can be seen.
-      const first = doc.lineAt(statement.start);
-      const last = doc.lineAt(statement.end);
-      const taken = new Set([...editorText().matchAll(/\.as\((["'`])([^"'`]+)\1\)/g)].map((match) => match[2]));
-      const copy = doc.sliceString(first.from, last.to)
-        .replace(/\.as\((["'`])([^"'`]+)\1\)/g, (_, quote: string, name: string) => {
-          const stem = name.replace(/\d+$/, "");
-          let index = 2;
-          while (taken.has(`${stem}${index}`)) index += 1;
-          taken.add(`${stem}${index}`);
-          return `.as(${quote}${stem}${index}${quote})`;
-        })
-        .replace(/\.position\(\{\s*x:\s*(-?\d+(?:\.\d+)?),\s*y:\s*(-?\d+(?:\.\d+)?)\s*\}\)/,
-          (_, x: string, y: string) => `.position({ x: ${Number(x) + 24}, y: ${Number(y) + 24} })`);
-      const at = last.to + 1 + (statement.start - first.from);
-      suppressFollow = true;
-      view.dispatch({
-        changes: { from: last.to, insert: `\n${copy}` },
-        selection: EditorSelection.cursor(at),
-        scrollIntoView: true,
-        userEvent: "input.inspector",
-      });
-      toast(t.inspector.duplicated(t.inspector.kinds[object.type] ?? object.type, view.state.doc.lineAt(at).number), {
-        tone: "info",
-        actions: [{ label: t.inspector.undo, run: () => { undo(view); } }],
-      });
-    },
+    duplicateObject: (object) => duplicateInspected(object),
+    objectMenu: (object, x, y, keyboard) => showContextMenu(x, y, inspectedObjectEntries(object), {
+      label: t.objects.menuLabel(1),
+      keyboard,
+    }),
     deleteObjects: (objects) => {
       const doc = view.state.doc;
       const ranges: Array<{ from: number; to: number }> = [];
@@ -1735,6 +1695,360 @@ async function start(): Promise<void> {
     showMenu(x, y, items, t.rail.menuLabel(index + 1));
   }
 
+  // ── Copying objects ─────────────────────────────────────────────────────────────────────
+  /**
+   * The objects last copied or cut: the lines that write them, the slide they came from, and how
+   * often they were pasted back onto it, which moves each copy a step further over.
+   */
+  let copied: { code: string; slide: number; cut: boolean; pasted: number } | undefined;
+
+  /** How far a copy pasted onto its own slide moves down and to the right, so both show. */
+  const copyShift = 24;
+
+  type Block = { from: number; to: number };
+
+  /**
+   * The editor ranges of the lines that write the objects selected in the preview, comments above
+   * them included, while they still read as the preview saw them. An object inside another one
+   * selected with it goes with that one.
+   */
+  function selectedBlocks(selection: PreviewSelection): Block[] | undefined {
+    if (selection.objects.length === 0) return undefined;
+    if (selection.objects.some((object) => !object.statement)) {
+      toast(t.objects.insideAnother, { tone: "warning" });
+      return undefined;
+    }
+    const doc = view.state.doc;
+    const blocks: Block[] = [];
+    for (const { statement } of selection.objects) {
+      const range = statement && editorRange(statement);
+      if (!statement || !range || doc.sliceString(range.from, range.to) !== toEditorText(statement.text)) {
+        toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+        return undefined;
+      }
+      blocks.push(range);
+    }
+    return blocks.sort((a, b) => a.from - b.from)
+      .reduce<Block[]>((kept, block) => (kept.length && block.from < kept[kept.length - 1].to ? kept : [...kept, block]), []);
+  }
+
+  /**
+   * The editor range of the lines that write an object listed in Current slide, comments above
+   * included; only the statement itself when it shares its line with other code.
+   */
+  function inspectedBlocks(object: InspectObject): Block[] | undefined {
+    const doc = view.state.doc;
+    const statement = object.statement;
+    const start = object.source.start;
+    if (!statement || start === undefined) {
+      toast(t.objects.insideAnother, { tone: "warning" });
+      return undefined;
+    }
+    if (statement.end > doc.length || doc.sliceString(start, start + object.type.length) !== object.type) {
+      toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+      return undefined;
+    }
+    const first = doc.lineAt(statement.start);
+    const last = doc.lineAt(statement.end);
+    const alone = !doc.sliceString(first.from, statement.start).trim() && !doc.sliceString(statement.end, last.to).trim();
+    return [alone ? { from: blockStart(doc, statement.start), to: last.to } : { from: statement.start, to: statement.end }];
+  }
+
+  /** Write a copy of an object listed in Current slide after it, and say where. */
+  function duplicateInspected(object: InspectObject): void {
+    const blocks = inspectedBlocks(object);
+    if (!blocks) return;
+    const at = writeCopy(blocks);
+    toast(t.inspector.duplicated(t.inspector.kinds[object.type] ?? object.type, view.state.doc.lineAt(at).number), {
+      tone: "info",
+      actions: [{ label: t.inspector.undo, run: () => { undo(view); } }],
+    });
+  }
+
+  /**
+   * Write lines after the line holding `after`, as one undoable step, with the cursor on the
+   * first that writes something rather than a comment. Returns where the cursor went.
+   */
+  function writeLines(after: number, lines: string[], userEvent: string): number {
+    const line = view.state.doc.lineAt(after);
+    const first = Math.max(0, lines.findIndex((text) => text.trim() && !/^(\/\/|\/\*|\*)/.test(text.trim())));
+    const at = line.to + 1 + lines.slice(0, first).reduce((sum, text) => sum + text.length + 1, 0)
+      + (/^[ \t]*/.exec(lines[first] ?? "")?.[0].length ?? 0);
+    suppressFollow = true;
+    view.dispatch({
+      changes: { from: line.to, insert: `\n${lines.join("\n")}` },
+      selection: EditorSelection.cursor(at),
+      scrollIntoView: true,
+      userEvent,
+    });
+    return at;
+  }
+
+  /**
+   * Write a copy of the blocks after the last of them, with the names they give made new on the
+   * slide and coordinates moved over, so the copy shows beside the original.
+   */
+  function writeCopy(blocks: Block[]): number {
+    const doc = view.state.doc;
+    const code = copiedCode(blocks.map(({ from, to }) => doc.sliceString(from, to)));
+    const last = blocks[blocks.length - 1];
+    const lines = pastedLines(code, namesAt(doc.toString(), blocks[0].from), copyShift);
+    return writeLines(Math.max(last.from, last.to - 1), lines, "input.duplicate");
+  }
+
+  /**
+   * Keep the blocks' lines for Paste, and put them on the clipboard as text too, so they can be
+   * pasted into the code or another program. Copied with the keys, the preview has done that.
+   */
+  function copyBlocks(blocks: Block[], cut: boolean, clipboard = true): void {
+    const doc = view.state.doc;
+    const code = copiedCode(blocks.map(({ from, to }) => doc.sliceString(from, to)));
+    copied = { code, slide: previewSlide, cut, pasted: 0 };
+    if (clipboard) void writeClipboard(code);
+  }
+
+  /** Put text on the clipboard, as a click on a menu item may. */
+  async function writeClipboard(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Without the clipboard API, or without the focus it asks for, the copy event carries it.
+      const write = (event: ClipboardEvent): void => {
+        event.clipboardData?.setData("text/plain", text);
+        event.preventDefault();
+      };
+      document.addEventListener("copy", write, { once: true });
+      document.execCommand("copy");
+      document.removeEventListener("copy", write);
+    }
+  }
+
+  /**
+   * Write the copied objects onto the slide in the preview, after its selected object or at its
+   * end, as Insert writes content. Pasted back onto the slide they came from, they move over a
+   * step each time, unless they were cut from it.
+   */
+  async function pasteObjects(): Promise<void> {
+    const clip = copied;
+    if (!clip) {
+      toast(t.objects.nothingCopied, { tone: "info" });
+      return;
+    }
+    const target = await contentTarget();
+    if (!target) return;
+    const steps = clip.slide === previewSlide ? clip.pasted + (clip.cut ? 0 : 1) : 0;
+    if (clip.slide === previewSlide) clip.pasted += 1;
+    const { after } = flowPoint(target.group);
+    writeLines(after, pastedLines(clip.code, namesAt(editorText(), after), copyShift * steps), "input.paste");
+    await save({ auto: false });
+  }
+
+  function duplicateSelected(selection: PreviewSelection): void {
+    const blocks = selectedBlocks(selection);
+    if (!blocks) return;
+    writeCopy(blocks);
+    void save({ auto: false });
+  }
+
+  function copySelected(selection: PreviewSelection, cut: boolean, clipboard = true): void {
+    const blocks = selectedBlocks(selection);
+    if (!blocks) return;
+    copyBlocks(blocks, cut, clipboard);
+    // The preview deletes them as Delete does, which keeps an object that another is placed by.
+    if (cut) frames.selectionAction("delete");
+  }
+
+  function runObjectCommand(command: ObjectCommand, selection: PreviewSelection): void {
+    if (command === "paste") void pasteObjects();
+    else if (command === "duplicate") duplicateSelected(selection);
+    else copySelected(selection, command === "cut", false);
+  }
+
+  // ── Right-click menus ───────────────────────────────────────────────────────────────────
+  /** Put the editor's cursor on a position, and show the code there. */
+  function revealPosition(position: number): void {
+    if (position > view.state.doc.length) return;
+    showEditor(true);
+    suppressFollow = true;
+    view.dispatch({
+      selection: EditorSelection.cursor(position),
+      effects: EditorView.scrollIntoView(position, { y: "center" }),
+    });
+    view.focus();
+  }
+
+  /** Put the editor's cursor on the code that drew an object in the preview, and show it. */
+  function revealTarget(target: SourceTarget): void {
+    const range = editorRange(target);
+    if (!range) return;
+    showEditor(true);
+    view.dispatch({ selection: EditorSelection.cursor(range.from), scrollIntoView: true });
+    view.focus();
+  }
+
+  /** The object Current slide lists for one the preview drew, once the outline has caught up. */
+  async function inspectedObject(target: SourceTarget): Promise<InspectObject | undefined> {
+    const range = editorRange(target);
+    if (!range || !await inspect()) return undefined;
+    return objectAt(range.from) as InspectObject | undefined;
+  }
+
+  /** Open Current slide at an object's settings, with its words selected when `words` asks. */
+  function openSettings(object: InspectObject, words: boolean): void {
+    if (root.classList.contains("is-inspector-collapsed")) toggleInspector();
+    inspector.openSettings(object, words);
+  }
+
+  const pasteEntry = (): MenuEntry => ({
+    command: "paste",
+    label: t.objects.paste,
+    shortcut: `${mod}+V`,
+    disabled: () => !copied,
+    run: () => void pasteObjects(),
+  });
+
+  /** What one object's menu ends with: its words and settings, and its code. */
+  const objectEnds = (object: InspectObject | undefined, reveal: () => void): MenuEntry[] => [
+    "separator",
+    ...(object && inspector.hasWords(object)
+      ? [{ command: "edit-text", label: t.objects.editText, run: () => openSettings(object, true) }]
+      : []),
+    ...(object ? [{ command: "format", label: t.objects.format, run: () => openSettings(object, false) }] : []),
+    { command: "go-to-code", label: t.objects.goToCode, shortcut: isMac ? "⌥Click" : "Alt+Click", run: reveal },
+  ];
+
+  /**
+   * The menu of objects selected in the preview: cut, copy, and paste them, duplicate or delete
+   * them, stack one, align several or bind them into a region, and reach one's settings or code.
+   */
+  function selectionEntries(selection: PreviewSelection, object: InspectObject | undefined): MenuEntry[] {
+    const { objects, arrange, stacking } = selection;
+    const whole = objects.every((item) => item.statement);
+    const act = (command: SelectionAction, label: string, enabled = true): MenuEntry => ({
+      command,
+      label,
+      disabled: () => !enabled,
+      run: () => frames.selectionAction(command),
+    });
+    const entries: MenuEntry[] = [
+      { command: "cut", label: t.objects.cut, shortcut: `${mod}+X`, disabled: () => !whole, run: () => copySelected(selection, true) },
+      { command: "copy", label: t.objects.copy, shortcut: `${mod}+C`, disabled: () => !whole, run: () => copySelected(selection, false) },
+      pasteEntry(),
+      "separator",
+      { command: "duplicate", label: t.objects.duplicate, shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateSelected(selection) },
+      { command: "delete", label: t.objects.delete, shortcut: "Del", danger: true, run: () => frames.selectionAction("delete") },
+      "separator",
+    ];
+    if (stacking) {
+      entries.push(stacking.layered
+        ? {
+          command: "order",
+          label: t.objects.order,
+          submenu: () => [
+            act("bring-to-front", t.objects.bringToFront, stacking.forward),
+            act("bring-forward", t.objects.bringForward, stacking.forward),
+            act("send-backward", t.objects.sendBackward, stacking.backward),
+            act("send-to-back", t.objects.sendToBack, stacking.backward),
+          ],
+        }
+        : {
+          command: "order",
+          label: t.objects.flowOrder,
+          submenu: () => [
+            act("send-to-back", t.objects.moveToStart, stacking.backward),
+            act("send-backward", t.objects.moveEarlier, stacking.backward),
+            act("bring-forward", t.objects.moveLater, stacking.forward),
+            act("bring-to-front", t.objects.moveToEnd, stacking.forward),
+          ],
+        });
+    }
+    if (objects.length > 1) {
+      entries.push(
+        {
+          command: "align",
+          label: t.objects.align,
+          disabled: () => !arrange.x && !arrange.y,
+          submenu: () => [
+            act("align-left", t.objects.alignLeft, arrange.x),
+            act("align-center", t.objects.alignCenter, arrange.x),
+            act("align-right", t.objects.alignRight, arrange.x),
+            "separator",
+            act("align-top", t.objects.alignTop, arrange.y),
+            act("align-middle", t.objects.alignMiddle, arrange.y),
+            act("align-bottom", t.objects.alignBottom, arrange.y),
+            "separator",
+            act("distribute-horizontal", t.objects.distributeHorizontally, arrange.distributeX),
+            act("distribute-vertical", t.objects.distributeVertically, arrange.distributeY),
+          ],
+        },
+        {
+          command: "bind-region",
+          label: t.objects.bindRegion,
+          run: () => void bindSelection(objects.map((item) => item.target)),
+        },
+        "separator",
+        { command: "go-to-code", label: t.objects.goToCode, run: () => revealTarget(objects[0].target) },
+      );
+    } else {
+      entries.push(...objectEnds(object, () => revealTarget(objects[0].target)));
+    }
+    return entries;
+  }
+
+  /** The menu of the slide itself, where a right-click lands on no object. */
+  function slideEntries(selection: PreviewSelection): MenuEntry[] {
+    return [
+      pasteEntry(),
+      "separator",
+      { command: "insert", label: t.menus.insert, submenu: insertEntries },
+      { command: "new-slide", label: t.menu.newSlide, submenu: newSlideEntries },
+      "separator",
+      {
+        command: "layout-editing",
+        label: t.objects.layoutEditing,
+        checked: () => selection.editing,
+        run: () => frames.setLayoutEditing(!selection.editing),
+      },
+      "separator",
+      slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)),
+      { command: "present-here", label: t.rail.presentFromHere, shortcut: "F5", run: () => present() },
+    ];
+  }
+
+  /** A right-click in the preview: the menu of the objects it selected, or of the slide. */
+  async function showPreviewMenu(x: number, y: number, selection: PreviewSelection, keyboard: boolean): Promise<void> {
+    const count = selection.objects.length;
+    if (count === 0) {
+      showContextMenu(x, y, slideEntries(selection), { label: t.rail.menuLabel(previewSlide + 1), keyboard });
+      return;
+    }
+    // Current slide's picture of the object says whether it has words to edit.
+    const object = count === 1 ? await inspectedObject(selection.objects[0].target) : undefined;
+    showContextMenu(x, y, selectionEntries(selection, object), { label: t.objects.menuLabel(count), keyboard });
+  }
+
+  /** The menu of an object listed in Current slide. */
+  function inspectedObjectEntries(object: InspectObject): MenuEntry[] {
+    const whole = Boolean(object.statement);
+    const copyObject = (cut: boolean): void => {
+      const blocks = inspectedBlocks(object);
+      if (!blocks) return;
+      copyBlocks(blocks, cut);
+      if (cut) inspector.remove(object);
+    };
+    return [
+      { command: "cut", label: t.objects.cut, shortcut: `${mod}+X`, disabled: () => !whole, run: () => copyObject(true) },
+      { command: "copy", label: t.objects.copy, shortcut: `${mod}+C`, disabled: () => !whole, run: () => copyObject(false) },
+      pasteEntry(),
+      "separator",
+      { command: "duplicate", label: t.objects.duplicate, shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateInspected(object) },
+      { command: "delete", label: t.objects.delete, shortcut: "Del", danger: true, disabled: () => !whole, run: () => inspector.remove(object) },
+      ...objectEnds(object, () => {
+        if (object.source.start !== undefined) revealPosition(object.source.start);
+      }),
+    ];
+  }
+
   // ── Other presentations ─────────────────────────────────────────────────────────────────
   /** Set once the person chose to drop unsaved edits, so leaving the page no longer warns. */
   let leaving = false;
@@ -2093,9 +2407,48 @@ async function start(): Promise<void> {
   }
 
   // ── The menu bar ──────────────────────────────────────────────────────────────────────────
-  const slideCommand = (command: string, label: string, run: () => void, disabled?: () => boolean, shortcut?: string): MenuEntry => (
-    { command, label, run, shortcut, disabled: () => renderedCount === 0 || Boolean(disabled?.()) }
-  );
+  function slideCommand(command: string, label: string, run: () => void, disabled?: () => boolean, shortcut?: string): MenuEntry {
+    return { command, label, run, shortcut, disabled: () => renderedCount === 0 || Boolean(disabled?.()) };
+  }
+
+  /** The layouts a new slide after the one in the preview can start from. */
+  function newSlideEntries(): MenuEntry[] {
+    return slideLayouts().map((layout) => ({
+      command: `new-slide-${layout.id}`,
+      label: layout.name,
+      run: () => void rearrange("insert", previewSlide, 0, layout),
+    }));
+  }
+
+  /** What Insert puts on the slide: the gallery, content by group, and the drawing tools. */
+  function insertEntries(): MenuEntry[] {
+    const kinds = (list: InsertKind[]): MenuEntry[] => list.map((kind) => ({
+      command: `insert-${kind}`,
+      label: insertName(kind),
+      run: () => void startPlacing(kind),
+    }));
+    return [
+      {
+        command: "insert-gallery",
+        label: t.insert.gallery,
+        run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
+      },
+      "separator",
+      ...contentGroups.map((group): MenuEntry => ({
+        command: `insert-${group.id}`,
+        label: t.insert.groups[group.id],
+        submenu: () => kinds(group.kinds),
+      })),
+      "separator",
+      ...kinds(insertGroups[0].kinds),
+      "separator",
+      ...insertGroups.slice(1).map((group): MenuEntry => ({
+        command: `insert-${group.id}`,
+        label: t.insert.groups[group.id],
+        submenu: () => kinds(group.kinds),
+      })),
+    ];
+  }
   const menuBar = new MenuBar(slot("menubar"), [
     {
       id: "file",
@@ -2190,15 +2543,7 @@ async function start(): Promise<void> {
       label: t.menus.slide,
       accessKey: "s",
       items: () => [
-        {
-          command: "new-slide",
-          label: t.menu.newSlide,
-          submenu: () => slideLayouts().map((layout) => ({
-            command: `new-slide-${layout.id}`,
-            label: layout.name,
-            run: () => void rearrange("insert", previewSlide, 0, layout),
-          })),
-        },
+        { command: "new-slide", label: t.menu.newSlide, submenu: newSlideEntries },
         slideCommand("duplicate-slide", t.menu.duplicateSlide, () => void rearrange("duplicate", previewSlide)),
         slideCommand("move-slide-up", t.menu.moveSlideUp, () => void rearrange("move", previewSlide, previewSlide - 1), () => previewSlide === 0),
         slideCommand("move-slide-down", t.menu.moveSlideDown, () => void rearrange("move", previewSlide, previewSlide + 2), () => previewSlide >= renderedCount - 1),
@@ -2213,39 +2558,7 @@ async function start(): Promise<void> {
       id: "insert",
       label: t.menus.insert,
       accessKey: "i",
-      items: () => [
-        {
-          command: "insert-gallery",
-          label: t.insert.gallery,
-          run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
-        },
-        "separator",
-        ...contentGroups.map((group): MenuEntry => ({
-          command: `insert-${group.id}`,
-          label: t.insert.groups[group.id],
-          submenu: () => group.kinds.map((kind) => ({
-            command: `insert-${kind}`,
-            label: insertName(kind),
-            run: () => void startPlacing(kind),
-          })),
-        })),
-        "separator",
-        ...insertGroups[0].kinds.map((kind): MenuEntry => ({
-          command: `insert-${kind}`,
-          label: insertName(kind),
-          run: () => void startPlacing(kind),
-        })),
-        "separator",
-        ...insertGroups.slice(1).map((group): MenuEntry => ({
-          command: `insert-${group.id}`,
-          label: t.insert.groups[group.id],
-          submenu: () => group.kinds.map((kind) => ({
-            command: `insert-${kind}`,
-            label: insertName(kind),
-            run: () => void startPlacing(kind),
-          })),
-        })),
-      ],
+      items: insertEntries,
     },
     {
       id: "present",
@@ -2405,6 +2718,78 @@ async function start(): Promise<void> {
       event.preventDefault();
       stepSlide(event.key === "PageDown" ? 1 : -1);
     }
+  });
+
+  /** The editor's menu, as a code editor has one: names, the clipboard, and the text. */
+  function editorEntries(): MenuEntry[] {
+    const { state } = view;
+    const text = state.doc.toString();
+    const head = state.selection.main.head;
+    const locked = state.readOnly;
+    const named = Boolean(nameDefinition(text, head));
+    const renamable = !("error" in prepareNameRename(text, head));
+    return [
+      { command: "go-to-definition", label: t.menu.goToDefinition, shortcut: "F12", disabled: () => !named, run: inEditor(goToNameDefinition) },
+      { command: "rename-name", label: t.menu.renameName, shortcut: "F2", disabled: () => !renamable || locked, run: inEditor(renameNameAtCursor) },
+      "separator",
+      // With nothing selected, the editor cuts and copies the whole line, as it does with the keys.
+      { command: "cut", label: t.editor.cut, shortcut: `${mod}+X`, disabled: () => locked, run: () => editorClipboard("cut") },
+      { command: "copy", label: t.editor.copy, shortcut: `${mod}+C`, run: () => editorClipboard("copy") },
+      { command: "paste", label: t.editor.paste, shortcut: `${mod}+V`, disabled: () => locked, run: () => void pasteIntoEditor() },
+      "separator",
+      { command: "toggle-comment", label: t.editor.toggleComment, shortcut: `${mod}+/`, disabled: () => locked, run: inEditor(toggleComment) },
+      { command: "select-all", label: t.menu.selectAll, shortcut: `${mod}+A`, run: inEditor(selectAll) },
+      { command: "find", label: t.menu.find, shortcut: `${mod}+F`, run: inEditor(openSearchPanel) },
+    ];
+  }
+
+  /** Cut or copy through the editor's own handling of the clipboard, as the keys do. */
+  function editorClipboard(command: "cut" | "copy"): void {
+    view.focus();
+    document.execCommand(command);
+  }
+
+  /** Paste the clipboard's text, which a page may only read when the browser allows it. */
+  async function pasteIntoEditor(): Promise<void> {
+    view.focus();
+    try {
+      const text = await navigator.clipboard.readText();
+      view.dispatch(view.state.replaceSelection(text), { scrollIntoView: true, userEvent: "input.paste" });
+    } catch {
+      toast(t.editor.pasteBlocked(mod), { tone: "info", key: "paste-blocked" });
+    }
+  }
+
+  // A right-click in the code outside the selection moves the cursor there first, so the menu's
+  // commands act where it landed. The search panel's fields keep the browser's menu.
+  view.dom.addEventListener("contextmenu", (event) => {
+    if (event.shiftKey || !(event.target instanceof Node)) return;
+    if (typesText(event.target) && !view.contentDOM.contains(event.target)) return;
+    event.preventDefault();
+    const keyboard = event.button !== 2 && !event.ctrlKey;
+    if (!keyboard) {
+      const at = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      const inside = at !== null && view.state.selection.ranges.some((range) => range.from <= at && at <= range.to);
+      if (at !== null && !inside) view.dispatch({ selection: EditorSelection.cursor(at) });
+    }
+    view.focus();
+    const corner = keyboard ? view.coordsAtPos(view.state.selection.main.head) : null;
+    showContextMenu(corner?.left ?? event.clientX, corner?.bottom ?? event.clientY, editorEntries(), {
+      label: t.editor.label,
+      keyboard,
+    });
+  });
+
+  // Elsewhere a right-click opens no menu: the browser's own, with Back and Reload, would only
+  // take the Studio away. Fields that take text, the terminal, links, and selected text keep it,
+  // and Shift keeps it anywhere.
+  addEventListener("contextmenu", (event) => {
+    if (event.defaultPrevented || event.shiftKey || typesText(event.target)) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest("[data-owns-keys], a[href]")) return;
+    const selected = getSelection();
+    if (target && selected && !selected.isCollapsed && selected.containsNode(target, true)) return;
+    event.preventDefault();
   });
 
   // ── The assistant ───────────────────────────────────────────────────────────────────────

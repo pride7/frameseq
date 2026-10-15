@@ -29,6 +29,70 @@ function readFailures(value: unknown): PreviewFailure[] {
   });
 }
 
+/** An object selected in the preview, as the preview describes it. */
+export interface PreviewObject {
+  target: SourceTarget;
+  /** The whole lines that write it, comments above included, when it is a statement of its own. */
+  statement?: { start: number; end: number; text: string };
+}
+
+/** The objects selected in the preview, and what can be done with them there. */
+export interface PreviewSelection {
+  slideIndex: number;
+  /** Layout editing is on. */
+  editing: boolean;
+  objects: PreviewObject[];
+  arrange: { x: boolean; y: boolean; distributeX: boolean; distributeY: boolean };
+  /** For one object written on its own: whether it is drawn by coordinates, and can go further back or forward. */
+  stacking?: { layered: boolean; backward: boolean; forward: boolean };
+}
+
+/** What the preview can do to its selection, when the Studio's menu asks. */
+export type SelectionAction =
+  | "delete"
+  | "bring-to-front" | "bring-forward" | "send-backward" | "send-to-back"
+  | "align-left" | "align-center" | "align-right" | "align-top" | "align-middle" | "align-bottom"
+  | "distribute-horizontal" | "distribute-vertical";
+
+/** What a key pressed on the preview's objects asks of the Studio. */
+export type ObjectCommand = "copy" | "cut" | "paste" | "duplicate";
+
+const objectCommands: ReadonlySet<unknown> = new Set<ObjectCommand>(["copy", "cut", "paste", "duplicate"]);
+
+function readSelection(message: Record<string, unknown>): PreviewSelection {
+  const flags = (value: unknown): Record<string, boolean> => (
+    value && typeof value === "object" ? value as Record<string, boolean> : {}
+  );
+  const arrange = flags(message.arrange);
+  const stacking = message.stacking && typeof message.stacking === "object" ? flags(message.stacking) : undefined;
+  const objects = Array.isArray(message.objects) ? message.objects : [];
+  return {
+    slideIndex: typeof message.slideIndex === "number" ? message.slideIndex : -1,
+    editing: message.editing === true,
+    objects: objects.flatMap((item): PreviewObject[] => {
+      if (!item || typeof item !== "object") return [];
+      const { target, statement } = item as Record<string, unknown>;
+      const [read] = readTargets([target]);
+      if (!read) return [];
+      const lines = statement as { start?: unknown; end?: unknown; text?: unknown } | undefined;
+      const whole = lines && Number.isInteger(lines.start) && Number.isInteger(lines.end) && typeof lines.text === "string";
+      return [{
+        target: read,
+        ...(whole ? { statement: { start: lines.start as number, end: lines.end as number, text: lines.text as string } } : {}),
+      }];
+    }),
+    arrange: {
+      x: arrange.x === true,
+      y: arrange.y === true,
+      distributeX: arrange.distributeX === true,
+      distributeY: arrange.distributeY === true,
+    },
+    ...(stacking ? {
+      stacking: { layered: stacking.layered === true, backward: stacking.backward === true, forward: stacking.forward === true },
+    } : {}),
+  };
+}
+
 /** What a key pressed in the preview or the rail asks of the Studio around it. */
 export type FrameCommand = "save" | "undo" | "redo" | "present" | "present-beginning";
 
@@ -57,6 +121,10 @@ export interface FrameEvents {
   thumbnailMenu: (index: number, x: number, y: number) => void;
   thumbnailDelete: (index: number) => void;
   checkRendered: (frame: HTMLIFrameElement) => void;
+  /** A right-click in the preview, at a point on the Studio's page, with the selection it left. */
+  contextMenu: (x: number, y: number, selection: PreviewSelection, keyboard: boolean) => void;
+  /** Copy, cut, duplicate, or paste, pressed on the preview's objects. */
+  objectCommand: (command: ObjectCommand, selection: PreviewSelection) => void;
 }
 
 function readTargets(value: unknown): SourceTarget[] {
@@ -222,6 +290,15 @@ export class StudioFrames {
         case "frameseq.command":
           if (frameCommands.has(message.command)) events.command(message.command as FrameCommand);
           return;
+        case "frameseq.context-menu":
+          if (typeof message.x === "number" && typeof message.y === "number") {
+            const box = this.preview.getBoundingClientRect();
+            events.contextMenu(box.left + message.x, box.top + message.y, readSelection(message), message.keyboard === true);
+          }
+          return;
+        case "frameseq.object-command":
+          if (objectCommands.has(message.command)) events.objectCommand(message.command as ObjectCommand, readSelection(message));
+          return;
         default:
           return;
       }
@@ -283,6 +360,16 @@ export class StudioFrames {
 
   cancelPlace(): void {
     this.preview.contentWindow?.postMessage({ type: "frameseq.place-cancel" }, "*");
+  }
+
+  /** Have the preview act on the objects selected in it, as its menu or keys would. */
+  selectionAction(action: SelectionAction): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.selection-action", action }, "*");
+  }
+
+  /** Turn the preview's layout editing on or off. */
+  setLayoutEditing(active: boolean): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.layout-editing", active }, "*");
   }
 
   /** Show the rail in the palette the Studio is showing. */

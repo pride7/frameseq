@@ -48,6 +48,27 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 
 Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu's underlined letter, such as `Alt+F` for **File**; the arrow keys move between menus and commands, and `Esc` closes them. **View › Theme** follows the system, or stays light or dark. The slides themselves keep the presentation's own theme.
 
+### Right-click menus
+
+Right-click something, or press `Shift+F10` or the menu key, for the commands that apply to it, as in PowerPoint:
+
+| Where | Commands |
+| --- | --- |
+| **An object in the preview** | Cut, Copy, Paste; Duplicate, Delete; **Order**: Bring to front, Bring forward, Send backward, Send to back, or, for an object in the flow, Move to the start, Move earlier, Move later, Move to the end; Edit text, Format…, Go to code |
+| **Several selected objects** | Cut, Copy, Paste, Duplicate, Delete; **Align** by their edges or centres, or distribute them evenly; Bind into a region…; Go to code |
+| **The slide itself** | Paste; Insert; New slide after this one; Layout editing; Go to the slide's source; Present from here |
+| **An object in Current slide** | Cut, Copy, Paste, Duplicate, Delete, Edit text, Format…, Go to code |
+| **The code** | Go to definition, Rename; Cut, Copy, Paste; Comment or uncomment; Select all; Find and replace |
+| **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Delete |
+
+A right-click on an object selects it, alone, and turns layout editing on, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** opens the object's settings in Current slide with its words selected, and **Format…** opens them at its row. Each command is one step in the editor's history.
+
+**Copy** keeps the lines that write the objects, with the comments above them, and puts them on the clipboard as text, so they can be pasted into the code as well. **Paste** writes them onto the slide in the preview, after the selected object, as **Insert** does. A name that slide already has becomes a new one, such as `box` to `box2`, and the pasted lines that refer to it follow. Pasted back onto the slide they came from, objects placed by coordinates move 24 down and to the right each time, so a copy never hides the original. In the preview, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, and `Ctrl+D` copy, cut, paste, and duplicate. An object written inside another command is copied in the code.
+
+In the code, a right-click outside the selection moves the cursor there first, so the commands act where it landed. **Paste** reads the clipboard where the browser allows it, and otherwise asks for `Ctrl+V`.
+
+Elsewhere in the window a right-click opens nothing, except in fields that take text, on links, on selected text, and in the terminal, which keep the browser's own menu; `Shift`+right-click opens that menu anywhere.
+
 ### In the FrameSeq app
 
 The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** turns the window itself full screen to show the slides, on a second screen when there is one, with presenter view on this one; **Present › Presenter view in a new window** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
@@ -132,6 +153,7 @@ The preview's own source links work as they do in VS Code:
 - Drag an object in the document flow to change its place among its neighbours; its lines move in the source, comments included.
 - Click an object, or `Ctrl`-click several, and press `Delete` or `Backspace` to delete them: their lines leave the source, comments written above them included, along with any connector that ends at one of them. An object that another object is placed against by its name, an object written inside another command, and a region stay, and the preview says why. One `Ctrl+Z` brings everything back.
 - `Ctrl`-click several objects written one after another and choose **Bind region** to wrap their lines in a named `at("…").column()` region, so they can be positioned or anchored together.
+- Right-click an object to cut, copy, paste, duplicate, or stack it, or for the rest of its [menu](#right-click-menus).
 
 See [Visual Studio Code extension](vscode.md) for the rules that decide which numbers a drag may rewrite.
 
@@ -290,6 +312,9 @@ The assistant uses the agent installed on this computer, on its own sign-in and 
 | `Ctrl+J` | Show or hide the bottom panel |
 | `` Ctrl+` `` | Show the terminal, focus it, or fold it away |
 | `Ctrl+Alt+I` | Show or hide the assistant |
+| `Ctrl+C`, `Ctrl+X`, `Ctrl+V` | Copy, cut, and paste objects in the preview |
+| `Ctrl+D` | Duplicate the selected objects |
+| `Shift+F10` | Open the menu of what is selected |
 | `Alt`, `F10` | Move to the menu bar |
 | `Alt+F`, `Alt+E`, `Alt+V`, `Alt+S`, `Alt+P`, `Alt+H` | Open a menu |
 

@@ -113,6 +113,19 @@ export function closeMenus(): void {
 }
 
 /**
+ * Close whatever menu is open and remember this one as the open menu, so one menu shows at a
+ * time. The function returned forgets it again, once it has closed.
+ */
+export function holdMenu(close: () => void): () => void {
+  openMenu?.close();
+  const held = { close };
+  openMenu = held;
+  return () => {
+    if (openMenu === held) openMenu = undefined;
+  };
+}
+
+/**
  * A context or drop-down menu at a point on the page, closed by Escape or a click elsewhere.
  * A note is a line of explanation above the items it qualifies.
  */
@@ -122,7 +135,7 @@ export function showMenu(
   items: Array<MenuItem | "separator" | { note: string } | { heading: string }>,
   label: string,
 ): void {
-  openMenu?.close();
+  const release = holdMenu(close);
   const menu = element("div", "studio-menu");
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", label);
@@ -178,12 +191,11 @@ export function showMenu(
     removeEventListener("pointerdown", onPointer, true);
     removeEventListener("keydown", onKey, true);
     removeEventListener("blur", close);
-    if (openMenu?.close === close) openMenu = undefined;
+    release();
   }
   addEventListener("pointerdown", onPointer, true);
   addEventListener("keydown", onKey, true);
   addEventListener("blur", close);
-  openMenu = { close };
   buttons.find((button) => !button.disabled)?.focus();
 }
 

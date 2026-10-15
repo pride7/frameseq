@@ -51,6 +51,8 @@ export interface InspectorEvents {
   duplicateObject: (object: InspectObject) => void;
   /** Choose a picture for an image, copied beside the presentation; undefined when cancelled. */
   choosePicture: () => Promise<string | undefined>;
+  /** A right-click on an object's row, which has selected it, at a point on the page. */
+  objectMenu: (object: InspectObject, x: number, y: number, keyboard: boolean) => void;
 }
 
 const svg = (body: string): string => (
@@ -206,6 +208,27 @@ export class SlideInspector {
       ? texts.find((text) => text.argument === 1)
       : texts.find((text) => textLabel(object.type, text.argument));
     return words ? `${key}:text:${words.argument}` : undefined;
+  }
+
+  /**
+   * Open an object's settings and give them the focus: its words, selected to be typed over,
+   * when `words` asks for them and it has any, or else its row.
+   */
+  openSettings(object: InspectObject, words: boolean): void {
+    this.highlight(object);
+    const key = this.objectKey(object);
+    if (!key) return;
+    this.folded = false;
+    if (words && object.source.start !== undefined) this.contentFocus = { position: object.source.start, until: Date.now() + 10_000 };
+    else this.focusNext = key;
+    this.render();
+    this.body.querySelector<HTMLElement>(".studio-object-card")?.scrollIntoView({ block: "nearest" });
+  }
+
+  /** Whether an object says something in words, which its settings show first. */
+  hasWords(object: InspectObject): boolean {
+    const key = this.objectKey(object);
+    return Boolean(key && this.contentKey(object, key));
   }
 
   /** Show a slide's objects; with no slide, say why there is nothing to show. */
@@ -401,7 +424,7 @@ export class SlideInspector {
    * Delete an object as the preview does: a connector that ends at it goes too, since it would
    * point at nothing, and an object placed by its name keeps it, with a word on why.
    */
-  private remove(object: InspectObject): void {
+  remove(object: InspectObject): void {
     if (!object.statement) {
       toast(t.inspector.cannotDelete, { tone: "warning" });
       return;
@@ -463,6 +486,10 @@ export class SlideInspector {
         this.render();
       },
       highlighted: selected,
+      onMenu: (x, y, keyboard) => {
+        if (!selected) this.events.selectObject(object);
+        this.events.objectMenu(object, x, y, keyboard);
+      },
     }));
     if (selected && !this.folded) rows.push(this.card(object, depth));
     if (!open) return;
@@ -485,6 +512,8 @@ export class SlideInspector {
     onToggle: () => void;
     onSelect?: () => void;
     highlighted?: boolean;
+    /** A right-click on the row, or the menu key, at a point on the page. */
+    onMenu?: (x: number, y: number, keyboard: boolean) => void;
   }): HTMLElement {
     const row = element("div", `studio-tree-row${options.highlighted ? " is-highlighted" : ""}`);
     row.setAttribute("role", "treeitem");
@@ -521,6 +550,13 @@ export class SlideInspector {
     });
     row.addEventListener("dblclick", () => {
       if (options.expandable) options.onToggle();
+    });
+    row.addEventListener("contextmenu", (event) => {
+      if (!options.onMenu || event.shiftKey) return;
+      event.preventDefault();
+      const keyboard = event.button !== 2 && !event.ctrlKey;
+      const box = row.getBoundingClientRect();
+      options.onMenu(keyboard ? box.left + 24 : event.clientX, keyboard ? box.bottom : event.clientY, keyboard);
     });
     row.addEventListener("keydown", (event) => {
       if (event.key === "Enter") options.onSelect?.();

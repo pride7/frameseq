@@ -234,6 +234,11 @@ Made by one statement together with ${size - 1} other slide${size === 2 ? "" : "
     setActive(index, false);
     post({ type: "frameseq.thumbnail-menu", index, x: event.clientX, y: event.clientY });
   });
+  // Beside the thumbnails, the browser's own menu, with Back and Reload, is no use in the rail;
+  // Shift still opens it.
+  addEventListener("contextmenu", (event) => {
+    if (!event.shiftKey) event.preventDefault();
+  }, { signal });
 
   addEventListener("keydown", (event) => {
     // F5 presents, as it does anywhere else in the Studio's window, rather than reloading the rail.
