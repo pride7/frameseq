@@ -2444,6 +2444,43 @@ textarea.studio-text-input[style*="height"] {
   font-size: 12px;
 }
 
+.studio-dialog .studio-dialog-problem.is-note {
+  color: var(--studio-muted);
+}
+
+/* Which slides an export takes: all, the current one, or some typed by number. */
+.studio-export-choices {
+  display: grid;
+  gap: 4px;
+}
+
+.studio-export-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.studio-export-choice input[type="radio"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--studio-accent);
+}
+
+.studio-export-choice span {
+  flex: none;
+}
+
+.studio-export-choice input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
 .studio-dialog-actions {
   display: flex;
   justify-content: flex-end;

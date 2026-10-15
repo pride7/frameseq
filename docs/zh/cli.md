@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:64974533031fc8e9 -->
+<!-- translation-of: docs/cli.md sha256:48c5f0a08ce4d84b -->
 
 # CLI 参考
 
@@ -120,7 +120,7 @@ frameseq build talk.slides.ts --single-file
 ## 导出 PDF
 
 ```bash
-frameseq pdf [file] [--output path]
+frameseq pdf [file] [--output path] [--slides 1-3,5]
 ```
 
 默认输出到 `output/pdf/<入口名>.pdf`。
@@ -135,7 +135,7 @@ PDF 导出会启动无头浏览器,渲染所有页面和揭示步骤,并写出�
 ## 导出 PowerPoint
 
 ```bash
-frameseq pptx [file] [--output path] [--flatten]
+frameseq pptx [file] [--output path] [--flatten] [--slides 1-3,5]
 ```
 
 默认输出到 `output/pptx/<入口名>.pptx`。
@@ -153,7 +153,7 @@ frameseq pptx quarterly.slides.ts --flatten
 ## 导出 Typst
 
 ```bash
-frameseq typst [file] [--output path]
+frameseq typst [file] [--output path] [--slides 1-3,5]
 ```
 
 默认输出到 `output/typst/<入口名>.typ`。
@@ -164,6 +164,17 @@ frameseq typst quarterly.slides.ts --output reports/quarterly.typ
 ```
 
 导出器写出可编辑的 Typst 页面,通过 MiTeX 映射 LaTeX 公式和基础文本,并把常见的 LaTeX `tabular` 片段转换成原生 Typst 表格。原生 Typst 片段保持源码形式;不支持的 LaTeX 和 CSS 特性使用有文档说明的回退或转换说明。见 [Typst integration](typst.md)。
+
+## 只导出部分页
+
+`pdf`、`pptx` 和 `typst` 都接受 `--slides`,只导出它指定的页:页码和页码范围,用逗号隔开,从 1 开始数,和翻页计数器的数法一样。
+
+```bash
+frameseq pdf quarterly.slides.ts --slides 1-3,5
+frameseq pptx quarterly.slides.ts --slides 4
+```
+
+这些页保持它们在演示里的顺序和页码:页脚里的页数仍然按整份演示来数。不写 `--output` 时,文件名会注明导出的页,比如 `output/pdf/quarterly-slides-1-3,5.pdf` 或 `output/pptx/quarterly-slide-4.pptx`,所以不会覆盖整份演示的导出。页码超出最后一页时,导出会在写出任何文件之前停下。HTML 构建总是包含所有页。
 
 ## 检查渲染后的布局
 

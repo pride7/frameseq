@@ -545,6 +545,32 @@ try {
   assert.ok(exported.some((message) => message.includes("dist/index.html")), `the export should report its file, got ${exported}`);
   assert.ok(existsSync(resolve(workspace, "dist", "index.html")), "the single-file export must exist");
 
+  // PDF, PowerPoint, and Typst ask which slides to take, and some of them get a file of their own.
+  await page.click("[data-menu='file']");
+  await page.waitForSelector("[data-command='export']");
+  await page.click("[data-command='export']");
+  await page.waitForSelector("[data-command='export-typst']");
+  await page.click("[data-command='export-typst']");
+  await page.waitForSelector(".studio-export-dialog");
+  const choices = await page.$$eval(".studio-export-choice", (rows) => rows.map((row) => row.textContent.trim()));
+  assert.equal(choices[0], "All slides (3)", `the dialog should count the slides, got ${choices}`);
+  assert.match(choices[1], /^Current slide \(\d\)$/);
+  const exportNote = () => page.$eval(".studio-export-dialog .studio-dialog-problem", (note) => note.textContent);
+  const acceptDisabled = () => page.$eval(".studio-export-dialog .is-primary", (button) => button.disabled);
+  await page.click(".studio-export-choice input[type='text']");
+  await page.keyboard.type("2-4", { delay: 5 });
+  await waitFor(async () => (await exportNote()).includes("no slide 4") && await acceptDisabled(), "a slide past the end to be refused");
+  await page.$eval(".studio-export-choice input[type='text']", (input) => input.select());
+  await page.keyboard.type("1, 3", { delay: 5 });
+  await waitFor(async () => (await exportNote()) === "2 slides" && !await acceptDisabled(), "two slides to be chosen");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".studio-toast .studio-toast-text")].some((toast) => /talk-slides-1,3\.typ|failed/.test(toast.textContent)),
+    { timeout: 180_000 },
+  );
+  const typst = await readFile(resolve(workspace, "output", "typst", "talk-slides-1,3.typ"), "utf8");
+  assert.deepEqual(typst.match(/^\/\/ Slide \d+/gm), ["// Slide 1", "// Slide 3"], "the export should hold slides 1 and 3 alone");
+
   assert.deepEqual(errors, [], "the Studio page must not throw");
 
   // Slides made by a loop or a helper call belong to the statement that ran, and move, repeat,

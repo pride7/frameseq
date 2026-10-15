@@ -265,6 +265,8 @@ On a computer with a second screen, such as a laptop with a projector, the show 
 | HTML site | `dist/` |
 | Typst source | `output/typst/<name>.typ` |
 
+PDF, both PowerPoints, and Typst first ask which slides to export: all of them, the current slide, or slides typed by number, such as `1-3, 5`. Some of the slides go to a file named for them, such as `output/pdf/<name>-slides-1-3,5.pdf`, beside the export of them all, as [`--slides`](cli.md#export-some-of-the-slides) does. HTML always has every slide.
+
 The paths are relative to the directory the Studio was started from, or to the folder of a presentation opened from the Studio. The document is saved before an export starts. When it finishes, the notice offers **Download** and **Show in folder**; the full log is in the **Output** tab.
 
 ## The terminal

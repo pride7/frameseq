@@ -49,6 +49,7 @@
     "scripts/document-errors.mjs",
     "scripts/presentation-file.mjs",
     "scripts/slide-layouts.mjs",
+    "scripts/slide-selection.mjs",
     "scripts/studio-assistant.mjs",
     "scripts/studio-files.mjs",
     "scripts/studio-shortcut.mjs",

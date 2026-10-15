@@ -16,6 +16,7 @@ import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import { presentationTemplate, presentationTemplates, templateDeck } from "./presentation-file.mjs";
+import { keepSlides, readSlides, slidesFileSuffix } from "./slide-selection.mjs";
 import { configDirectory } from "./studio-files.mjs";
 import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
@@ -37,11 +38,13 @@ Usage:
                                       Applications, or the applications menu
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
-  frameseq pdf [file] [--output path] Export slides to PDF
-  frameseq pptx [file] [--output path] [--flatten]
+  frameseq pdf [file] [--output path] [--slides 1-3,5]
+                                      Export slides to PDF
+  frameseq pptx [file] [--output path] [--flatten] [--slides 1-3,5]
                                       Export an editable or flattened PowerPoint
-  frameseq typst [file] [--output path]
+  frameseq typst [file] [--output path] [--slides 1-3,5]
                                       Export an editable Typst presentation
+                                      --slides exports only the slides it names
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
   frameseq inspect [file] [--json]     Inspect slides and source locations
@@ -61,6 +64,7 @@ Examples:
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
+  frameseq pdf talk.slides.ts --slides 1-3,5
   frameseq pptx talk.slides.ts
   frameseq pptx talk.slides.ts --flatten
   frameseq typst talk.slides.ts
@@ -77,7 +81,7 @@ function option(name) {
 }
 
 function positionalFile(args) {
-  const optionsWithValues = new Set(["--output", "--preview", "--template"]);
+  const optionsWithValues = new Set(["--output", "--preview", "--template", "--slides"]);
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (optionsWithValues.has(argument)) {
@@ -97,9 +101,22 @@ async function ensureFile(path) {
   }
 }
 
-function pdfName(entry) {
+function pdfName(entry, slides) {
   const file = basename(entry, extname(entry));
-  return `${file.replace(/\.slides$/, "")}.pdf`;
+  return `${file.replace(/\.slides$/, "")}${slidesFileSuffix(slides)}.pdf`;
+}
+
+/** The slides `--slides` names, or undefined for all of them. */
+function chosenSlides() {
+  if (!process.argv.includes("--slides")) return undefined;
+  const text = option("--slides");
+  const reading = text && !text.startsWith("-") ? readSlides(text) : { problem: "empty" };
+  if (reading.slides) return reading.slides;
+  if (reading.problem === "zero") throw new Error("Slides are counted from 1, so there is no slide 0.");
+  const problem = reading.problem === "unreadable"
+    ? `"${reading.part}" is not a slide number or a range of them.`
+    : "Name the slides after --slides.";
+  throw new Error(`${problem} Write numbers and ranges, such as --slides 1-3,5.`);
 }
 
 /** The template `frameseq new` was asked for, blank when none was named. */
@@ -413,7 +430,7 @@ async function buildHtml(entry, requestedOutput, singleFile = false) {
   }
 }
 
-async function exportPdf(entry, requestedOutput) {
+async function exportPdf(entry, requestedOutput, slides) {
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-build");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
@@ -437,7 +454,7 @@ async function exportPdf(entry, requestedOutput) {
     throw new Error("Could not determine preview server address");
   }
 
-  const defaultOutput = resolve(process.cwd(), "output", "pdf", pdfName(entry));
+  const defaultOutput = resolve(process.cwd(), "output", "pdf", pdfName(entry, slides));
   const outputPath = resolve(requestedOutput ?? defaultOutput);
   await mkdir(dirname(outputPath), { recursive: true });
 
@@ -451,6 +468,7 @@ async function exportPdf(entry, requestedOutput) {
     await deckReady(page, entry);
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
+    if (slides) await keepSlides(page, slides);
 
     // A page made for paper prints at the paper's size: the canvas is scaled up as a whole, so
     // the PDF stays vector and its layout is exactly the one that was checked.
@@ -660,12 +678,13 @@ try {
     if (command === "build") {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
     }
-    if (command === "pdf") await exportPdf(entry, option("--output"));
+    if (command === "pdf") await exportPdf(entry, option("--output"), chosenSlides());
     if (command === "pptx") {
       await exportPptx({
         entry,
         requestedOutput: option("--output"),
         flatten: process.argv.includes("--flatten"),
+        slides: chosenSlides(),
         packageRoot,
         configFile,
       });
@@ -674,6 +693,7 @@ try {
       await exportTypst({
         entry,
         requestedOutput: option("--output"),
+        slides: chosenSlides(),
         packageRoot,
         configFile,
       });

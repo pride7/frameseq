@@ -6,6 +6,7 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { inspectSource } from "./frameseq-inspect.mjs";
 import { iconBodies } from "./icon-set.mjs";
 import { presentationFileName, presentationTemplate, templateDeck } from "./presentation-file.mjs";
+import { readSlides, slidesFileSuffix, slidesLabel } from "./slide-selection.mjs";
 import { documentStatements } from "./source-marks.mjs";
 import { writeDocument } from "./source-edits.mjs";
 import {
@@ -57,25 +58,28 @@ const baseName = (entry) => basename(entry, extname(entry)).replace(/\.slides$/,
 /**
  * What each export runs and where it writes. The locations are the CLI's own defaults, so a
  * file exported from the Studio lands exactly where `frameseq pdf` and the rest would put it.
+ * An export of some slides names them, as `--slides` does; HTML always has every slide.
  */
-function exportPlan(format, entry, cwd) {
-  const name = baseName(entry);
+function exportPlan(format, entry, cwd, slides) {
+  const name = `${baseName(entry)}${slidesFileSuffix(slides)}`;
+  const some = slides ? ["--slides", slidesLabel(slides)] : [];
   const plans = {
-    html: { label: "HTML site", args: ["build"], output: resolve(cwd, "dist"), directory: true },
+    html: { label: "HTML site", args: ["build"], output: resolve(cwd, "dist"), directory: true, whole: true },
     "html-single": {
       label: "Single HTML file",
       args: ["build", "--single-file"],
       output: resolve(cwd, "dist"),
       file: resolve(cwd, "dist", "index.html"),
+      whole: true,
     },
-    pdf: { label: "PDF", args: ["pdf"], output: resolve(cwd, "output", "pdf", `${name}.pdf`) },
-    pptx: { label: "PowerPoint", args: ["pptx"], output: resolve(cwd, "output", "pptx", `${name}.pptx`) },
+    pdf: { label: "PDF", args: ["pdf", ...some], output: resolve(cwd, "output", "pdf", `${name}.pdf`) },
+    pptx: { label: "PowerPoint", args: ["pptx", ...some], output: resolve(cwd, "output", "pptx", `${name}.pptx`) },
     "pptx-flat": {
       label: "Flattened PowerPoint",
-      args: ["pptx", "--flatten"],
+      args: ["pptx", "--flatten", ...some],
       output: resolve(cwd, "output", "pptx", `${name}.pptx`),
     },
-    typst: { label: "Typst", args: ["typst"], output: resolve(cwd, "output", "typst", `${name}.typ`) },
+    typst: { label: "Typst", args: ["typst", ...some], output: resolve(cwd, "output", "typst", `${name}.typ`) },
   };
   const plan = plans[format];
   if (!plan) return undefined;
@@ -600,8 +604,11 @@ export function studioPlugin({
         }),
 
         "POST /export": async (body) => {
-          const plan = exportPlan(String(body.format ?? ""), entry, cwd);
+          const reading = body.slides === undefined ? undefined : readSlides(String(body.slides));
+          if (reading && !reading.slides) return [400, { error: "Those slides cannot be read." }];
+          const plan = exportPlan(String(body.format ?? ""), entry, cwd, reading?.slides);
           if (!plan) return [400, { error: "Unknown export format." }];
+          if (reading && plan.whole) return [400, { error: "An HTML export always has every slide." }];
           if (exporting) return [409, { error: "Another export is still running." }];
           exporting = true;
           const started = Date.now();

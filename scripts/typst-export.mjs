@@ -17,6 +17,7 @@ import {
   shapeSize,
 } from "../lib/index.js";
 import { locateProblems, reportedProblems } from "./document-errors.mjs";
+import { checkSlides, slidesFileSuffix } from "./slide-selection.mjs";
 
 /** A screen presentation's page width in points; one made for paper uses the paper's. */
 const screenWidthPoints = 960;
@@ -113,9 +114,9 @@ const supportedStyles = new Set([
   "width",
 ]);
 
-function typstName(entry) {
+function typstName(entry, slides) {
   const file = basename(entry, extname(entry));
-  return `${file.replace(/\.slides$/, "")}.typ`;
+  return `${file.replace(/\.slides$/, "")}${slidesFileSuffix(slides)}.typ`;
 }
 
 function typstString(value) {
@@ -1434,14 +1435,17 @@ async function loadPresentation(entry, packageRoot, configFile) {
   }
 }
 
-export async function exportTypst({ entry, requestedOutput, packageRoot, configFile }) {
-  const defaultOutput = resolve(process.cwd(), "output", "typst", typstName(entry));
+export async function exportTypst({ entry, requestedOutput, slides, packageRoot, configFile }) {
+  const defaultOutput = resolve(process.cwd(), "output", "typst", typstName(entry, slides));
   const outputPath = resolve(requestedOutput ?? defaultOutput);
-  await mkdir(dirname(outputPath), { recursive: true });
   const presentation = await loadPresentation(entry, packageRoot, configFile);
+  if (slides) checkSlides(slides, presentation.slides.length);
+  await mkdir(dirname(outputPath), { recursive: true });
   const context = makeContext(presentation, entry, outputPath);
   const pages = [];
   for (const [index, slide] of presentation.slides.entries()) {
+    // A slide left out keeps the others' numbers, and their footers count the whole presentation.
+    if (slides && !slides.includes(index + 1)) continue;
     pages.push(await serializeSlide(slide, index, presentation, context));
   }
 

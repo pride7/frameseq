@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:76226f2a39b1016a -->
+<!-- translation-of: docs/studio.md sha256:2a58dc4968035a5a -->
 
 # FrameSeq Studio
 
@@ -266,6 +266,8 @@ Studio 会监视幻灯片文档。当它在磁盘上被修改（比如由编程�
 | 单个 HTML 文件 | `dist/index.html` |
 | HTML 站点 | `dist/` |
 | Typst 源码 | `output/typst/<name>.typ` |
+
+PDF、两种 PowerPoint 和 Typst 会先问要导出哪些页：全部、当前页，或者按页码输入，比如 `1-3, 5`。只导出部分页时，文件名会注明这些页，比如 `output/pdf/<name>-slides-1-3,5.pdf`，和整份演示的导出放在一起，与 [`--slides`](cli.md#只导出部分页) 一样。HTML 总是包含所有页。
 
 这些路径相对于启动 Studio 时所在的目录；如果演示是从 Studio 里打开的，则相对于这份演示所在的文件夹。导出开始前会先保存文档。导出完成后，提示里会提供 **下载** 和 **在文件夹中显示**；完整日志在 **输出** 标签页里。
 

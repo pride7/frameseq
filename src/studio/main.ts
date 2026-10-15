@@ -60,6 +60,7 @@ import { formulaEscapes, nameDefinition, nameDiagnostics, prepareNameRename, typ
 import { copiedCode, namesAt, pastedLines } from "./clipboard";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
+import { askExportSlides } from "./export-slides";
 import { chooseIcon } from "./icons";
 import { SlideInspector } from "./inspector";
 import { SlideShow } from "./show";
@@ -2136,17 +2137,24 @@ async function start(): Promise<void> {
   });
 
   // ── Exports and presenting ──────────────────────────────────────────────────────────────
-  const exportFormats: Array<{ format: ExportFormat; label: string; hint: string }> = [
-    { format: "pdf", label: t.exports.pdf, hint: "output/pdf" },
-    { format: "pptx", label: t.exports.pptx, hint: "output/pptx" },
-    { format: "pptx-flat", label: t.exports.pptxFlat, hint: "output/pptx" },
+  // PDF, PowerPoint, and Typst can take some of the slides; HTML is a whole presentation to show.
+  const exportFormats: Array<{ format: ExportFormat; label: string; hint: string; some?: boolean }> = [
+    { format: "pdf", label: t.exports.pdf, hint: "output/pdf", some: true },
+    { format: "pptx", label: t.exports.pptx, hint: "output/pptx", some: true },
+    { format: "pptx-flat", label: t.exports.pptxFlat, hint: "output/pptx", some: true },
     { format: "html-single", label: t.exports.htmlSingle, hint: "dist/index.html" },
     { format: "html", label: t.exports.html, hint: "dist/" },
-    { format: "typst", label: t.exports.typst, hint: "output/typst" },
+    { format: "typst", label: t.exports.typst, hint: "output/typst", some: true },
   ];
 
-  async function exportDeck(format: ExportFormat, label: string): Promise<void> {
+  async function exportDeck(format: ExportFormat, label: string, some = false): Promise<void> {
     if (exporting) return;
+    let slides: string | undefined;
+    if (some && renderedCount > 1) {
+      const answer = await askExportSlides({ label, count: renderedCount, current: previewSlide });
+      if (!answer || exporting) return;
+      slides = answer.slides;
+    }
     exporting = true;
     const progress = toast(t.exports.exporting(label), { tone: "busy" });
     try {
@@ -2155,7 +2163,7 @@ async function start(): Promise<void> {
         return;
       }
       appendOutput(`\n${t.exports.output(label)}\n`);
-      const result = await call<ExportResult>("POST", "export", { format });
+      const result = await call<ExportResult>("POST", "export", { format, slides });
       appendOutput(result.log.endsWith("\n") ? result.log : `${result.log}\n`);
       if (result.ok && result.job) {
         const job = result.job;
@@ -2515,10 +2523,10 @@ async function start(): Promise<void> {
           label: t.menu.export,
           submenu: () => exportFormats.map((item) => ({
             command: `export-${item.format}`,
-            label: item.label,
+            label: item.some ? `${item.label}…` : item.label,
             shortcut: item.hint,
             disabled: () => exporting,
-            run: () => void exportDeck(item.format, item.label),
+            run: () => void exportDeck(item.format, item.label, item.some),
           })),
         },
       ],

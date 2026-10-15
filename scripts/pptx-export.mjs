@@ -7,15 +7,16 @@ import { build as viteBuild, preview } from "vite";
 import { shapePreset } from "../lib/index.js";
 import { deckReady, watchDeck } from "./document-errors.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { keepSlides, slidesFileSuffix } from "./slide-selection.mjs";
 
 // Canvas pixels per inch of the slide: 96 for a screen presentation, and on paper however many
 // the canvas fits across the sheet. Set for each export from the deck it renders.
 let cssPixelsPerInch = 96;
 let pointsPerCssPixel = 72 / cssPixelsPerInch;
 
-function pptxName(entry) {
+function pptxName(entry, slides) {
   const file = basename(entry, extname(entry));
-  return `${file.replace(/\.slides$/, "")}.pptx`;
+  return `${file.replace(/\.slides$/, "")}${slidesFileSuffix(slides)}.pptx`;
 }
 
 function number(value, fallback = 0) {
@@ -652,7 +653,9 @@ async function captureSlides(page) {
         || px(style.borderLeftWidth) > 0;
     };
 
-    const slides = slideElements.map((slide, slideIndex) => {
+    const slides = slideElements.map((slide, position) => {
+      // Its place in the whole presentation, when only some of its slides are exported.
+      const slideIndex = Number(slide.parentElement?.dataset.index ?? position);
       const slideRect = slide.getBoundingClientRect();
       slide.dataset.frameseqExportSlide = String(slideIndex);
       const items = [];
@@ -826,6 +829,7 @@ export async function exportPptx({
   entry,
   requestedOutput,
   flatten = false,
+  slides: chosen,
   packageRoot,
   configFile,
 }) {
@@ -861,6 +865,7 @@ export async function exportPptx({
     await deckReady(page, entry);
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
+    if (chosen) await keepSlides(page, chosen);
 
     let slides = await captureSlides(page);
     await page.setViewport({
@@ -918,7 +923,7 @@ export async function exportPptx({
       }
     }
 
-    const defaultOutput = resolve(process.cwd(), "output", "pptx", pptxName(entry));
+    const defaultOutput = resolve(process.cwd(), "output", "pptx", pptxName(entry, chosen));
     const outputPath = resolve(requestedOutput ?? defaultOutput);
     await mkdir(dirname(outputPath), { recursive: true });
     await pptx.writeFile({ fileName: outputPath, compression: true });

@@ -118,7 +118,7 @@ The single file can be opened directly or uploaded wherever one HTML file is mor
 ## Export PDF
 
 ```bash
-frameseq pdf [file] [--output path]
+frameseq pdf [file] [--output path] [--slides 1-3,5]
 ```
 
 The default output is `output/pdf/<entry-name>.pdf`.
@@ -133,7 +133,7 @@ PDF export launches a headless browser, renders all pages and reveal steps, and 
 ## Export PowerPoint
 
 ```bash
-frameseq pptx [file] [--output path] [--flatten]
+frameseq pptx [file] [--output path] [--flatten] [--slides 1-3,5]
 ```
 
 The default output is `output/pptx/<entry-name>.pptx`.
@@ -151,7 +151,7 @@ The default hybrid export keeps plain text, code, shapes, lines, and arrows as e
 ## Export Typst
 
 ```bash
-frameseq typst [file] [--output path]
+frameseq typst [file] [--output path] [--slides 1-3,5]
 ```
 
 The default output is `output/typst/<entry-name>.typ`.
@@ -162,6 +162,17 @@ frameseq typst quarterly.slides.ts --output reports/quarterly.typ
 ```
 
 The exporter writes editable Typst pages, maps LaTeX formulas and basic text through MiTeX, and converts common LaTeX `tabular` fragments into native Typst tables. Native Typst fragments remain source; unsupported LaTeX and CSS features use documented fallbacks or conversion notes. See [Typst integration](typst.md).
+
+## Export some of the slides
+
+`pdf`, `pptx`, and `typst` take `--slides` to export only the slides it names: slide numbers and ranges of them, separated by commas and counted from 1, as the slide counter counts them.
+
+```bash
+frameseq pdf quarterly.slides.ts --slides 1-3,5
+frameseq pptx quarterly.slides.ts --slides 4
+```
+
+The slides keep the order they have in the presentation, and their numbers: a footer that counts the slides still counts all of them. Without `--output`, the file is named for the slides, such as `output/pdf/quarterly-slides-1-3,5.pdf` or `output/pptx/quarterly-slide-4.pptx`, so it never replaces the export of the whole presentation. A slide past the last one stops the export before anything is written. An HTML build always has every slide.
 
 ## Check the rendered layout
 
