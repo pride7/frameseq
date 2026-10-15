@@ -1129,6 +1129,7 @@ body:has(.studio-topbar) .studio-window-drag {
 
 /* Everything that folds draws the same chevron, so it stays sharp at any size and zoom. */
 .studio-inspector-toggle::before,
+.studio-notes-toggle::before,
 .studio-tree-toggle::before,
 [data-action="toggle-panel"]::before {
   content: "";
@@ -1230,6 +1231,88 @@ body:has(.studio-topbar) .studio-window-drag {
 .studio.is-resizing .studio-splitter:active {
   background: var(--studio-accent);
   outline: none;
+}
+
+/* ── Speaker notes, under the preview ──────────────────────────────────────────────────── */
+
+.studio-preview-pane > [data-splitter="notes"] {
+  flex: none;
+  height: 5px;
+}
+
+.studio-notes {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: var(--studio-notes-height, 130px);
+  min-height: 0;
+  background: var(--studio-surface);
+}
+
+.studio-notes .studio-pane-header {
+  gap: 4px;
+  padding-left: 4px;
+}
+
+.studio-notes .studio-pane-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-notes-source {
+  color: var(--studio-accent);
+  font-family: var(--studio-mono);
+  font-size: 11px;
+}
+
+.studio-notes-source[hidden] {
+  display: none;
+}
+
+.studio.is-notes-collapsed .studio-notes {
+  height: 34px;
+}
+
+.studio.is-notes-collapsed .studio-preview-pane > [data-splitter="notes"] {
+  visibility: hidden;
+}
+
+.studio.is-notes-collapsed .studio-notes-body {
+  display: none;
+}
+
+.studio.is-notes-collapsed .studio-notes-toggle {
+  transform: rotate(-90deg);
+}
+
+.studio-notes-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.studio-notes-text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 14px 10px;
+  border: 0;
+  color: var(--studio-text);
+  background: transparent;
+  font: 13px/1.55 var(--studio-font);
+  resize: none;
+  outline: none;
+}
+
+.studio-notes-text::placeholder {
+  color: var(--studio-faint);
+}
+
+.studio-notes-text:focus {
+  background: var(--studio-editor);
+}
+
+.studio-notes-text.is-read-only {
+  color: var(--studio-muted);
 }
 
 /* ── Current slide inspector ───────────────────────────────────────────────────────────── */

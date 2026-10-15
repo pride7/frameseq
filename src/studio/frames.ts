@@ -33,7 +33,8 @@ export interface FrameEvents {
   previewRendered: () => void;
   /** The slide document threw while it was being run, so the preview still shows the last deck. */
   previewFailed: (failures: PreviewFailure[]) => void;
-  slide: (index: number, count: number, label: string) => void;
+  /** The slide the preview shows, with its speaker notes as they rendered. */
+  slide: (index: number, count: number, label: string, notes: string) => void;
   reveal: (target: SourceTarget) => void;
   select: (targets: SourceTarget[]) => void;
   edit: (request: Record<string, unknown>) => Promise<boolean>;
@@ -183,7 +184,12 @@ export class StudioFrames {
         }
         case "frameseq.slide":
           if (typeof message.index === "number" && typeof message.count === "number") {
-            events.slide(message.index, message.count, typeof message.label === "string" ? message.label : "");
+            events.slide(
+              message.index,
+              message.count,
+              typeof message.label === "string" ? message.label : "",
+              typeof message.notes === "string" ? message.notes : "",
+            );
           }
           return;
         case "frameseq.reveal": {

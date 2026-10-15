@@ -45,6 +45,7 @@ import { Presentations, showStartPage } from "./files";
 import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
 import { MenuBar, type MenuEntry } from "./menubar";
+import { notesText, readNotes, SpeakerNotes } from "./notes";
 import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
 import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
 import { nameDiagnostics } from "../source-names";
@@ -177,6 +178,16 @@ const shell = `
         <button type="button" class="studio-icon-button" data-action="open-browser" title="${t.shell.openBrowserTitle}">↗</button>
       </header>
       <div class="studio-preview-body" data-slot="preview"></div>
+      <div class="studio-splitter is-horizontal" data-splitter="notes"></div>
+      <section class="studio-notes" aria-label="${t.notes.title}">
+        <header class="studio-pane-header">
+          <button type="button" class="studio-icon-button studio-notes-toggle" data-action="toggle-notes" aria-expanded="true" title="${t.notes.toggle}"></button>
+          <span class="studio-pane-title">${t.notes.title}</span>
+          <span class="studio-pane-meta" data-slot="notes-meta"></span>
+          <button type="button" class="studio-icon-button studio-notes-source" data-action="notes-source" title="${t.notes.showSource}" hidden>&lt;/&gt;</button>
+        </header>
+        <div class="studio-notes-body" data-slot="notes"></div>
+      </section>
     </section>
     <div class="studio-splitter" data-splitter="assistant"></div>
     <section class="studio-assistant" data-slot="assistant" aria-label="${t.assistant.title}"></section>
@@ -278,6 +289,8 @@ async function start(): Promise<void> {
   let outline: RenderedSlide[] | undefined;
   let previewSlide = 0;
   let previewLabel = "";
+  /** The notes of the slide in the preview as they rendered; unknown again once the text changes. */
+  let previewNotes: string | undefined;
   /** Why the last run of the document failed, until a run succeeds again. */
   let runtimeFailures: PreviewFailure[] = [];
   let exporting = false;
@@ -308,6 +321,21 @@ async function start(): Promise<void> {
     documentDiagnostics: () => documentDiagnostics(),
     dark: resolvedTheme() === "dark",
   });
+  const notes = new SpeakerNotes(
+    slot("notes"),
+    slot("notes-meta"),
+    required<HTMLButtonElement>(root, "[data-action='notes-source']"),
+    view,
+    (range) => {
+      showEditor(true);
+      suppressFollow = true;
+      view.dispatch({
+        selection: EditorSelection.range(range.from, range.to),
+        effects: EditorView.scrollIntoView(range.from, { y: "center" }),
+      });
+      view.focus();
+    },
+  );
   if (stash) {
     const anchor = Math.min(stash.anchor, view.state.doc.length);
     const head = Math.min(stash.head, view.state.doc.length);
@@ -357,9 +385,10 @@ async function start(): Promise<void> {
         }));
         refreshDocumentDiagnostics(view);
       },
-      slide: (index, count, label) => {
+      slide: (index, count, label, slideNotes) => {
         previewSlide = index;
         previewLabel = label;
+        previewNotes = slideNotes;
         assistant?.refreshContext();
         renderedCount = count;
         showPreviewPosition();
@@ -501,7 +530,52 @@ async function start(): Promise<void> {
     return slide ? { slide, note } : { note: t.inspector.madeByStatement(previewSlide + 1, anchorLine) };
   }
 
+  /**
+   * Show the notes of the slide in the preview. They can be typed when one plain string in the
+   * slide's own statement holds them, or when it has none yet; otherwise they show as rendered.
+   */
+  function refreshNotes(): void {
+    const map = slideMap();
+    const current = map ? inspectedSlide() : undefined;
+    const shown = notes.slide === previewSlide ? notes.text : "";
+    const rendered = previewNotes === undefined ? shown : notesText(previewNotes);
+    if (!map || !current) {
+      // The outline is catching up with the editor; a slide already showing keeps its notes.
+      if (notes.slide !== previewSlide) notes.show({ slide: previewSlide, text: rendered, reason: t.notes.reading });
+      return;
+    }
+    const doc = view.state.doc;
+    const slide = current.slide;
+    const sources = slide?.noteSources ?? [];
+    const first = sources[0];
+    const slideLine = slide ? doc.line(Math.min(slide.source.line, doc.lines)).from : undefined;
+    const source = first
+      ? { from: first.start, to: first.end }
+      : (slideLine === undefined ? undefined : { from: slideLine, to: slideLine });
+    const readOnly = (reason: string): void => notes.show({ slide: previewSlide, text: rendered, reason, source });
+    const group = map.groups[map.groupOf[previewSlide] ?? -1];
+    const call = map.calls[previewSlide];
+    const alone = group !== undefined && group.slides.length === 1 && call !== undefined && call >= group.from && call < group.to;
+    if (!slide) return readOnly(group ? t.notes.madeByCode : t.notes.outside(session.name));
+    if (!alone) return readOnly(t.notes.madeByCode);
+    if (sources.length > 1) return readOnly(t.notes.several(sources.length));
+    if (first?.value === undefined && first) return readOnly(t.notes.computed);
+    // Notes the slide's own statement does not write come from code elsewhere, such as a helper.
+    if (!first && previewNotes?.trim()) return readOnly(t.notes.elsewhere);
+    if (!first && slide.notesAt === undefined) return readOnly(t.notes.computed);
+    const code = first ? doc.sliceString(first.start, first.end) : "";
+    const written = first?.value === undefined ? undefined : readNotes(code, first.value);
+    notes.show({
+      slide: previewSlide,
+      text: written?.text ?? "",
+      source,
+      literal: first && written ? { from: first.start, to: first.end, code, form: written.form } : undefined,
+      insertAt: slide.notesAt,
+    });
+  }
+
   function refreshInspector(): void {
+    refreshNotes();
     const current = inspectedSlide();
     if (!current) return;
     inspector.show(current.slide, current.note);
@@ -978,7 +1052,9 @@ async function start(): Promise<void> {
         if (!transaction.docChanged) continue;
         sinceSync = sinceSync.compose(transaction.changes);
         if (sinceSaveStart) sinceSaveStart = sinceSaveStart.compose(transaction.changes);
+        notes.map(transaction.changes);
       }
+      previewNotes = undefined;
       if (saveState !== "conflict") setSaveState(isDirty() ? "dirty" : "saved");
       if (isDirty()) scheduleSave();
       scheduleInspect();
@@ -1540,6 +1616,17 @@ async function start(): Promise<void> {
     invert: true,
   });
   if (readPreference("inspector-collapsed", false)) root.classList.add("is-inspector-collapsed");
+  const previewPane = required<HTMLElement>(root, ".studio-preview-pane");
+  splitter(required(root, "[data-splitter='notes']"), {
+    host: root,
+    variable: "--studio-notes-height",
+    axis: "y",
+    fallback: 130,
+    minimum: 70,
+    maximum: () => Math.max(80, previewPane.clientHeight - 180),
+    invert: true,
+  });
+  if (readPreference("notes-collapsed", false)) toggleNotes();
   splitter(required(root, "[data-splitter='preview']"), {
     host: root,
     variable: "--studio-preview-width",
@@ -1601,6 +1688,12 @@ async function start(): Promise<void> {
     const collapsed = root.classList.toggle("is-inspector-collapsed");
     required<HTMLElement>(root, "[data-action='toggle-inspector']").setAttribute("aria-expanded", String(!collapsed));
     storePreference("inspector-collapsed", collapsed);
+  }
+
+  function toggleNotes(): void {
+    const collapsed = root.classList.toggle("is-notes-collapsed");
+    required<HTMLElement>(root, "[data-action='toggle-notes']").setAttribute("aria-expanded", String(!collapsed));
+    storePreference("notes-collapsed", collapsed);
   }
 
   /** Fold the code away to work on the slides alone in the preview, or bring it back. */
@@ -1715,6 +1808,7 @@ async function start(): Promise<void> {
       items: () => [
         { command: "toggle-rail", label: t.menu.slidesPanel, shortcut: `${mod}+B`, checked: () => !root.classList.contains("is-rail-collapsed"), run: toggleRail },
         { command: "toggle-inspector", label: t.menu.inspectorPanel, checked: () => !root.classList.contains("is-inspector-collapsed"), run: toggleInspector },
+        { command: "toggle-notes", label: t.menu.notesPanel, checked: () => !root.classList.contains("is-notes-collapsed"), run: toggleNotes },
         { command: "toggle-editor", label: t.menu.codeEditor, shortcut: `${mod}+E`, checked: () => !root.classList.contains("is-editor-collapsed"), run: toggleEditor },
         { command: "toggle-panel", label: t.menu.bottomPanel, shortcut: `${mod}+J`, checked: () => !root.classList.contains("is-panel-collapsed"), run: togglePanel },
         { command: "toggle-assistant", label: t.menu.assistant, shortcut: `${mod}+Alt+I`, checked: () => root.classList.contains("is-assistant-open"), run: () => toggleAssistant(), disabled: () => !session.assistant },
@@ -1897,6 +1991,9 @@ async function start(): Promise<void> {
       case "toggle-inspector":
         toggleInspector();
         break;
+      case "toggle-notes":
+        toggleNotes();
+        break;
       case "kill-terminal":
         terminal.kill();
         terminal.focus();
@@ -2010,6 +2107,7 @@ async function start(): Promise<void> {
       onBusy: (busy) => {
         assistantBusy = busy;
         setEditorLocked(view, busy);
+        notes.lock(busy);
         assistantWorking.hidden = !busy;
         if (busy) pauseReview();
         else showReview(true);

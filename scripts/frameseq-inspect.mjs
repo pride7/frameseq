@@ -68,29 +68,47 @@ function propertyName(node) {
   return undefined;
 }
 
-function objectString(node, name) {
+function objectInitializer(node, name) {
   if (!node || !ts.isObjectLiteralExpression(node)) return undefined;
   for (const property of node.properties) {
     if (!ts.isPropertyAssignment(property) || propertyName(property.name) !== name) continue;
-    return staticString(property.initializer);
+    return property.initializer;
   }
   return undefined;
 }
 
+function objectString(node, name) {
+  return staticString(objectInitializer(node, name));
+}
+
 function findIdentifierCall(root, name) {
-  let result;
+  return findIdentifierCalls(root, name)[0];
+}
+
+function findIdentifierCalls(root, name) {
+  const results = [];
   const visit = (node) => {
-    if (result) return;
     if (ts.isCallExpression(node)
       && ts.isIdentifier(node.expression)
       && node.expression.text === name) {
-      result = node;
-      return;
+      results.push(node);
     }
     ts.forEachChild(node, visit);
   };
   visit(root);
-  return result;
+  return results;
+}
+
+/**
+ * Where a slide's speaker notes are written: the argument of each notes() or note() call, or the
+ * notes option. The text is given only when it is a plain string the statement writes once, so
+ * an editor can rewrite it; notes built from expressions, or in loops and functions, have none.
+ */
+function noteSource(sourceFile, node, direct) {
+  if (!node) return undefined;
+  const value = direct ? staticString(node) : undefined;
+  const { start, end } = sourceRange(sourceFile, node);
+  return value === undefined ? { start, end } : { start, end, value };
 }
 
 function methodCalls(root, after) {
@@ -417,13 +435,25 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
       const layoutMethod = layoutPriority.find((method) => methods.includes(method));
       const index = slides.length + 1;
       const layout = layoutMethod === "fullBleed" ? "full-bleed" : (layoutMethod ?? "default");
+      // A statement that is the slide() call's own chain runs once; one wrapping it may not.
+      const chain = callChain(slideCall);
+      const direct = ts.isExpressionStatement(statement) && statement.expression === chain.root;
+      const noteSources = [
+        noteSource(sourceFile, objectInitializer(argument, "notes"), direct),
+        ...chain.methods
+          .filter((method) => method.name === "notes")
+          .map((method) => noteSource(sourceFile, method.node.arguments[0], direct)),
+      ].filter(Boolean);
       currentSlide = {
         index,
         label: name ?? title ?? (layout === "cover" ? "Cover" : `Slide ${index}`),
         name,
         title,
         layout,
-        notes: methods.includes("notes"),
+        notes: methods.includes("notes") || noteSources.length > 0,
+        noteSources,
+        // Where .notes() can be added to the slide() call, when the statement is that call.
+        ...(direct ? { notesAt: chain.root.getEnd() } : {}),
         source: {
           ...slideSource,
           endLine: slideSource.line,
@@ -438,7 +468,14 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
     }
 
     if (!currentSlide) continue;
-    if (findIdentifierCall(statement, "note")) currentSlide.notes = true;
+    // A function declared between slides runs only where it is called.
+    const noteCalls = ts.isFunctionDeclaration(statement) ? [] : findIdentifierCalls(statement, "note");
+    for (const noteCall of noteCalls) {
+      currentSlide.notes = true;
+      const direct = ts.isExpressionStatement(statement) && statement.expression === callChain(noteCall).root;
+      const found = noteSource(sourceFile, noteCall.arguments[0], direct);
+      if (found) currentSlide.noteSources.push(found);
+    }
     currentSlide.objects.push(...contentObjects(sourceFile, statement));
     currentSlide.cursorReferences.push(...cursorReferences(sourceFile, statement));
     currentSlide.regionReferences.push(...regionReferences(sourceFile, statement));

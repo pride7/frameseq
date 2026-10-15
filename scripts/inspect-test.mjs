@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,6 +51,14 @@ assert.deepEqual(
     },
   ],
 );
+// Where each slide's notes are written, so the Studio can rewrite them or add .notes().
+const fixtureText = readFileSync(fixture, "utf8");
+assert.deepEqual(
+  report.slides.map((slide) => slide.noteSources.map((source) => [source.value, fixtureText.slice(source.start, source.end)])),
+  [[["Welcome.", '"Welcome."']], [["Point at the pinned object.", '"Point at the pinned object."']], []],
+);
+assert.ok(report.slides.every((slide) => typeof slide.notesAt === "number"));
+assert.equal(fixtureText.slice(report.slides[2].notesAt - 8, report.slides[2].notesAt), ".grid(2)");
 assert.equal(report.slides[1].title, "Exact placement");
 assert.deepEqual(report.slides[1].objects.map((object) => object.label), ["Pinned", "Box"]);
 const [diagram] = report.slides[1].regions;

@@ -322,6 +322,29 @@ try {
     "the inspector to fold away",
   );
 
+  // The notes under the preview belong to the slide it shows. Typing adds .notes() to a slide
+  // that has none and rewrites its string from then on; emptying them takes the call away.
+  await showSlide(0);
+  const beforeNotes = await read();
+  await waitFor(
+    () => page.$eval(".studio-notes-text", (field) => !field.readOnly && field.value === ""),
+    "the notes of slide 1 to be editable",
+  );
+  await page.click(".studio-notes-text");
+  await page.keyboard.type("Greet everyone.", { delay: 10 });
+  await waitFor(async () => (await read()).includes('slide("Intro").notes("Greet everyone.");\r\n'), "typed notes to be written as .notes()");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Pause.", { delay: 10 });
+  await waitFor(async () => (await read()).includes('slide("Intro").notes("Greet everyone.\\nPause.");\r\n'), "a second line of notes");
+  assert.equal(await page.$eval(".studio-notes-text", (field) => field.value), "Greet everyone.\nPause.");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("a");
+  await page.keyboard.up("Control");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Escape");
+  await waitFor(async () => (await read()) === beforeNotes, "emptied notes to take .notes() away");
+  await showSlide(1);
+
   // Dragging in the preview becomes an ordinary editor edit, saved to the right characters.
   const beforeDrag = await read();
   await setEditMode(true);
@@ -755,4 +778,4 @@ try {
   plain.child.kill();
 }
 
-console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, the menu bar, Chinese, and API isolation.");
+console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, speaker notes, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, the menu bar, Chinese, and API isolation.");

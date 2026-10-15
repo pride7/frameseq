@@ -149,6 +149,10 @@ export interface InspectSlide {
   label: string;
   layout: string;
   notes: boolean;
+  /** Where the speaker notes are written, with the text when it is a plain string written once. */
+  noteSources?: Array<{ start: number; end: number; value?: string }>;
+  /** Where .notes() can be added to the slide() call, when the statement is that call. */
+  notesAt?: number;
   source: { line: number; character: number; endLine: number };
   objects: InspectObject[];
   regions?: InspectRegion[];

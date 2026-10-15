@@ -24,6 +24,7 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, with the values their commands state. |
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
+| **Notes** (right, below the preview) | The speaker notes of the slide in the preview, typed in place. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the deck ran. |
 | **Terminal** (bottom, beside Problems and Output) | A shell in the presentation's folder. |
 
@@ -39,7 +40,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | --- | --- |
 | **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Export |
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
-| **View** | The slide rail, the current slide, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
+| **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
 | **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
 | **Present** | From the beginning, From the current slide, Open the preview in a browser |
@@ -86,6 +87,12 @@ Below the slides, **Current slide** lists the objects on the slide the preview s
 Every change rewrites only that literal, as one step in the editor's history, so `Ctrl+Z` takes it back. A value the code computes, such as `x: left + 40`, is not listed, since no single literal stands for it. For a slide made in a loop or by a helper function, the inspector shows the objects written once in the loop or the helper, and says so.
 
 Drag the divider above **Current slide** to share the rail between it and the slides, or fold it away with the arrow beside its title.
+
+## Speaker notes
+
+Below the preview, **Notes** shows the [speaker notes](presenter.md) of the slide the preview shows, as presenter view and PowerPoint will. Click in them and type: the Studio rewrites the string that holds them, so `slide("Results").notes("…")` or `note("…")` changes as you type, in the quotes it was written with, and notes written as an indented block keep their indentation. A slide without notes gets `.notes("…")` added to its `slide()` call with the first letter typed, and emptying the notes takes the call away again. Each change is an ordinary edit, which `Ctrl+Z` in the code takes back.
+
+Notes that no single string holds are shown but not edited here: several `note()` calls on one slide, notes the code computes, and slides made by a loop or a helper. The title bar says why, and the **</>** button beside it shows the code that writes them. Drag the divider above **Notes** to give them more room, or fold them away with the arrow beside the title or **View › Speaker notes**.
 
 ## Editing and saving
 

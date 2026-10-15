@@ -62,6 +62,7 @@ const en = {
     renameName: "Rename…",
     slidesPanel: "Slides",
     inspectorPanel: "Current slide",
+    notesPanel: "Speaker notes",
     codeEditor: "Code",
     bottomPanel: "Bottom panel",
     assistant: "Assistant",
@@ -179,6 +180,19 @@ const en = {
     collapse: "Collapse",
     expand: "Expand",
     colour: (name: string) => `${name} colour`,
+  },
+
+  notes: {
+    title: "Notes",
+    toggle: "Show or hide the speaker notes of the current slide",
+    placeholder: "Click to add speaker notes",
+    showSource: "Show these notes in the code",
+    reading: "Reading the code…",
+    outside: (name: string) => `Made outside ${name}; read only`,
+    madeByCode: "Made by code that writes several slides; edit in the code",
+    several: (count: number) => `Written in ${count} places; edit in the code`,
+    computed: "Built by code; edit in the code",
+    elsewhere: "Added by code elsewhere; edit in the code",
   },
 
   rail: {
@@ -512,6 +526,7 @@ const zh: Catalog = {
     renameName: "重命名…",
     slidesPanel: "幻灯片栏",
     inspectorPanel: "当前页",
+    notesPanel: "备注",
     codeEditor: "代码",
     bottomPanel: "底部面板",
     assistant: "AI 助手",
@@ -629,6 +644,19 @@ const zh: Catalog = {
     collapse: "折叠",
     expand: "展开",
     colour: (name) => `${name} 颜色`,
+  },
+
+  notes: {
+    title: "备注",
+    toggle: "显示或隐藏当前页的演讲者备注",
+    placeholder: "单击此处添加备注",
+    showSource: "在代码中查看这些备注",
+    reading: "正在读取代码…",
+    outside: (name) => `不是在 ${name} 里生成的；只读`,
+    madeByCode: "由生成多页的代码写出；请在代码中修改",
+    several: (count) => `写在 ${count} 处；请在代码中修改`,
+    computed: "由代码计算得出；请在代码中修改",
+    elsewhere: "由别处的代码添加；请在代码中修改",
   },
 
   rail: {

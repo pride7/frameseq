@@ -2769,6 +2769,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         step: currentStep,
         count: slides.length,
         label: slides[currentSlide].label,
+        notes: typeof slides[currentSlide].node.props.notes === "string" ? slides[currentSlide].node.props.notes : "",
       }, "*");
     }
     updatePresenter();
