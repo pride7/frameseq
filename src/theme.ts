@@ -209,7 +209,7 @@ const midnight: ThemeDefinition = {
     codeBackground: "#090e1a",
     codeForeground: "#dbeafe",
     error: "#f87171",
-    stage: "#09090b",
+    stage: "#1e293b",
     shadow: "0 24px 80px rgb(0 0 0 / 0.35)",
   },
   fonts: defaultFonts,
