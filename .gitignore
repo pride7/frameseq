@@ -8,3 +8,4 @@ tmp/
 *.log
 .DS_Store
 packages/vscode-frameseq/src/shared/
+TODO.md
