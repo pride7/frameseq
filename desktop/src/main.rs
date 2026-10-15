@@ -476,8 +476,9 @@ fn open_presenter(app: &AppHandle, url: Url, screen: &Monitor) -> tauri::Result<
 // ── The server ─────────────────────────────────────────────────────────────────────────────
 
 /// The Node.js and FrameSeq the app ships: beside this program on Windows and Linux, and in the
-/// bundle's Resources on macOS. FRAMESEQ_DESKTOP_NODE and FRAMESEQ_DESKTOP_CLI name others, as a
-/// FrameSeq checkout does when it tries the window out.
+/// bundle's Resources on macOS. The app's entry, app-launch.mjs, runs the newest update the app
+/// has installed. FRAMESEQ_DESKTOP_NODE and FRAMESEQ_DESKTOP_CLI name others, as a FrameSeq
+/// checkout does when it tries the window out.
 fn runtime() -> Option<(PathBuf, PathBuf)> {
   if let Ok(cli) = std::env::var("FRAMESEQ_DESKTOP_CLI") {
     let node = std::env::var("FRAMESEQ_DESKTOP_NODE").unwrap_or_else(|_| "node".to_owned());
@@ -487,8 +488,9 @@ fn runtime() -> Option<(PathBuf, PathBuf)> {
   let roots = [here.clone(), here.join("..").join("Resources").join("frameseq")];
   roots.into_iter().find_map(|root| {
     let node = if cfg!(windows) { root.join("node").join("node.exe") } else { root.join("node").join("bin").join("node") };
-    let cli = root.join("app").join("scripts").join("frameseq.mjs");
-    (node.is_file() && cli.is_file()).then_some((node, cli))
+    let scripts = root.join("app").join("scripts");
+    let cli = ["app-launch.mjs", "frameseq.mjs"].iter().map(|name| scripts.join(name)).find(|cli| cli.is_file())?;
+    node.is_file().then_some((node, cli))
   })
 }
 

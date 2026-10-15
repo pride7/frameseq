@@ -22,9 +22,12 @@ import { configDirectory } from "./studio-files.mjs";
 import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
 import { agentsMarkdown, claudeMarkdown } from "../packages/create-frameseq/project-instructions.mjs";
+import { appEntry } from "./app-layers.mjs";
+import { updateCommand } from "./app-update.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
+const version = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")).version;
 
 function help() {
   console.log(`FrameSeq
@@ -37,6 +40,10 @@ Usage:
                                       without a file, open its start page
   frameseq shortcut [--remove]        Add FrameSeq Studio to the Start menu and desktop,
                                       Applications, or the applications menu
+  frameseq update [--check] [--revert]
+                                      Update the FrameSeq app, or say how to update FrameSeq;
+                                      --revert goes back to the app as installed
+  frameseq --version                  Print the version of FrameSeq
   frameseq build [file] [--output dir] [--single-file]
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] [--slides 1-3,5]
@@ -63,6 +70,7 @@ Examples:
   frameseq studio talk.slides.ts
   frameseq studio
   frameseq shortcut
+  frameseq update
   frameseq build talk.slides.ts
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
@@ -646,6 +654,15 @@ const desktop = process.argv.includes("--desktop");
 try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
+  } else if (command === "--version" || command === "-v" || command === "version") {
+    console.log(version);
+  } else if (command === "update") {
+    await updateCommand({
+      packageRoot,
+      current: version,
+      check: process.argv.includes("--check"),
+      revert: process.argv.includes("--revert"),
+    });
   } else if (command === "new") {
     await createSlidesFile(resolve(process.cwd(), file), await chosenTemplate());
   } else if (command === "mcp") {
@@ -653,7 +670,8 @@ try {
     await startMcpServer({ entry: resolve(process.cwd(), file), packageRoot, configFile, preview: option("--preview") });
   } else if (command === "shortcut") {
     const remove = process.argv.includes("--remove");
-    const cli = fileURLToPath(import.meta.url);
+    // In the app, the shortcut starts its entry, which runs the newest update installed.
+    const cli = appEntry(packageRoot) ?? fileURLToPath(import.meta.url);
     const paths = await studioShortcut({ cli, remove });
     if (remove) {
       console.log(`Removed the FrameSeq Studio shortcut:\n${paths.map((path) => `  ${path}`).join("\n")}`);

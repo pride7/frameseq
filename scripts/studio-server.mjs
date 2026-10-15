@@ -497,9 +497,13 @@ export function studioPlugin({
         // ── Updates: whether a newer FrameSeq is out, checked at most daily unless asked ──
         "GET /update": () => updates.status(),
 
-        /** Check now, keep the daily check on or off, or stop mentioning a version. */
+        /**
+         * Check now, install the latest version in the app, keep the daily check on or off, or
+         * stop mentioning a version.
+         */
         "POST /update": async (body) => {
           await updates.remember({ automatic: body.automatic, skip: body.skip });
+          if (body.install === true) return updates.installLatest();
           return updates.status({ force: body.check === true });
         },
 

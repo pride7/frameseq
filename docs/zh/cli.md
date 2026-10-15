@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:94b0f611845d3c82 -->
+<!-- translation-of: docs/cli.md sha256:d2d90583b63f061d -->
 
 # CLI 参考
 
@@ -102,6 +102,15 @@ frameseq shortcut [--remove]
 ```
 
 这条命令把 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式用这份安装的 FrameSeq 运行 `frameseq studio --background`，打开启动页。`--remove` 会把它删掉。
+
+## 更新 FrameSeq
+
+```bash
+frameseq update [--check] [--revert]
+frameseq --version
+```
+
+在 [FrameSeq 应用](app.md#更新)里，`frameseq update` 会在应用能自己安装时安装最新版本（大多数版本都可以），不能时则说明去哪里下载新应用。`--check` 只说明有什么更新。`--revert` 删除已安装的更新，让 FrameSeq 按应用安装时的样子运行。用 npm 安装的 FrameSeq 会说明用哪条 npm 命令更新。`frameseq --version` 显示正在运行的版本。
 
 ## 构建静态 HTML
 

@@ -57,6 +57,10 @@ jobs:
         run: npm install --global npm@^11.5.1
       - name: Install dependencies
         run: npm ci
+      # The FrameSeq app takes this version as an update only where it was built on the same
+      # runtime, as the published package.json's appRuntime says.
+      - name: Stamp the app's runtime
+        run: node scripts/app-runtime.mjs --stamp
       - name: Publish FrameSeq
         run: |
           VERSION="$(node -p "require('./package.json').version")"

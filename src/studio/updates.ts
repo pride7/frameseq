@@ -1,14 +1,16 @@
 /**
- * Telling the person that a newer FrameSeq is out. The server knows where this FrameSeq came
- * from and asks there, at most once a day by itself; the page says what it found, once per
- * version in a window, and checks again whenever **Help › Check for updates** asks it to.
+ * Telling the person that a newer FrameSeq is out, and in the app, updating to it. The server
+ * knows where this FrameSeq came from and asks there, at most once a day by itself; the app
+ * installs a version it can take by itself, which starts the next time the Studio opens. The
+ * page says what happened, once per version in a window, and checks again whenever
+ * **Help › Check for updates** asks it to.
  */
 
 import { call } from "./api";
 import { openOutside } from "./desktop";
 import { t } from "./i18n";
 import type { MenuEntry } from "./menubar";
-import { askChoice, toast } from "./ui";
+import { askChoice, toast, type ToastAction } from "./ui";
 
 export interface UpdateStatus {
   /** Where this FrameSeq updates from; none for a checkout of the repository. */
@@ -17,9 +19,17 @@ export interface UpdateStatus {
   /** The newest version the last check found. */
   latest?: string;
   newer: boolean;
+  /** The app can install `latest` by itself, without a new download of the app. */
+  ota?: boolean;
+  /** The version the app has installed, which starts the next time the Studio opens. */
+  ready?: string;
+  /** The app is installing `latest` now. */
+  installing?: boolean;
+  /** Why installing `latest` failed last time. */
+  failed?: string;
   /** The person asked not to hear about `latest` again. */
   skipped?: boolean;
-  /** Whether the Studio checks once a day by itself. */
+  /** Whether the Studio checks, and the app updates, once a day by itself. */
   automatic?: boolean;
   /** FRAMESEQ_NO_UPDATE_CHECK keeps the daily check off. */
   locked?: boolean;
@@ -27,14 +37,29 @@ export interface UpdateStatus {
   url?: string;
   /** The npm command that updates this install. */
   command?: string;
-  /** Why a check the person asked for failed. */
+  /** Why a check or an update the person asked for failed. */
   error?: string;
 }
 
 const changelogUrl = "https://pride7.github.io/frameseq/docs/changelog.html";
+const releasesUrl = "https://github.com/pride7/frameseq/releases/latest";
 const shownKey = "frameseq-studio-update-shown";
 
 let status: UpdateStatus | undefined;
+
+/** Whether a notice has yet to show in this window; each shows once. */
+function firstTime(notice: string): boolean {
+  try {
+    if (sessionStorage.getItem(shownKey) === notice) return false;
+    sessionStorage.setItem(shownKey, notice);
+  } catch {
+    // Without storage the notice shows on each reload, which is all it costs.
+  }
+  return true;
+}
+
+const whatsNew: ToastAction = { label: t.updates.whatsNew, run: () => openOutside(changelogUrl) };
+const download: ToastAction = { label: t.updates.download, primary: true, run: () => openOutside(releasesUrl) };
 
 function copyCommand(command: string): void {
   void navigator.clipboard.writeText(command).then(
@@ -43,11 +68,47 @@ function copyCommand(command: string): void {
   );
 }
 
-/** Where the update goes from here: the app's downloads, or the npm command that installs it. */
-function updateActions(found: UpdateStatus): Array<{ label: string; run: () => void; primary?: boolean }> {
+/** Ask the server again while the app installs an update. */
+async function settled(found: UpdateStatus): Promise<UpdateStatus> {
+  let latest = found;
+  for (let tries = 0; latest.installing && tries < 400; tries += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 1500));
+    latest = await call<UpdateStatus>("GET", "update");
+  }
+  status = latest;
+  return latest;
+}
+
+function showReady(version: string): void {
+  toast(t.updates.ready(version), { tone: "success", actions: [whatsNew], timeout: 20_000, key: "update" });
+}
+
+/** Install the latest version in the app now, as the person asks. */
+async function installNow(found: UpdateStatus): Promise<void> {
+  const version = found.latest ?? "";
+  const progress = toast(t.updates.installing(version), { tone: "busy", key: "update" });
+  let result: UpdateStatus;
+  try {
+    result = await settled(await call<UpdateStatus>("POST", "update", { install: true }));
+  } catch (error) {
+    progress.update(t.updates.installFailed(version, error instanceof Error ? error.message : String(error)), { tone: "error", actions: [download] });
+    return;
+  }
+  if (result.ready) {
+    progress.update(t.updates.ready(result.ready), { tone: "success", actions: [whatsNew], timeout: 20_000 });
+    return;
+  }
+  progress.update(t.updates.installFailed(version, result.error ?? result.failed ?? ""), { tone: "error", actions: [download] });
+}
+
+/** Where the update goes from here: installed by the app, its download, or the npm command. */
+function updateActions(found: UpdateStatus): ToastAction[] {
   const skip = { label: t.updates.skip, run: () => void call("POST", "update", { skip: found.latest }).catch(() => undefined) };
+  if (found.source === "app" && found.ota) {
+    return [skip, { label: t.updates.update, primary: true, run: () => void installNow(found) }];
+  }
   if (found.source === "app") {
-    return [skip, { label: t.updates.download, primary: true, run: () => openOutside(found.url ?? changelogUrl) }];
+    return [skip, { label: t.updates.download, primary: true, run: () => openOutside(found.url ?? releasesUrl) }];
   }
   return [
     skip,
@@ -56,21 +117,31 @@ function updateActions(found: UpdateStatus): Array<{ label: string; run: () => v
   ];
 }
 
-/** Say once per window that a newer version is out, unless the person skipped it. */
+/**
+ * Say once per window what the daily check found: a version the app has installed by itself,
+ * one it could not install, or one to download, unless the person skipped it.
+ */
 export async function watchForUpdates(): Promise<void> {
   try {
     status = await call<UpdateStatus>("GET", "update");
+    if (!status.automatic || !status.newer || !status.latest || status.skipped) return;
+    if (status.installing) {
+      status = await settled(status);
+      if (status.ready && firstTime(`ready ${status.ready}`)) showReady(status.ready);
+    }
   } catch {
     return;
   }
-  if (!status.newer || status.skipped || !status.automatic || !status.latest) return;
-  try {
-    if (sessionStorage.getItem(shownKey) === status.latest) return;
-    sessionStorage.setItem(shownKey, status.latest);
-  } catch {
-    // Without storage the notice shows on each reload, which is all it costs.
+  const { latest } = status;
+  if (!latest || status.ready || status.installing) return;
+  if (status.failed) {
+    if (firstTime(`failed ${latest}`)) {
+      toast(t.updates.installFailed(latest, status.failed), { tone: "error", actions: [download], timeout: 20_000, key: "update" });
+    }
+    return;
   }
-  toast(t.updates.availableToast(status.latest, status.current), {
+  if (!firstTime(`available ${latest}`)) return;
+  toast(t.updates.availableToast(latest, status.current), {
     actions: updateActions(status),
     timeout: 20_000,
     key: "update",
@@ -83,6 +154,10 @@ export async function checkForUpdates(): Promise<void> {
   let found: UpdateStatus;
   try {
     found = await call<UpdateStatus>("POST", "update", { check: true });
+    if (found.installing && found.latest) {
+      progress.update(t.updates.installing(found.latest), { tone: "busy" });
+      found = await settled(found);
+    }
   } catch (error) {
     progress.update(t.updates.failed(error instanceof Error ? error.message : String(error)), { tone: "error" });
     return;
@@ -96,12 +171,17 @@ export async function checkForUpdates(): Promise<void> {
     progress.update(t.updates.upToDate(found.current), { tone: "success" });
     return;
   }
+  if (found.ready) {
+    progress.update(t.updates.ready(found.ready), { tone: "success", actions: [whatsNew], timeout: 20_000 });
+    return;
+  }
   progress.close();
   const actions = updateActions(found);
   const choice = await askChoice({
     title: t.updates.available(found.latest),
     message: [
       t.updates.current(found.current),
+      found.source === "app" && found.ota ? t.updates.otaHint : "",
       found.source === "npm" && found.command ? t.updates.npmHint(found.command) : "",
     ].filter(Boolean).join(" "),
     choices: actions.map((action, index) => ({ label: action.label, value: String(index), primary: action.primary })),

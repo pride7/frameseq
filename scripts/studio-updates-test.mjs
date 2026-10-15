@@ -50,7 +50,7 @@ assert.throws(() => compareVersions("1.2", "1.2.0"));
 const appRoot = resolve(workspace, "FrameSeq", "app");
 await mkdir(appRoot, { recursive: true });
 await writeFile(join(appRoot, "frameseq-bundle.json"), JSON.stringify({ platform: "win32", arch: "x64" }));
-assert.deepEqual(updateSource(appRoot), { kind: "app", target: "win-x64" });
+assert.deepEqual(updateSource(appRoot), { kind: "app", target: "win-x64", app: appRoot, updates: false });
 
 const project = resolve(workspace, "project");
 const local = resolve(project, "node_modules", "@pride7", "frameseq");
@@ -236,6 +236,7 @@ try {
   // The app's answers, as the server would give them.
   const app = { source: "app", current: "0.38.0", automatic: true, locked: false, skipped: false };
   let found = { ...app, newer: true, latest: "9.9.9", url: "https://github.com/pride7/frameseq/releases/tag/v9.9.9" };
+  let onCheck = () => ({ ...app, automatic: found.automatic, newer: false, latest: "0.38.0" });
   const posted = [];
   await page.setRequestInterception(true);
   page.on("request", (request) => {
@@ -243,13 +244,19 @@ try {
       void request.continue();
       return;
     }
+    let answer = found;
     if (request.method() === "POST") {
       const body = JSON.parse(request.postData() ?? "{}");
       posted.push(body);
       if (typeof body.automatic === "boolean") found = { ...found, automatic: body.automatic };
-      if (body.check) found = { ...app, automatic: found.automatic, newer: false, latest: "0.38.0" };
+      if (body.check) found = onCheck();
+      if (body.install) found = { ...found, ready: found.latest };
+      answer = found;
+    } else if (found.installing) {
+      // The server says it is installing once, and has installed it when asked again.
+      found = { ...found, installing: false, ready: found.latest };
     }
-    void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify(found) });
+    void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify(answer) });
   });
   await page.evaluateOnNewDocument(() => {
     window.__opened = [];
@@ -291,6 +298,25 @@ try {
   await page.click("[data-command='automatic-updates']");
   await waitFor(() => posted.some((body) => body.automatic === false), "the setting to reach the server");
   assert.ok((await helpCommands()).includes("automatic-updates"), "the item stays, unticked");
+
+  const toastSays = (message) => page.$$eval(".studio-toast-text", (texts, wanted) => texts.some((text) => text.textContent === wanted), message);
+
+  // The app installs a version it can take by itself, and says it starts next time.
+  found = { ...app, newer: true, latest: "9.9.10", ota: true, installing: true };
+  await page.reload({ waitUntil: "networkidle2" });
+  await waitFor(() => toastSays("FrameSeq 9.9.10 is installed. It starts the next time FrameSeq Studio opens."), "the Studio to say the update is installed");
+
+  // With automatic updates off, Help › Check for updates offers to install one.
+  onCheck = () => ({ ...app, automatic: false, newer: true, latest: "9.9.11", ota: true });
+  await page.click("[data-menu='help']");
+  await page.click("[data-command='check-updates']");
+  const dialog = await page.waitForSelector("dialog[open]");
+  assert.equal(await dialog.$eval("h2", (heading) => heading.textContent), "FrameSeq 9.9.11 is available");
+  assert.match(await dialog.$eval("p", (text) => text.textContent), /installs now and starts the next time FrameSeq Studio opens/);
+  assert.deepEqual(await dialog.$$eval("button", (buttons) => buttons.map((button) => button.textContent)), ["Cancel", "Skip this version", "Update"]);
+  await dialog.$eval(".studio-button.is-primary", (button) => button.click());
+  await waitFor(() => toastSays("FrameSeq 9.9.11 is installed. It starts the next time FrameSeq Studio opens."), "the update to install");
+  assert.deepEqual(posted.at(-1), { install: true });
 
   assert.deepEqual(errors, []);
   console.log("Studio update checks passed.");

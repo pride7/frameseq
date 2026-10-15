@@ -26,6 +26,7 @@ import { delimiter, dirname, join, relative, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { iconIcns, iconIco, iconPng } from "./app-icon.mjs";
+import { appNodeVersion, appRuntime } from "./app-runtime.mjs";
 import { buildDesktopWindow, canBuildDesktopWindow } from "./desktop-build.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,8 +39,7 @@ function option(name, fallback) {
 
 const platform = option("--platform", process.platform);
 const arch = option("--arch", process.arch);
-// The runtime the app ships: an LTS release, the same line the CLI is tested on.
-const nodeVersion = option("--node", "24.14.0").replace(/^v/, "");
+const nodeVersion = option("--node", appNodeVersion).replace(/^v/, "");
 const withBrowser = process.argv.includes("--with-browser") || platform !== "win32";
 const withWindow = !process.argv.includes("--no-window");
 const outRoot = resolve(option("--out", resolve(packageRoot, "output", "app")));
@@ -163,7 +163,10 @@ if (platform === "win32") {
 await cp(join(nodeFolder, "LICENSE"), join(runtime, "LICENSE"));
 
 // ── The Studio's window ──────────────────────────────────────────────────────────────────
-const bundle = { version, node: nodeVersion, platform, arch };
+// The runtime says which published versions the app can take as updates; an app built on
+// another Node.js than the one published versions expect takes none.
+const runtimeId = nodeVersion === appNodeVersion ? appRuntime() : `${appRuntime()}+node${nodeVersion}`;
+const bundle = { version, node: nodeVersion, platform, arch, runtime: runtimeId };
 // Where the window goes: beside the app's folders, or as the macOS app's executable.
 const windowName = platform === "win32" ? "FrameSeq Studio.exe" : platform === "darwin" ? "FrameSeq Studio" : "frameseq-studio";
 let windowBinary;
@@ -208,7 +211,7 @@ step("Writing launchers");
 const bin = resolve(stage, "bin");
 await mkdir(bin, { recursive: true });
 if (platform === "win32") {
-  await writeFile(join(bin, "frameseq.cmd"), '@echo off\r\n"%~dp0..\\node\\node.exe" "%~dp0..\\app\\scripts\\frameseq.mjs" %*\r\n');
+  await writeFile(join(bin, "frameseq.cmd"), '@echo off\r\n"%~dp0..\\node\\node.exe" "%~dp0..\\app\\scripts\\app-launch.mjs" %*\r\n');
   await writeFile(join(stage, "FrameSeq.ico"), iconIco());
 } else {
   const launcher = join(bin, "frameseq");
@@ -221,7 +224,7 @@ if (platform === "win32") {
     "  case \"$LINK\" in /*) SELF=\"$LINK\" ;; *) SELF=\"$(dirname \"$SELF\")/$LINK\" ;; esac",
     "done",
     "ROOT=\"$(cd \"$(dirname \"$SELF\")/..\" && pwd)\"",
-    "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/frameseq.mjs\" \"$@\"",
+    "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/app-launch.mjs\" \"$@\"",
     "",
   ].join("\n"));
   await chmod(launcher, 0o755);
@@ -292,7 +295,7 @@ if (platform === "darwin") {
       "#!/bin/sh",
       "ROOT=\"$(cd \"$(dirname \"$0\")/../Resources/frameseq\" && pwd)\"",
       "cd \"$HOME\"",
-      "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/frameseq.mjs\" studio --background",
+      "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/app-launch.mjs\" studio --background",
       "",
     ].join("\n"));
   }
@@ -388,6 +391,7 @@ ${nodeShortcuts()}
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+Type: filesandordirs; Name: "{localappdata}\\FrameSeq\\updates"
 
 [Code]
 { The PATH is changed here rather than in [Registry], so it keeps the type it had. A Path stored as
@@ -462,11 +466,11 @@ end;
  */
 function nodeShortcuts() {
   return `[Icons]
-Name: "{autoprograms}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized
-Name: "{autodesktop}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized; Tasks: desktopicon
+Name: "{autoprograms}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized
+Name: "{autodesktop}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
+Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
 `;
 }
 

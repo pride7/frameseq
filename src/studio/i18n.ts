@@ -104,7 +104,7 @@ const en = {
     shortcuts: "Keyboard shortcuts",
     reportIssue: "Report an issue",
     checkUpdates: "Check for updates…",
-    automaticUpdates: "Check for updates automatically",
+    automaticUpdates: "Automatic updates",
     about: "About FrameSeq Studio",
   },
 
@@ -937,6 +937,11 @@ const en = {
     copyCommand: "Copy the command",
     copied: "Copied the command.",
     skip: "Skip this version",
+    update: "Update",
+    installing: (version: string) => `Updating to FrameSeq ${version}…`,
+    ready: (version: string) => `FrameSeq ${version} is installed. It starts the next time FrameSeq Studio opens.`,
+    otaHint: "The update is small: it installs now and starts the next time FrameSeq Studio opens.",
+    installFailed: (version: string, message: string) => `Could not update to FrameSeq ${version}: ${message}`,
   },
 };
 
@@ -1007,7 +1012,7 @@ const zh: Catalog = {
     shortcuts: "键盘快捷键",
     reportIssue: "报告问题",
     checkUpdates: "检查更新…",
-    automaticUpdates: "自动检查更新",
+    automaticUpdates: "自动更新",
     about: "关于 FrameSeq Studio",
   },
 
@@ -1838,6 +1843,11 @@ const zh: Catalog = {
     copyCommand: "复制命令",
     copied: "已复制命令。",
     skip: "跳过这个版本",
+    update: "更新",
+    installing: (version) => `正在更新到 FrameSeq ${version}…`,
+    ready: (version) => `FrameSeq ${version} 已安装，下次打开 FrameSeq Studio 时生效。`,
+    otaHint: "这次更新很小：现在安装，下次打开 FrameSeq Studio 时生效。",
+    installFailed: (version, message) => `无法更新到 FrameSeq ${version}：${message}`,
   },
 };
 

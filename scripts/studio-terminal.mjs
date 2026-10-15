@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { release } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
 import { WebSocketServer } from "ws";
+import { installedApp } from "./app-layers.mjs";
 import { runsFromBundle } from "./browsers.mjs";
 
 /** Where the Studio's terminal connects, beside the Studio's own routes. */
@@ -79,7 +80,8 @@ export function terminalEnvironment(packageRoot, environment = process.env) {
   const result = Object.fromEntries(Object.entries(environment)
     .filter(([name, value]) => value !== undefined && !serverSettings.test(name)));
   result.COLORTERM = "truecolor";
-  const bin = resolve(packageRoot, "..", "bin");
+  // An update runs from a folder of its own; the command is still the app's.
+  const bin = resolve(installedApp(packageRoot), "..", "bin");
   if (runsFromBundle(packageRoot) && existsSync(bin)) {
     const key = pathKey(result);
     result[key] = result[key] ? `${bin}${delimiter}${result[key]}` : bin;

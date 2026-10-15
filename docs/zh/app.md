@@ -1,4 +1,4 @@
-<!-- translation-of: docs/app.md sha256:f93134cd85d3c936 -->
+<!-- translation-of: docs/app.md sha256:3c3bcdc77e377ad7 -->
 
 # FrameSeq 应用
 
@@ -53,9 +53,17 @@ PDF、PowerPoint 和 `frameseq check` 用 Chromium 浏览器渲染。应用按�
 2. 应用自带的那个;
 3. 电脑上安装的 Chrome、Edge、Chromium 或 Brave。
 
-## 更新与卸载
+## 更新
 
-FrameSeq Studio 每天检查一次有没有更新的 FrameSeq,有就会提示;提示里的 **下载** 按钮打开发布页,把新版本装在旧版本上即可。**帮助 › 检查更新…** 立即检查;见[更新](studio.md#更新)。在 Windows 上,从 **设置 › 应用** 卸载 FrameSeq;在 macOS 上,把 FrameSeq Studio 移到废纸篓;在 Linux 上,先运行 `frameseq shortcut --remove` 把 Studio 从菜单里移除,再删除 `~/.local/share/frameseq` 和 `~/.local/bin/frameseq`。
+应用会自己保持最新。FrameSeq Studio 每天检查一次有没有更新的 FrameSeq,而大多数新版本只改动 FrameSeq 本身,这样的版本应用会自己安装:它从 npm 仓库下载 FrameSeq 的包(几百 KB),验证仓库对它的签名,然后放在应用自己的依赖旁边:Windows 上是 `%LOCALAPPDATA%\FrameSeq\updates`,macOS 上是 `~/Library/Application Support/FrameSeq/updates`,Linux 上是 `~/.local/state/frameseq/updates`。新版本从下次启动 FrameSeq Studio 或 `frameseq` 时开始运行,Studio 也会提示。更新不带任何新程序,只有 FrameSeq 的脚本,由应用自带的 Node.js 运行,所以智能应用控制和 Gatekeeper 没有新东西要检查。应用本身保持安装时的样子。
+
+如果一个版本还改动了应用在 FrameSeq 之外附带的东西,比如 Node.js、Studio 的窗口或某个依赖,它就以新应用的形式发布:Studio 会提示,提示里的 **下载** 按钮打开发布页。把新版本装在旧版本上即可,装好后之前的更新也就不再使用。
+
+**帮助 › 检查更新…** 立即检查,**帮助 › 自动更新** 关闭每天的检查,在终端里用 [`frameseq update`](cli.md#更新-frameseq) 也能做同样的事;另见 Studio 里的[更新](studio.md#更新)。`frameseq update --revert` 回到安装时的版本,设置 `FRAMESEQ_APP_LAYER=installed` 则只在这一次启动时运行安装时的版本。
+
+## 卸载
+
+在 Windows 上,从 **设置 › 应用** 卸载 FrameSeq,更新会一起删除。在 macOS 上,把 FrameSeq Studio 移到废纸篓,再删除 `~/Library/Application Support/FrameSeq/updates`。在 Linux 上,先运行 `frameseq shortcut --remove` 把 Studio 从菜单里移除,再删除 `~/.local/share/frameseq`、`~/.local/bin/frameseq` 和 `~/.local/state/frameseq`。
 
 ## 用应用还是用 npm?
 

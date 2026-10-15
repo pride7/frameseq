@@ -22,9 +22,17 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-/** The CLI inside the FrameSeq app, from the folder its `frameseq` command lives in. */
-function appCli(bin: string): string {
-  return join(dirname(bin), "app", "scripts", "frameseq.mjs");
+/**
+ * The CLI inside the FrameSeq app, from the folder its `frameseq` command lives in: the app's
+ * entry, which runs the newest update the app has installed, or, in an app from before
+ * updates, its FrameSeq.
+ */
+async function appCli(bin: string): Promise<string | undefined> {
+  for (const name of ["app-launch.mjs", "frameseq.mjs"]) {
+    const cli = join(dirname(bin), "app", "scripts", name);
+    if (await exists(cli)) return cli;
+  }
+  return undefined;
 }
 
 /**
@@ -40,14 +48,16 @@ export async function globalCli(path = process.env.PATH ?? ""): Promise<string |
       // npm writes its .cmd shim into the prefix, beside the node_modules it installed into.
       const cli = cliIn(join(directory, "node_modules"));
       if (await exists(cli)) return cli;
-      if (await exists(appCli(directory))) return appCli(directory);
+      const app = await appCli(directory);
+      if (app) return app;
       continue;
     }
     // npm links bin/frameseq to the package's own script; the app links it to its launcher.
     try {
       const target = await realpath(join(directory, "frameseq"));
       if (target.endsWith(sep + join(...cliPath))) return target;
-      if (await exists(appCli(dirname(target)))) return appCli(dirname(target));
+      const app = await appCli(dirname(target));
+      if (app) return app;
     } catch {
       // Not in this directory.
     }

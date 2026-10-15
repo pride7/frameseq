@@ -101,6 +101,15 @@ frameseq shortcut [--remove]
 
 This adds **FrameSeq Studio** to the Start menu and the desktop on Windows, to `~/Applications` on macOS, and to the applications menu on Linux. The shortcut runs `frameseq studio --background` with this installation of FrameSeq and opens the start page. `--remove` deletes it again.
 
+## Update FrameSeq
+
+```bash
+frameseq update [--check] [--revert]
+frameseq --version
+```
+
+In the [FrameSeq app](app.md#updates), `frameseq update` installs the latest version where the app can take it by itself, as it can most versions, and says where to download a new app where it cannot. `--check` only says what there is. `--revert` removes the updates installed, so FrameSeq runs as the app installed it. FrameSeq installed with npm says which npm command updates it. `frameseq --version` prints the version that runs.
+
 ## Build static HTML
 
 ```bash

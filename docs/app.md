@@ -51,9 +51,17 @@ PDF, PowerPoint, and `frameseq check` render with a Chromium browser. The app lo
 2. the one shipped with the app;
 3. Chrome, Edge, Chromium, or Brave installed on the computer.
 
-## Updating and removing
+## Updates
 
-FrameSeq Studio checks once a day whether a newer FrameSeq is out, and says so; its **Download** button opens the release page, and the new version installs over the old one. **Help › Check for updates…** checks at once; see [Updates](studio.md#updates). On Windows, FrameSeq is removed from **Settings › Apps**; on macOS, move FrameSeq Studio to the Bin; on Linux, delete `~/.local/share/frameseq` and `~/.local/bin/frameseq`, and run `frameseq shortcut --remove` first to take Studio out of the menu.
+The app keeps itself up to date. Once a day FrameSeq Studio asks whether a newer FrameSeq is out, and most new versions change only FrameSeq itself, which the app installs by itself. It downloads the FrameSeq package from the npm registry, a few hundred kilobytes, checks the registry's signature on it, and keeps it beside the app's own dependencies, in `%LOCALAPPDATA%\FrameSeq\updates` on Windows, `~/Library/Application Support/FrameSeq/updates` on macOS, and `~/.local/state/frameseq/updates` on Linux. The new version runs from the next start of FrameSeq Studio or `frameseq`, and the Studio says so. An update brings no program of its own, only FrameSeq's scripts, which the app's Node.js runs, so Smart App Control and Gatekeeper have nothing new to check. The app itself stays as it was installed.
+
+A version that also changes what the app ships around FrameSeq, such as Node.js, the Studio's window, or a dependency, comes as a new app: the Studio says so, and its **Download** button opens the release page. The new version installs over the old one, which also retires the updates.
+
+**Help › Check for updates…** checks at once, **Help › Automatic updates** turns the daily check off, and [`frameseq update`](cli.md#update-frameseq) does the same from a terminal; see also [Updates](studio.md#updates) in the Studio. `frameseq update --revert` goes back to the app as installed, and `FRAMESEQ_APP_LAYER=installed` runs it so for one start.
+
+## Removing
+
+On Windows, FrameSeq is removed from **Settings › Apps**, its updates included. On macOS, move FrameSeq Studio to the Bin, and delete `~/Library/Application Support/FrameSeq/updates`. On Linux, run `frameseq shortcut --remove` to take Studio out of the menu, then delete `~/.local/share/frameseq`, `~/.local/bin/frameseq`, and `~/.local/state/frameseq`.
 
 ## The app or npm?
 

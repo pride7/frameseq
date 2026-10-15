@@ -44,7 +44,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source; Master |
 | **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group; in the master view, Placeholders |
 | **Present** | From the beginning, From the current slide, Presenter view in a new window, Phone remote…, Open the preview in a browser |
-| **Help** | Documentation, Language tour, Keyboard shortcuts, Check for updates, Check for updates automatically, Report an issue, About |
+| **Help** | Documentation, Language tour, Keyboard shortcuts, Check for updates, Automatic updates, Report an issue, About |
 
 Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu's underlined letter, such as `Alt+F` for **File**; the arrow keys move between menus and commands, and `Esc` closes them. **View › Theme** follows the system, or stays light or dark. The slides themselves keep the presentation's own theme.
 
@@ -79,7 +79,7 @@ The Studio speaks English and Chinese. It starts in the language of the browser,
 
 ### Updates
 
-The [FrameSeq app](app.md), and FrameSeq installed with npm, check once a day whether a newer FrameSeq is out, and the Studio says so in a notice. In the app, **Download** opens the release page with the installers; an npm install shows the command that updates it. **Skip this version** stops mentioning that version until a newer one comes. **Help › Check for updates…** checks at once, and **Help › Check for updates automatically** turns the daily check off, as `FRAMESEQ_NO_UPDATE_CHECK=1` does. The app asks GitHub for its latest release, and an npm install asks the npm registry; neither sends anything but FrameSeq's version. A checkout of the repository does not check, and a Studio started with `--no-open`, as scripts and tests start it, checks only when asked.
+The [FrameSeq app](app.md#updates), and FrameSeq installed with npm, check once a day whether a newer FrameSeq is out. The app installs a version that changes only FrameSeq by itself, and the Studio says it starts the next time the Studio opens; for a version that needs a new app, the notice's **Download** opens the release page with the installers. An npm install shows the command that updates it. **Skip this version** stops mentioning that version until a newer one comes. **Help › Check for updates…** checks at once, and offers **Update** where the app can install the version itself; **Help › Automatic updates** turns the daily check, and with it the app's own updating, off, as `FRAMESEQ_NO_UPDATE_CHECK=1` does. The app asks the npm registry and GitHub, and an npm install asks the npm registry; neither sends anything but FrameSeq's version. A checkout of the repository does not check, and a Studio started with `--no-open`, as scripts and tests start it, checks only when asked.
 
 ## Presentations
 

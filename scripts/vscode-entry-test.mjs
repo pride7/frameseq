@@ -119,6 +119,12 @@ const appPath = process.platform === "win32" ? resolve(appRoot, "bin") : resolve
 const foundAppCli = await globalCli(appPath);
 assert.equal(foundAppCli && await realpath(foundAppCli), await realpath(appScript), "the app's command must lead to the app's CLI");
 assert.equal(await runtimeFor(appScript), appNode, "the app's CLI must run with the app's own Node.js");
+// An app that updates itself starts through its entry, which runs the newest update.
+const appEntry = resolve(appRoot, "app", "scripts", "app-launch.mjs");
+await writeFile(appEntry, "", "utf8");
+const foundAppEntry = await globalCli(appPath);
+assert.equal(foundAppEntry && await realpath(foundAppEntry), await realpath(appEntry), "the app's command must lead to the app's entry");
+assert.equal(await runtimeFor(appEntry), appNode, "the app's entry must run with the app's own Node.js");
 await rm(cliSandbox, { recursive: true, force: true });
 
 // These assertions describe the source, not its line endings, and Git hands Windows a
