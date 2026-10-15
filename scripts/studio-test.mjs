@@ -628,11 +628,13 @@ try {
   await writeFile(deck, generated, "utf8");
   await waitFor(async () => (await editorText()) === lf(generated), "the generated deck to load");
   await waitFor(async () => (await railLabels()).join("|") === "Intro|Alpha|Beta|Gamma|Part|Part, continued|End", "the rail to show the generated slides");
-  assert.deepEqual(
-    await rail.$$eval(".frameseq-thumbnail", (items) => items.map((item) => item.classList.contains("is-grouped"))),
-    [false, true, true, true, true, true, false],
-    "slides made by one statement must be grouped in the rail",
-  );
+  // A write read while it was still being made is drawn once more, first in a hidden stage that
+  // holds a second set of thumbnails until it is swapped in, so the rail is read once it settles.
+  const grouping = () => rail.$$eval(".frameseq-thumbnail", (items) => items.map((item) => item.classList.contains("is-grouped")));
+  await waitFor(
+    async () => JSON.stringify(await grouping()) === JSON.stringify([false, true, true, true, true, true, false]),
+    "slides made by one statement to be grouped in the rail",
+  ).catch(async (error) => assert.fail(`${error.message}: ${JSON.stringify(await grouping())}`));
   await waitFor(
     async () => (await page.$$eval(".cm-slide-marker", (items) => items.map((item) => item.textContent))).join() === "1,2–4,5–6,7",
     "the gutter to number the statements with the slides they make",
