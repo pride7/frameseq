@@ -13,6 +13,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Presenter view, the phone remote and its pairing dialog, and the preview's own controls, such as the zoom buttons and the label beside a selected object, speak Chinese when FrameSeq Studio is shown in Chinese. A page takes its language from `lang=zh` in its address, which the Studio adds to the presenter view and the phone remote it opens, or from the Studio around its preview, and passes it on to the windows it opens; elsewhere they stay in English.
 
+## [0.38.1] - 2026-10-15
+
+### Fixed
+
+- FrameSeq Studio and `frameseq dev` follow a slide document written twice in quick succession. The file watcher reported only the first of two writes within 50 ms, so after **Keep my version** in a conflict, or when a formatter or an agent wrote the file twice, the preview and the slide rail went on showing the earlier text, and the rail could not duplicate or move slides until the next save.
+
 ## [0.38.0] - 2026-10-15
 
 ### Added
