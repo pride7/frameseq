@@ -9,6 +9,8 @@ export interface StudioSession {
   quitOnClose: boolean;
   /** Whether the server can show this computer's own open and folder dialogs. */
   dialogs: boolean;
+  /** Whether this page may open a terminal: only on the computer running the Studio. */
+  terminal?: boolean;
   entry: string;
   /** The slide document relative to the directory the server runs in. */
   file: string;

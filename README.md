@@ -669,6 +669,7 @@ It opens as an app window of its own (or in the default browser when no Chromium
 - Thumbnails can be dragged to reorder slides, and duplicated, inserted, or deleted from their menu, each as one undoable edit.
 - Below them, **Current slide** lists every object on the slide in the preview, and edits the positions, sizes, and colours their commands state; numbers step with the arrow keys while the preview follows.
 - A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
+- A **Terminal** beside the problems, opened with `` Ctrl+` ``, runs a shell in the presentation's folder, for `git`, `npm`, or a coding agent; it survives a reload of the window.
 - **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
 - A menu bar holds every command, as in any desktop program: **File** starts a new presentation, opens another, or returns to a recent one, in the same window.
 - The Studio speaks English and Chinese, TypeScript's own messages included; **View › Language** switches between them.

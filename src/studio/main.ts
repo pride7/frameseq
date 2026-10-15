@@ -47,6 +47,7 @@ import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
+import { StudioTerminal } from "./terminal";
 import {
   askChoice,
   askText,
@@ -64,6 +65,7 @@ import {
 
 type SaveState = "saved" | "dirty" | "saving" | "blocked" | "conflict" | "error" | "offline";
 type ThemeChoice = "system" | "light" | "dark";
+type PanelTab = "problems" | "output" | "terminal";
 
 const themeKey = "frameseq-studio-theme";
 
@@ -81,6 +83,10 @@ const stashKey = "frameseq-studio-stash";
 const autosaveDelay = 450;
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 const mod = isMac ? "⌘" : "Ctrl";
+
+const trash = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+/** Ctrl+` on every system: ⌘` switches windows on macOS. */
+const terminalKey = isMac ? "⌃`" : "Ctrl+`";
 
 const logo = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#020617"/><path d="M15 15h35v9H25v8h21v9H25v17H15V15Z" fill="#22d3ee"/></svg>`;
 
@@ -144,13 +150,16 @@ const shell = `
     <header class="studio-panel-tabs" role="tablist">
       <button type="button" role="tab" data-tab="problems" aria-selected="true">${t.shell.problems}<span class="studio-badge" data-slot="problem-badge">0</span></button>
       <button type="button" role="tab" data-tab="output" aria-selected="false">${t.shell.output}</button>
+      <button type="button" role="tab" data-tab="terminal" aria-selected="false">${t.shell.terminal}</button>
       <span class="studio-pane-spacer"></span>
       <span class="studio-check-state" data-slot="check-state"></span>
+      <button type="button" class="studio-icon-button studio-terminal-kill" data-action="kill-terminal" title="${t.shell.killTerminal}" hidden>${trash}</button>
       <button type="button" class="studio-icon-button" data-action="toggle-panel" title="${t.shell.togglePanel(mod)}">⌄</button>
     </header>
     <div class="studio-panel-body">
       <div class="studio-problems" data-panel="problems"></div>
       <pre class="studio-output" data-panel="output" hidden></pre>
+      <div class="studio-terminal" data-panel="terminal" hidden></div>
     </div>
   </section>
   <footer class="studio-statusbar">
@@ -274,6 +283,13 @@ async function start(): Promise<void> {
     selectProblem,
     showCounts,
   );
+  const terminal = new StudioTerminal(required(root, "[data-panel='terminal']"), {
+    token: session.token,
+    entry: session.entry,
+    available: session.terminal === true,
+    dark: resolvedTheme() === "dark",
+    openLink: openOutside,
+  });
   const frames = new StudioFrames(
     { preview: slot("preview"), rail: slot("rail"), check: slot("check") },
     {
@@ -359,6 +375,7 @@ async function start(): Promise<void> {
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f6f8fb" : "#0a0e17");
     setEditorDarkness(view, theme === "dark");
     frames.setTheme(theme);
+    terminal.setDark(theme === "dark");
   }
 
   function chooseTheme(choice: ThemeChoice): void {
@@ -1043,7 +1060,8 @@ async function start(): Promise<void> {
       line: ours ? error.loc?.line : undefined,
       column: ours ? (error.loc?.column ?? 0) + 1 : undefined,
     }]);
-    showPanel("problems");
+    // The status bar counts it either way; a terminal in use keeps the panel.
+    if (root.classList.contains("is-panel-collapsed") || panelTab !== "terminal") showPanel("problems", false);
   }
 
   // ── Slides: insert, duplicate, delete, move ─────────────────────────────────────────────
@@ -1284,19 +1302,43 @@ async function start(): Promise<void> {
   }
 
   // ── Panel, output, and layout ───────────────────────────────────────────────────────────
-  function showPanel(tab: "problems" | "output"): void {
-    root.classList.remove("is-panel-collapsed");
+  let panelTab: PanelTab = "problems";
+
+  function selectTab(tab: PanelTab, focus: boolean): void {
+    panelTab = tab;
     root.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
       button.setAttribute("aria-selected", String(button.dataset.tab === tab));
     });
     root.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.panel !== tab;
     });
+    required<HTMLElement>(root, "[data-action='kill-terminal']").hidden = tab !== "terminal";
+    storePreference("terminal-tab", tab === "terminal");
+    if (tab === "terminal") void terminal.show(focus);
+  }
+
+  /** Open the panel on a tab. A panel opened by itself, for a build error, folds again on the next start. */
+  function showPanel(tab: PanelTab, remember = true): void {
+    root.classList.remove("is-panel-collapsed");
+    if (remember) storePreference("panel-collapsed", false);
+    selectTab(tab, true);
   }
 
   function togglePanel(): void {
-    root.classList.toggle("is-panel-collapsed");
-    storePreference("panel-collapsed", root.classList.contains("is-panel-collapsed"));
+    const leaving = required<HTMLElement>(root, ".studio-panel").contains(document.activeElement);
+    const collapsed = root.classList.toggle("is-panel-collapsed");
+    storePreference("panel-collapsed", collapsed);
+    // A folded panel cannot keep the focus, so the editor takes it back.
+    if (collapsed && leaving) view.focus();
+    else if (!collapsed && panelTab === "terminal") void terminal.show(true);
+  }
+
+  /** Ctrl+`: show the terminal, focus it if it shows already, and fold it away if it has the focus. */
+  function toggleTerminal(): void {
+    const showing = !root.classList.contains("is-panel-collapsed") && panelTab === "terminal";
+    if (!showing) showPanel("terminal");
+    else if (terminal.hasFocus()) togglePanel();
+    else terminal.focus();
   }
 
   function appendOutput(text: string): void {
@@ -1347,6 +1389,8 @@ async function start(): Promise<void> {
   // them, and a build error opens the panel by itself.
   if (readPreference("panel-collapsed", true)) root.classList.add("is-panel-collapsed");
   if (readPreference("rail-collapsed", false)) root.classList.add("is-rail-collapsed");
+  // The terminal comes back where it was, with the shell that ran before the page reloaded.
+  if (readPreference("terminal-tab", false) && !root.classList.contains("is-panel-collapsed")) selectTab("terminal", false);
 
   // ── Controls ────────────────────────────────────────────────────────────────────────────
   function setAutosave(enabled: boolean): void {
@@ -1396,7 +1440,7 @@ async function start(): Promise<void> {
     for (const [keys, action] of t.help.shortcuts) {
       const row = element("tr");
       const keyCell = element("td");
-      keyCell.append(element("kbd", "", isMac ? keys.replaceAll("Ctrl", "⌘") : keys));
+      keyCell.append(element("kbd", "", isMac ? keys.replace("Ctrl+`", terminalKey).replaceAll("Ctrl", "⌘") : keys));
       row.append(keyCell, element("td", "", action));
       table.append(row);
     }
@@ -1469,6 +1513,7 @@ async function start(): Promise<void> {
         { command: "toggle-panel", label: t.menu.bottomPanel, shortcut: `${mod}+J`, checked: () => !root.classList.contains("is-panel-collapsed"), run: togglePanel },
         { command: "show-problems", label: t.menu.showProblems, run: () => showPanel("problems") },
         { command: "show-output", label: t.menu.showOutput, run: () => showPanel("output") },
+        { command: "toggle-terminal", label: t.menu.terminal, shortcut: terminalKey, checked: () => !root.classList.contains("is-panel-collapsed") && panelTab === "terminal", run: toggleTerminal },
         "separator",
         { command: "follow", label: t.menu.followCursor, checked: () => follow, run: () => setFollow(!follow) },
         "separator",
@@ -1566,7 +1611,7 @@ async function start(): Promise<void> {
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-action], [data-tab]") : null;
     if (!target) return;
-    if (target.dataset.tab === "problems" || target.dataset.tab === "output") showPanel(target.dataset.tab);
+    if (target.dataset.tab === "problems" || target.dataset.tab === "output" || target.dataset.tab === "terminal") showPanel(target.dataset.tab);
     switch (target.dataset.action) {
       case "file-menu":
         void presentations.showMenu(target);
@@ -1586,6 +1631,10 @@ async function start(): Promise<void> {
       case "toggle-inspector":
         toggleInspector();
         break;
+      case "kill-terminal":
+        terminal.kill();
+        terminal.focus();
+        break;
       case "show-problems":
         showPanel("problems");
         break;
@@ -1599,6 +1648,9 @@ async function start(): Promise<void> {
     if (event.key === "F5") {
       event.preventDefault();
       present(event.shiftKey ? 0 : previewSlide);
+    } else if (event.ctrlKey && !event.altKey && !event.metaKey && event.code === "Backquote") {
+      event.preventDefault();
+      toggleTerminal();
     } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "j") {
       event.preventDefault();
       togglePanel();
@@ -1670,6 +1722,7 @@ async function start(): Promise<void> {
       view,
       get text() { return editorText(); },
       get saved() { return !isDirty(); },
+      terminal,
       /** How the rendered slides line up with the text, or why they do not yet. */
       get slides() {
         const map = slideMap();

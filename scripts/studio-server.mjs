@@ -18,6 +18,7 @@ import {
   rememberPresentation,
 } from "./studio-files.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
+import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
 export const studioSourceEvent = "frameseq:studio-source";
@@ -295,6 +296,18 @@ export function studioPlugin({
 
       if (quitOnClose) quitWhenClosed(server);
 
+      // A shell runs whatever it is given, so only the Studio's own page on this computer gets one,
+      // even when the Studio was started with --host.
+      attachTerminals(server, {
+        cwd,
+        packageRoot,
+        allowed: (request, url) => !start
+          && isLoopback(request.socket.remoteAddress)
+          && trustedHost(request)
+          && sameOrigin(request)
+          && url.searchParams.get("token") === token,
+      });
+
       const announce = async () => {
         try {
           const text = await readFile(entry, "utf8");
@@ -329,6 +342,8 @@ export function studioPlugin({
         process.env.FRAMESEQ_ENTRY = path;
         delete process.env.FRAMESEQ_STUDIO_START;
         process.chdir(dirname(path));
+        // The terminal's shells work in the folder being left, so they end with it.
+        closeTerminals();
         // Answer first: the restart closes the connection this request arrived on.
         setTimeout(() => {
           server.restart().catch((error) => {
@@ -350,6 +365,7 @@ export function studioPlugin({
             quitOnClose,
             frameseq: frameseqVersion,
             dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
+            terminal: isLoopback(request.socket.remoteAddress),
           };
           if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
           const text = await readFile(entry, "utf8");

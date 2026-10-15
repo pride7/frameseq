@@ -1835,3 +1835,44 @@ body:has(.studio-topbar) .studio-window-drag {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* ── Terminal ──────────────────────────────────────────────────────────────────────────── */
+
+.studio-terminal {
+  height: 100%;
+  overflow: hidden;
+  background: var(--studio-surface);
+}
+
+/* Each tab's panel sets its own display, which the hidden attribute alone would not override. */
+.studio-panel-body > [hidden],
+.studio-terminal-kill[hidden] {
+  display: none;
+}
+
+/* The padding sits on xterm.js's own element, which its fit measures, not on the host. */
+.studio-terminal .xterm {
+  height: 100%;
+  padding: 6px 0 0 12px;
+}
+
+/* xterm.css arrives after this stylesheet, so these rules outrank its own. */
+.studio-terminal .xterm .xterm-viewport {
+  background-color: var(--studio-surface);
+}
+
+/* Text being composed with an input method, such as Chinese pinyin. */
+.studio-terminal .xterm .composition-view {
+  color: var(--studio-text);
+  background: var(--studio-surface-raised);
+}
+
+.studio-terminal .xterm:focus,
+.studio-terminal .xterm-helper-textarea:focus {
+  outline: none;
+}
+
+.studio-terminal-kill svg {
+  width: 14px;
+  height: 14px;
+}

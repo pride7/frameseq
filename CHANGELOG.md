@@ -6,6 +6,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Added
 
+- Add a terminal to FrameSeq Studio. The bottom panel's **Terminal** tab, opened with `` Ctrl+` ``, runs a shell in the presentation's folder: PowerShell on Windows, the person's own shell elsewhere. It outlives a reload of the window, leaves `Ctrl+C`, `Alt`, and the other keys to the shell, opens the links it prints in the browser, and in the FrameSeq app finds the app's own `frameseq` first. It opens only in the Studio's own window on the computer running the Studio.
 - Add posters and other pages for paper. `poster({ title, author, institute })` starts an A0 portrait page in the new `poster` theme, whose title band is built from the metadata, and returns the page so its layout can follow. Any presentation can be made for paper with `size`, `"A0"` to `"A5"`, `"letter"`, `"legal"`, `"tabloid"`, or a size such as `"36x48in"`, and `orientation`.
   - The canvas keeps units of its own, 1600 across the paper's short side, so themes, layouts, and checks work as on a slide.
   - `mm()` is new, and on paper `mm()` and `pt()` measure the printed sheet, wherever they appear.

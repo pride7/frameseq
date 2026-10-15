@@ -33,6 +33,10 @@ interface OpenLevel {
   owner?: HTMLButtonElement;
 }
 
+const ownsKeys = (event: KeyboardEvent): boolean => (
+  event.target instanceof Element && event.target.closest("[data-owns-keys]") !== null
+);
+
 /**
  * The menu bar along the top of the Studio, as a desktop program has one: click or hover across
  * the menus, step through them with the arrow keys, open one with Alt and its letter, or reach
@@ -275,6 +279,11 @@ export class MenuBar {
   }
 
   private onGlobalKey(event: KeyboardEvent): void {
+    // A part of the page that takes every key, such as the terminal, keeps Alt and F10 as well.
+    if (ownsKeys(event)) {
+      this.altAlone = false;
+      return;
+    }
     if (event.key === "Alt") {
       this.altAlone = true;
       this.host.classList.add("show-access");
@@ -299,6 +308,10 @@ export class MenuBar {
   private onGlobalKeyUp(event: KeyboardEvent): void {
     if (event.key !== "Alt") return;
     this.host.classList.remove("show-access");
+    if (ownsKeys(event)) {
+      this.altAlone = false;
+      return;
+    }
     // Alt pressed and released on its own reaches the menu bar, as it does in Windows programs.
     if (this.altAlone && this.openIndex < 0) {
       event.preventDefault();

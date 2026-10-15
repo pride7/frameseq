@@ -25,8 +25,9 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the deck ran. |
+| **Terminal** (bottom, beside Problems and Output) | A shell in the presentation's folder. |
 
-Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail and `Ctrl+J` shows or hides the bottom panel. The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
+Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail, `Ctrl+J` shows or hides the bottom panel, and `` Ctrl+` `` opens the [terminal](#the-terminal). The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
 
 ### The menu bar
 
@@ -36,7 +37,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | --- | --- |
 | **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Export |
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
-| **View** | The slide rail, the current slide, and the problems panel; Problems and Output; Follow cursor; Theme; Language |
+| **View** | The slide rail, the current slide, and the bottom panel; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
 | **Present** | From the beginning, From the current slide, Open the preview in a browser |
 | **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
@@ -174,6 +175,17 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 The paths are relative to the directory the Studio was started from, or to the folder of a presentation opened from the Studio. The document is saved before an export starts. When it finishes, the notice offers **Download** and **Show in folder**; the full log is in the **Output** tab.
 
+## The terminal
+
+The **Terminal** tab of the bottom panel is a shell in the presentation's folder, for `git`, `npm`, a coding agent, or anything else run beside the slides. It is PowerShell on Windows, PowerShell 7 when it is installed, and your own shell on macOS and Linux. In the FrameSeq app, the app's own `frameseq` command comes first on its PATH, so `frameseq pdf talk.slides.ts` works there with nothing else installed.
+
+- `` Ctrl+` `` shows the terminal, focuses it when it is already showing, and folds the panel away when it has the focus. It is `` Ctrl+` `` on macOS too.
+- Every key goes to the shell except `` Ctrl+` `` and `Ctrl+J`, so `Ctrl+C` interrupts a program and `Alt` reaches the shell, not the menus. Outside macOS, `Ctrl+C` copies instead when text is selected, `Ctrl+Shift+C` always copies, and `Ctrl+V` pastes.
+- Links the shell prints open in the default browser.
+- The shell outlives a reload of the window, as when the language changes, and the terminal picks it up with what it printed last. It ends when the Studio stops or opens another presentation. The bin button at the panel's right end ends it at once; any key then starts a new one.
+
+A shell runs whatever is typed into it, so the terminal opens only in the Studio's own window on the computer running the Studio, even when the Studio was started with `--host`.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -190,10 +202,11 @@ The paths are relative to the directory the Studio was started from, or to the f
 | `Shift+F5` | Present from the beginning |
 | `Ctrl+B` | Show or hide the slide rail |
 | `Ctrl+J` | Show or hide the bottom panel |
+| `` Ctrl+` `` | Show the terminal, focus it, or fold it away |
 | `Alt`, `F10` | Move to the menu bar |
 | `Alt+F`, `Alt+E`, `Alt+V`, `Alt+S`, `Alt+P`, `Alt+H` | Open a menu |
 
-On macOS, use `⌘` in place of `Ctrl`. **Help › Keyboard shortcuts** lists them in the Studio.
+On macOS, use `⌘` in place of `Ctrl`, except in `` Ctrl+` ``. **Help › Keyboard shortcuts** lists them in the Studio.
 
 ## Network access
 
@@ -203,4 +216,4 @@ The Studio writes whole documents, which the plain preview never does: a drag in
 frameseq studio talk.slides.ts --host
 ```
 
-Anyone who can reach that address can then edit the deck. Use `--no-open` to start the server without opening a window, and `--tab` to open a browser tab instead of an app window.
+Anyone who can reach that address can then edit the deck, though the terminal still opens only on the computer running the Studio. Use `--no-open` to start the server without opening a window, and `--tab` to open a browser tab instead of an app window.

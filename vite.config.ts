@@ -63,6 +63,9 @@ const studioDependencies = [
   "@codemirror/state",
   "@codemirror/view",
   "@lezer/highlight",
+  "@xterm/xterm",
+  "@xterm/addon-fit",
+  "@xterm/addon-web-links",
 ];
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
