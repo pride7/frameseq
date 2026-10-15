@@ -236,9 +236,9 @@ export class SlideShow {
     );
   }
 
-  /** Presenter view beside the show, which ends the show when it is done with. */
+  /** Presenter view beside the show, which ends the show when it is done with, in the Studio's language. */
   private presenterAddress(index: number): string {
-    return `/?presenter=1&show=1#${index + 1}`;
+    return `/?presenter=1&show=1&lang=${this.options.language}#${index + 1}`;
   }
 
   private focus(): void {

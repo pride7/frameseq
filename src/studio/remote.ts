@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { call, type StudioSession } from "./api";
-import { t } from "./i18n";
+import { language, t } from "./i18n";
 import { askChoice, element, showInfo, toast } from "./ui";
 
 const sessionKey = "frameseq-studio-remote-session";
@@ -123,6 +123,8 @@ async function showPairing(): Promise<void> {
     const url = new URL("/", origin);
     url.searchParams.set("remote", "1");
     url.searchParams.set("session", remoteSession());
+    // The phone's remote speaks the Studio's language.
+    url.searchParams.set("lang", language);
     code.innerHTML = await QRCode.toString(url.href, {
       type: "svg",
       width: 240,

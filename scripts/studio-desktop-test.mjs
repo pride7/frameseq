@@ -160,7 +160,7 @@ try {
   // A slide show takes the window full screen, onto a second screen with presenter view on this
   // one when there is one; ending it brings the window back. Without presenter view the window
   // stays on its screen, unless Present › Show screen names another.
-  const onScreens = 'startShow {"slides":{"x":1920,"y":0},"presenter":{"address":"/?presenter=1&show=1#1","x":0,"y":0}}';
+  const onScreens = 'startShow {"slides":{"x":1920,"y":0},"presenter":{"address":"/?presenter=1&show=1&lang=en#1","x":0,"y":0}}';
   const showScreens = async () => {
     await page.click("[data-menu='present']");
     await page.click("[data-command='show-screen']");

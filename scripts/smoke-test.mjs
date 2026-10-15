@@ -337,6 +337,30 @@ try {
   );
   await presenterPage.close();
 
+  // Presenter view speaks Chinese when the address asks for it, as FrameSeq Studio's does, and
+  // the audience view it opens speaks it too.
+  const chinesePresenter = await browser.newPage();
+  await chinesePresenter.setViewport({ width: 1440, height: 900 });
+  await chinesePresenter.goto(`http://127.0.0.1:${address.port}/?presenter=1&lang=zh#1`, { waitUntil: "networkidle0" });
+  await chinesePresenter.waitForFunction(() => document.documentElement.dataset.ready === "true");
+  assert.deepEqual(await chinesePresenter.evaluate(() => ({
+    kicker: document.querySelector(".frameseq-presenter-kicker")?.textContent,
+    laser: document.querySelector("[data-action='laser-toggle']")?.textContent,
+    notes: document.querySelector(".frameseq-presenter-notes-panel .frameseq-presenter-section-heading > span")?.textContent,
+    audience: document.querySelector("[data-action='audience']")?.textContent,
+  })), { kicker: "演讲者视图", laser: "激光笔：关", notes: "演讲者备注", audience: "打开观众视图" });
+  const chineseAudiencePopup = new Promise((resolve) => chinesePresenter.once("popup", resolve));
+  await chinesePresenter.click("[data-action='audience']");
+  const chineseAudience = await chineseAudiencePopup;
+  await chineseAudience.waitForFunction(() => document.documentElement.dataset.ready === "true");
+  assert.equal(new URL(chineseAudience.url()).searchParams.get("lang"), "zh");
+  assert.equal(
+    await chineseAudience.$eval("[data-action='presenter']", (button) => button.getAttribute("title")),
+    "打开演讲者视图",
+  );
+  await chineseAudience.close();
+  await chinesePresenter.close();
+
   await page.setViewport({ width: 375, height: 667 });
   await page.waitForFunction(() => {
     const frame = document.querySelector(".frameseq-slide-frame.is-active");

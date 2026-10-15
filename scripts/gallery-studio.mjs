@@ -356,7 +356,7 @@ export async function captureStudio(imagesDirectory, language = "en") {
     // Presenter view, as the speaker's screen shows it: the diagram, its notes, and what comes next.
     const presenter = await browser.newPage();
     await presenter.setViewport({ width: 1680, height: 820, deviceScaleFactor: 2 });
-    await presenter.goto(new URL("/?presenter=1#2", address).href, { waitUntil: "networkidle2" });
+    await presenter.goto(new URL(`/?presenter=1&lang=${language}#2`, address).href, { waitUntil: "networkidle2" });
     await presenter.waitForFunction(() => document.documentElement.dataset.ready === "true", { timeout: 60_000 });
     await presenter.evaluate(() => document.fonts.ready);
     await delay(1500);

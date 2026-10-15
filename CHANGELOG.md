@@ -9,6 +9,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - The FrameSeq app updates itself. A new version that changes only FrameSeq, as most do, is downloaded from the npm registry, a few hundred kilobytes, checked against the registry's signature, and installed beside the app over its own dependencies; it runs from the next start, and FrameSeq Studio says so. A version that changes the app's Node.js, its window, or a dependency still comes as a new download. **Help › Automatic updates** turns the daily check and the updating off, and **Help › Check for updates…** offers **Update**.
 - `frameseq update` installs the latest version in the app, or says how to update an npm install; `--check` only says what there is, and `--revert` goes back to the app as installed. `frameseq --version` prints the version that runs.
 
+### Changed
+
+- Presenter view, the phone remote and its pairing dialog, and the preview's own controls, such as the zoom buttons and the label beside a selected object, speak Chinese when FrameSeq Studio is shown in Chinese. A page takes its language from `lang=zh` in its address, which the Studio adds to the presenter view and the phone remote it opens, or from the Studio around its preview, and passes it on to the windows it opens; elsewhere they stay in English.
+
 ## [0.38.0] - 2026-10-15
 
 ### Added

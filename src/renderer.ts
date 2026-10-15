@@ -938,9 +938,204 @@ function addMaster(canvas: HTMLElement, slide: FrameSeqNode, index: number, slid
   for (const placeholder of placeholders) fillPlaceholder(canvas, placeholder, slides, cover);
 }
 
-/** Whether an editor showing the master pages speaks Chinese, as the Studio says when it asks. */
+/**
+ * Whether FrameSeq's own controls on this page speak Chinese: as the address asks, which is how
+ * FrameSeq Studio opens presenter view, its slide show, and the phone remote, or else as the page
+ * around this one speaks, such as the Studio around its preview. Elsewhere they speak English.
+ */
 function speaksChinese(): boolean {
-  return document.documentElement.lang.startsWith("zh") || new URLSearchParams(location.search).get("lang") === "zh";
+  const asked = new URLSearchParams(location.search).get("lang");
+  if (asked) return asked === "zh";
+  if (document.documentElement.lang.startsWith("zh")) return true;
+  try {
+    return window.parent !== window && window.parent.document.documentElement.lang.startsWith("zh");
+  } catch {
+    // A page around this one from another origin keeps its language to itself.
+    return false;
+  }
+}
+
+/** FrameSeq's own words on a slide page: presenter view, the phone remote, and the preview's controls. */
+const englishWords = {
+  presenterView: "Presenter view",
+  laserTitle: "Toggle laser pointer (Ctrl+L)",
+  laser: (on: boolean): string => (on ? "Laser: On" : "Laser: Off"),
+  pause: "Pause",
+  resume: "Resume",
+  reset: "Reset",
+  currentSlide: "Current slide",
+  presenterDetail: "Presenter detail",
+  notes: "Notes",
+  nextSlide: "Next slide",
+  next: "Next",
+  speakerNotes: "Speaker notes",
+  notesSmallerTitle: "Smaller notes text (-)",
+  notesSmaller: "Smaller speaker notes text",
+  notesLargerTitle: "Larger notes text (+)",
+  notesLarger: "Larger speaker notes text",
+  presenterControls: "Presenter controls",
+  previous: "← Previous",
+  nextButton: "Next →",
+  goTo: "Go to",
+  goToSlide: "Go to slide",
+  simpleRemote: "Simple remote",
+  phoneRemote: "Phone remote",
+  fullScreenTitle: "Fill the whole screen with presenter view",
+  fullScreen: "Full screen",
+  exitFullScreen: "Exit full screen",
+  endShowTitle: "End the slide show (Esc)",
+  endShow: "End show",
+  audienceView: "Open audience view",
+  endOfPresentation: "End of presentation",
+  end: "End",
+  connecting: "Connecting…",
+  remoteControls: "Remote controls",
+  remoteHint: "Enable the laser, then drag across the slide preview.",
+  connected: "Connected",
+  waiting: "Waiting for presentation…",
+  disconnected: "Disconnected",
+  remoteUnavailable: "Local remote unavailable",
+  invalidPairing: "Invalid pairing link",
+  localNetwork: "Local network",
+  pairTitle: "Pair a phone remote",
+  close: "Close",
+  pairHint: "Connect the phone and this computer to the same Wi-Fi, then scan the code.",
+  preparing: "Preparing local address…",
+  networkAddress: "Network address",
+  copyLink: "Copy link",
+  done: "Done",
+  pairNote: "Keep the presentation server and this browser page open while presenting.",
+  copyUnavailable: "Copy unavailable",
+  copied: "Copied",
+  copyFailed: "Copy failed",
+  noPhoneLink: (reason?: string) => (reason ? `Could not create a phone link: ${reason}` : "Could not create a phone link."),
+  arrange: "Arrange selected components",
+  alignLeft: "Align left",
+  alignCenter: "Align horizontal centres",
+  alignRight: "Align right",
+  alignTop: "Align top",
+  alignMiddle: "Align vertical centres",
+  alignBottom: "Align bottom",
+  distributeHorizontal: "Distribute horizontally",
+  distributeVertical: "Distribute vertically",
+  bindRegion: "Bind region",
+  selectedAt: (x: number, y: number, width: number, height: number) => `Selected · x ${x} · y ${y} · ${width} × ${height}`,
+  selectedFlow: "Selected · flow item · drag to reorder",
+  selectedMany: (count: number, label: string) => `${count} selected · ${label}`,
+  regionDeleted: "Selected · a region is deleted in the source",
+  insideAnother: "Selected · written inside another command; delete it in the source",
+  placedByName: (count: number) => `Selected · ${count === 1 ? "another object is" : `${count} objects are`} placed by its name`,
+  noLiteral: (axis: "x" | "y") => `Selected · no literal ${axis} coordinate`,
+  slideNavigation: "Slide navigation",
+  previousSlide: "Previous slide",
+  previewZoom: "Preview zoom",
+  zoomOut: "Zoom out",
+  zoomIn: "Zoom in",
+  fitTitle: "Fit slide to window",
+  fit: "Fit",
+  resetZoom: "Reset slide to 100%",
+  pairRemote: "Pair phone remote",
+  layoutEditing: "Toggle layout editing",
+  layoutEditingTitle: "Drag objects to rewrite their coordinates (Escape to leave)",
+  openPresenter: "Open presenter view",
+  canvas: "FrameSeq slide canvas",
+  showEnd: "End of slide show. Click to exit.",
+  noMasters: "This presentation has no master pages yet.",
+};
+
+const chineseWords: typeof englishWords = {
+  presenterView: "演讲者视图",
+  laserTitle: "开关激光笔（Ctrl+L）",
+  laser: (on) => (on ? "激光笔：开" : "激光笔：关"),
+  pause: "暂停",
+  resume: "继续",
+  reset: "重置",
+  currentSlide: "当前幻灯片",
+  presenterDetail: "演讲者详情",
+  notes: "备注",
+  nextSlide: "下一页",
+  next: "下一页",
+  speakerNotes: "演讲者备注",
+  notesSmallerTitle: "缩小备注文字（-）",
+  notesSmaller: "缩小演讲者备注文字",
+  notesLargerTitle: "放大备注文字（+）",
+  notesLarger: "放大演讲者备注文字",
+  presenterControls: "演讲者控制",
+  previous: "← 上一页",
+  nextButton: "下一页 →",
+  goTo: "跳到",
+  goToSlide: "跳到幻灯片",
+  simpleRemote: "简易遥控",
+  phoneRemote: "手机遥控",
+  fullScreenTitle: "让演讲者视图铺满整个屏幕",
+  fullScreen: "全屏",
+  exitFullScreen: "退出全屏",
+  endShowTitle: "结束放映（Esc）",
+  endShow: "结束放映",
+  audienceView: "打开观众视图",
+  endOfPresentation: "演示结束",
+  end: "结束",
+  connecting: "正在连接…",
+  remoteControls: "遥控按钮",
+  remoteHint: "打开激光笔，然后在幻灯片预览上拖动。",
+  connected: "已连接",
+  waiting: "等待演示开始…",
+  disconnected: "已断开",
+  remoteUnavailable: "本地遥控不可用",
+  invalidPairing: "配对链接无效",
+  localNetwork: "局域网",
+  pairTitle: "配对手机遥控",
+  close: "关闭",
+  pairHint: "让手机和这台电脑连上同一个 Wi-Fi，然后扫描二维码。",
+  preparing: "正在准备局域网地址…",
+  networkAddress: "网络地址",
+  copyLink: "复制链接",
+  done: "完成",
+  pairNote: "演示期间，请让演示服务器和这个浏览器页面保持打开。",
+  copyUnavailable: "无法复制",
+  copied: "已复制",
+  copyFailed: "复制失败",
+  noPhoneLink: (reason) => (reason ? `无法生成手机链接：${reason}` : "无法生成手机链接。"),
+  arrange: "排列选中的对象",
+  alignLeft: "左对齐",
+  alignCenter: "水平居中",
+  alignRight: "右对齐",
+  alignTop: "顶端对齐",
+  alignMiddle: "垂直居中",
+  alignBottom: "底端对齐",
+  distributeHorizontal: "横向分布",
+  distributeVertical: "纵向分布",
+  bindRegion: "绑定到区域",
+  selectedAt: (x, y, width, height) => `已选中 · x ${x} · y ${y} · ${width} × ${height}`,
+  selectedFlow: "已选中 · 随版面排列 · 拖动可调整顺序",
+  selectedMany: (count, label) => `已选中 ${count} 个 · ${label}`,
+  regionDeleted: "已选中 · 区域要在代码里删除",
+  insideAnother: "已选中 · 它写在另一条命令里，请在代码里删除",
+  placedByName: (count) => (count === 1 ? "已选中 · 另一个对象按它的名字定位" : `已选中 · ${count} 个对象按它的名字定位`),
+  noLiteral: (axis) => `已选中 · 代码里没有写明 ${axis} 坐标`,
+  slideNavigation: "幻灯片导航",
+  previousSlide: "上一页",
+  previewZoom: "预览缩放",
+  zoomOut: "缩小",
+  zoomIn: "放大",
+  fitTitle: "适应窗口大小",
+  fit: "适应",
+  resetZoom: "恢复为 100%",
+  pairRemote: "配对手机遥控",
+  layoutEditing: "开关布局编辑",
+  layoutEditingTitle: "拖动对象来改写它们的坐标（按 Esc 退出）",
+  openPresenter: "打开演讲者视图",
+  canvas: "FrameSeq 幻灯片画布",
+  showEnd: "放映结束，单击鼠标退出。",
+  noMasters: "这份演示还没有母版。",
+};
+
+let chosenWords: typeof englishWords | undefined;
+
+/** The words of this page's own controls, in the language `speaksChinese()` settles on. */
+function words(): typeof englishWords {
+  chosenWords ??= speaksChinese() ? chineseWords : englishWords;
+  return chosenWords;
 }
 
 /** A master page's name as an editor shows it. */
@@ -1130,64 +1325,65 @@ function createPresenterView(
     && Boolean(new URLSearchParams(location.search).get("session"));
   // Beside FrameSeq Studio's slide show there is no audience view to open, only a show to end.
   const besideShow = new URLSearchParams(location.search).has("show");
+  const w = words();
   const shell = document.createElement("main");
   shell.className = "frameseq-presenter";
   shell.dataset.mobilePanel = "notes";
   shell.innerHTML = `
     <header class="frameseq-presenter-header">
       <div>
-        <div class="frameseq-presenter-kicker">Presenter view</div>
+        <div class="frameseq-presenter-kicker">${w.presenterView}</div>
         <div class="frameseq-presenter-title"></div>
       </div>
       <div class="frameseq-presenter-timer-group">
-        <button type="button" data-action="laser-toggle" aria-pressed="false" title="Toggle laser pointer (Ctrl+L)">Laser: Off</button>
+        <button type="button" data-action="laser-toggle" aria-pressed="false" title="${w.laserTitle}">${w.laser(false)}</button>
         <span class="frameseq-presenter-timer" aria-live="off">00:00</span>
-        <button type="button" data-action="timer-toggle">Pause</button>
-        <button type="button" data-action="timer-reset">Reset</button>
+        <button type="button" data-action="timer-toggle">${w.pause}</button>
+        <button type="button" data-action="timer-reset">${w.reset}</button>
       </div>
     </header>
-    <section class="frameseq-presenter-current" aria-label="Current slide"></section>
+    <section class="frameseq-presenter-current" aria-label="${w.currentSlide}"></section>
     <aside class="frameseq-presenter-side">
-      <div class="frameseq-presenter-mobile-tabs" role="tablist" aria-label="Presenter detail">
-        <button type="button" role="tab" data-action="mobile-panel" data-panel="notes" aria-selected="true">Notes</button>
-        <button type="button" role="tab" data-action="mobile-panel" data-panel="next" aria-selected="false">Next slide</button>
+      <div class="frameseq-presenter-mobile-tabs" role="tablist" aria-label="${w.presenterDetail}">
+        <button type="button" role="tab" data-action="mobile-panel" data-panel="notes" aria-selected="true">${w.notes}</button>
+        <button type="button" role="tab" data-action="mobile-panel" data-panel="next" aria-selected="false">${w.nextSlide}</button>
       </div>
       <section class="frameseq-presenter-next">
         <div class="frameseq-presenter-section-heading">
-          <span>Next</span>
+          <span>${w.next}</span>
           <span class="frameseq-presenter-next-label"></span>
         </div>
         <div class="frameseq-presenter-next-frame"></div>
       </section>
       <section class="frameseq-presenter-notes-panel">
         <div class="frameseq-presenter-section-heading">
-          <span>Speaker notes</span>
+          <span>${w.speakerNotes}</span>
           <span class="frameseq-presenter-notes-size">
-            <button type="button" data-action="notes-smaller" title="Smaller notes text (-)" aria-label="Smaller speaker notes text">A−</button>
+            <button type="button" data-action="notes-smaller" title="${w.notesSmallerTitle}" aria-label="${w.notesSmaller}">A−</button>
             <span class="frameseq-presenter-notes-size-value" aria-live="off">100%</span>
-            <button type="button" data-action="notes-larger" title="Larger notes text (+)" aria-label="Larger speaker notes text">A+</button>
+            <button type="button" data-action="notes-larger" title="${w.notesLargerTitle}" aria-label="${w.notesLarger}">A+</button>
           </span>
         </div>
         <div class="frameseq-presenter-notes"></div>
       </section>
     </aside>
-    <nav class="frameseq-presenter-controls" aria-label="Presenter controls">
-      <button type="button" data-action="previous">← Previous</button>
+    <nav class="frameseq-presenter-controls" aria-label="${w.presenterControls}">
+      <button type="button" data-action="previous">${w.previous}</button>
       <span class="frameseq-counter"></span>
-      <button type="button" data-action="next">Next →</button>
+      <button type="button" data-action="next">${w.nextButton}</button>
       <label>
-        <span>Go to</span>
-        <select class="frameseq-presenter-page-select" aria-label="Go to slide"></select>
+        <span>${w.goTo}</span>
+        <select class="frameseq-presenter-page-select" aria-label="${w.goToSlide}"></select>
       </label>
       ${localRemoteAvailable
-        ? `<button type="button" data-action="${pairedRemote ? "remote-here" : "remote-pair"}">${pairedRemote ? "Simple remote" : "Phone remote"}</button>`
+        ? `<button type="button" data-action="${pairedRemote ? "remote-here" : "remote-pair"}">${pairedRemote ? w.simpleRemote : w.phoneRemote}</button>`
         : ""}
       ${document.fullscreenEnabled
-        ? '<button type="button" data-action="presenter-fullscreen" aria-pressed="false" title="Fill the whole screen with presenter view">Full screen</button>'
+        ? `<button type="button" data-action="presenter-fullscreen" aria-pressed="false" title="${w.fullScreenTitle}">${w.fullScreen}</button>`
         : ""}
       ${besideShow
-        ? '<button type="button" data-action="end-show" title="End the slide show (Esc)">End show</button>'
-        : '<button type="button" data-action="audience">Open audience view</button>'}
+        ? `<button type="button" data-action="end-show" title="${w.endShowTitle}">${w.endShow}</button>`
+        : `<button type="button" data-action="audience">${w.audienceView}</button>`}
     </nav>
   `;
 
@@ -1233,28 +1429,29 @@ function createRemoteView(
   root: HTMLElement,
   slides: SlidesRootDefinition,
 ): RemoteElements {
+  const w = words();
   const shell = document.createElement("main");
   shell.className = "frameseq-remote";
   shell.innerHTML = `
     <header class="frameseq-remote-header">
       <div>
-        <div class="frameseq-remote-kicker">Phone remote</div>
+        <div class="frameseq-remote-kicker">${w.phoneRemote}</div>
         <div class="frameseq-remote-title"></div>
       </div>
       <div class="frameseq-remote-header-actions">
-        <div class="frameseq-remote-status is-waiting">Connecting…</div>
-        <button type="button" data-action="presenter-here">Presenter view</button>
+        <div class="frameseq-remote-status is-waiting">${w.connecting}</div>
+        <button type="button" data-action="presenter-here">${w.presenterView}</button>
       </div>
     </header>
-    <section class="frameseq-remote-current" aria-label="Current slide"></section>
+    <section class="frameseq-remote-current" aria-label="${w.currentSlide}"></section>
     <div class="frameseq-remote-slide-label"></div>
-    <nav class="frameseq-remote-controls" aria-label="Remote controls">
-      <button type="button" data-action="previous">← Previous</button>
+    <nav class="frameseq-remote-controls" aria-label="${w.remoteControls}">
+      <button type="button" data-action="previous">${w.previous}</button>
       <span class="frameseq-counter"></span>
-      <button type="button" data-action="next">Next →</button>
-      <button type="button" class="frameseq-remote-laser" data-action="laser-toggle" aria-pressed="false">Laser: Off</button>
+      <button type="button" data-action="next">${w.nextButton}</button>
+      <button type="button" class="frameseq-remote-laser" data-action="laser-toggle" aria-pressed="false">${w.laser(false)}</button>
     </nav>
-    <p class="frameseq-remote-hint">Enable the laser, then drag across the slide preview.</p>
+    <p class="frameseq-remote-hint">${w.remoteHint}</p>
   `;
 
   const required = <T extends Element>(selector: string): T => {
@@ -1301,6 +1498,7 @@ function controllerUrl(origin: string, session: string): string {
   source.searchParams.delete("print");
   source.searchParams.set("remote", "1");
   source.searchParams.set("session", session);
+  if (speaksChinese()) source.searchParams.set("lang", "zh");
   source.hash = "";
   return source.href;
 }
@@ -1475,21 +1673,22 @@ function enableSourceReveal(
   let selectionSlideIndex: number | undefined;
   document.querySelectorAll(".frameseq-selection-toolbar, .frameseq-selection-coordinates")
     .forEach((element) => element.remove());
+  const w = words();
   const selectionToolbar = document.createElement("div");
   selectionToolbar.className = "frameseq-selection-toolbar";
   selectionToolbar.innerHTML = `
     <span class="frameseq-selection-path"></span>
-    <span class="frameseq-selection-tools" aria-label="Arrange selected components">
-      <button type="button" data-action="align-left" title="Align left" aria-label="Align left">↤</button>
-      <button type="button" data-action="align-center" title="Align horizontal centres" aria-label="Align horizontal centres">↔</button>
-      <button type="button" data-action="align-right" title="Align right" aria-label="Align right">↦</button>
-      <button type="button" data-action="align-top" title="Align top" aria-label="Align top">↥</button>
-      <button type="button" data-action="align-middle" title="Align vertical centres" aria-label="Align vertical centres">↕</button>
-      <button type="button" data-action="align-bottom" title="Align bottom" aria-label="Align bottom">↧</button>
-      <button type="button" data-action="distribute-horizontal" title="Distribute horizontally" aria-label="Distribute horizontally">H⋯</button>
-      <button type="button" data-action="distribute-vertical" title="Distribute vertically" aria-label="Distribute vertically">V⋮</button>
+    <span class="frameseq-selection-tools" aria-label="${w.arrange}">
+      <button type="button" data-action="align-left" title="${w.alignLeft}" aria-label="${w.alignLeft}">↤</button>
+      <button type="button" data-action="align-center" title="${w.alignCenter}" aria-label="${w.alignCenter}">↔</button>
+      <button type="button" data-action="align-right" title="${w.alignRight}" aria-label="${w.alignRight}">↦</button>
+      <button type="button" data-action="align-top" title="${w.alignTop}" aria-label="${w.alignTop}">↥</button>
+      <button type="button" data-action="align-middle" title="${w.alignMiddle}" aria-label="${w.alignMiddle}">↕</button>
+      <button type="button" data-action="align-bottom" title="${w.alignBottom}" aria-label="${w.alignBottom}">↧</button>
+      <button type="button" data-action="distribute-horizontal" title="${w.distributeHorizontal}" aria-label="${w.distributeHorizontal}">H⋯</button>
+      <button type="button" data-action="distribute-vertical" title="${w.distributeVertical}" aria-label="${w.distributeVertical}">V⋮</button>
     </span>
-    <button type="button" data-action="bind-region">Bind region</button>
+    <button type="button" data-action="bind-region">${w.bindRegion}</button>
   `;
   document.body.append(selectionToolbar);
   const selectionCoordinates = document.createElement("div");
@@ -1537,8 +1736,8 @@ function enableSourceReveal(
     const height = override?.height ?? fields.height?.value ?? box.height / scale;
     const positioned = Boolean(fields.x && fields.y);
     selectionCoordinates.textContent = positioned
-      ? `Selected · x ${Math.round(x)} · y ${Math.round(y)} · ${Math.round(width)} × ${Math.round(height)}`
-      : "Selected · flow item · drag to reorder";
+      ? w.selectedAt(Math.round(x), Math.round(y), Math.round(width), Math.round(height))
+      : w.selectedFlow;
     selectionCoordinates.classList.toggle("is-readonly", !positioned);
     selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
     selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
@@ -1602,7 +1801,7 @@ function enableSourceReveal(
       selectionCoordinates.classList.remove("is-visible");
       const primary = elements.at(-1) as HTMLElement;
       const path = selectionToolbar.querySelector<HTMLElement>(".frameseq-selection-path");
-      if (path) path.textContent = `${targets.length} selected · ${selectionLabel(primary)}`;
+      if (path) path.textContent = w.selectedMany(targets.length, selectionLabel(primary));
       updateArrangeButtons(elements);
       selectionToolbar.classList.add("is-visible");
     }
@@ -1738,11 +1937,11 @@ function enableSourceReveal(
   const deleteSelected = (): void => {
     const elements = [...selected];
     if (elements.some((element) => ["row", "column", "stack", "slide"].includes(element.dataset.frameseqNode ?? ""))) {
-      explain("Selected · a region is deleted in the source");
+      explain(w.regionDeleted);
       return;
     }
     if (elements.some((element) => !parseSourceStatement(element))) {
-      explain("Selected · written inside another command; delete it in the source");
+      explain(w.insideAnother);
       return;
     }
     const names = new Set(elements.map((element) => element.dataset.frameseqName).filter(Boolean));
@@ -1757,7 +1956,7 @@ function enableSourceReveal(
       else dependents.push(other);
     }
     if (dependents.length > 0) {
-      explain(`Selected · ${dependents.length === 1 ? "another object is" : `${dependents.length} objects are`} placed by its name`);
+      explain(w.placedByName(dependents.length));
       return;
     }
     const lines = new Map<number, SourceStatement>();
@@ -1909,9 +2108,7 @@ function enableSourceReveal(
     const elements = [...selected];
     const fields = elements.map((element) => parseSourceFields(element) ?? {});
     if (fields.some((candidate) => !candidate[axis])) {
-      selectionCoordinates.textContent = axis === "x"
-        ? "Selected · no literal x coordinate"
-        : "Selected · no literal y coordinate";
+      selectionCoordinates.textContent = w.noLiteral(axis);
       selectionCoordinates.classList.add("is-visible", "is-readonly");
       return;
     }
@@ -2940,7 +3137,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const root = document.createElement("main");
   root.className = "frameseq-slides";
   root.tabIndex = -1;
-  root.setAttribute("aria-label", "FrameSeq slide canvas");
+  root.setAttribute("aria-label", words().canvas);
   applyStyles(root, slidesDocument.node.styles);
 
   const pages = masterMode ? Object.values(mastersOf(slidesDocument)) : slidesDocument.slides;
@@ -2991,9 +3188,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   if (masterMode && slides.length === 0) {
     const empty = document.createElement("p");
     empty.className = "frameseq-master-empty";
-    empty.textContent = searchParams.get("lang") === "zh"
-      ? "这份演示还没有母版。"
-      : "This presentation has no master pages yet.";
+    empty.textContent = words().noMasters;
     target.append(empty);
     window.parent.postMessage({ type: "frameseq.slide", index: 0, count: 0, label: "", notes: "" }, "*");
     document.documentElement.dataset.ready = "true";
@@ -3025,24 +3220,25 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const controls = presenter?.controls ?? remote?.controls ?? document.createElement("nav");
   if (!presenter && !remote) {
     target.append(root);
+    const w = words();
     controls.className = "frameseq-controls";
-    controls.setAttribute("aria-label", "Slide navigation");
+    controls.setAttribute("aria-label", w.slideNavigation);
     controls.innerHTML = `
-      <button type="button" data-action="previous" aria-label="Previous slide">←</button>
+      <button type="button" data-action="previous" aria-label="${w.previousSlide}">←</button>
       <span class="frameseq-counter"></span>
-      <button type="button" data-action="next" aria-label="Next slide">→</button>
+      <button type="button" data-action="next" aria-label="${w.nextSlide}">→</button>
       ${interactivePreview ? `
-        <span class="frameseq-zoom-controls" aria-label="Preview zoom">
-          <button type="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+        <span class="frameseq-zoom-controls" aria-label="${w.previewZoom}">
+          <button type="button" data-action="zoom-out" aria-label="${w.zoomOut}" title="${w.zoomOut}">−</button>
           <span class="frameseq-zoom-value" aria-live="polite">100%</span>
-          <button type="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
-          <button type="button" data-action="zoom-fit" aria-label="Fit slide to window" title="Fit slide to window">Fit</button>
-          <button type="button" data-action="zoom-reset" aria-label="Reset slide to 100%" title="Reset slide to 100%">1:1</button>
+          <button type="button" data-action="zoom-in" aria-label="${w.zoomIn}" title="${w.zoomIn}">+</button>
+          <button type="button" data-action="zoom-fit" aria-label="${w.fitTitle}" title="${w.fitTitle}">${w.fit}</button>
+          <button type="button" data-action="zoom-reset" aria-label="${w.resetZoom}" title="${w.resetZoom}">1:1</button>
         </span>
       ` : ""}
-      ${localRemoteAvailable ? '<button type="button" data-action="remote-pair" aria-label="Pair phone remote" title="Pair phone remote">R</button>' : ""}
-      ${localEditingAvailable ? '<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="Toggle layout editing" title="Drag objects to rewrite their coordinates (Escape to leave)">E</button>' : ""}
-      <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
+      ${localRemoteAvailable ? `<button type="button" data-action="remote-pair" aria-label="${w.pairRemote}" title="${w.pairRemote}">R</button>` : ""}
+      ${localEditingAvailable ? `<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="${w.layoutEditing}" title="${w.layoutEditingTitle}">E</button>` : ""}
+      <button type="button" data-action="presenter" aria-label="${w.openPresenter}" title="${w.openPresenter}">P</button>
     `;
     if (!showMode) target.append(controls);
   }
@@ -3052,9 +3248,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const showEnd = showMode ? document.createElement("div") : undefined;
   if (showEnd) {
     showEnd.className = "frameseq-show-end";
-    showEnd.textContent = searchParams.get("lang") === "zh"
-      ? "放映结束，单击鼠标退出。"
-      : "End of slide show. Click to exit.";
+    showEnd.textContent = words().showEnd;
     showEnd.hidden = true;
     target.append(showEnd);
   }
@@ -3141,9 +3335,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     nextCanvas = undefined;
     const nextIndex = currentSlide + 1;
     if (nextIndex >= slides.length) {
-      presenter.nextLabel.textContent = "End of presentation";
+      presenter.nextLabel.textContent = words().endOfPresentation;
       presenter.nextFrame.classList.add("is-empty");
-      presenter.nextFrame.textContent = "End";
+      presenter.nextFrame.textContent = words().end;
       return;
     }
 
@@ -3314,6 +3508,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       url.searchParams.delete("remote");
     }
     url.hash = String(currentSlide + 1);
+    // The window it opens speaks the language this page speaks, whatever page is around this one.
+    if (speaksChinese()) url.searchParams.set("lang", "zh");
     return url;
   }
 
@@ -3334,28 +3530,29 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     currentUrl.searchParams.set("session", remoteSession);
     history.replaceState(null, "", currentUrl);
 
+    const w = words();
     const dialog = document.createElement("dialog");
     dialog.className = "frameseq-remote-dialog";
     dialog.innerHTML = `
       <div class="frameseq-remote-dialog-header">
         <div>
-          <div class="frameseq-remote-dialog-kicker">Local network</div>
-          <h2>Pair a phone remote</h2>
+          <div class="frameseq-remote-dialog-kicker">${w.localNetwork}</div>
+          <h2>${w.pairTitle}</h2>
         </div>
-        <button type="button" data-action="close" aria-label="Close">×</button>
+        <button type="button" data-action="close" aria-label="${w.close}">×</button>
       </div>
-      <p>Connect the phone and this computer to the same Wi-Fi, then scan the code.</p>
-      <div class="frameseq-remote-qr" aria-live="polite">Preparing local address…</div>
+      <p>${w.pairHint}</p>
+      <div class="frameseq-remote-qr" aria-live="polite">${w.preparing}</div>
       <label class="frameseq-remote-address-picker">
-        <span>Network address</span>
+        <span>${w.networkAddress}</span>
         <select></select>
       </label>
       <code class="frameseq-remote-url"></code>
       <div class="frameseq-remote-dialog-actions">
-        <button type="button" data-action="copy">Copy link</button>
-        <button type="button" data-action="close">Done</button>
+        <button type="button" data-action="copy">${w.copyLink}</button>
+        <button type="button" data-action="close">${w.done}</button>
       </div>
-      <p class="frameseq-remote-dialog-note">Keep the presentation server and this browser page open while presenting.</p>
+      <p class="frameseq-remote-dialog-note">${w.pairNote}</p>
     `;
     target.append(dialog);
 
@@ -3401,9 +3598,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       await renderCode(uniqueOrigins[0]);
       picker.addEventListener("change", () => void renderCode(picker.value));
     } catch (error) {
-      qr.textContent = error instanceof Error
-        ? `Could not create a phone link: ${error.message}`
-        : "Could not create a phone link.";
+      qr.textContent = w.noPhoneLink(error instanceof Error ? error.message : undefined);
       picker.closest("label")?.remove();
       urlLabel.remove();
       copyButton.remove();
@@ -3414,13 +3609,13 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       if (action === "close") dialog.close();
       if (action === "copy" && urlLabel.textContent) {
         if (!navigator.clipboard) {
-          copyButton.textContent = "Copy unavailable";
+          copyButton.textContent = w.copyUnavailable;
           return;
         }
         void navigator.clipboard.writeText(urlLabel.textContent).then(() => {
-          copyButton.textContent = "Copied";
+          copyButton.textContent = w.copied;
         }).catch(() => {
-          copyButton.textContent = "Copy failed";
+          copyButton.textContent = w.copyFailed;
         });
       }
     });
@@ -3457,7 +3652,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   if (fullscreenToggle) {
     document.addEventListener("fullscreenchange", () => {
       const full = Boolean(document.fullscreenElement);
-      fullscreenToggle.textContent = full ? "Exit full screen" : "Full screen";
+      fullscreenToggle.textContent = full ? words().exitFullScreen : words().fullScreen;
       fullscreenToggle.setAttribute("aria-pressed", String(full));
     }, { signal });
   }
@@ -3510,7 +3705,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     const updateTimer = () => {
       const elapsed = timerElapsed + (timerRunning ? performance.now() - timerStarted : 0);
       presenter.timer.textContent = formatDuration(elapsed);
-      presenter.timerToggle.textContent = timerRunning ? "Pause" : "Resume";
+      presenter.timerToggle.textContent = timerRunning ? words().pause : words().resume;
     };
 
     presenter.shell.addEventListener("click", (event) => {
@@ -3570,7 +3765,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
     const setLaserEnabled = (enabled: boolean) => {
       laserEnabled = enabled;
-      laserToggle.textContent = enabled ? "Laser: On" : "Laser: Off";
+      laserToggle.textContent = words().laser(enabled);
       laserToggle.setAttribute("aria-pressed", String(enabled));
       laserHost.classList.toggle("is-laser-active", enabled);
       if (!enabled) queuePointer({ ...pointerState, visible: false });
@@ -3653,7 +3848,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     );
     update(false);
     if (source === "remote") syncChannel?.postMessage(data);
-    if (remote) setRemoteConnection("Connected", "connected");
+    if (remote) setRemoteConnection(words().connected, "connected");
   }
 
   syncChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
@@ -3673,11 +3868,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     // phone that asked while it was away.
     if (showMode && remoteSession) broadcastNavigation();
     if (!remote || !remoteSession) return;
-    setRemoteConnection("Waiting for presentation…", "waiting");
+    setRemoteConnection(words().waiting, "waiting");
     postSyncMessage({ type: "request-state" });
   };
   const receiveDisconnect = (): void => {
-    if (remote) setRemoteConnection("Disconnected", "disconnected");
+    if (remote) setRemoteConnection(words().disconnected, "disconnected");
   };
   import.meta.hot?.on(remoteSyncEvent, receiveRemoteSync);
   import.meta.hot?.on("vite:ws:connect", receiveConnect);
@@ -3691,11 +3886,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   if (remote) {
     if (!localRemoteAvailable) {
-      setRemoteConnection("Local remote unavailable", "disconnected");
+      setRemoteConnection(words().remoteUnavailable, "disconnected");
     } else if (!remoteSession) {
-      setRemoteConnection("Invalid pairing link", "disconnected");
+      setRemoteConnection(words().invalidPairing, "disconnected");
     } else {
-      setRemoteConnection("Waiting for presentation…", "waiting");
+      setRemoteConnection(words().waiting, "waiting");
     }
   }
 

@@ -2518,7 +2518,7 @@ async function start(): Promise<void> {
   /** Presenter view, with the notes, the next slide, and a timer, for a second screen. */
   function openPresenterView(): void {
     void flushSave();
-    window.open(`/?presenter=1#${previewSlide + 1}`, "frameseq-presenter");
+    window.open(`/?presenter=1&lang=${language}#${previewSlide + 1}`, "frameseq-presenter");
   }
 
   // ── Panel, output, and layout ───────────────────────────────────────────────────────────
