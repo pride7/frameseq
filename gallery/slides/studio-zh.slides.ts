@@ -9,7 +9,8 @@ master("content");
 rect().position({ x: 0, y: 0 }).width(1280).height(8)
   .fill("#0d9488").radius(0);
 placeholder("title").position({ x: 72, y: 40 })
-  .width(1000).height(84).color("#0f172a").size(40);
+  .width(1000).height(84)
+  .color("#0f172a").size(40);
 placeholder().position({ x: 72, y: 136 }).width(1136).height(500);
 text("{title} · {page} / {total}").position({ x: 72, y: 668 })
   .width(1136).textAlign("right").caption();
@@ -24,11 +25,14 @@ circle().position({ x: 960, y: 250 }).width(220)
 icon("map-pinned").position({ x: 1010, y: 296 })
   .size(120).color("#5eead4");
 placeholder("title").position({ x: 96, y: 210 })
-  .width(900).height(150).color("#ffffff").size(96).textAlign("left");
+  .width(900).height(150)
+  .color("#ffffff").size(96).textAlign("left");
 placeholder("subtitle").position({ x: 96, y: 372 })
-  .width(760).height(70).color("#99f6e4").size(32).textAlign("left");
+  .width(760).height(70)
+  .color("#99f6e4").size(32).textAlign("left");
 placeholder("author").position({ x: 96, y: 590 })
-  .width(900).height(50).color("#94a3b8").textAlign("left");
+  .width(900).height(50)
+  .color("#94a3b8").textAlign("left");
 
 slide({ name: "封面" }).cover()
   .notes("欢迎大家。先讲二十分钟，之后留时间提问。");

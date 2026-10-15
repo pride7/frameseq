@@ -25,10 +25,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Install CJK fonts
+      # Inter is the font the themes name first; without it the site's pictures of the slides
+      # fall back to the runner's wider DejaVu Sans.
+      - name: Install fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-inter
       - name: Install dependencies
         run: npm ci
       - name: Configure GitHub Pages

@@ -160,6 +160,13 @@ export async function captureStudio(imagesDirectory, language = "en") {
         { timeout: 120_000 },
         words.checked,
       );
+      // The pictures sell the Studio, so a problem in the slides, such as a label that a wider
+      // font than expected pushes out of its shape, stops the build rather than showing in them.
+      await waitFor(
+        () => page.$eval("[data-slot='problem-badge']", (badge) => badge.textContent?.trim() === "0"),
+        `the ${language} review to have no problems; run frameseq check on gallery/slides/${words.deck}`,
+        15_000,
+      );
       return page;
     }
 
