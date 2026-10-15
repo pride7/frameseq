@@ -93,6 +93,10 @@ await cp(join(unpacked, "package"), app, { recursive: true });
 // The repository's own dependencies stand in for the app's, through a link that takes no time.
 await symlink(join(packageRoot, "node_modules"), join(app, "node_modules"), process.platform === "win32" ? "junction" : "dir");
 const installedVersion = JSON.parse(await readFile(join(app, "package.json"), "utf8")).version;
+// Versions published after the installed one, whatever version the repository is at.
+const [major, minor, patch] = installedVersion.split(".").map(Number);
+const ahead = (steps) => `${major}.${minor}.${patch + steps}`;
+const nextMinor = `${major}.${minor + 1}.0`;
 const runtime = "test-runtime";
 await writeFile(join(app, "frameseq-bundle.json"), JSON.stringify({ version: installedVersion, platform: process.platform, arch: process.arch, runtime, window: "../FrameSeq Studio.exe" }));
 const environment = { FRAMESEQ_UPDATES_DIR: resolve(workspace, "updates"), FRAMESEQ_CONFIG_DIR: resolve(workspace, "config") };
@@ -149,7 +153,7 @@ const fakeFetch = async (url) => {
 };
 
 // ── Which versions this install can take ────────────────────────────────────────────────────
-const next = await publish("0.38.1");
+const next = await publish(ahead(1));
 assert.equal(updateProblem(next, app), undefined);
 assert.match(updateProblem({ ...next, appRuntime: "another" }, app), /needs a new app/);
 assert.match(updateProblem({ ...next, appRuntime: undefined }, app), /needs a new app/, "a version published without a runtime needs a new app");
@@ -165,40 +169,40 @@ assert.match(updateProblem(next, older), /cannot update itself/, "an app from be
 // ── Installing one as a layer ───────────────────────────────────────────────────────────────
 const layer = await installLayer({ manifest: next, app, fetch: fakeFetch, keys, environment });
 assert.ok(layer.startsWith(environment.FRAMESEQ_UPDATES_DIR));
-assert.deepEqual(appLayers(app, environment).map((item) => item.version), ["0.38.1"]);
+assert.deepEqual(appLayers(app, environment).map((item) => item.version), [ahead(1)]);
 const layerBundle = JSON.parse(await readFile(join(layer, "frameseq-bundle.json"), "utf8"));
-assert.equal(layerBundle.version, "0.38.1");
+assert.equal(layerBundle.version, ahead(1));
 assert.equal(layerBundle.window, resolve(app, "..", "FrameSeq Studio.exe"), "a layer finds the app's window where the app has it");
 assert.equal(installedApp(layer), app, "a layer knows the install it belongs to");
 assert.ok(lstatSync(join(layer, "node_modules")).isSymbolicLink(), "a linked node_modules stays a link");
 assert.equal(readdirSync(environment.FRAMESEQ_UPDATES_DIR).filter((name) => name.startsWith(".")).length, 0, "nothing is left of the work");
-assert.equal(launch(["--version"]), "0.38.1", "the app's entry runs the newest layer");
+assert.equal(launch(["--version"]), ahead(1), "the app's entry runs the newest layer");
 assert.equal(launch(["--version"], { FRAMESEQ_APP_LAYER: "installed" }), installedVersion, "FRAMESEQ_APP_LAYER=installed runs the app's own");
 assert.equal(await installLayer({ manifest: next, app, fetch: fakeFetch, keys, environment }), layer, "a layer is installed once");
 
 // A download that is not what the registry signed, an unsigned version, and one that does not
 // start are each refused, and leave nothing behind.
-const tampered = await publish("0.38.2");
+const tampered = await publish(ahead(2));
 tampered.dist.integrity = next.dist.integrity;
 tampered.dist.signatures = [{ keyid: "test-key", sig: sign("sha256", Buffer.from(`${tampered.name}@${tampered.version}:${tampered.dist.integrity}`), privateKey).toString("base64") }];
 await assert.rejects(installLayer({ manifest: tampered, app, fetch: fakeFetch, keys, environment }), /not the one the npm registry signed/);
-const unsigned = await publish("0.38.3");
+const unsigned = await publish(ahead(3));
 await assert.rejects(installLayer({ manifest: unsigned, app, fetch: fakeFetch, environment }), /signature/, "only the registry's key is trusted by default");
-const broken = await publish("0.38.4", (folder) => writeFile(join(folder, "scripts", "frameseq.mjs"), 'throw new Error("broken");\n'));
+const broken = await publish(ahead(4), (folder) => writeFile(join(folder, "scripts", "frameseq.mjs"), 'throw new Error("broken");\n'));
 await assert.rejects(installLayer({ manifest: broken, app, fetch: fakeFetch, keys, environment }), /did not start: .*broken/);
-assert.deepEqual(appLayers(app, environment).map((item) => item.version), ["0.38.1"]);
+assert.deepEqual(appLayers(app, environment).map((item) => item.version), [ahead(1)]);
 assert.equal(readdirSync(environment.FRAMESEQ_UPDATES_DIR).length, 1);
 
 // Layers another install made, on another runtime, or older than the install are not run.
 const foreign = async (name, layerFields) => {
   await mkdir(join(environment.FRAMESEQ_UPDATES_DIR, name, "scripts"), { recursive: true });
   await writeFile(join(environment.FRAMESEQ_UPDATES_DIR, name, "scripts", "frameseq.mjs"), "");
-  await writeFile(join(environment.FRAMESEQ_UPDATES_DIR, name, "frameseq-layer.json"), JSON.stringify({ format: 1, version: "0.39.0", runtime, install: app, ...layerFields }));
+  await writeFile(join(environment.FRAMESEQ_UPDATES_DIR, name, "frameseq-layer.json"), JSON.stringify({ format: 1, version: nextMinor, runtime, install: app, ...layerFields }));
 };
-await foreign("0.39.0_other", { install: resolve(workspace, "elsewhere", "app") });
-await foreign("0.39.0_runtime", { runtime: "another" });
+await foreign(`${nextMinor}_other`, { install: resolve(workspace, "elsewhere", "app") });
+await foreign(`${nextMinor}_runtime`, { runtime: "another" });
 await foreign("0.0.1_old", { version: "0.0.1" });
-assert.deepEqual(appLayers(app, environment).map((item) => item.version), ["0.38.1"]);
+assert.deepEqual(appLayers(app, environment).map((item) => item.version), [ahead(1)]);
 assert.equal(chosenApp(app, environment), layer);
 await pruneLayers(app, environment);
 assert.deepEqual(readdirSync(environment.FRAMESEQ_UPDATES_DIR).sort(), [basenameOf(layer)], "unusable layers are pruned");
@@ -218,7 +222,7 @@ assert.equal(await readFile(resolve(workspace, "tree-linked", "a", "b", "file.tx
 assert.equal((await stat(resolve(workspace, "tree-linked", "top.txt"))).ino, (await stat(join(tree, "top.txt"))).ino, "a file is the same file, linked");
 
 // ── The Studio's server installs an update by itself, once a day ────────────────────────────
-const third = await publish("0.38.5");
+const third = await publish(ahead(5));
 downloads.set("https://registry.test/@pride7/frameseq/latest", third);
 const updates = createUpdates({
   packageRoot: app,
@@ -229,18 +233,18 @@ const updates = createUpdates({
 });
 let status = await updates.status();
 assert.equal(status.ota, true);
-assert.equal(status.latest, "0.38.5");
+assert.equal(status.latest, ahead(5));
 assert.equal(status.installing, true, "the server installs it by itself");
 for (let tries = 0; status.installing && tries < 600; tries += 1) {
   await new Promise((resolveWait) => setTimeout(resolveWait, 100));
   status = await updates.status();
 }
-assert.equal(status.ready, "0.38.5", "it runs from the Studio's next start");
-assert.equal(launch(["--version"]), "0.38.5");
+assert.equal(status.ready, ahead(5), "it runs from the Studio's next start");
+assert.equal(launch(["--version"]), ahead(5));
 assert.ok(!fetched.some((url) => url.includes("api.github.com")), "a version the app takes by itself needs no download from GitHub");
 
 // A Studio running the layer still says where the app is.
-const fromLayer = createUpdates({ packageRoot: appLayers(app, environment)[0].path, current: "0.38.5", fetch: fakeFetch, daily: false, environment });
+const fromLayer = createUpdates({ packageRoot: appLayers(app, environment)[0].path, current: ahead(5), fetch: fakeFetch, daily: false, environment });
 assert.equal(fromLayer.source.app, app);
 assert.equal((await fromLayer.status()).newer, false);
 
