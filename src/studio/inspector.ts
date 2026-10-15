@@ -24,6 +24,7 @@ import {
   replaceLiteral,
   shiftSlide,
   stringLiteral,
+  taggedText,
   takesRole,
   textRoles,
   unframe,
@@ -740,9 +741,10 @@ export class SlideInspector {
     if (height && input instanceof HTMLTextAreaElement) input.style.height = height;
     input.setAttribute("aria-label", label);
     // Text that runs over lines, or a template, takes Enter as a line break; Ctrl+Enter writes it.
-    // A formula is one expression, written as a template too, and Enter still writes it.
-    const formula = object.type === "math" || object.type === "equation";
-    const breaks = (): boolean => (template && !formula) || input.value.includes("\n");
+    // A formula is one expression, written as a template too, and Enter still writes it. So do
+    // words on one line, which are written as text`...` when they hold a formula.
+    const oneLine = ["math", "equation", "text", "lead", "caption", "quote"].includes(object.type);
+    const breaks = (): boolean => (template && !oneLine) || input.value.includes("\n");
     this.editable(input, shown, (value) => (
       this.setText(object, text, template ? reframe(unframe(String(text.value)), value) : value)
     ), {
@@ -1299,6 +1301,17 @@ export class SlideInspector {
   }
 
   private setText(object: InspectObject, text: InspectText, value: string): boolean {
+    const tagged = taggedText(object, text, value);
+    if (tagged) {
+      // text("...") becomes text`...`, so the template now stands where the parentheses did.
+      return this.apply(tagged, () => {
+        text.source = { ...text.source, start: tagged.edits[0].from, end: tagged.edits[0].to };
+        text.expected = tagged.edits[0].insert;
+        text.raw = true;
+        text.value = value;
+        object.label = value;
+      });
+    }
     const literal = stringLiteral(value, text.expected[0], text.raw);
     if (literal === undefined) return false;
     if (literal === text.expected) return true;

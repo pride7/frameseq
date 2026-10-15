@@ -1,7 +1,7 @@
 import { t } from "./i18n";
 import { element } from "./ui";
 
-export type ProblemSource = "build" | "runtime" | "typescript" | "names" | "layout";
+export type ProblemSource = "build" | "runtime" | "typescript" | "names" | "formulas" | "layout";
 
 export interface Problem {
   source: ProblemSource;
@@ -21,15 +21,18 @@ export interface Problem {
   line?: number;
   column?: number;
   path?: string;
+  /** An edit that puts the problem right, offered beside it. */
+  fix?: { label: string; run: () => void };
 }
 
-const sourceOrder: ProblemSource[] = ["build", "runtime", "typescript", "names", "layout"];
+const sourceOrder: ProblemSource[] = ["build", "runtime", "typescript", "names", "formulas", "layout"];
 const severityOrder = ["error", "warning", "info"] as const;
 const sourceLabels: Record<ProblemSource, string> = {
   build: t.problems.build,
   runtime: t.problems.runtime,
   typescript: t.problems.typescript,
   names: t.problems.names,
+  formulas: t.problems.formulas,
   layout: t.problems.layout,
 };
 
@@ -98,7 +101,15 @@ export class ProblemsPanel {
       row.append(icon, body, meta);
       row.title = [problem.message, problem.detail].filter(Boolean).join("\n\n");
       row.addEventListener("click", () => this.onSelect(problem));
-      return row;
+      if (!problem.fix) return row;
+      // A button cannot hold another, so a problem with a fix is a row with the fix beside it.
+      const { label, run } = problem.fix;
+      const fix = element("button", "studio-problem-fix", label);
+      fix.type = "button";
+      fix.addEventListener("click", run);
+      const entry = element("div", "studio-problem-entry");
+      entry.append(row, fix);
+      return entry;
     }));
   }
 }

@@ -610,6 +610,7 @@ const en = {
     runtime: "Preview",
     typescript: "TypeScript",
     names: "Names",
+    formulas: "Formulas",
     layout: "Layout",
     none: "No problems",
     noneDetail: "TypeScript and the layout check are both clean.",
@@ -617,6 +618,14 @@ const en = {
     warning: "warning",
     info: "information",
     line: (line: number) => `Ln ${line}`,
+  },
+
+  formulas: {
+    lost: (escapes: string[]) => `${escapes.join(", ")} lost ${escapes.length === 1 ? "its" : "their"} backslash: in a quoted string, a backslash starts an escape.`,
+    template: (command: string) => `Write it as ${command}\`…\`, which keeps backslashes as written.`,
+    double: "Double each backslash, as in \\\\frac.",
+    toTemplate: (command: string) => `Write as ${command}\`…\``,
+    toDouble: "Double the backslashes",
   },
 
   remote: {
@@ -1400,6 +1409,7 @@ const zh: Catalog = {
     runtime: "预览",
     typescript: "TypeScript",
     names: "名字",
+    formulas: "公式",
     layout: "布局",
     none: "没有问题",
     noneDetail: "TypeScript 和布局检查都没有发现问题。",
@@ -1407,6 +1417,14 @@ const zh: Catalog = {
     warning: "警告",
     info: "提示",
     line: (line) => `第 ${line} 行`,
+  },
+
+  formulas: {
+    lost: (escapes) => `公式里的 ${escapes.join("、")} 丢了反斜杠：在引号字符串里，反斜杠会被当成转义符。`,
+    template: (command) => `改用 ${command}\`…\` 写法，反斜杠会原样保留。`,
+    double: "把每个反斜杠写成两个，比如 \\\\frac。",
+    toTemplate: (command) => `改成 ${command}\`…\``,
+    toDouble: "把反斜杠写成两个",
   },
 
   remote: {

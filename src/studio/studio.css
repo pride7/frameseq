@@ -2133,6 +2133,40 @@ textarea.studio-text-input[style*="height"] {
   outline: none;
 }
 
+.studio-problem-entry {
+  display: flex;
+  align-items: start;
+}
+
+.studio-problem-entry:hover {
+  background: var(--studio-surface-hover);
+}
+
+.studio-problem-entry > .studio-problem {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.studio-problem-fix {
+  flex: none;
+  margin: 3px 12px 3px 0;
+  padding: 1px 8px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 4px;
+  color: var(--studio-text);
+  background: var(--studio-surface-raised);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.studio-problem-fix:hover,
+.studio-problem-fix:focus-visible {
+  border-color: var(--studio-accent);
+  color: var(--studio-accent);
+  outline: none;
+}
+
 .studio-problem-icon {
   padding-top: 1px;
   font-size: 11px;

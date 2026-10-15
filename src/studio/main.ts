@@ -56,7 +56,7 @@ import {
   type SelectionAction,
   type SourceTarget,
 } from "./frames";
-import { nameDefinition, nameDiagnostics, prepareNameRename } from "../source-names";
+import { formulaEscapes, nameDefinition, nameDiagnostics, prepareNameRename, type FormulaEscape } from "../source-names";
 import { copiedCode, namesAt, pastedLines } from "./clipboard";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
@@ -882,7 +882,52 @@ async function start(): Promise<void> {
    * preview reports them against the saved text, so typing since then only moves them.
    */
   function documentDiagnostics(): Diagnostic[] {
-    return [...runtimeDiagnostics(), ...namesDiagnostics()];
+    return [...runtimeDiagnostics(), ...namesDiagnostics(), ...formulaDiagnostics()];
+  }
+
+  /**
+   * Formulas in quoted strings whose backslashes became escapes, which TypeScript accepts and the
+   * slide then shows broken. Each offers to write the string so it keeps what was typed.
+   */
+  function formulaDiagnostics(): Diagnostic[] {
+    const doc = view.state.doc;
+    const found = formulaEscapes(doc.toString());
+    const fixLabel = (item: FormulaEscape): string => (
+      item.fix.kind === "template" ? t.formulas.toTemplate(item.command) : t.formulas.toDouble
+    );
+    const hint = (item: FormulaEscape): string => (
+      item.fix.kind === "template" ? t.formulas.template(item.command) : t.formulas.double
+    );
+    problems.set("formulas", found.map((item): Problem => ({
+      source: "formulas",
+      severity: "warning",
+      message: t.formulas.lost(item.escapes),
+      detail: hint(item),
+      from: item.start,
+      to: item.end,
+      line: doc.lineAt(item.start).number,
+      slideIndex: slideIndexAt(item.start),
+      fix: { label: fixLabel(item), run: () => fixFormula(item.start) },
+    })));
+    return found.map((item): Diagnostic => ({
+      from: item.start,
+      to: item.end,
+      severity: "warning",
+      message: `${t.formulas.lost(item.escapes)} ${hint(item)}`,
+      source: "FrameSeq",
+      actions: [{ name: fixLabel(item), apply: (_view, from) => fixFormula(from) }],
+    }));
+  }
+
+  /** Rewrite the string that starts here, as the text reads now, so a stale fix cannot land. */
+  function fixFormula(start: number): void {
+    const item = formulaEscapes(view.state.doc.toString()).find((candidate) => candidate.start === start);
+    if (!item) return;
+    view.dispatch({
+      changes: { from: item.fix.start, to: item.fix.end, insert: item.fix.text },
+      userEvent: "input.fix",
+    });
+    view.focus();
   }
 
   /**
@@ -2819,7 +2864,7 @@ async function start(): Promise<void> {
       context.selection = { from, to, text: view.state.sliceDoc(selection.from, selection.to).slice(0, 4000) };
       parts.push(t.assistant.summary.selection(to - from + 1));
     }
-    const found = (["build", "runtime", "typescript", "names", "layout"] as const)
+    const found = (["build", "runtime", "typescript", "names", "formulas", "layout"] as const)
       .flatMap((source) => problems.get(source))
       .filter((problem) => problem.severity !== "info");
     if (found.length > 0) {

@@ -323,6 +323,30 @@ try {
   await page.keyboard.press("Enter");
   await waitFor(async () => (await read()).includes('.href, "Picture");\nicon("rocket");\n'), "the chosen icon to be written after the picture");
 
+  // Words typed with a formula in them are written as text`...`, which keeps the backslashes as
+  // typed, where "..." would need each one doubled.
+  await insert("paragraph");
+  await waitFor(() => page.evaluate(() => (
+    document.activeElement?.closest(".studio-object-card") && document.activeElement.value === "Type your text here"
+  )), "the new text's words to take the focus");
+  await page.keyboard.type(String.raw`Area $\frac{1}{2}ab$`);
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('icon("rocket");\ntext`Area $\\frac{1}{2}ab$`;\n'), "the words to be written as a template");
+
+  // A formula typed into a quoted string by hand loses its backslashes; Problems says so, and
+  // its fix writes the string as a template.
+  await page.evaluate((line) => {
+    const { view } = window.frameseqStudio;
+    const at = view.state.doc.toString().indexOf("\n", view.state.doc.toString().indexOf("text`Area"));
+    view.dispatch({ changes: { from: at, insert: line } });
+  }, String.raw`
+text("Angle $\theta$");`);
+  await waitFor(() => page.evaluate(() => [...document.querySelectorAll(".studio-problem")]
+    .some((row) => row.textContent.includes("\\theta lost its backslash"))), "the lost backslash to be reported");
+  await page.evaluate(() => document.querySelector(".studio-problem-fix").click());
+  await waitFor(async () => (await read()).includes('text`Area $\\frac{1}{2}ab$`;\ntext`Angle $\\theta$`;\n'), "the fix to write a template");
+  await waitFor(() => page.evaluate(() => !document.querySelector(".studio-problem-fix")), "the formula problem to clear");
+
   // In the editor the same content is a snippet at the start of a line.
   await page.evaluate(() => {
     const { view } = window.frameseqStudio;

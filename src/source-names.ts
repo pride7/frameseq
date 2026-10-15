@@ -7,6 +7,9 @@
  * instead. It has no dependencies, which lets FrameSeq Studio and the VS Code extension share
  * it, and it reads only what the document states literally: a name built at runtime is
  * something it knows it cannot see, and then it stays quiet rather than guess.
+ *
+ * It reads one more thing TypeScript accepts without a word: a formula in a quoted string whose
+ * backslashes became escapes, such as "$\frac{1}{2}$".
  */
 
 export type NameKind = "object" | "region";
@@ -810,4 +813,174 @@ export function nameHover(source: string, offset: number): { span: TextSpan; tex
   if (definition.kind === "region" && visits > 1) parts.push(`Visited ${visits} times.`);
   if (uses > 0) parts.push(`Referred to ${uses === 1 ? "once" : `${uses} times`} on this slide.`);
   return { span, text: parts.join(" ") };
+}
+
+// ── Formulas in quoted strings ────────────────────────────────────────────────────────────
+
+/** Inline math, `$...$`, as the renderer finds it in the words a slide shows. */
+const inlineFormula = /(?<!\\)\$((?:\\.|[^$])+?)(?<!\\)\$/g;
+
+/** Where inline math stands in a text: the ranges between its dollar signs. */
+export function inlineFormulas(text: string): TextSpan[] {
+  return [...text.matchAll(inlineFormula)].map((match) => ({
+    start: (match.index as number) + 1,
+    end: (match.index as number) + match[0].length - 1,
+  }));
+}
+
+/** Commands whose strings are words a slide shows, where `$...$` renders as math. */
+const wordCommands = new Set([
+  "presentation", "slide", "title", "subtitle", "eyebrow", "author", "text", "lead", "caption",
+  "quote", "bullets", "steps", "card", "metric", "footnote", "rect", "circle", "shape", "table",
+]);
+/** Commands whose string is one formula from end to end. */
+const formulaCommands = new Set(["math"]);
+/** Commands that also take a tagged template, which receives its text as written. */
+const templateCommands = new Set(["text", "math"]);
+
+export interface FormulaEscape {
+  /** The string, quotes included. */
+  start: number;
+  end: number;
+  /** The command the string is given to, such as `text`. */
+  command: string;
+  /** What lost its backslash, as written: `\frac`, `\alpha`, `\,`. */
+  escapes: string[];
+  /**
+   * One edit that keeps what was written: the call as a tagged template, text`...`, when the
+   * command takes one and the text can be one, and otherwise the backslashes doubled.
+   */
+  fix: { kind: "template" | "double"; start: number; end: number; text: string };
+  message: string;
+}
+
+interface LostRun {
+  /** Where the backslashes start in the string's content, and how many there are. */
+  at: number;
+  length: number;
+  /** What was written, such as `\frac`. */
+  escape: string;
+}
+
+/**
+ * Formulas in quoted strings whose backslashes became escapes. In "..." a backslash starts an
+ * escape, so "$\frac{1}{2}$" holds a form feed where \f was written and "$\alpha$" holds plain
+ * "alpha"; TypeScript accepts both, and the slide shows a broken formula. A tagged template,
+ * text`...` or math`...`, keeps backslashes as written. A doubled backslash, as in "\\frac", is
+ * taken to be escaped on purpose, as is an escape that writes a character by its code.
+ */
+export function formulaEscapes(source: string): FormulaEscape[] {
+  const tokens = tokenize(source);
+  const pairs = matchBrackets(tokens);
+  const found: FormulaEscape[] = [];
+  for (const call of readCalls(tokens, pairs)) {
+    const command = tokens[call.name].value;
+    const whole = formulaCommands.has(command);
+    if (!whole && !wordCommands.has(command)) continue;
+    const last = call.close ?? tokens.length;
+    for (let index = call.open + 1; index < last; index += 1) {
+      const token = tokens[index];
+      // A call among the arguments is read as a call of its own.
+      if (token.type === "identifier" && tokens[index + 1]?.value === "(") {
+        index = pairs.get(index + 1) ?? last;
+        continue;
+      }
+      // A string still being typed has no closing quote yet.
+      if (token.type !== "string" || token.value.length < 2 || !token.value.endsWith(token.value[0])) continue;
+      const quote = token.value[0];
+      const content = token.value.slice(1, -1);
+      const lost = lostBackslashes(content, quote, whole);
+      if (lost.length === 0) continue;
+      const sole = !call.method && call.close !== undefined && call.args.length === 1
+        && call.args[0][0] === index && call.args[0][1] === index;
+      const body = templateCommands.has(command) && sole ? writtenText(content, lost) : undefined;
+      const fix = body !== undefined && canBeTemplate(body)
+        ? { kind: "template" as const, start: tokens[call.open].start, end: tokens[call.close as number].end, text: `\`${body}\`` }
+        : { kind: "double" as const, start: token.start, end: token.end, text: `${quote}${doubled(content, lost)}${quote}` };
+      const escapes = [...new Set(lost.map((run) => run.escape))];
+      found.push({
+        start: token.start,
+        end: token.end,
+        command,
+        escapes,
+        fix,
+        message: `In a quoted string a backslash starts an escape, so ${escapes.join(", ")} ${escapes.length === 1 ? "does" : "do"} not reach the formula as written. `
+          + (fix.kind === "template" ? `Write ${command}\`...\`, which keeps backslashes as written.` : "Double each backslash, as in \\\\frac."),
+      });
+    }
+  }
+  return found.sort((a, b) => a.start - b.start);
+}
+
+/**
+ * The runs of backslashes in a string's formulas that an escape takes apart: an odd run before
+ * anything but a character code, the string's quote, or a line break.
+ */
+function lostBackslashes(content: string, quote: string, whole: boolean): LostRun[] {
+  const spans = whole ? [{ start: 0, end: content.length }] : inlineFormulas(content);
+  const lost: LostRun[] = [];
+  for (const span of spans) {
+    const runs = /\\+/g;
+    runs.lastIndex = span.start;
+    for (let run = runs.exec(content); run && run.index < span.end; run = runs.exec(content)) {
+      const after = content.slice(run.index + run[0].length, run.index + run[0].length + 32);
+      if (run[0].length % 2 === 0 || !after || after[0] === quote) continue;
+      if (/^(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|[\r\n])/.test(after)) continue;
+      lost.push({ at: run.index, length: run[0].length, escape: `\\${/^[A-Za-z]+/.exec(after)?.[0] ?? after[0]}` });
+    }
+  }
+  return lost;
+}
+
+const simpleEscapes: Record<string, string> = {
+  n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", v: "\v", 0: "\0", "\n": "",
+};
+
+/** The text the writer meant: the string's escapes read as JavaScript reads them, the lost runs as written. */
+function writtenText(content: string, lost: LostRun[]): string {
+  const kept = new Map(lost.map((run) => [run.at, run.length]));
+  let text = "";
+  let index = 0;
+  while (index < content.length) {
+    const run = kept.get(index);
+    if (run !== undefined) {
+      text += content.slice(index, index + run);
+      index += run;
+      continue;
+    }
+    if (content[index] !== "\\") {
+      text += content[index];
+      index += 1;
+      continue;
+    }
+    const code = /^(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,6})\})/.exec(content.slice(index + 1, index + 12));
+    const point = code ? parseInt(code[1] ?? code[2] ?? code[3], 16) : Number.NaN;
+    if (code && point <= 0x10ffff) {
+      text += String.fromCodePoint(point);
+      index += 1 + code[0].length;
+      continue;
+    }
+    // A line continued with a backslash drops the whole break, CRLF included.
+    const next = content[index + 1] ?? "";
+    const skip = next === "\r" && content[index + 2] === "\n" ? 3 : 2;
+    text += next === "\r" ? "" : (simpleEscapes[next] ?? next);
+    index += skip;
+  }
+  return text;
+}
+
+/** Whether a text can be a tagged template's as it stands, the way the Studio writes one. */
+function canBeTemplate(text: string): boolean {
+  return !text.includes("`") && !text.includes("${") && !text.includes("\r") && !/(^|[^\\])(\\\\)*\\$/.test(text);
+}
+
+/** The string's content with each lost run of backslashes doubled. */
+function doubled(content: string, lost: LostRun[]): string {
+  let text = "";
+  let index = 0;
+  for (const run of lost) {
+    text += content.slice(index, run.at) + "\\".repeat(run.length);
+    index = run.at;
+  }
+  return text + content.slice(index);
 }

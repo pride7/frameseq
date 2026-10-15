@@ -14,8 +14,9 @@ import { createStudioLanguage } from "./studio-language.mjs";
 /**
  * `frameseq mcp`: a Model Context Protocol server on standard input and output, so a coding
  * agent such as Claude Code or Codex sees a presentation as it renders, not only its source.
- * It outlines the slides, checks them as the Studio does (TypeScript, names, the document's own
- * errors, and the layout rules), shows a slide as a picture, and hands over FrameSeq's guide.
+ * It outlines the slides, checks them as the Studio does (TypeScript, names, formulas, the
+ * document's own errors, and the layout rules), shows a slide as a picture, and hands over
+ * FrameSeq's guide.
  *
  * The slides render in a development server of its own, started on first use, or in a running
  * Studio's when `preview` names one, as the Studio's assistant does.
@@ -37,7 +38,7 @@ const tools = [
   {
     name: "check",
     annotations: readOnly,
-    description: "Check the presentation as FrameSeq Studio does: TypeScript errors, names that refer to nothing, an error the document throws while it runs, and the layout rules (content beyond the canvas, clipped text, type too small, empty slides). Each finding gives its source line. Run it after every edit and fix what it reports.",
+    description: "Check the presentation as FrameSeq Studio does: TypeScript errors, names that refer to nothing, formulas in quoted strings whose backslashes became escapes, an error the document throws while it runs, and the layout rules (content beyond the canvas, clipped text, type too small, empty slides). Each finding gives its source line. Run it after every edit and fix what it reports.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -131,12 +132,15 @@ export async function startMcpServer({ entry, packageRoot, configFile, preview }
       return [{ type: "text", text: sections.join("\n\n") }];
     }
 
-    const names = await page.evaluate(async (text) => {
-      const { nameDiagnostics } = await import("/src/source-names.ts");
-      return nameDiagnostics(text);
-    }, source).catch(() => []);
+    const { names, formulas } = await page.evaluate(async (text) => {
+      const { formulaEscapes, nameDiagnostics } = await import("/src/source-names.ts");
+      return { names: nameDiagnostics(text), formulas: formulaEscapes(text) };
+    }, source).catch(() => ({ names: [], formulas: [] }));
     if (names.length > 0) {
       sections.push([`Names: ${names.length} problem${names.length === 1 ? "" : "s"}`, ...names.map((item) => `  line ${lineOf(item.start)} (${item.severity}): ${item.message}`)].join("\n"));
+    }
+    if (formulas.length > 0) {
+      sections.push([`Formulas: ${formulas.length} problem${formulas.length === 1 ? "" : "s"}`, ...formulas.map((item) => `  line ${lineOf(item.start)} (warning): ${item.message}`)].join("\n"));
     }
 
     const results = await page.evaluate(collectLayoutIssues);

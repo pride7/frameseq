@@ -1,4 +1,5 @@
 import { toneNames } from "../shapes";
+import { inlineFormulas } from "../source-names";
 import type { InspectMethod, InspectObject, InspectProperty, InspectSlide, InspectText } from "./api";
 
 /**
@@ -215,6 +216,24 @@ export function stringLiteral(value: string, quote: string, raw = false): string
       .replace(/\u2029/g, "\\u2029")}'`;
   }
   return JSON.stringify(value);
+}
+
+/**
+ * Words for text("...") that hold a formula with a backslash, written as text`...` instead: the
+ * template keeps backslashes as typed, where the string would double each one. Undefined when
+ * the words need no template or cannot be one, or the call is not text() itself, as
+ * at("x").text() is not.
+ */
+export function taggedText(object: InspectObject, text: InspectText, value: string): SourcePlan | undefined {
+  if (object.type !== "text" || !object.append || text.raw || text.argument !== 0) return undefined;
+  if (!inlineFormulas(value).some((span) => value.slice(span.start, span.end).includes("\\"))) return undefined;
+  const literal = stringLiteral(value, "`", true);
+  if (!literal) return undefined;
+  const { start, end } = text.source;
+  return {
+    edits: [{ from: start - 1, to: end + 1, insert: literal }],
+    checks: [{ from: start - "text(".length, to: end + 1, text: `text(${text.expected})` }],
+  };
 }
 
 /** How a template written over lines sits in the code around what it says. */

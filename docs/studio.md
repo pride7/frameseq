@@ -104,7 +104,7 @@ Below the slides, **Current slide** lists the objects on the slide the preview s
 
 Select an object, by clicking its row, clicking it in the preview, or putting the editor's cursor in its command, and its settings open below its row, as a drawing program's format pane does; click the row again to fold them away, and once more to open them:
 
-- **Content**: the words of a text object, the items of a list, the Typst, LaTeX, or TeX source of a formula, an image's file, a shape's kind and label. Source written over lines in a template is shown without the indent it has in the code, which it keeps when written back. A long formula or text wraps in its box, and the box can be dragged taller by its corner. Edit it and press `Enter`, or leave the box; text that runs over lines takes `Enter` as a line break and `Ctrl+Enter` to finish.
+- **Content**: the words of a text object, the items of a list, the Typst, LaTeX, or TeX source of a formula, an image's file, a shape's kind and label. Source written over lines in a template is shown without the indent it has in the code, which it keeps when written back. A long formula or text wraps in its box, and the box can be dragged taller by its corner. Edit it and press `Enter`, or leave the box; text that runs over lines takes `Enter` as a line break and `Ctrl+Enter` to finish. Words with a backslash in a formula, such as `$\frac{1}{2}$`, are written as `` text`...` ``, which keeps the backslashes as typed.
 - **Text**: the style (body text, heading, lead, caption, quote, and the others), font size, bold, colour, and alignment.
 - **Appearance**: background, fill, outline, corners, and opacity; a shape's colour scheme is one click on a colour.
 - **Size** and **Position**: width and height, and on a canvas X and Y.
@@ -224,15 +224,16 @@ Clicking a slide made in a loop puts the cursor on the `slide()` call inside the
 
 ## Problems
 
-The Problems panel collects five kinds of finding, refreshed as you work:
+The Problems panel collects six kinds of finding, refreshed as you work:
 
 - **TypeScript**: the same errors the editor underlines.
 - **Names**: names that refer to nothing on their slide, names given twice, and layout regions the slide does not have; see [Names](#names).
+- **Formulas**: a formula in a quoted string whose backslashes became escapes, which TypeScript accepts: in `text("$\frac{1}{2}$")` the `\f` is a form feed, and `\alpha` reads as `alpha`. The button beside it writes the string as `` text`...` ``, which keeps backslashes as written, or, where a template cannot go, as in a list's items, doubles them.
 - **Layout**: the rules of [`frameseq check`](layout-checks.md), measured against the live deck after every save rather than on demand: canvas overflow, clipped text, small type, empty slides and regions, similar region names, and modifiers that have no effect.
 - **Build**: errors the server reported while compiling the deck, such as a Typst or LaTeX fragment that does not compile.
 - **Preview**: an error thrown while the deck ran, with the line of the statement it stopped in, which the editor underlines. The preview keeps showing the last version that ran until the error is fixed.
 
-Click a finding to go to it: TypeScript and name errors select the text, preview errors put the cursor on the statement that failed, and layout findings show their slide, outline the object, and put the cursor on the line that wrote it.
+Click a finding to go to it: TypeScript, name, and formula findings select the text, preview errors put the cursor on the statement that failed, and layout findings show their slide, outline the object, and put the cursor on the line that wrote it.
 
 ## Changes made elsewhere
 

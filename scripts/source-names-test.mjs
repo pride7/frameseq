@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 // The VS Code extension compiles the shared module as it ships, so this tests what both editors run.
 const {
   analyzeNames,
+  formulaEscapes,
   nameCompletions,
   nameDefinition,
   nameDiagnostics,
@@ -140,4 +141,35 @@ assert.equal(prepareNameRename(source, at('at("cell1/now', 'at("cell1/n'.length)
 assert.match(nameHover(source, at('as("encoder', 'as("'.length)).text, /Object "encoder": rect\(\) named on line 5\. Referred to 2 times/);
 assert.match(nameHover(source, at('at("legend")', 'at("'.length)).text, /Region "legend": region made by at\(\) on line 9/);
 
-console.log("Source names test passed: definitions, references, layout regions, diagnostics, completion, definition, references, rename, and hover.");
+// A formula in a quoted string loses the backslashes its escapes take; a template keeps them.
+// A doubled backslash, a character code, a template, code(), and prices are left alone.
+const formulaLines = [
+  String.raw`text("Area $\frac{1}{2}ab$ and $\alpha$").lead();`,
+  String.raw`text("$\\frac{1}{2}$ is escaped");`,
+  String.raw`text${"`"}$\frac{1}{2}$ is a template${"`"};`,
+  String.raw`bullets("$\theta$", "plain");`,
+  String.raw`code("echo $HOME\n$PATH");`,
+  String.raw`math("\sqrt{2}");`,
+  String.raw`text("Costs $5 and $10, or é $x²$");`,
+  String.raw`at("side").text("$\delta \, x$");`,
+];
+const formulaSource = formulaLines.join("\n");
+const formulas = formulaEscapes(formulaSource);
+const fixedLine = (item, line) => (
+  formulaSource.slice(0, item.fix.start) + item.fix.text + formulaSource.slice(item.fix.end)
+).split("\n")[line];
+assert.deepEqual(formulas.map((item) => [item.command, item.escapes, item.fix.kind]), [
+  ["text", ["\\frac", "\\alpha"], "template"],
+  ["bullets", ["\\theta"], "double"],
+  ["math", ["\\sqrt"], "template"],
+  ["text", ["\\delta", "\\,"], "double"],
+]);
+assert.equal(fixedLine(formulas[0], 0), String.raw`text${"`"}Area $\frac{1}{2}ab$ and $\alpha$${"`"}.lead();`);
+assert.equal(fixedLine(formulas[1], 3), String.raw`bullets("$\\theta$", "plain");`);
+assert.equal(fixedLine(formulas[2], 5), String.raw`math${"`"}\sqrt{2}${"`"};`);
+assert.equal(fixedLine(formulas[3], 7), String.raw`at("side").text("$\\delta \\, x$");`);
+// The escapes that were meant are read as JavaScript reads them when the string becomes a template.
+const [meant] = formulaEscapes(String.raw`text("Line one\nsays \"$\beta$\"");`);
+assert.equal(meant.fix.text, "`Line one\nsays \"$\\beta$\"`");
+
+console.log("Source names test passed: definitions, references, layout regions, diagnostics, completion, definition, references, rename, hover, and formulas that lost a backslash.");
