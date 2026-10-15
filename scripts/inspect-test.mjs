@@ -105,11 +105,13 @@ const panelSource = [
   'at("side").text("Region words").color("red");',
   'line().from("start").to("end").below("start");',
   'image(new URL("./images/cat.png", import.meta.url).href, "A cat");',
+  "text`Inline $E = mc^2$.`.lead().color(\"red\");",
   "",
 ].join("\n");
 const [panel] = inspectSource("panel.slides.ts", panelSource).slides;
 const at = (range) => panelSource.slice(range.start, range.end);
-const [hello, formula, list, region, link, picture] = panel.objects;
+const [hello, formula, list, region, link, picture, inline] = panel.objects;
+assert.equal(panel.objects.length, 7);
 assert.deepEqual(hello.texts.map((text) => [text.value, text.expected, text.argument]), [["Hello", '"Hello"', 0]]);
 assert.deepEqual(hello.methods.map((method) => method.name), ["lead", "fontSize"]);
 assert.equal(panelSource.slice(hello.methods[0].removeFrom, hello.methods[0].end), ".lead()");
@@ -135,6 +137,12 @@ assert.equal(hello.refers, undefined);
 // A picture beside the slides is written with new URL(); its path is the literal inside.
 assert.equal(picture.label, "./images/cat.png");
 assert.deepEqual(picture.texts.map((text) => [text.argument, text.value]), [[0, "./images/cat.png"], [1, "A cat"]]);
+// Text with math in it is a template, and its role is a method on it, not an object of its own.
+assert.equal(inline.type, "text");
+assert.equal(inline.label, "Inline $E = mc^2$.");
+assert.deepEqual(inline.texts.map((text) => [text.value, text.raw]), [["Inline $E = mc^2$.", true]]);
+assert.deepEqual(inline.methods.map((method) => method.name), ["lead", "color"]);
+assert.deepEqual(inline.properties.map(({ name, value }) => [name, value]), [["color", "red"]]);
 
 console.log("Inspect test passed: identity, hierarchy, editable properties, source ranges, and the panel's edit points are stable JSON.");
 

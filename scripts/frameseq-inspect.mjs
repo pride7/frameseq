@@ -190,6 +190,8 @@ function callOriginName(expression) {
     current = current.expression.expression;
     while (ts.isPropertyAccessExpression(current)) current = current.expression;
   }
+  // text`...`.lead() starts from the template's tag, as text("...").lead() does from its command.
+  if (ts.isTaggedTemplateExpression(current)) current = current.tag;
   return ts.isIdentifier(current) ? current.text : undefined;
 }
 
