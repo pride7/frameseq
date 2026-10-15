@@ -17,6 +17,7 @@ import {
   recentPresentations,
   rememberPresentation,
 } from "./studio-files.mjs";
+import { createAssistant } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
@@ -292,6 +293,9 @@ export function studioPlugin({
         language = undefined;
       };
       const frameseqVersion = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version;
+      // The assistant's events reach the page as they come, on the connection hot reload uses.
+      const assistant = createAssistant({ cliPath, send: (event) => server.ws.send("frameseq:assistant", event) });
+      server.httpServer?.once("close", () => assistant.close());
 
       if (quitOnClose) quitWhenClosed(server);
 
@@ -350,6 +354,7 @@ export function studioPlugin({
             quitOnClose,
             frameseq: frameseqVersion,
             dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
+            assistant: isLoopback(request.socket.remoteAddress),
           };
           if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
           const text = await readFile(entry, "utf8");
@@ -522,6 +527,26 @@ export function studioPlugin({
           revealInFolder(job.path, job.directory);
           return { ok: true };
         },
+
+        // ── The assistant: Claude Code or Codex, editing this presentation ───────────────
+        "GET /assistant": () => assistant.state(),
+        "POST /assistant/send": async (body) => {
+          const text = typeof body.text === "string" ? body.text.trim() : "";
+          if (!text) return [400, { error: "Write a request first." }];
+          if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
+          // The agent's FrameSeq tools render the slides in this server, which already has them.
+          const preview = (server.resolvedUrls?.local?.[0] ?? "").replace(/\/$/, "") || undefined;
+          return assistant.send({ agent: body.agent, text, context: body.context, entry, preview });
+        },
+        "POST /assistant/stop": () => {
+          assistant.stop();
+          return { ok: true };
+        },
+        "POST /assistant/new": () => {
+          assistant.reset();
+          return { ok: true };
+        },
+        "POST /assistant/refresh": () => ({ agents: assistant.refresh() }),
       };
 
       server.middlewares.use("/__frameseq/studio", (request, response) => {
@@ -565,6 +590,11 @@ export function studioPlugin({
           // Opening files and showing dialogs belong to the person at this computer, even with --host.
           if (files && !isLoopback(request.socket.remoteAddress)) {
             send(response, 403, { error: "Presentations can only be opened on the computer running the Studio." });
+            return;
+          }
+          // So do the coding agents the assistant runs.
+          if (url.pathname.startsWith("/assistant") && !isLoopback(request.socket.remoteAddress)) {
+            send(response, 403, { error: "The assistant only works on the computer running the Studio." });
             return;
           }
           if (start && !files && url.pathname !== "/session") {

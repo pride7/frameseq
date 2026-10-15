@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:32e825f5ebb81ede -->
+<!-- translation-of: docs/cli.md sha256:807d1b22bb4b054b -->
 
 # CLI 参考
 
@@ -188,6 +188,30 @@ frameseq inspect talk.slides.ts --json
 ```
 
 稳定的 JSON 形式是给编辑器集成和编码代理用的。FrameSeq 的 VS Code 扩展用它构建页面大纲,并直接跳转到 `slide()` 调用。
+
+## 把幻灯片交给编程代理
+
+```bash
+frameseq mcp [file]
+```
+
+`frameseq mcp` 是一个 [Model Context Protocol](https://modelcontextprotocol.io)(MCP)服务器,让 Claude Code、Codex、Cursor 这样的编程代理看到演示渲染出来的样子,而不只是源码。它通过标准输入输出说 MCP,提供四个只读的工具:
+
+| 工具 | 代理得到什么 |
+| --- | --- |
+| `outline` | 每一页的标题、布局、写出它的源码行,以及它有几个对象。 |
+| `check` | FrameSeq Studio 列出的那些问题:TypeScript 错误、指向不存在之物的名字、文档运行时抛出的错误,以及[布局规则](layout-checks.md),每条都带行号。 |
+| `screenshot` | 幻灯片的 PNG 图片,一次最多六页。 |
+| `guide` | FrameSeq 的写作指南 `llms.txt`。 |
+
+幻灯片在它自己的开发服务器里渲染。服务器在第一次调用时启动,之后一直运行,所以后面的调用大约一秒就有结果。每份演示给代理添加一次即可:
+
+```bash
+claude mcp add frameseq -- npx frameseq mcp talk.slides.ts
+codex mcp add frameseq -- npx frameseq mcp talk.slides.ts
+```
+
+用 [FrameSeq 应用](app.md)时,把 `npx frameseq` 换成 `frameseq`。FrameSeq Studio 的 [AI 助手](studio.md#ai-助手)会把同一个服务器交给它运行的代理,不需要任何设置。
 
 ## 项目脚本
 

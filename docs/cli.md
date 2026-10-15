@@ -187,6 +187,30 @@ frameseq inspect talk.slides.ts --json
 
 The stable JSON form is intended for editor integrations and coding agents. The FrameSeq VS Code extension uses it to build its slide outline and navigate directly to `slide()` calls.
 
+## Serve the slides to a coding agent
+
+```bash
+frameseq mcp [file]
+```
+
+`frameseq mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server, so a coding agent such as Claude Code, Codex, or Cursor sees the presentation as it renders, not only its source. It speaks MCP on standard input and output and offers four tools, each of which only reads:
+
+| Tool | What the agent gets |
+| --- | --- |
+| `outline` | Every slide with its title, layout, the source lines that write it, and how many objects it holds. |
+| `check` | What FrameSeq Studio lists: TypeScript errors, names that refer to nothing, an error the document throws, and the [layout rules](layout-checks.md), each with its line. |
+| `screenshot` | Slides as PNG pictures, up to six at once. |
+| `guide` | FrameSeq's authoring guide, `llms.txt`. |
+
+The slides render in a development server of its own, which starts on the first call and keeps running, so later calls answer in about a second. Add the server to an agent once per presentation:
+
+```bash
+claude mcp add frameseq -- npx frameseq mcp talk.slides.ts
+codex mcp add frameseq -- npx frameseq mcp talk.slides.ts
+```
+
+With the [FrameSeq app](app.md), use `frameseq` in place of `npx frameseq`. FrameSeq Studio's [assistant](studio.md#the-assistant) gives the same server to the agent it runs, with nothing to set up.
+
 ## Project scripts
 
 A project generated with `npm create frameseq` provides:

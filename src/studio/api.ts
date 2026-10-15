@@ -17,6 +17,8 @@ export interface StudioSession {
   version: string;
   /** The version of FrameSeq the Studio runs. */
   frameseq?: string;
+  /** Whether this page may use the assistant, which only the computer running the Studio may. */
+  assistant?: boolean;
 }
 
 export interface RecentPresentation {

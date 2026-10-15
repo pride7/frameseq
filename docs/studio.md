@@ -174,6 +174,18 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 The paths are relative to the directory the Studio was started from, or to the folder of a presentation opened from the Studio. The document is saved before an export starts. When it finishes, the notice offers **Download** and **Show in folder**; the full log is in the **Output** tab.
 
+## The assistant
+
+**Assistant** in the top bar, **View › Assistant**, or `Ctrl+Alt+I` opens a conversation with Claude Code or Codex beside the preview. Ask for a change in your own words, such as *make this slide two columns, with the chart on the right*, and the agent edits the slide document itself:
+
+1. The Studio saves the editor's text and sends the request with where you are: the slide in the preview with its lines, the lines you selected, and the problems in the list. Clear **Include** to send the request alone.
+2. The agent reads the document and edits it, using [`frameseq mcp`](cli.md#serve-the-slides-to-a-coding-agent), which the Studio gives it, to check the slides and look at them. The panel shows each step as it happens.
+3. Each edit reloads into the editor like any other change on disk, so `Ctrl+Z` takes it back. While the agent works, the editor takes no typing, and **Stop** ends the request.
+
+The conversation continues from one request to the next, so a follow-up such as *a little smaller* knows what it refers to; **+** starts a new one, as switching between Claude Code and Codex does.
+
+The assistant uses the agent installed on this computer, on its own sign-in and plan, so the Studio needs no key of its own. Install [Claude Code](https://claude.com/claude-code) or Codex (`npm install -g @openai/codex`), sign in once in a terminal, and the panel finds it. The agent works only in the presentation's folder: Claude Code may read and edit files there and use FrameSeq's tools, but not run commands, and Codex runs in its `workspace-write` sandbox. Only the computer running the Studio has the assistant, even with `--host`.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -190,6 +202,7 @@ The paths are relative to the directory the Studio was started from, or to the f
 | `Shift+F5` | Present from the beginning |
 | `Ctrl+B` | Show or hide the slide rail |
 | `Ctrl+J` | Show or hide the bottom panel |
+| `Ctrl+Alt+I` | Show or hide the assistant |
 | `Alt`, `F10` | Move to the menu bar |
 | `Alt+F`, `Alt+E`, `Alt+V`, `Alt+S`, `Alt+P`, `Alt+H` | Open a menu |
 

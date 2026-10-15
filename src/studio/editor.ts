@@ -252,6 +252,9 @@ const refreshFindings = StateEffect.define<null>();
 /** Tells CodeMirror's own defaults which palette the Studio is showing. */
 const darkness = new Compartment();
 
+/** Holds typing off while the assistant edits the file, so the two never write over each other. */
+const locked = new Compartment();
+
 export interface EditorOptions {
   doc: string;
   onUpdate: (update: ViewUpdate) => void;
@@ -319,6 +322,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
         previewBand,
         studioTheme,
         darkness.of(EditorView.darkTheme.of(options.dark)),
+        locked.of(EditorState.readOnly.of(false)),
         keymap.of([
           { key: "Mod-s", run: () => { options.onSave(); return true; }, preventDefault: true },
           ...closeBracketsKeymap,
@@ -355,6 +359,11 @@ export function currentSlideMarks(view: EditorView): SlideMark[] {
 /** Underline FrameSeq's findings again, after they changed without the text changing. */
 export function refreshDocumentDiagnostics(view: EditorView): void {
   view.dispatch({ effects: refreshFindings.of(null) });
+}
+
+/** Keep the person from typing, while the text can still be replaced from the file on disk. */
+export function setEditorLocked(view: EditorView, lock: boolean): void {
+  view.dispatch({ effects: locked.reconfigure(EditorState.readOnly.of(lock)) });
 }
 
 export function setEditorDarkness(view: EditorView, dark: boolean): void {
