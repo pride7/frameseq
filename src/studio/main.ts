@@ -53,6 +53,7 @@ import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { SlideInspector } from "./inspector";
 import { SlideShow } from "./show";
+import { pairPhone, remoteSession, resumePairing } from "./remote";
 import { ProblemsPanel, type Problem } from "./problems";
 import { showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -1610,7 +1611,8 @@ async function start(): Promise<void> {
   // The show fills this window, and the Studio comes back on the slide it ended on.
   const show = new SlideShow((index) => {
     if (index !== previewSlide) goToSlide(index, { focusEditor: false });
-  });
+  }, { language, remote: session.phoneRemote ? remoteSession() : undefined });
+  resumePairing(session);
 
   function present(index = previewSlide): void {
     void flushSave();
@@ -1982,6 +1984,7 @@ async function start(): Promise<void> {
         { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
         "separator",
         { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
+        { command: "phone-remote", label: t.menu.phoneRemote, run: () => void pairPhone(session, flushSave) },
         { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
       ],
     },

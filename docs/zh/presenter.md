@@ -1,4 +1,4 @@
-<!-- translation-of: docs/presenter.md sha256:95fd1ce17924cbcd -->
+<!-- translation-of: docs/presenter.md sha256:25fe62d7809f9b98 -->
 
 # 演讲者视图
 
@@ -79,7 +79,7 @@ http://localhost:5174/?presenter=1
 npm run present
 ```
 
-生成项目里的 `present` 脚本执行的是 `frameseq dev slides.ts --remote`。这个模式下 FrameSeq 会监听本机的局域网接口,并在观众页加上 `R` 控件、在演讲者视图加上 **Phone remote** 控件。
+生成项目里的 `present` 脚本执行的是 `frameseq dev slides.ts --remote`。这个模式下 FrameSeq 会监听本机的局域网接口,并在观众页加上 `R` 控件、在演讲者视图加上 **Phone remote** 控件。在 [FrameSeq Studio](studio.md#演示与导出) 里，改用 **放映 › 用手机遥控…**，把手机和 Studio 自己的放映配对。
 
 1. 把手机和演示电脑连到同一个 Wi-Fi 或局域网。
 2. 在电脑上打开演示。

@@ -19,7 +19,11 @@ export class SlideShow {
   /** The last show's way out of full screen, while it is still on its way. */
   private leaving: Promise<unknown> | undefined;
 
-  constructor(private readonly ended: (index: number) => void) {
+  constructor(
+    private readonly ended: (index: number) => void,
+    /** The language the end of the show is announced in, and the phone remote's pairing, if any. */
+    private readonly options: { language: string; remote?: string },
+  ) {
     addEventListener("message", (event: MessageEvent<unknown>) => this.receive(event));
     // Leaving full screen, by the browser's own Escape or otherwise, ends the show as well. The
     // last show's late way out, as when F5 follows Escape at once, is no reason to end this one.
@@ -51,7 +55,9 @@ export class SlideShow {
     const frame = element("iframe", "studio-show-frame");
     frame.title = t.frames.show;
     frame.allow = "fullscreen";
-    frame.src = `/?show=1#${index + 1}`;
+    const query = new URLSearchParams({ show: "1", lang: this.options.language });
+    if (this.options.remote) query.set("session", this.options.remote);
+    frame.src = `/?${query}#${index + 1}`;
     // The page is blank until its slides are drawn, so the black layer shows meanwhile.
     frame.style.visibility = "hidden";
     frame.addEventListener("load", () => {

@@ -21,6 +21,8 @@ export interface StudioSession {
   frameseq?: string;
   /** Whether this page may use the assistant, which only the computer running the Studio may. */
   assistant?: boolean;
+  /** Whether a phone on the local network can step through the slide show. */
+  phoneRemote?: boolean;
 }
 
 export interface RecentPresentation {

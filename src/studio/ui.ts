@@ -286,7 +286,7 @@ export function askChoice<T extends string>({
 }
 
 /** Show something to read, such as the keyboard shortcuts, with one button that closes it. */
-export function showInfo(title: string, body: Node[]): void {
+export function showInfo(title: string, body: Node[]): HTMLDialogElement {
   const dialog = element("dialog", "studio-dialog studio-info-dialog");
   const form = element("form");
   form.method = "dialog";
@@ -300,6 +300,7 @@ export function showInfo(title: string, body: Node[]): void {
   dialog.addEventListener("close", () => dialog.remove(), { once: true });
   dialog.showModal();
   close.focus();
+  return dialog;
 }
 
 const sizesKey = "frameseq-studio-layout";

@@ -2583,6 +2583,18 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (!showMode) target.append(controls);
   }
 
+  // After a slide show's last slide the screen goes black, as PowerPoint's does, and one more
+  // step ends the show. FrameSeq Studio names the language to say so in.
+  const showEnd = showMode ? document.createElement("div") : undefined;
+  if (showEnd) {
+    showEnd.className = "frameseq-show-end";
+    showEnd.textContent = searchParams.get("lang") === "zh"
+      ? "放映结束，单击鼠标退出。"
+      : "End of slide show. Click to exit.";
+    showEnd.hidden = true;
+    target.append(showEnd);
+  }
+
   const setLayoutEditing = localEditingAvailable && !presenter && !remote && !showMode
     ? createLayoutEditor(root, slidesDocument.canvasWidth, signal)
     : undefined;
@@ -2745,6 +2757,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   function update(shouldBroadcast = true): void {
+    if (showEnd) showEnd.hidden = true;
     dispatchEvent(new CustomEvent("frameseq-slide-change", { detail: currentSlide }));
     hidePointer(Boolean(presenter) && shouldBroadcast);
     slides.forEach(({ frame, canvas }, index) => {
@@ -2790,11 +2803,19 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     } else if (currentSlide < slides.length - 1) {
       currentSlide += 1;
       currentStep = 0;
+    } else if (showEnd) {
+      if (showEnd.hidden) showEnd.hidden = false;
+      else endShow();
+      return;
     }
     update();
   }
 
   function previous(): void {
+    if (showEnd && !showEnd.hidden) {
+      showEnd.hidden = true;
+      return;
+    }
     if (currentStep > 0) {
       currentStep -= 1;
     } else if (currentSlide > 0) {
@@ -3147,6 +3168,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     handleSyncMessage(envelope.message, "remote");
   };
   const receiveConnect = (): void => {
+    // A slide show paired with a phone says where it is each time it reaches the server, for a
+    // phone that asked while it was away.
+    if (showMode && remoteSession) broadcastNavigation();
     if (!remote || !remoteSession) return;
     setRemoteConnection("Waiting for presentation…", "waiting");
     postSyncMessage({ type: "request-state" });
@@ -3282,6 +3306,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       if (event.button !== 0) return;
       if ((event.target as Element | null)?.closest("a[href], button, input, select, textarea, audio, video")) return;
       next();
+    }, { signal });
+    showEnd?.addEventListener("click", (event) => {
+      if (event.button === 0) endShow();
     }, { signal });
     // The pointer hides while it rests, so it never sits over the slides on screen.
     let restTimer = 0;

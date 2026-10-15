@@ -86,6 +86,7 @@ const en = {
     fromBeginning: "From the beginning",
     fromCurrent: "From the current slide",
     presenterView: "Presenter view in a new window",
+    phoneRemote: "Phone remote…",
     openInBrowser: "Open the preview in a browser",
     documentation: "Documentation",
     languageTour: "Language tour",
@@ -540,6 +541,21 @@ const en = {
     line: (line: number) => `Ln ${line}`,
   },
 
+  remote: {
+    title: "Phone remote",
+    turnOnMessage: "A phone on the same Wi-Fi as this computer can step through the slide show and point at the slides with a laser. To reach it, the Studio starts again on the local network: devices there can open the slides, and only this computer can change them or open its files. Windows may ask whether Node.js may use the network.",
+    turnOn: "Turn on",
+    starting: "Starting the phone remote…",
+    didNotStart: "The phone remote did not start. Try again in a moment.",
+    saveFirst: "Save the presentation before turning the phone remote on.",
+    scan: "Scan the code with a phone on the same Wi-Fi as this computer, then present with F5. The phone moves through the slides and their reveal steps, and its laser shows on the screen.",
+    address: "Network address",
+    copy: "Copy link",
+    copied: "Copied",
+    noNetwork: "This computer has no local network address for a phone to reach. Connect it to Wi-Fi and try again.",
+    note: "The phone stays paired while this window is open.",
+  },
+
   frames: {
     preview: "Live preview",
     rail: "Slides",
@@ -727,6 +743,7 @@ const zh: Catalog = {
     fromBeginning: "从头开始",
     fromCurrent: "从当前页开始",
     presenterView: "在新窗口中打开演讲者视图",
+    phoneRemote: "用手机遥控…",
     openInBrowser: "在浏览器中打开预览",
     documentation: "文档",
     languageTour: "语言速览",
@@ -1179,6 +1196,21 @@ const zh: Catalog = {
     warning: "警告",
     info: "提示",
     line: (line) => `第 ${line} 行`,
+  },
+
+  remote: {
+    title: "用手机遥控",
+    turnOnMessage: "和这台电脑连在同一个 Wi-Fi 上的手机，可以控制放映翻页，并用激光笔指示幻灯片。为此 Studio 会在局域网上重新启动：同一网络里的设备能打开这些幻灯片，但只有这台电脑能修改它们或打开这里的文件。Windows 可能会询问是否允许 Node.js 访问网络。",
+    turnOn: "开启",
+    starting: "正在开启手机遥控…",
+    didNotStart: "手机遥控没能开启，请稍后再试。",
+    saveFirst: "请先保存演示，再开启手机遥控。",
+    scan: "用和这台电脑连在同一个 Wi-Fi 上的手机扫描二维码，然后按 F5 放映。手机可以翻页、逐步显示内容，手机上的激光笔会显示在屏幕上。",
+    address: "网络地址",
+    copy: "复制链接",
+    copied: "已复制",
+    noNetwork: "这台电脑没有手机能访问的局域网地址。请连接 Wi-Fi 后再试。",
+    note: "这个窗口开着时，手机会一直保持配对。",
   },
 
   frames: {

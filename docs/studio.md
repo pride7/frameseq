@@ -43,7 +43,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
 | **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
-| **Present** | From the beginning, From the current slide, Presenter view in a new window, Open the preview in a browser |
+| **Present** | From the beginning, From the current slide, Presenter view in a new window, Phone remote…, Open the preview in a browser |
 | **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
 
 Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu's underlined letter, such as `Alt+F` for **File**; the arrow keys move between menus and commands, and `Esc` closes them. **View › Theme** follows the system, or stays light or dark. The slides themselves keep the presentation's own theme.
@@ -196,9 +196,11 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 ## Presenting and exporting
 
-**Present** (`F5`) shows the slides full screen from the current slide, in the Studio's own window, as PowerPoint does; **Present › From the beginning** (`Shift+F5`) starts at the first slide. `F5` works from the preview and the slide rail too. A click, `→`, `↓`, `Space`, `Enter`, or `Page Down` moves on, including through a slide's reveal steps; `←`, `↑`, `Backspace`, or `Page Up` goes back; `Home` and `End` go to the first and last slide. `Esc` ends the show, and the Studio comes back on the slide it ended on. Where the browser refuses full screen, the show still fills the window.
+**Present** (`F5`) shows the slides full screen from the current slide, in the Studio's own window, as PowerPoint does; **Present › From the beginning** (`Shift+F5`) starts at the first slide. `F5` works from the preview and the slide rail too. A click, `→`, `↓`, `Space`, `Enter`, or `Page Down` moves on, including through a slide's reveal steps; `←`, `↑`, `Backspace`, or `Page Up` goes back; `Home` and `End` go to the first and last slide. After the last slide the screen goes black, as in PowerPoint, and one more click or key ends the show; `Esc` ends it at any time. The Studio comes back on the slide the show ended on. Where the browser refuses full screen, the show still fills the window.
 
 **Present › Presenter view in a new window** opens [presenter view](presenter.md), with the notes, the next slide, and a timer, for a second screen; it follows the show and the preview, and they follow it.
+
+**Present › Phone remote…** lets a phone on the same Wi-Fi step through the show, as [`npm run present`](presenter.md#pair-a-phone-remote) does in a browser. The first time, the Studio asks, starts again on the local network, and then shows a QR code for the phone to scan. The phone moves through the slides and their reveal steps, its laser shows on the screen, and its **Presenter view** shows the notes. While the remote is on, other devices on the network can open the slides and the files they import, and nothing else: only this computer can change the slides, open files, or use the terminal and the assistant. The remote stays on until the Studio stops; `frameseq studio --remote` starts with it on. The operating system may ask whether Node.js may accept connections on private networks.
 
 **File › Export** runs the same exports as the CLI and writes to the same places:
 

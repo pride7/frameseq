@@ -111,6 +111,22 @@ button {
   cursor: none;
 }
 
+.frameseq-show-end {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  padding: 24px 32px;
+  background: #000;
+  color: #d4d4d8;
+  font: 16px/1.5 system-ui, sans-serif;
+  text-align: center;
+  cursor: default;
+}
+
+.frameseq-show-end[hidden] {
+  display: none;
+}
+
 /* Drawing a new object from the Studio: a crosshair, and the outline the object will have. */
 .frameseq-placing .frameseq-slides,
 .frameseq-placing .frameseq-slides * {

@@ -7,7 +7,7 @@ import type { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import type { RunResult } from "node-tectonic";
 import tailwindcss from "@tailwindcss/vite";
 import ts from "typescript";
-import { defineConfig, normalizePath } from "vite";
+import { defineConfig, normalizePath, type ViteDevServer } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
 import { applySourceEdits, markEdits, sourceMarks, statementEdits } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
@@ -107,6 +107,37 @@ function projectModule(id: string): boolean {
     && !path.startsWith("\0")
     && !pathKey(path).startsWith(pathKey(`${normalizePath(packageRoot)}/src/`))
     && !pathKey(path).startsWith(pathKey(`${normalizePath(packageRoot)}/lib/`));
+}
+
+function loopbackAddress(address = ""): boolean {
+  return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
+
+/**
+ * What another computer may load from a Studio that shares only its slides, as it does for the
+ * phone remote: FrameSeq's own files and the ones the slides load, which the phone's copy of the
+ * slides needs, and nothing else from this computer's folders.
+ */
+function servedToNetwork(server: ViteDevServer, url = "/"): boolean {
+  let path: string;
+  try {
+    path = decodeURIComponent(url.split(/[?#]/, 1)[0]);
+  } catch {
+    return false;
+  }
+  if (path.startsWith("/__frameseq/")) return false;
+  if (!path.startsWith("/@fs/")) return true;
+  // "/@fs/D:/talks/photo.png" on Windows, "/@fs/home/me/talks/photo.png" elsewhere.
+  const file = path.slice("/@fs".length).replace(/^\/(?=[A-Za-z]:)/, "");
+  const inside = (folder: string) => {
+    const within = relative(folder, resolve(file));
+    return within === "" || (!within.startsWith("..") && !isAbsolute(within));
+  };
+  // A file the slides import has been transformed for a page; one Tailwind only scanned for
+  // class names, as it does every file in the presentation's folder, has not.
+  return inside(packageRoot)
+    || inside(server.config.cacheDir)
+    || [...server.moduleGraph.getModulesByFile(file) ?? []].some((module) => module.transformResult);
 }
 
 function networkOrigins(port: number, protocol: "http" | "https"): string[] {
@@ -581,6 +612,22 @@ export default defineConfig({
         marksEnabled = config.command === "serve" || process.env.FRAMESEQ_SOURCE_MARKS === "1";
       },
       configureServer(server) {
+        // A Studio that is not shared answers this computer alone. With the phone remote on, the
+        // local network reaches the server all the same, and may see the slides and follow them,
+        // but not write them or read anything else.
+        const sharesSlidesOnly = studioEnabled && !studioRemote;
+        if (sharesSlidesOnly && remoteServerEnabled) {
+          server.middlewares.use((request, response, next) => {
+            if (loopbackAddress(request.socket.remoteAddress) || servedToNetwork(server, request.url)) {
+              next();
+              return;
+            }
+            response.statusCode = 403;
+            response.setHeader("Content-Type", "text/plain; charset=utf-8");
+            response.end("Only the slides are shared with the phone remote.");
+          });
+        }
+
         server.middlewares.use("/__frameseq/source-info", (request, response, next) => {
           if (request.method !== "GET") {
             next();
@@ -607,7 +654,19 @@ export default defineConfig({
           });
         };
 
+        const networkClients = new WeakSet<object>();
+        if (sharesSlidesOnly) {
+          server.ws.on("connection", (socket, request) => {
+            if (!loopbackAddress(request.socket.remoteAddress)) networkClients.add(socket);
+          });
+        }
+        const refused = { ok: false, reason: "Only the computer running FrameSeq Studio can change the slides." };
+
         server.ws.on(sourceEditEvent, (payload, client) => {
+          if (networkClients.has(client.socket)) {
+            client.send(sourceEditResultEvent, refused);
+            return;
+          }
           const request = payload as { move?: unknown; remove?: unknown } | null;
           settleEdit(client, request?.remove
             ? applyIncomingRemove(entry, payload)
@@ -617,6 +676,10 @@ export default defineConfig({
         });
 
         server.ws.on(sourceUndoEvent, (_payload, client) => {
+          if (networkClients.has(client.socket)) {
+            client.send(sourceEditResultEvent, { ...refused, undo: true });
+            return;
+          }
           settleEdit(client, undoLastEdit(entry), true);
         });
 
@@ -766,6 +829,7 @@ export default defineConfig({
       cliPath: resolve(packageRoot, "scripts", "frameseq.mjs"),
       enabled: studioEnabled,
       allowRemote: studioRemote,
+      phoneRemote: studioEnabled && remoteServerEnabled,
       start: studioEnabled && process.env.FRAMESEQ_STUDIO_START === "1",
       quitOnClose: studioEnabled && process.env.FRAMESEQ_STUDIO_QUIT_ON_CLOSE === "1",
       remember: process.env.FRAMESEQ_STUDIO_WINDOW !== "0",
@@ -777,6 +841,8 @@ export default defineConfig({
   // dependency cache lives with the rest of FrameSeq's per-user files.
   cacheDir: runsFromBundle() ? resolve(configDirectory(), "vite-cache") : undefined,
   server: {
+    // The phone remote reaches the server over the local network.
+    ...(remoteServerEnabled ? { host: true } : {}),
     open: openBrowser,
     fs: {
       allow: [packageRoot, dirname(entry)],

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:b435581246a421fd -->
+<!-- translation-of: docs/cli.md sha256:64974533031fc8e9 -->
 
 # CLI 参考
 
@@ -72,7 +72,7 @@ frameseq dev talk.slides.ts --remote
 ## 打开 FrameSeq Studio
 
 ```bash
-frameseq studio [file] [--host] [--no-open] [--tab] [--background]
+frameseq studio [file] [--host] [--remote] [--no-open] [--tab] [--background]
 ```
 
 这条命令启动开发服务器，并打开 [FrameSeq Studio](studio.md)：幻灯片栏、TypeScript 编辑器、实时预览和实时布局检查都在一个窗口里。
@@ -85,7 +85,7 @@ frameseq studio talk.slides.ts
 
 装了 Chrome、Edge、Chromium 或 Brave 时，Studio 以独立的应用窗口打开，否则在默认浏览器里打开。`--tab` 总是使用浏览器标签页，`--no-open` 什么都不打开。`--background` 会立刻返回，让 Studio 不依赖终端继续运行，直到它的窗口关闭；它的输出写到 FrameSeq 设置文件夹里的 `studio.log`。
 
-Studio 会写入幻灯片文档，所以它的接口只响应这台电脑。`--host` 把它共享到网络上，供容器或浏览器 IDE 使用；这样一来，任何能访问这个地址的人都可以编辑这份演示。
+Studio 会写入幻灯片文档，所以它的接口只响应这台电脑。`--host` 把它共享到网络上，供容器或浏览器 IDE 使用；这样一来，任何能访问这个地址的人都可以编辑这份演示。`--remote` 启动时就开启[手机遥控](studio.md#演示与导出)，和 **放映 › 用手机遥控…** 的效果一样：网络上的设备只能打开幻灯片、跟随放映，别的都做不了。
 
 ## 添加快捷方式
 

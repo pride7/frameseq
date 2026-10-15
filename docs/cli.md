@@ -70,7 +70,7 @@ The phone and presentation computer must be on the same local network. This mode
 ## Open FrameSeq Studio
 
 ```bash
-frameseq studio [file] [--host] [--no-open] [--tab] [--background]
+frameseq studio [file] [--host] [--remote] [--no-open] [--tab] [--background]
 ```
 
 This starts the development server and opens [FrameSeq Studio](studio.md): the slide rail, a TypeScript editor, the live preview, and live layout checks in one window.
@@ -83,7 +83,7 @@ Without a file, and with no `slides.ts` in the current directory, the Studio ope
 
 The Studio opens as an app window when Chrome, Edge, Chromium, or Brave is installed, and in the default browser otherwise. `--tab` always uses a browser tab, and `--no-open` opens nothing. `--background` returns at once and leaves the Studio running without a terminal until its window closes; its output goes to `studio.log` in FrameSeq's settings folder.
 
-The Studio writes the slide document, so its interface answers only this computer. `--host` shares it with the network for a container or a browser IDE; anyone who can reach the address can then edit the deck.
+The Studio writes the slide document, so its interface answers only this computer. `--host` shares it with the network for a container or a browser IDE; anyone who can reach the address can then edit the deck. `--remote` starts with the [phone remote](studio.md#presenting-and-exporting) on, as **Present › Phone remote…** turns it on: the network can then open the slides and follow the show, and nothing else.
 
 ## Add a shortcut
 

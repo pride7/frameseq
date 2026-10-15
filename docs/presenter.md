@@ -77,7 +77,7 @@ Start FrameSeq with its local-network transport enabled:
 npm run present
 ```
 
-The generated `present` script runs `frameseq dev slides.ts --remote`. In this mode FrameSeq listens on the computer's local network interface and adds an `R` control to the audience page plus a **Phone remote** control to presenter view.
+The generated `present` script runs `frameseq dev slides.ts --remote`. In this mode FrameSeq listens on the computer's local network interface and adds an `R` control to the audience page plus a **Phone remote** control to presenter view. In [FrameSeq Studio](studio.md#presenting-and-exporting), **Present › Phone remote…** pairs a phone with the Studio's own slide show instead.
 
 1. Connect the phone and presentation computer to the same Wi-Fi or local network.
 2. Open the presentation on the computer.

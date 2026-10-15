@@ -256,6 +256,7 @@ export function studioPlugin({
   cliPath,
   enabled,
   allowRemote,
+  phoneRemote = false,
   start = false,
   quitOnClose = false,
   remember = true,
@@ -377,6 +378,32 @@ export function studioPlugin({
       };
       const currentFolder = () => defaultFolder(start ? undefined : entry);
 
+      /**
+       * Turn the phone remote on: the server starts again on the local network, with the relay
+       * that carries a phone's steps to the slide show, and the page reloads. Only the person at
+       * this computer may open it to the network.
+       */
+      const startPhoneRemote = (request) => {
+        if (!isLoopback(request.socket.remoteAddress)) {
+          return [403, { error: "Only the computer running the Studio can turn the phone remote on." }];
+        }
+        if (phoneRemote) return { ok: true };
+        if (exporting) return [409, { error: "An export is still running. Turn the phone remote on once it has finished." }];
+        if (switching) return [409, { error: "The Studio is already starting again." }];
+        switching = true;
+        process.env.FRAMESEQ_REMOTE = "1";
+        // Answer first: the restart closes the connection this request arrived on.
+        setTimeout(() => {
+          server.restart().catch((error) => {
+            delete process.env.FRAMESEQ_REMOTE;
+            server.config.logger.error(`FrameSeq Studio could not turn the phone remote on: ${error instanceof Error ? error.message : error}`);
+          }).finally(() => {
+            switching = false;
+          });
+        }, 50);
+        return { ok: true };
+      };
+
       const routes = {
         "GET /session": async (_body, request) => {
           const shared = {
@@ -387,6 +414,7 @@ export function studioPlugin({
             dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
             terminal: isLoopback(request.socket.remoteAddress),
             assistant: isLoopback(request.socket.remoteAddress),
+            phoneRemote,
           };
           if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
           const text = await readFile(entry, "utf8");
@@ -589,6 +617,7 @@ export function studioPlugin({
           return { ok: true };
         },
         "POST /assistant/refresh": () => ({ agents: assistant.refresh() }),
+        "POST /phone-remote": (_body, request) => startPhoneRemote(request),
       };
 
       server.middlewares.use("/__frameseq/studio", (request, response) => {

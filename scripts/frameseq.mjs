@@ -30,7 +30,7 @@ function help() {
 Usage:
   frameseq dev [file] [--host] [--remote] [--no-open]
                                       Preview slides with hot reload
-  frameseq studio [file] [--host] [--no-open] [--tab] [--background]
+  frameseq studio [file] [--host] [--remote] [--no-open] [--tab] [--background]
                                       Edit, preview, check, and export in one window;
                                       without a file, open its start page
   frameseq shortcut [--remove]        Add FrameSeq Studio to the Start menu and desktop,
@@ -631,6 +631,7 @@ try {
     // No document to open: the start page offers a new presentation, an existing one, or a recent one.
     await startDevelopmentServer(resolve(process.cwd(), "slides.ts"), {
       hostEnabled: process.argv.includes("--host"),
+      remoteEnabled: process.argv.includes("--remote"),
       openBrowser: !process.argv.includes("--no-open") && !desktop,
       appWindow: !process.argv.includes("--tab"),
       studio: true,
@@ -649,6 +650,7 @@ try {
     if (command === "studio") {
       await startDevelopmentServer(entry, {
         hostEnabled: process.argv.includes("--host"),
+        remoteEnabled: process.argv.includes("--remote"),
         openBrowser: !process.argv.includes("--no-open") && !desktop,
         appWindow: !process.argv.includes("--tab"),
         studio: true,
