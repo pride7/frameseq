@@ -39,6 +39,7 @@ import {
 import { tags } from "@lezer/highlight";
 import type { LanguageDiagnostic } from "./api";
 import { t } from "./i18n";
+import { snippetSource } from "./snippets";
 import {
   completionSource,
   nameCompletionSource,
@@ -198,6 +199,9 @@ const studioTheme = EditorView.theme({
   ".cm-completionIcon": { opacity: "0.75", width: "1.1em", paddingRight: "0.7em" },
   ".cm-completionMatchedText": { textDecoration: "none", color: "var(--studio-accent)", fontWeight: "600" },
   ".cm-completionDetail": { color: "var(--studio-error)", fontStyle: "normal", marginLeft: "0.8em" },
+  // A snippet carries the Insert button's mark, and names what it writes in a quiet colour.
+  ".cm-completionIcon-snippet::after": { content: "'◇'", color: "var(--studio-accent)" },
+  ".cm-completionIcon-snippet ~ .cm-completionDetail": { color: "var(--studio-muted)", fontFamily: "var(--studio-font)" },
   ".cm-tooltip.cm-completionInfo": { padding: "0", maxWidth: "460px" },
   ".cm-panels": { backgroundColor: "var(--studio-surface)", color: "var(--studio-text)" },
   ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--studio-border-strong)" },
@@ -305,7 +309,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
         syntaxHighlighting(studioHighlight),
         bracketMatching(),
         closeBrackets(),
-        autocompletion({ override: [nameCompletionSource, completionSource], icons: true, activateOnTypingDelay: 60 }),
+        autocompletion({ override: [nameCompletionSource, completionSource, snippetSource], icons: true, activateOnTypingDelay: 60 }),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),

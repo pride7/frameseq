@@ -31,6 +31,7 @@ import {
   type SectionId,
   type SourcePlan,
 } from "./properties";
+import { chooseIcon } from "./icons";
 import { element, showMenu, toast } from "./ui";
 
 export interface InspectorEvents {
@@ -46,6 +47,10 @@ export interface InspectorEvents {
   reveal: (position: number) => void;
   /** Delete objects that are statements of their own, the one chosen and those that go with it. */
   deleteObjects: (objects: InspectObject[]) => void;
+  /** Write a copy of an object that is a statement of its own after it, and select the copy. */
+  duplicateObject: (object: InspectObject) => void;
+  /** Choose a picture for an image, copied beside the presentation; undefined when cancelled. */
+  choosePicture: () => Promise<string | undefined>;
 }
 
 const svg = (body: string): string => (
@@ -94,6 +99,7 @@ function category(type: string): string {
 const actionIcons = {
   code: svg('<path d="m8.5 7.5-5 4.5 5 4.5M15.5 7.5l5 4.5-5 4.5"/>'),
   delete: svg('<path d="M4 6.5h16M18 6.5v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-12M9 6.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v1.5"/>'),
+  duplicate: svg('<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>'),
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
   close: svg('<path d="M7.5 7.5l9 9M16.5 7.5l-9 9"/>'),
   left: svg('<path d="M4 6.5h16M4 12h10M4 17.5h13"/>'),
@@ -174,10 +180,30 @@ export class SlideInspector {
   private deferred = false;
   /** The selected object's settings were folded by clicking its row again. */
   private folded = false;
+  /** An object just inserted, whose words take the focus once the panel shows it. */
+  private contentFocus: { position: number; until: number } | undefined;
 
   constructor(private readonly body: HTMLElement, private readonly events: InspectorEvents) {
     this.body.addEventListener("keydown", (event) => this.navigate(event));
     this.render();
+  }
+
+  /**
+   * Once the object written at this position is shown and selected, open its settings and put
+   * the focus in its words, selected, so typing replaces the sample an insertion wrote.
+   */
+  focusContentAt(position: number): void {
+    this.contentFocus = { position, until: Date.now() + 10_000 };
+  }
+
+  /** The box holding what an object says, which an insertion leaves to be typed over. */
+  private contentKey(object: InspectObject, key: string): string | undefined {
+    if (object.type === "bullets" || object.type === "steps") return object.texts?.length ? `${key}:item:0` : undefined;
+    const texts = object.texts ?? [];
+    const words = object.type === "image" || object.type === "shape"
+      ? texts.find((text) => text.argument === 1)
+      : texts.find((text) => textLabel(object.type, text.argument));
+    return words ? `${key}:text:${words.argument}` : undefined;
   }
 
   /** Show a slide's objects; with no slide, say why there is nothing to show. */
@@ -258,6 +284,19 @@ export class SlideInspector {
       return;
     }
     this.deferred = false;
+    let selectAll = false;
+    if (this.contentFocus) {
+      const inserted = this.selectedObject();
+      if (Date.now() > this.contentFocus.until) {
+        this.contentFocus = undefined;
+      } else if (inserted && inserted.source.start === this.contentFocus.position) {
+        this.contentFocus = undefined;
+        this.folded = false;
+        const key = this.objectKey(inserted) as string;
+        this.focusNext = this.contentKey(inserted, key) ?? key;
+        selectAll = true;
+      }
+    }
     const focusKey = this.focusNext
       ?? (active instanceof HTMLElement && this.body.contains(active) ? active.dataset.key : undefined);
     this.focusNext = undefined;
@@ -319,14 +358,18 @@ export class SlideInspector {
       const target = this.body.querySelector<HTMLElement>(`[data-key="${CSS.escape(focusKey)}"]`);
       if (target) {
         target.focus({ preventScroll: true });
-        if (selection && (target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && target.type === "text"))) {
+        const typed = target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && target.type === "text");
+        if (selectAll) {
+          if (typed) target.select();
+          target.scrollIntoView({ block: "nearest" });
+        } else if (selection && typed) {
           target.setSelectionRange(selection[0], selection[1]);
         }
       }
     }
   }
 
-  /** Up and Down move between rows; Delete removes the selected object, as on a slide. */
+  /** Up and Down move between rows; Ctrl+D copies the selected object and Delete removes it, as on a slide. */
   private navigate(event: KeyboardEvent): void {
     const row = (event.target as HTMLElement).closest?.(".studio-tree-row[role='treeitem']");
     if (!row) return;
@@ -334,6 +377,12 @@ export class SlideInspector {
       event.preventDefault();
       const all = [...this.body.querySelectorAll<HTMLElement>(".studio-tree-row[role='treeitem']")];
       all[all.indexOf(row as HTMLElement) + (event.key === "ArrowDown" ? 1 : -1)]?.focus();
+    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "d" && row.classList.contains("is-highlighted")) {
+      const object = this.selectedObject();
+      if (object?.statement) {
+        event.preventDefault();
+        this.events.duplicateObject(object);
+      }
     } else if ((event.key === "Delete" || event.key === "Backspace") && row.classList.contains("is-highlighted")) {
       const object = this.selectedObject();
       if (object) {
@@ -548,6 +597,12 @@ export class SlideInspector {
     footer.append(this.iconButton(actionIcons.code, t.inspector.goToCode, () => {
       if (object.source.start !== undefined) this.events.reveal(object.source.start);
     }));
+    const duplicate = this.iconButton(actionIcons.duplicate, object.statement ? t.inspector.duplicateTitle : t.inspector.cannotDuplicate, () => {
+      this.events.duplicateObject(object);
+    });
+    duplicate.classList.add("is-duplicate");
+    duplicate.disabled = !object.statement;
+    footer.append(duplicate);
     const remove = this.iconButton(actionIcons.delete, object.statement ? t.inspector.deleteTitle : t.inspector.cannotDelete, () => {
       this.remove(object);
     });
@@ -649,7 +704,25 @@ export class SlideInspector {
       enter: (event) => !(input instanceof HTMLTextAreaElement) || event.ctrlKey || event.metaKey || (!event.shiftKey && !breaks()),
     });
     const field = element("label", "studio-card-text");
-    field.append(element("span", "studio-card-label", label), input);
+    field.append(element("span", "studio-card-label", label));
+    if ((object.type === "icon" || object.type === "image") && text.argument === 0) {
+      // An icon's name is easier to choose by its picture than to remember, and a picture is
+      // changed for another as a drawing program does.
+      const choose = element("button", "studio-card-choose", t.icons.choose);
+      choose.type = "button";
+      choose.addEventListener("click", (event) => {
+        event.preventDefault();
+        const chosen = object.type === "icon" ? chooseIcon(choose, String(text.value)) : this.events.choosePicture();
+        void chosen.then((name) => {
+          if (name && this.setText(object, text, name)) this.render();
+        });
+      });
+      const both = element("div", "studio-card-controls");
+      both.append(input, choose);
+      field.append(both);
+    } else {
+      field.append(input);
+    }
     return field;
   }
 

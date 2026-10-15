@@ -87,7 +87,7 @@ Select an object, by clicking its row, clicking it in the preview, or putting th
 - **Text**: the style (body text, heading, lead, caption, quote, and the others), font size, bold, colour, and alignment.
 - **Appearance**: background, fill, outline, corners, and opacity; a shape's colour scheme is one click on a colour.
 - **Size** and **Position**: width and height, and on a canvas X and Y.
-- **More settings** adds one that is not shown, such as line height or rotation; **Go to code** puts the cursor on the command, and **Delete** (or the `Delete` key on the selected row) removes an object that is a statement of its own as deleting it in the preview does: with the comments above it and any connector that ends at it, and not while another object is placed by its name.
+- **More settings** adds one that is not shown, such as line height or rotation; **Go to code** puts the cursor on the command; **Duplicate** (or `Ctrl+D` on the selected row) writes a copy after the object, with a name of its own if it has one and, when it is placed by coordinates, a step aside so both can be seen; and **Delete** (or the `Delete` key on the selected row) removes an object that is a statement of its own as deleting it in the preview does: with the comments above it and any connector that ends at it, and not while another object is placed by its name.
 
 A box shows the value written in the code, or *Auto* or *Default* when none is. Typing a value rewrites the one written, or adds the method after the object's last one, so `text("Hi").lead()` becomes `text("Hi").lead().color("#f97316")`; clearing the box takes the call away again. A number steps with `↑` and `↓`, with `Shift` by ten and `Alt` by a tenth, and its name can be dragged left or right; the preview follows each step. A value the code computes, such as `width(size * 2)`, is shown as code and not overwritten: clicking it goes to it.
 
@@ -135,9 +135,31 @@ The preview's own source links work as they do in VS Code:
 
 See [Visual Studio Code extension](vscode.md) for the rules that decide which numbers a drag may rewrite.
 
+## Inserting content
+
+**Insert**, in the menu bar and at the top of the preview, puts objects on the slide in the preview, as a word processor and a drawing program do. Its gallery has two sides. **Content**, on the left, is named:
+
+| Group | Items | Writes |
+| --- | --- | --- |
+| Text | Text, Bulleted list, Numbered steps, Quote, Code | `text()`, `bullets()`, `steps()`, `text().quote()`, `code()` |
+| Formulas | LaTeX formula, Typst formula, LaTeX table | `` math`...` ``, `` typst`...` ``, `` latex`...` `` with a booktabs `tabular` |
+| Pictures and data | Picture, Table, Chart, QR code, Icon | `image()`, `table()`, `chart()`, `qr()`, `icon()` |
+
+On a slide that flows, which is every layout but a canvas, the object is written **after the selected object**: the one chosen in the preview or in **Current slide**, or the statement holding the editor's cursor; with nothing selected, after the slide's last line. It lands in the same region as that object. On a canvas, where nothing flows, it is drawn like a shape instead: drag out its width, or click to place it at its usual size.
+
+The new object arrives with sample words, in the Studio's language, and **Current slide** opens its settings with those words selected, so typing replaces them: the formula's source, a list's first item, a table's first heading. With that panel folded, the editor selects them instead. A LaTeX formula is set by KaTeX as you type; a Typst formula and a LaTeX table are compiled by Typst and Tectonic, which the [FrameSeq app](app.md) includes.
+
+**Picture** asks for a picture with this computer's own dialog, or for its path when there is none, and copies it into an `images` folder beside the presentation, unless it is there already, so the slides carry it wherever the folder goes. It is written as `image(new URL("./images/photo.png", import.meta.url).href, "Picture")`; the second string describes it for people who cannot see it. A web address is written as it is.
+
+**Icon** opens a picker of the whole icon set, searched by name, such as `chart`, `user`, or `arrow`; `Enter` takes the first match. The icon chosen is written as `icon("rocket")`.
+
+In **Current slide**, a picture's file and an icon's name have a **Choose…** button beside them, which picks another picture or icon in the same way.
+
+The same content is a snippet in the editor. At the start of a line, type the command it writes, such as `typst`, `table`, or `chart`, and pick the entry marked ◇: the whole object is written, with its sample words selected and ready to be typed over. Writing code and inserting from the gallery give the same source.
+
 ## Drawing objects
 
-**Insert**, in the menu bar and at the top of the preview, draws objects onto the slide in the preview, as a drawing program does. Its gallery holds a text box, a line, an arrow, a connector, and every [shape](shapes.md).
+The right side of **Insert**'s gallery draws objects onto the slide in the preview, as a drawing program does: a text box, a line, an arrow, a connector, and every [shape](shapes.md).
 
 - Pick a shape or a text box, then drag across the slide to draw it, or click to place one at its usual size. `Shift` keeps a shape square; a circle always is.
 - Pick a line or an arrow, then drag from where it starts to where it ends. `Shift` holds it to steps of 45°.

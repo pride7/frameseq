@@ -33,6 +33,17 @@ export function iconSet() {
   return icons;
 }
 
+/**
+ * The icons themselves, once each, for a picker to draw: the inside of each SVG by name, and the
+ * box they share. Aliases are left out, since each draws an icon already listed.
+ */
+export function iconBodies() {
+  const data = JSON.parse(readFileSync(require.resolve("@iconify-json/lucide/icons.json"), "utf8"));
+  const icons = {};
+  for (const [name, icon] of Object.entries(data.icons)) icons[name] = icon.body;
+  return { width: data.width ?? 24, height: data.height ?? 24, icons };
+}
+
 /** The icon names a source file may refer to: every string literal that is the name of an icon. */
 export function iconNamesIn(source, icons = iconSet()) {
   const names = new Set();

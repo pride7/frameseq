@@ -133,7 +133,11 @@ function run(command, args, environment = {}) {
 const prompts = {
   open: "Open a FrameSeq presentation",
   folder: "Choose the folder for the new presentation",
+  image: "Choose a picture to put on the slide",
 };
+
+/** The pictures a slide can show, as the dialogs filter them. */
+export const pictureExtensions = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".bmp"];
 
 /**
  * The dialogs as a PowerShell script. The folder and the title arrive through the environment,
@@ -153,7 +157,9 @@ export function windowsScript(kind) {
     : [
       "$dialog = New-Object System.Windows.Forms.OpenFileDialog",
       "$dialog.Title = $env:FRAMESEQ_DIALOG_TITLE",
-      "$dialog.Filter = 'FrameSeq presentations (*.slides.ts, slides.ts)|*.slides.ts;slides.ts|TypeScript files (*.ts)|*.ts|All files (*.*)|*.*'",
+      kind === "image"
+        ? `$dialog.Filter = 'Pictures|${pictureExtensions.map((extension) => `*${extension}`).join(";")}|All files (*.*)|*.*'`
+        : "$dialog.Filter = 'FrameSeq presentations (*.slides.ts, slides.ts)|*.slides.ts;slides.ts|TypeScript files (*.ts)|*.ts|All files (*.*)|*.*'",
       "if ($env:FRAMESEQ_DIALOG_FOLDER) { $dialog.InitialDirectory = $env:FRAMESEQ_DIALOG_FOLDER }",
       "$answer = { $dialog.FileName }",
     ];
@@ -205,7 +211,11 @@ async function linuxDialog(kind, folder) {
     const result = await run("zenity", [
       "--file-selection",
       `--title=${prompts[kind]}`,
-      ...(kind === "folder" ? ["--directory"] : ["--file-filter=FrameSeq presentations | *.slides.ts slides.ts", "--file-filter=All files | *"]),
+      ...(kind === "folder"
+        ? ["--directory"]
+        : kind === "image"
+          ? [`--file-filter=Pictures | ${pictureExtensions.map((extension) => `*${extension}`).join(" ")}`, "--file-filter=All files | *"]
+          : ["--file-filter=FrameSeq presentations | *.slides.ts slides.ts", "--file-filter=All files | *"]),
       ...(folder ? [`--filename=${folder.endsWith("/") ? folder : `${folder}/`}`] : []),
     ]);
     // zenity leaves with 1 when the dialog is cancelled.
@@ -213,7 +223,7 @@ async function linuxDialog(kind, folder) {
   }
   const result = await run("kdialog", kind === "folder"
     ? ["--title", prompts[kind], "--getexistingdirectory", folder || homedir()]
-    : ["--title", prompts[kind], "--getopenfilename", folder || homedir(), "*.ts"]);
+    : ["--title", prompts[kind], "--getopenfilename", folder || homedir(), kind === "image" ? pictureExtensions.map((extension) => `*${extension}`).join(" ") : "*.ts"]);
   return result.code === 1 ? { code: 0, stdout: "", stderr: "" } : result;
 }
 

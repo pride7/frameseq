@@ -14,6 +14,7 @@ import { chartPalette, chartSvg, type ChartSpec } from "./chart";
 import {
   connectorMidpoint,
   connectorPath,
+  isShapeKind,
   resolveShapePaint,
   shapeGeometry,
   shapeSize,
@@ -2189,7 +2190,25 @@ function createLayoutEditor(
 }
 
 /** What the Studio can ask the preview to draw onto a slide. */
-type PlacementKind = ShapeKind | "text" | "line" | "arrow" | "connector";
+/**
+ * What the Studio can have drawn: a shape, a line, a connector, or a box for a text, a formula,
+ * a picture, or some other content, which is placed by its corner and width alone.
+ */
+type PlacementKind = ShapeKind | "text" | "line" | "arrow" | "connector" | (string & {});
+
+/** The size a box of content takes when it is clicked in rather than dragged out. */
+function usualBox(kind: string): { width: number; height: number } {
+  switch (kind) {
+    case "text": return { width: 360, height: 60 };
+    case "image": return { width: 480, height: 320 };
+    case "table": return { width: 560, height: 200 };
+    case "chart": return { width: 560, height: 320 };
+    case "qr": return { width: 200, height: 200 };
+    case "icon": return { width: 96, height: 96 };
+    case "code": return { width: 560, height: 120 };
+    default: return { width: 480, height: 120 };
+  }
+}
 
 /** An object a connector may be drawn from or to, as the Studio needs to name it. */
 function connectable(target: Element | null, canvas: HTMLElement): HTMLElement | undefined {
@@ -2296,7 +2315,7 @@ function createPlacer(
       return;
     }
     const box = dragBox(x, y, shift || kind === "circle");
-    if (kind === "text" || box.width < 2 || box.height < 2) {
+    if (!isShapeKind(kind) || box.width < 2 || box.height < 2) {
       ghost.setAttribute("d", `M ${box.left} ${box.top} h ${box.width} v ${box.height} h ${-box.width} Z`);
       return;
     }
@@ -2380,7 +2399,7 @@ function createPlacer(
       const b = local(end.x, end.y);
       window.parent.postMessage({ type: "frameseq.placed", kind: what, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, "*");
     } else {
-      const usual = what === "text" ? { width: 360, height: 60 } : shapeSize(what);
+      const usual = isShapeKind(what) ? shapeSize(what) : usualBox(what);
       const box = dragged ? dragBox(event.clientX, event.clientY, event.shiftKey || what === "circle") : undefined;
       const corner = box ? local(box.left, box.top) : local(start.x, start.y);
       const width = box ? Math.max(Math.round(box.width / scale), 16) : usual.width;

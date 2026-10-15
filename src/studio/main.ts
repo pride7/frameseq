@@ -9,6 +9,7 @@ import {
   downloadUrl,
   openSession,
   StudioRequestError,
+  type ChooseResponse,
   type ExportFormat,
   type ExportResult,
   type InspectObject,
@@ -46,11 +47,12 @@ import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
 import { MenuBar, type MenuEntry } from "./menubar";
 import { notesText, readNotes, SpeakerNotes } from "./notes";
-import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
+import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideGroup, type SlideMap } from "./outline";
 import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
 import { nameDiagnostics } from "../source-names";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
+import { chooseIcon } from "./icons";
 import { SlideInspector } from "./inspector";
 import { SlideShow } from "./show";
 import { pairPhone, remoteSession, resumePairing } from "./remote";
@@ -61,11 +63,19 @@ import { StudioTerminal } from "./terminal";
 import {
   appendToSlide,
   connectorChanges,
+  contentCode,
+  contentGroups,
+  insertAfter,
   insertGroups,
   insertName,
+  isContentKind,
+  placedContent,
   placementCode,
   showInsertGallery,
+  slideEnd,
   type ConnectorEnd,
+  type ContentCode,
+  type ContentKind,
   type InsertKind,
   type Placement,
 } from "./insert";
@@ -516,6 +526,47 @@ async function start(): Promise<void> {
         effects: EditorView.scrollIntoView(position, { y: "center" }),
       });
       view.focus();
+    },
+    choosePicture: () => choosePicture(),
+    duplicateObject: (object) => {
+      const doc = view.state.doc;
+      const statement = object.statement;
+      const start = object.source.start;
+      if (!statement || start === undefined) {
+        toast(t.inspector.cannotDuplicate, { tone: "warning" });
+        return;
+      }
+      if (statement.end > doc.length || doc.sliceString(start, start + object.type.length) !== object.type) {
+        toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+        return;
+      }
+      // The copy is the statement's whole lines, written after them. A name is made unique, since
+      // two objects cannot share one, and a placed object steps aside so the copy can be seen.
+      const first = doc.lineAt(statement.start);
+      const last = doc.lineAt(statement.end);
+      const taken = new Set([...editorText().matchAll(/\.as\((["'`])([^"'`]+)\1\)/g)].map((match) => match[2]));
+      const copy = doc.sliceString(first.from, last.to)
+        .replace(/\.as\((["'`])([^"'`]+)\1\)/g, (_, quote: string, name: string) => {
+          const stem = name.replace(/\d+$/, "");
+          let index = 2;
+          while (taken.has(`${stem}${index}`)) index += 1;
+          taken.add(`${stem}${index}`);
+          return `.as(${quote}${stem}${index}${quote})`;
+        })
+        .replace(/\.position\(\{\s*x:\s*(-?\d+(?:\.\d+)?),\s*y:\s*(-?\d+(?:\.\d+)?)\s*\}\)/,
+          (_, x: string, y: string) => `.position({ x: ${Number(x) + 24}, y: ${Number(y) + 24} })`);
+      const at = last.to + 1 + (statement.start - first.from);
+      suppressFollow = true;
+      view.dispatch({
+        changes: { from: last.to, insert: `\n${copy}` },
+        selection: EditorSelection.cursor(at),
+        scrollIntoView: true,
+        userEvent: "input.inspector",
+      });
+      toast(t.inspector.duplicated(t.inspector.kinds[object.type] ?? object.type, view.state.doc.lineAt(at).number), {
+        tone: "info",
+        actions: [{ label: t.inspector.undo, run: () => { undo(view); } }],
+      });
     },
     deleteObjects: (objects) => {
       const doc = view.state.doc;
@@ -1404,6 +1455,10 @@ async function start(): Promise<void> {
 
   /** Let the next drag on the preview draw an object of this kind. */
   async function startPlacing(kind: InsertKind): Promise<void> {
+    if (isContentKind(kind)) {
+      await insertContent(kind);
+      return;
+    }
     if (kind !== "connector" && !await placeableGroup()) return;
     const name = insertName(kind);
     const hint = kind === "connector"
@@ -1416,6 +1471,143 @@ async function start(): Promise<void> {
       actions: [{ label: t.insert.cancel, run: () => frames.cancelPlace() }],
     });
     frames.place(kind);
+  }
+
+  /** The content object a drag on a canvas will place, with its picture already chosen. */
+  let placingContent: ContentCode | undefined;
+
+  /** The quote the document writes its strings with, so inserted code reads like the rest. */
+  function documentQuote(): string {
+    const text = editorText();
+    return (text.match(/'/g)?.length ?? 0) > (text.match(/"/g)?.length ?? 0) ? "'" : '"';
+  }
+
+  /** The indent of the line a position is on. */
+  function indentAt(position: number): string {
+    return /^[ \t]*/.exec(view.state.doc.lineAt(position).text)?.[0] ?? "";
+  }
+
+  /**
+   * Where content goes on a slide that flows: after the statement holding the editor's cursor,
+   * which is the object selected in the preview or the panel, or after the slide's last line.
+   */
+  function flowPoint(group: SlideGroup): { after: number; indent: string } {
+    const head = view.state.selection.main.head;
+    const statements = report && reportText === editorText()
+      ? report.statements.filter((statement) => statement.start >= group.from && statement.start < group.to)
+      : [];
+    const holding = head >= group.from && head <= group.to
+      ? statements.filter((statement) => statement.start <= head).pop()
+      : undefined;
+    const statement = holding ?? statements[statements.length - 1];
+    if (!statement) return { after: slideEnd(view.state.doc, group), indent: indentAt(group.anchor) };
+    return { after: statement.end, indent: indentAt(statement.start) };
+  }
+
+  /**
+   * The slide content goes into, and its layout. While the slides are still redrawing, as they
+   * are while a formula compiles, the outline of the editor's own text stands in for them, so
+   * one insertion can follow another without waiting: the slide in the preview when every slide
+   * is written once, as the outline then counts them alike, or else the one the cursor is in.
+   */
+  async function contentTarget(): Promise<{ group: SlideGroup; layout: string } | undefined> {
+    const doc = view.state.doc;
+    const current = await inspect();
+    const layoutAt = (position: number): string => {
+      const line = doc.lineAt(position).number;
+      return current?.slides.find((slide) => slide.source.line === line)?.layout ?? "default";
+    };
+    if (slideMap()) {
+      const target = await placeableGroup();
+      return target && { group: target.group, layout: layoutAt(target.group.anchor) };
+    }
+    const line = doc.lineAt(view.state.selection.main.head).number;
+    const slide = (current && current.slides.length === renderedCount ? current.slides[previewSlide] : undefined)
+      ?? current?.slides.find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
+    if (!slide) {
+      toast(t.rail.catchingUp, { tone: "warning" });
+      return undefined;
+    }
+    const from = doc.line(Math.min(slide.source.line, doc.lines)).from;
+    const to = doc.line(Math.min(slide.source.endLine, doc.lines)).to;
+    return { group: { slides: [], statement: 0, from, to, anchor: from }, layout: slide.layout };
+  }
+
+  /** A picture from this computer, copied beside the presentation, or a web address. */
+  async function choosePicture(): Promise<string | undefined> {
+    let path: string | undefined;
+    if (session.dialogs) {
+      try {
+        const chosen = await call<ChooseResponse>("POST", "files/choose", { kind: "image", folder: session.directory });
+        if (chosen.cancelled) return undefined;
+        path = chosen.path;
+      } catch (error) {
+        toast(error instanceof Error ? error.message : String(error), { tone: "warning" });
+      }
+    }
+    path ??= (await askText({
+      title: t.insert.chooseImage,
+      message: t.insert.imagePathPrompt,
+      value: "",
+      confirm: t.insert.names.image,
+      validate: (value) => (value.trim() ? undefined : t.insert.imagePathPrompt),
+    }))?.trim();
+    if (!path) return undefined;
+    if (/^https?:\/\//i.test(path)) return path;
+    try {
+      const imported = await call<{ path: string; copied: boolean }>("POST", "assets/import", { path, language });
+      if (imported.copied) toast(t.insert.imageCopied(imported.path), { tone: "info" });
+      return imported.path;
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+      return undefined;
+    }
+  }
+
+  /**
+   * Put a content object on the slide in the preview: after the selected object when the slide
+   * flows, or where it is drawn on a canvas. Its settings then open in Current slide with its
+   * words selected, ready to be typed over; with that panel folded, the editor takes them.
+   */
+  async function insertContent(kind: ContentKind): Promise<void> {
+    if (!await contentTarget()) return;
+    const image = kind === "image" ? await choosePicture() : undefined;
+    if (kind === "image" && !image) return;
+    // An icon is chosen by its picture before it goes on the slide.
+    const icon = kind === "icon" ? await chooseIcon(required<HTMLElement>(root, "[data-action='insert']")) : undefined;
+    if (kind === "icon" && !icon) return;
+    const target = await contentTarget();
+    if (!target) return;
+    const content = contentCode(kind, { quote: documentQuote(), image, icon });
+    if (target.layout === "canvas") {
+      placingContent = content;
+      placingHint = toast(t.insert.hintDraw(insertName(kind)), {
+        tone: "info",
+        timeout: 0,
+        key: "placing",
+        actions: [{ label: t.insert.cancel, run: () => frames.cancelPlace() }],
+      });
+      frames.place(kind);
+      return;
+    }
+    const { after, indent } = flowPoint(target.group);
+    await writeContent(kind, insertAfter(view.state.doc, after, indent, content));
+  }
+
+  async function writeContent(kind: ContentKind, spec: TransactionSpec & { at: number }): Promise<void> {
+    const { at, ...transaction } = spec;
+    suppressFollow = true;
+    view.dispatch(transaction);
+    const panel = !root.classList.contains("is-inspector-collapsed");
+    if (panel) {
+      inspector.focusContentAt(at);
+    } else {
+      showEditor(true);
+      view.focus();
+    }
+    const line = view.state.doc.lineAt(at).number;
+    await save({ auto: false });
+    toast(panel ? t.insert.flowAdded(insertName(kind), line) : t.insert.added(insertName(kind), line), { tone: "success" });
   }
 
   /** Write an object drawn in the preview into the slide document, as one undoable step. */
@@ -1450,6 +1642,24 @@ async function start(): Promise<void> {
       return;
     }
 
+    if (isContentKind(kind)) {
+      const target = await contentTarget();
+      if (!target) return;
+      const placed = placedContent(placingContent ?? contentCode(kind, { quote: documentQuote() }), message as unknown as Placement);
+      placingContent = undefined;
+      // The preview measured from the slide's first region, as for a shape: step back to it if
+      // the lines before moved elsewhere.
+      const last = [...(inspectedSlide()?.slide?.objects ?? [])]
+        .filter((object) => !object.parentId)
+        .sort((a, b) => (a.source.start ?? 0) - (b.source.start ?? 0))
+        .at(-1);
+      const content = last && last.region !== "main"
+        ? { lines: ["main();", ...placed.lines], select: placed.select && { ...placed.select, line: placed.select.line + 1 } }
+        : placed;
+      const end = slideEnd(view.state.doc, target.group);
+      await writeContent(kind, insertAfter(view.state.doc, end, indentAt(target.group.anchor), content));
+      return;
+    }
     const target = await placeableGroup();
     if (!target) return;
     const { code, select } = placementCode(message as unknown as Placement);
@@ -1957,6 +2167,16 @@ async function start(): Promise<void> {
           label: t.insert.gallery,
           run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
         },
+        "separator",
+        ...contentGroups.map((group): MenuEntry => ({
+          command: `insert-${group.id}`,
+          label: t.insert.groups[group.id],
+          submenu: () => group.kinds.map((kind) => ({
+            command: `insert-${kind}`,
+            label: insertName(kind),
+            run: () => void startPlacing(kind),
+          })),
+        })),
         "separator",
         ...insertGroups[0].kinds.map((kind): MenuEntry => ({
           command: `insert-${kind}`,

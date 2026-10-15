@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream, readFileSync } from "node:fs";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
+import { iconBodies } from "./icon-set.mjs";
 import { presentationFileName, presentationTemplate, templateDeck } from "./presentation-file.mjs";
 import { documentStatements } from "./source-marks.mjs";
 import { writeDocument } from "./source-edits.mjs";
@@ -14,6 +15,7 @@ import {
   forgetPresentation,
   isDirectory,
   isFile,
+  pictureExtensions,
   recentPresentations,
   rememberPresentation,
 } from "./studio-files.mjs";
@@ -237,6 +239,8 @@ function fileMessages(language) {
       fullPath: "请给出幻灯片文档的完整路径。",
       notTs: "FrameSeq 演示是一个 .ts 文件，比如 talk.slides.ts。",
       noFile: (path) => `${path} 这个文件不存在。`,
+      fullPicture: "请给出图片的完整路径。",
+      notPicture: (extensions) => `只能插入这些格式的图片：${extensions}。`,
     }
     : {
       noTitle: "Give the presentation a title.",
@@ -247,6 +251,8 @@ function fileMessages(language) {
       fullPath: "Give the full path of the slide document.",
       notTs: "A FrameSeq presentation is a .ts file, such as talk.slides.ts.",
       noFile: (path) => `There is no file at ${path}.`,
+      fullPicture: "Give the full path of the picture.",
+      notPicture: (extensions) => `A picture must be one of ${extensions}.`,
     };
 }
 
@@ -440,6 +446,9 @@ export function studioPlugin({
         // ── Presentations: the recent ones, opening one, and starting a new one ──────────
         "GET /files": async () => ({ recent: await recentPresentations(), folder: await currentFolder() }),
 
+        /** Every icon icon() can show, by name, for the Studio's icon picker. */
+        "GET /icons": async () => iconBodies(),
+
         /** Ask with the operating system's own dialog; the page asks for a path when there is none. */
         "POST /files/choose": async (body) => {
           if (choosing) return [409, { error: "A dialog is already open on this computer." }];
@@ -448,9 +457,42 @@ export function studioPlugin({
             const asked = typeof body.folder === "string" && isAbsolute(body.folder) && await isDirectory(body.folder)
               ? body.folder
               : await currentFolder();
-            return await chooseWithDialog(body.kind === "folder" ? "folder" : "open", asked);
+            const kind = body.kind === "folder" || body.kind === "image" ? body.kind : "open";
+            return await chooseWithDialog(kind, asked);
           } finally {
             choosing = false;
+          }
+        },
+
+        /**
+         * Put a picture beside the presentation, so the slides carry it wherever the folder goes:
+         * one already inside the folder is used where it is, and any other is copied into images/,
+         * under a name of its own unless the same picture is already there.
+         */
+        "POST /assets/import": async (body) => {
+          const path = typeof body.path === "string" ? body.path.trim() : "";
+          const say = fileMessages(body.language);
+          if (!path || !isAbsolute(path)) return [400, { error: say.fullPicture }];
+          const source = resolve(path);
+          const extension = extname(source).toLowerCase();
+          if (!pictureExtensions.includes(extension)) return [400, { error: say.notPicture(pictureExtensions.join(" ")) }];
+          if (!await isFile(source)) return [404, { error: say.noFile(source) }];
+          const folder = dirname(entry);
+          const inside = relative(folder, source);
+          if (inside && !inside.startsWith("..") && !isAbsolute(inside)) {
+            return { path: `./${inside.replaceAll("\\", "/")}`, copied: false };
+          }
+          const content = await readFile(source);
+          const stem = basename(source, extname(source)).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "") || "picture";
+          await mkdir(join(folder, "images"), { recursive: true });
+          for (let count = 1; ; count += 1) {
+            const name = `${stem}${count === 1 ? "" : `-${count}`}${extension}`;
+            const target = join(folder, "images", name);
+            if (!await isFile(target)) {
+              await writeFile(target, content);
+              return { path: `./images/${name}`, copied: true };
+            }
+            if ((await readFile(target)).equals(content)) return { path: `./images/${name}`, copied: false };
           }
         },
 

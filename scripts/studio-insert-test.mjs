@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-// Drawing objects onto a slide from the Studio: a shape dragged out in the preview is written
-// where it was drawn, and a connector dragged between two objects names them and follows them.
+// Putting objects onto a slide from the Studio: a shape dragged out in the preview is written
+// where it was drawn, a connector dragged between two objects names them and follows them, and
+// content such as a formula, a table, or a picture is written after the selected object.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -15,6 +17,13 @@ import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 const workspace = resolve(packageRoot, "tmp", "studio-insert-test");
+// A picture outside the presentation's folder, which inserting it copies in beside the slides.
+const pictures = resolve(packageRoot, "tmp", "studio-insert-pictures");
+const picture = resolve(pictures, "dot.png");
+const png = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
 const deck = resolve(workspace, "talk.slides.ts");
 const screenshots = process.env.FRAMESEQ_TEST_SCREENSHOTS;
 
@@ -53,10 +62,14 @@ async function waitFor(check, message, timeout = 20_000) {
 await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 await mkdir(workspace, { recursive: true });
 await writeFile(deck, source, "utf8");
+await rm(pictures, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+await mkdir(pictures, { recursive: true });
+await writeFile(picture, png);
 
 const child = spawn(process.execPath, [cli, "studio", "talk.slides.ts", "--no-open"], {
   cwd: workspace,
-  env: { ...process.env, BROWSER: "none", FORCE_COLOR: "0", NO_COLOR: "1" },
+  // No dialog of this computer's own: the Studio asks for a picture's path in the page instead.
+  env: { ...process.env, BROWSER: "none", FORCE_COLOR: "0", NO_COLOR: "1", FRAMESEQ_NO_DIALOGS: "1" },
   windowsHide: true,
 });
 let output = "";
@@ -92,7 +105,6 @@ try {
   );
   const preview = page.frames().find((frame) => /frameseq-preview=studio(#|$)/.test(frame.url()));
   assert.ok(preview, "the preview must be embedded");
-
   // Show the canvas slide.
   await page.evaluate(() => {
     const { view } = window.frameseqStudio;
@@ -103,12 +115,18 @@ try {
   await waitFor(() => preview.evaluate(() => document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index === "1")
     .catch(() => false), "the preview to show the canvas slide");
 
-  // The gallery lists every shape, each drawn from its own outline.
+  // The gallery lists content, named, and every shape, each drawn from its own outline.
   await page.click("[data-action='insert']");
   await page.waitForSelector(".studio-insert-gallery");
   const kinds = await page.$$eval(".studio-insert-item", (items) => items.map((item) => item.dataset.kind));
-  assert.equal(kinds.length, 31, "the gallery must offer 27 shapes, text, a line, an arrow, and a connector");
+  assert.equal(kinds.length, 44, "the gallery must offer 13 kinds of content, 27 shapes, text, a line, an arrow, and a connector");
   assert.ok(kinds.includes("diamond") && kinds.includes("cylinder") && kinds.includes("connector"));
+  assert.ok(["typst", "math", "latex", "table", "chart", "image"].every((kind) => kinds.includes(kind)));
+  assert.equal(
+    await page.$eval(".studio-insert-item[data-kind='typst'] .studio-insert-label", (label) => label.textContent),
+    "Typst formula",
+    "content is named in the gallery",
+  );
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "insert-gallery.png") });
 
   // Pick the diamond, then drag it out on the slide.
@@ -185,15 +203,18 @@ try {
   }, "the connector to be written");
   assert.match(connected, /shape\("diamond", "Text"\)[^\n]*\.as\("shape1"\);/);
   assert.match(connected, /rect\("Box"\)[^\n]*\.as\("box1"\);/);
+  // A redraw is laid out out of sight first, then swapped into #app, which is what is seen and
+  // clicked; until then the old slide, without the diamond's new name, is still there.
   await waitFor(() => preview.evaluate(() => Boolean(
-    document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-node='line'] line"),
+    document.querySelector("#app .frameseq-slide-frame.is-active [data-frameseq-node='line'] line")
+    && document.querySelector("#app [data-frameseq-shape='diamond'][data-frameseq-name='shape1']"),
   )).catch(() => false), "the connector to be drawn");
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "insert-connected.png") });
 
   // Delete in the preview removes the selected shape's lines and the connector that ends at it;
   // the object at the connector's other end keeps its name. One undo brings both back.
   const diamondCentre = await waitFor(() => preview.evaluate(() => {
-    const shape = document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-shape='diamond']");
+    const shape = document.querySelector("#app .frameseq-slide-frame.is-active [data-frameseq-shape='diamond']");
     if (!shape || !document.documentElement.classList.contains("frameseq-edit-mode")) return undefined;
     const box = shape.getBoundingClientRect();
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -221,6 +242,109 @@ try {
   await preview.waitForFunction(() => !document.documentElement.classList.contains("frameseq-placing"));
   await delay(400);
   assert.equal(await read(), before, "Escape must not write anything");
+
+  // On a canvas nothing flows, so a formula is drawn like a shape: a click places it there.
+  await page.evaluate(() => document.querySelector("[data-action='insert']").click());
+  await page.click(".studio-insert-item[data-kind='math']");
+  await preview.waitForFunction(() => document.documentElement.classList.contains("frameseq-placing"));
+  const canvasBox = await preview.evaluate(() => {
+    const box = document.querySelector(".frameseq-slide-frame.is-active .frameseq-slide").getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width, height: box.height };
+  });
+  await page.mouse.click(frameBox.x + canvasBox.x + canvasBox.width * 0.3, frameBox.y + canvasBox.y + canvasBox.height * 0.75);
+  await waitFor(
+    async () => /math`E = mc\^2`\.position\(\{ x: -?\d+, y: -?\d+ \}\)\.width\(480\);/.test(await read()),
+    "the formula to be placed on the canvas",
+  );
+
+  // A slide that flows takes content after the selected object, and Current slide opens the new
+  // object's settings with its words selected, to be typed over.
+  await page.evaluate(() => {
+    const { view } = window.frameseqStudio;
+    view.dispatch({ selection: { anchor: view.state.doc.toString().indexOf('text("Hello")') } });
+    view.focus();
+  });
+  await waitFor(async () => {
+    if (await preview.evaluate(() => document.querySelector("#app .frameseq-slide-frame.is-active")?.dataset.index === "0").catch(() => false)) return true;
+    // The slide's number in the editor's gutter shows it, should following the cursor be slow.
+    await page.evaluate(() => {
+      const marker = [...document.querySelectorAll(".cm-slide-marker")].find((element) => element.textContent.trim() === "1");
+      marker?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      marker?.click();
+      const { view } = window.frameseqStudio;
+      view.dispatch({ selection: { anchor: view.state.doc.toString().indexOf('text("Hello")') } });
+    });
+    await delay(500);
+    return false;
+  }, "the preview to show the first slide");
+  const insert = async (kind) => {
+    await page.evaluate(() => document.querySelector("[data-action='insert']").click());
+    await page.waitForSelector(`.studio-insert-item[data-kind='${kind}']`);
+    await page.click(`.studio-insert-item[data-kind='${kind}']`);
+  };
+  await insert("typst");
+  await waitFor(
+    async () => (await read()).includes('text("Hello");\ntypst`\n  $ sum_(k=1)^n k = (n(n + 1)) / 2 $\n`;\n'),
+    "the Typst formula to be written after the selected text",
+  );
+  await waitFor(() => page.evaluate(() => (
+    Boolean(document.activeElement?.closest(".studio-object-card"))
+    && document.activeElement.value === "$ sum_(k=1)^n k = (n(n + 1)) / 2 $"
+    && document.activeElement.selectionStart === 0
+    && document.activeElement.selectionEnd === document.activeElement.value.length
+  )), "the formula's source to take the focus, selected, in Current slide");
+  await page.keyboard.type("$ a^2 + b^2 = c^2 $");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("Enter");
+  await page.keyboard.up("Control");
+  await waitFor(async () => (await read()).includes("typst`\n  $ a^2 + b^2 = c^2 $\n`;"), "typing to replace the sample formula");
+
+  // A picture from elsewhere on the computer is copied beside the presentation first.
+  await insert("image");
+  const pathField = await page.waitForSelector("dialog.studio-dialog input");
+  await pathField.type(picture);
+  await page.keyboard.press("Enter");
+  await waitFor(
+    async () => (await read()).includes('`;\nimage(new URL("./images/dot.png", import.meta.url).href, "Picture");\n'),
+    "the picture to be written after the formula",
+  );
+  assert.ok(existsSync(resolve(workspace, "images", "dot.png")), "the picture is copied into the presentation's folder");
+  await waitFor(() => preview.evaluate(() => {
+    const image = document.querySelector(".frameseq-slide-frame.is-active img");
+    return Boolean(image?.complete && image.naturalWidth > 0);
+  }).catch(() => false), "the picture to show in the preview");
+
+  // An icon is chosen by its picture, from a search over the whole set.
+  await insert("icon");
+  await page.waitForSelector(".studio-icon-choice", { timeout: 20_000 });
+  await page.keyboard.type("rocket");
+  await waitFor(() => page.$$eval(".studio-icon-choice", (items) => items.length > 0 && items.every((item) => item.dataset.name.includes("rocket"))),
+    "the search to narrow the icons");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('.href, "Picture");\nicon("rocket");\n'), "the chosen icon to be written after the picture");
+
+  // In the editor the same content is a snippet at the start of a line.
+  await page.evaluate(() => {
+    const { view } = window.frameseqStudio;
+    const text = view.state.doc.toString();
+    view.dispatch({ selection: { anchor: text.indexOf("\n", text.indexOf('text("Hello");')) } });
+    view.focus();
+  });
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("chart");
+  const snippet = await page.waitForSelector(".cm-tooltip-autocomplete li:has(.cm-completionIcon-snippet)");
+  await snippet.evaluate((item) => item.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+  await waitFor(
+    async () => (await read()).includes('text("Hello");\nchart("bar", { "Q1": 12, "Q2": 18, "Q3": 25 });\n'),
+    "the chart snippet to be written",
+  );
+  if (screenshots) await page.screenshot({ path: resolve(screenshots, "insert-content.png") });
+
+  // Current slide writes a copy of the selected object after it.
+  await page.evaluate(() => [...document.querySelectorAll(".studio-tree-row")].find((row) => row.textContent.includes("Hello"))?.click());
+  await page.waitForSelector(".studio-object-card .studio-card-icon.is-duplicate");
+  await page.click(".studio-object-card .studio-card-icon.is-duplicate");
+  await waitFor(async () => (await read()).includes('text("Hello");\ntext("Hello");\nchart('), "the text to be duplicated after itself");
 
   assert.deepEqual(errors, [], "the Studio must not throw");
   console.log("Studio insert test passed.");

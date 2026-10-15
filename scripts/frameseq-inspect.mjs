@@ -245,6 +245,19 @@ function objectProperties(sourceFile, node, chain, computed = []) {
   return properties;
 }
 
+/**
+ * The path literal of a file beside the slide document, written as
+ * new URL("./images/photo.png", import.meta.url).href so the build finds it.
+ */
+function assetPath(node) {
+  if (!node || !ts.isPropertyAccessExpression(node) || node.name.text !== "href") return undefined;
+  const url = node.expression;
+  if (!ts.isNewExpression(url) || !ts.isIdentifier(url.expression) || url.expression.text !== "URL") return undefined;
+  const [path, base] = url.arguments ?? [];
+  if (!base || base.getText() !== "import.meta.url") return undefined;
+  return path && (ts.isStringLiteral(path) || ts.isNoSubstitutionTemplateLiteral(path)) ? path : undefined;
+}
+
 /** The text of a literal as the command receives it: a tagged template keeps its backslashes. */
 function templateText(node) {
   return node.rawText ?? node.getText().slice(1, -1);
@@ -270,8 +283,9 @@ function objectTexts(sourceFile, node) {
   }
   if (!ts.isCallExpression(node)) return [];
   return node.arguments.flatMap((argument, index) => {
-    if (!ts.isStringLiteral(argument) && !ts.isNoSubstitutionTemplateLiteral(argument)) return [];
-    return [{ ...editableProperty(sourceFile, "content", argument), argument: index }];
+    const literal = assetPath(argument) ?? argument;
+    if (!ts.isStringLiteral(literal) && !ts.isNoSubstitutionTemplateLiteral(literal)) return [];
+    return [{ ...editableProperty(sourceFile, "content", literal), argument: index }];
   });
 }
 
@@ -358,7 +372,7 @@ function contentObjects(sourceFile, root, after = 0) {
     let nextParent = parentStart;
     const type = contentType(node);
     if (type) {
-      add(type, node, staticString(node.arguments[0]), parentStart);
+      add(type, node, staticString(node.arguments[0]) ?? staticString(assetPath(node.arguments[0])), parentStart);
       nextParent = node.getStart();
     } else if (ts.isTaggedTemplateExpression(node)
       && ts.isIdentifier(node.tag)

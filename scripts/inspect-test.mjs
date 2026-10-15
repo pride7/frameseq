@@ -104,11 +104,12 @@ const panelSource = [
   'bullets("One", "Two");',
   'at("side").text("Region words").color("red");',
   'line().from("start").to("end").below("start");',
+  'image(new URL("./images/cat.png", import.meta.url).href, "A cat");',
   "",
 ].join("\n");
 const [panel] = inspectSource("panel.slides.ts", panelSource).slides;
 const at = (range) => panelSource.slice(range.start, range.end);
-const [hello, formula, list, region, link] = panel.objects;
+const [hello, formula, list, region, link, picture] = panel.objects;
 assert.deepEqual(hello.texts.map((text) => [text.value, text.expected, text.argument]), [["Hello", '"Hello"', 0]]);
 assert.deepEqual(hello.methods.map((method) => method.name), ["lead", "fontSize"]);
 assert.equal(panelSource.slice(hello.methods[0].removeFrom, hello.methods[0].end), ".lead()");
@@ -131,6 +132,9 @@ assert.equal(region.statement, undefined);
 // The names an object connects or is placed against, once each, so deleting one can account for it.
 assert.deepEqual(link.refers, ["start", "end"]);
 assert.equal(hello.refers, undefined);
+// A picture beside the slides is written with new URL(); its path is the literal inside.
+assert.equal(picture.label, "./images/cat.png");
+assert.deepEqual(picture.texts.map((text) => [text.argument, text.value]), [[0, "./images/cat.png"], [1, "A cat"]]);
 
 console.log("Inspect test passed: identity, hierarchy, editable properties, source ranges, and the panel's edit points are stable JSON.");
 
