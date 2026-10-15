@@ -1,815 +1,169 @@
-# FrameSeq
+<p align="center">
+  <img src="public/favicon.svg" width="64" height="64" alt="">
+</p>
 
-**Write slides as an editable TypeScript document—not a tree of presentation markup.**
+<h1 align="center">FrameSeq</h1>
 
-FrameSeq is an AI-friendly presentation framework with a linear authoring model, useful design defaults, chainable styling, and HTML/PDF/PPTX/Typst output. It feels like building an interface, but the source stays as direct and readable as a document. The same source makes slides for the screen and posters for paper, with tables, charts, icons, QR codes, and citations built in.
+<p align="center"><strong>Slides you can click. Code you can read.</strong></p>
 
-[![CI](https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg)](https://github.com/pride7/frameseq/actions/workflows/ci.yml)
-[![Gallery](https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg)](https://pride7.github.io/frameseq/)
+<p align="center">
+  <a href="https://pride7.github.io/frameseq/download/">Download</a> ·
+  <a href="https://pride7.github.io/frameseq/">Website</a> ·
+  <a href="https://pride7.github.io/frameseq/docs/">Documentation</a> ·
+  <a href="https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground">Try it online</a> ·
+  <a href="https://github.com/pride7/frameseq/blob/main/README.zh-CN.md">中文</a>
+</p>
 
-[Download the app](https://github.com/pride7/frameseq/releases/latest) · [中文文档](https://pride7.github.io/frameseq/docs/zh/) · [Try FrameSeq online](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) · [Explore the live Gallery](https://pride7.github.io/frameseq/) · [Read the documentation](https://pride7.github.io/frameseq/docs/) · [See what changed](https://pride7.github.io/frameseq/docs/changelog.html)
+<p align="center">
+  <a href="https://github.com/pride7/frameseq/actions/workflows/ci.yml"><img src="https://github.com/pride7/frameseq/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pride7.github.io/frameseq/"><img src="https://github.com/pride7/frameseq/actions/workflows/gallery.yml/badge.svg" alt="Website"></a>
+  <a href="https://www.npmjs.com/package/@pride7/frameseq"><img src="https://img.shields.io/npm/v/@pride7/frameseq" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+</p>
 
-```ts
-presentation({
-  title: "A Better Way to Write Slides",
-  author: "Ada Lovelace",
-  theme: "minimal-academic",
-});
+FrameSeq Studio has the menus, Insert gallery, format pane, slide masters, and presenter view you know from PowerPoint. Underneath, every slide is one readable file: AI can write it, Git can track it, and one command makes it an editable PowerPoint, a PDF, or a website.
 
-slide().cover();
+![FrameSeq Studio with slide thumbnails, the slide's code, and its preview side by side](https://pride7.github.io/frameseq/images/studio.webp)
 
-slide("Why FrameSeq");
-text("Presentation code should describe ideas, not boilerplate.").lead();
-bullets(
-  "One linear TypeScript file",
-  "Semantic layouts with useful defaults",
-  "Tailwind styling without configuration",
-  "Interactive HTML, PDF, editable PowerPoint, and Typst",
-);
+Free and open source, for Windows, macOS, and Linux.
 
-slide("Results").grid(3);
-cell(0); metric("12 min", "To first draft");
-cell(1); metric("1 file", "To maintain");
-cell(2); metric("3 formats", "HTML · PDF · PPTX");
+## Get started
 
-slide("The model");
-text`Every command belongs to the current slide until the next $\operatorname{slide}()$ call.`;
-```
+**Download the app.** The [download page](https://pride7.github.io/frameseq/download/) has an installer for Windows, disk images for macOS, and archives for Linux. The app brings its own Node.js, Typst, and Tectonic, so there is nothing to install first, and it keeps itself up to date. See [FrameSeq app](https://pride7.github.io/frameseq/docs/app.html).
 
-No imports, wrapper components, nested DOM, or export statement are required in a `.slides.ts` entry file.
-
-## Table of contents
-
-- [Live Gallery](#live-gallery)
-- [Why FrameSeq](#why-frameseq)
-  - [Easier to edit than raw HTML](#easier-to-edit-than-raw-html)
-  - [A strong target language for AI](#a-strong-target-language-for-ai)
-  - [Progressive control](#progressive-control)
-- [Quick start](#quick-start)
-- [The document model](#the-document-model)
-- [Content](#content)
-  - [Tables, charts, icons, and QR codes](#tables-charts-icons-and-qr-codes)
-  - [Citations](#citations)
-  - [Formulas](#formulas)
-  - [Typst for complex typesetting](#typst-for-complex-typesetting)
-  - [LaTeX tables](#latex-tables)
-  - [Code, lists, images, and reveals](#code-lists-images-and-reveals)
-- [Layout](#layout)
-  - [Split](#split)
-  - [Grid](#grid)
-  - [Local grid section](#local-grid-section)
-  - [Freeform positioning](#freeform-positioning)
-  - [Shapes and connectors](#shapes-and-connectors)
-- [Styling](#styling)
-- [Themes and typography](#themes-and-typography)
-- [Posters and print](#posters-and-print)
-- [FrameSeq Studio](#frameseq-studio)
-- [Visual Studio Code extension](#visual-studio-code-extension)
-- [Preview, build, and export](#preview-build-and-export)
-- [AI-friendly layout checks](#ai-friendly-layout-checks)
-- [Presenter view](#presenter-view)
-- [Advanced object API](#advanced-object-api)
-- [Documentation](#documentation)
-- [Continuous integration and changelog](#continuous-integration-and-changelog)
-- [Development](#development)
-
-## Live Gallery
-
-The [FrameSeq Gallery](https://pride7.github.io/frameseq/) contains live, clickable presentations built from this repository: a product tour, a complete AI-oriented research example, and previews of the built-in themes. The previews are compiled FrameSeq pages rather than screenshots, so they always track the current runtime and themes.
-
-## Why FrameSeq
-
-### Easier to edit than raw HTML
-
-HTML is an excellent rendering target, but presentation source written directly as HTML quickly mixes content, nesting, layout, and styling. FrameSeq keeps the author's intent visible:
-
-```ts
-slide("Architecture").split("40:60");
-
-image("pipeline.png", "Compiler pipeline");
-
-right();
-text("Three clear stages").lead();
-bullets("Parse the document", "Build the page tree", "Render HTML, PDF, or PPTX");
-```
-
-A slide starts with `slide()`; everything after it belongs to that slide until the next `slide()`. Layout changes are named operations such as `split()`, `grid()`, `right()`, and `cell()`. A local visual change stays attached to the object it affects.
-
-This makes presentation code easier to read, rearrange, diff, and revise than a large hierarchy of generic elements.
-
-### A strong target language for AI
-
-FrameSeq is deliberately small and regular, which makes it well suited to AI-generated presentations:
-
-- The source expresses presentation intent instead of DOM implementation details.
-- Slide boundaries are explicit and require no indentation tree.
-- Semantic commands such as `lead()`, `bullets()`, `metric()`, and `split()` reduce arbitrary design decisions.
-- Local edits usually change a few lines without rebuilding an HTML structure.
-- TypeScript catches misspelled APIs and invalid arguments.
-- `frameseq check --json` gives agents empty-slide, measured overflow, clipping, and readability diagnostics they can correct directly, each with the source line of the object it concerns.
-- A document that fails to run is reported against the statement that caused it, in the CLI, the Studio, and VS Code, the way a compiler reports an error.
-- Themes and presentation-wide typography let AI change the visual system without rewriting every slide.
-- The FrameSeq runtime owns rendering, navigation, responsive scaling, and HTML, PDF, PPTX, and Typst output.
-
-An AI can generate a useful first draft with the semantic API, then a person can edit the same compact source. When a page needs more control, both can progressively add Tailwind utilities, custom themes, or low-level objects without abandoning the document.
-
-Give a coding agent the compact [`llms.txt`](https://github.com/pride7/frameseq/blob/main/llms.txt) contract, then use the [AI generation guide](https://pride7.github.io/frameseq/docs/ai-generation.html) for prompting, validation, and correction loops. The Gallery includes a [complete AI-oriented research example](https://pride7.github.io/frameseq/examples/ai-research/) and its [editable source](https://github.com/pride7/frameseq/blob/main/gallery/slides/ai-research.slides.ts).
-
-### Progressive control
-
-Start with defaults:
-
-```ts
-slide("One idea");
-text("A normal slide already has spacing and typography.");
-bullets("First point", "Second point");
-```
-
-Add a structured layout:
-
-```ts
-slide("Results").grid(3);
-cell(0); metric("42%", "Growth");
-cell(1); metric("18K", "Users");
-cell(2); metric("99.9%", "Uptime");
-```
-
-Style one object:
-
-```ts
-text("Important")
-  .style("text-4xl font-bold tracking-tight text-blue-600");
-```
-
-Or drop down to the explicit object API for a completely custom composition. FrameSeq does not force every slide into the same abstraction level.
-
-## Quick start
-
-Download the [FrameSeq app](https://github.com/pride7/frameseq/releases/latest) for Windows, macOS, or Linux to write presentations without installing anything else, Node.js included: it adds FrameSeq Studio to the Start menu, Applications, or the applications menu, and the `frameseq` command. See [FrameSeq app](https://pride7.github.io/frameseq/docs/app.html).
-
-Open the editable [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) to change `slides.ts` and see the live presentation without installing anything.
-
-Create a presentation project:
+**Install with npm.**
 
 ```bash
 npm create frameseq@latest my-talk
 cd my-talk
 npm install
-npm run dev
+npm run studio
 ```
 
-The generated project contains:
-
-```text
-my-talk/
-├── AGENTS.md
-├── CLAUDE.md
-├── components/
-│   ├── content.ts
-│   └── theme.ts
-├── slides.ts
-├── package.json
-└── tsconfig.json
-```
-
-Edit `slides.ts`; the browser preview updates as the file changes. Put reusable content functions in `components/content.ts` and project-wide design settings in `components/theme.ts`. The entry imports these files directly, without an extra `index.ts` layer. `AGENTS.md` gives coding agents the project's FrameSeq syntax, region, formula, and validation rules; `CLAUDE.md` imports the same instructions so they stay in sync.
-
-To write a single slide file in any folder, with no project around it, install FrameSeq once:
+To write a single slide file in any folder instead, install FrameSeq once and open the file in the Studio:
 
 ```bash
 npm install --global @pride7/frameseq
 frameseq studio my-talk.slides.ts
 ```
 
-To use FrameSeq in an existing TypeScript project:
+**Try it in the browser.** The [playground on StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) opens a slide file beside a live preview, ready to edit.
 
-```bash
-npm install --save-dev @pride7/frameseq
-npx frameseq new my-talk.slides.ts
-npx frameseq dev my-talk.slides.ts
-```
+## Everything you reach for in PowerPoint
 
-## The document model
+There is nothing to learn first: point, drag, and type, and the Studio writes the code.
+
+- **Insert anything.** Text, formulas, pictures, tables, charts, icons, and 27 shapes from one gallery. Drag a shape out, and it lands where you drew it.
+- **Format pane.** Select an object to change its words, colour scheme, fill, outline, size, and position. Each change is one undoable step.
+- **Right-click menus.** Cut, copy, paste, duplicate, bring to front, align, and go to code, with the shortcuts you already know.
+- **Slide masters and templates.** Draw a logo, a footer, or a title bar once, and every slide follows. Keep any presentation as a template of your own.
+- **New slides from 12 layouts**, speaker notes right under the slide, and `Ctrl+Z` for everything.
+- **English and Chinese**, menus and messages alike.
+
+<table>
+  <tr>
+    <td width="50%"><img src="https://pride7.github.io/frameseq/images/studio-insert.webp" alt="The Insert gallery"></td>
+    <td width="50%"><img src="https://pride7.github.io/frameseq/images/studio-format.webp" alt="The format pane"></td>
+  </tr>
+  <tr>
+    <td align="center">Insert gallery</td>
+    <td align="center">Format pane</td>
+  </tr>
+</table>
+
+`Ctrl+E` folds the code away for anyone who never wants to see it. Keep it open, and Alt-click any object to jump to its line, with TypeScript completions, hover help, and errors as you type. Dragging a shape changes only its numbers. See [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html).
+
+## Ask the AI assistant for a change
+
+The Assistant panel runs Claude Code or Codex, whichever your computer has, on your own sign-in. It edits the slides, checks the layout, looks at what it drew, and lays out every edit for you to accept or reject.
+
+![The AI assistant turning a roadmap slide into four chevrons](https://pride7.github.io/frameseq/images/studio-assistant.webp)
+
+Prefer your own agent? Claude Code, Codex, and Cursor connect to `frameseq mcp` to outline, check, and see the slides, and any model can learn the language from [llms.txt](https://pride7.github.io/frameseq/llms.txt). See [AI generation](https://pride7.github.io/frameseq/docs/ai-generation.html).
+
+## One file that reads from top to bottom
+
+Every slide is a few lines of TypeScript, with no imports, no nesting, and no markup. Source order is reading order, so a diff shows exactly what changed, and an AI writes it without getting lost.
 
 ```ts
-presentation("My Talk");
+presentation({ title: "Atlas 2.0", theme: "minimal-academic" });
 
-slide().cover();
-text("Build slides like apps").hero();
-text("Keep them as easy to edit as documents").subtitle();
-text("Your name").author();
-
-slide("Why");
-text("Common slides use useful defaults.");
+slide("Faster every release").split("38:62")
+  .notes("Median load time, measured on a mid-range phone over 4G.");
+text("Median time to first tile fell by two thirds in a year.").lead();
 bullets(
-  "No layout boilerplate",
-  "KaTeX-powered formulas",
-  "Browser preview and PDF export",
+  "Vector tiles replaced images",
+  "A cache at every edge",
+  "Fonts shipped with the app",
 );
-
-slide("Equation");
-math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
-```
-
-`presentation()` defines presentation-wide metadata and design options. `slide()` starts a page. Content commands add objects to the current page and return chainable builders.
-
-The FrameSeq compiler injects the authoring commands and exports the presentation automatically. Ordinary TypeScript imports, variables, URLs, and functions remain available when the slides need them.
-
-## Content
-
-### Text roles
-
-```ts
-text("Main title").hero();
-text("Supporting message").subtitle();
-text("SECTION 01").eyebrow();
-text("The important idea").lead();
-text("Source: Example").caption();
-text("A memorable sentence").quote();
-```
-
-Text roles provide consistent, theme-aware styling while remaining individually customizable.
-
-### Tables, charts, icons, and QR codes
-
-```ts
-slide("Results").split();
-
-table([
-  ["Model", "Accuracy", "Latency"],
-  ["Baseline", "91.2%", "18 ms"],
-  ["FrameSeq", "94.6%", "12 ms"],
-]);
-
 right();
-chart("bar", { Q1: 12, Q2: 18, Q3: 25 }).unit("%");
-icon("rocket").size(48);
-qr("https://pride7.github.io/frameseq/");
+chart("bar", { "1.0": 840, "1.4": 610, "1.8": 430, "2.0": 280 })
+  .unit(" ms")
+  .colors("#0d9488");
 ```
 
-Tables are ruled like a paper's and align columns of numbers on their digits. Charts are drawn from the data written beside them, at their real size, as bars, lines, pies, or donuts. PowerPoint export turns both into native PowerPoint tables and charts that stay editable. Icons come from [Lucide](https://lucide.dev/icons), and TypeScript completes their names. `.fit()` shrinks any object's text until it fits its room. See [Content](https://pride7.github.io/frameseq/docs/content.html).
-
-### Citations
-
-```ts
-import bibliography from "./references.bib";
-
-presentation({ title: "Diffusion Language Models", bibliography });
-
-slide("Background");
-text(`Attention replaced recurrence ${cite("vaswani2017")}.`);
-
-slide("References");
-references();
-```
-
-`cite()` numbers works in the order they are first cited, each slide lists the works it cites at its foot, `footnote()` adds a note there, and `references()` builds the full list. The bibliography is a BibTeX file, imported directly, or references written out by key. See [Citations and references](https://pride7.github.io/frameseq/docs/citations.html).
-
-### Formulas
-
-Use a tagged template for display math:
-
-```ts
-math`\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}`;
-```
-
-Use `$...$` inside a tagged `text` template for inline math:
-
-```ts
-text`Euler's identity is $e^{i\pi} + 1 = 0$.`;
-```
-
-The tagged forms preserve backslashes, so `String.raw` is unnecessary.
-
-### Typst for complex typesetting
-
-Keep FrameSeq in control of the presentation structure and use Typst for a complex local fragment. Install the optional build-time compiler:
-
-```bash
-npm install --save-dev @myriaddreamin/typst-ts-node-compiler
-```
-
-Then use a static tagged template:
-
-```ts
-slide("Optimization");
-text("Objective function").lead();
-
-typst`
-  #set text(size: 22pt)
-  $ min_theta sum_(i=1)^n
-    loss(f_theta(x_i), y_i) + lambda norm(theta)^2 $
-`
-  .width(720);
-```
-
-For larger fragments, keep Typst in its own file:
-
-```ts
-typstFile("./figures/architecture.typ")
-  .width(percent(100));
-```
-
-FrameSeq compiles embedded Typst to inline SVG during the Vite build. The browser receives no Typst compiler or WASM, and the fragment participates in normal FrameSeq layout and styling across HTML, PDF, and PPTX output. FrameSeq can also export the whole presentation as editable `.typ` source; native Typst fragments remain source, LaTeX formulas and basic text use MiTeX, and common LaTeX tables become native Typst tables. See [Typst integration and export](https://pride7.github.io/frameseq/docs/typst.html).
-
-### LaTeX tables
-
-Keep KaTeX for ordinary formulas and use the optional Tectonic backend when a slide needs a real LaTeX table. Install it locally:
-
-```bash
-npm install --save-dev node-tectonic
-```
-
-Then place the table like any other FrameSeq object:
-
-```ts
-slide("Results");
-
-latex`
-  \begin{tabular}{lrr}
-    \toprule
-    Model & Accuracy & Latency \\
-    \midrule
-    Baseline & 91.2\% & 18 ms \\
-    FrameSeq & \textbf{94.6\%} & 12 ms \\
-    \bottomrule
-  \end{tabular}
-`
-  .width(820)
-  .position({ x: 180, y: 210 });
-```
-
-`latexFile("./tables/results.tex")` keeps larger fragments in their own files. FrameSeq compiles static fragments at build time, embeds the generated fonts, caches the result by content, and preserves it across HTML, PDF, and PPTX export. See [LaTeX integration](https://pride7.github.io/frameseq/docs/latex.html) for supported packages and restrictions.
-
-### Code, lists, images, and reveals
-
-```ts
-code(`const answer = 42;`, "ts");
-
-bullets("Readable source", "Useful defaults", "Flexible styling");
-
-steps("Introduce the problem", "Reveal the model", "Show the result");
-
-image("diagram.png", "System diagram");
-```
-
-`steps()` reveals items during navigation. PDF and PPTX export include the fully revealed slide.
-
-## Layout
-
-FrameSeq uses a single-column layout by default. Add structure only where it communicates something useful.
-
-### Split
-
-```ts
-slide("Architecture").split("40:60");
-
-image("diagram.png", "Compiler diagram");
-
-right();
-text("Compiler").lead();
-bullets("TypeScript DSL", "HTML renderer", "PDF export");
-```
-
-### Grid
-
-```ts
-slide("Comparison").grid(3);
-
-cell(0);
-text("Simple").lead();
-text("Useful defaults");
-
-cell(1);
-text("Flexible").lead();
-text("Tailwind or object styles");
-
-cell(2);
-text("Portable").lead();
-text("HTML and PDF");
-```
-
-### Region paths
-
-Grouping usually forces source to nest. `at(path)` addresses a region instead, and creates the containers it names, so composition stays flat — one statement per object, no nesting, no closing call:
-
-```ts
-slide("Roadmap").grid(2);
-
-at("cell0/now").card();
-text("Q3").eyebrow();
-bullets("Anchors", "Region paths");
-
-at("cell1/next").card();
-text("Q4").eyebrow();
-
-at("cell0/now");
-text("Merged into main").caption();
-```
-
-The first segment can address a region the layout already owns, so `at("cell1")` and `cell(1)` are the same region. Every other segment is created on first use, at any depth. Revisiting a path appends to the same region, which means a page can be written in the order that reads best. Paths reset with the next `slide()`, and each one doubles as an anchor name, so `line().to("stages")` can connect to a positioned region.
-
-### Local grid section
-
-Keep the slide in its normal top-to-bottom flow and arrange only one group of objects as a grid. Each object passed to `gridSection()` becomes one cell:
-
-```ts
-slide("Results");
-
-text("Performance this quarter");
-
-gridSection(
-  3,
-  metric("42%", "Growth"),
-  metric("18K", "Users"),
-  metric("99.9%", "Uptime"),
-).gap(20);
-
-text("All targets were exceeded.");
-```
-
-Use `card()` for a common title-and-copy cell, or `group()` when one cell needs several independently styled objects:
-
-```ts
-gridSection(
-  3,
-  card("Declarative", "Readable source code"),
-  card("Portable", "HTML, PDF and PPTX"),
-  group(
-    text("AI-friendly").bold(),
-    text("Easy to generate and revise"),
-  ).card(),
-);
-```
-
-Unlike `slide().grid(3)`, a local grid does not take over the whole slide body. Content before and after it remains in the ordinary document flow.
-
-When the container reads better than its contents, name it with `at()` and keep writing normally:
-
-```ts
-at("panel").card().padding(24);
-text("Revenue").bold();
-text("$1.2M").size(42);
-```
-
-Calling `.canvas()` on a container creates a local coordinate system for positioned children, and `.clip()` keeps them inside its bounds.
-
-Objects can also be grouped and restyled by name, which keeps the source free of local variables:
-
-```ts
-rect("Parse").as("parse");
-rect("Build").as("build");
-rect("Render").as("render");
-
-group("parse", "build", "render").row().gap(16);
-ref("parse").fill("#dbeafe");
-```
-
-`ref(name)` returns the same builder the object was created with, so shapes keep `.fill()`, connectors keep `.arrow()`, and containers keep `.gap()`. Names come from `.as()` or from an `at()` path.
-
-### Freeform positioning
-
-Switch the slide body to a canvas when an object needs exact coordinates:
-
-```ts
-slide({ name: "System map" }).canvas();
-
-text("Compiler")
-  .position({ x: 80, y: 90 })
-  .width(320)
-  .size(32)
-  .bold();
-
-image("diagram.png", "Compiler diagram")
-  .position({ x: 500, y: 80 })
-  .width(620);
-```
-
-Coordinates are relative to the current canvas region. Numbers are pixels in FrameSeq's fixed presentation coordinate system; the default presentation canvas is 1280 x 720, and FrameSeq maps that finished geometry consistently to interactive HTML, PDF, and PPTX. Prefer structured layouts for most pages, then use `canvas()` with `position()` for diagrams and custom compositions.
-
-### Shapes and connectors
-
-Create editable diagrams directly in the slide source. `shape()` draws 27 outlines, from a decision diamond and a database cylinder to a cloud and block arrows, each painted from one `tone()` that follows the theme. Connectors follow named shapes, turn at right angles around other shapes, and carry labels, and every shape exports to PowerPoint as its native preset:
-
-```ts
-slide({ name: "Request flow" }).canvas();
-
-shape("diamond", "Cached?").as("cached").position({ x: 120, y: 40 }).tone("amber");
-shape("rounded", "Run the model").as("run").below("cached", 60).width(240).height(80);
-shape("cylinder", "Store").as("store").rightOf("run", 160).tone("purple", "solid");
-
-line().from("cached").to("run").arrow().label("no");
-line().from("run").to("store").arrow();
-line().from("cached.right").to("store.top").route("elbow").arrow().label("yes");
-```
-
-`rect()` and `circle()` draw plain boxes, and `line({ x1, y1, x2, y2 })` a line anywhere on the canvas. In FrameSeq Studio, **Insert** draws any of them with the mouse and writes the command for you.
-
-Write connectors before nodes when the lines should appear behind them.
-
-Diagrams that reference names instead of numbers survive editing. Name an object with `as()`, then place and connect the rest relative to it:
-
-```ts
-slide({ name: "Training loop" }).canvas();
-
-rect("Encoder").as("enc").position({ x: 80, y: 140 }).width(200).height(100);
-rect("Decoder").as("dec").rightOf("enc", 140);
-circle("Loss").as("loss").rightOf("dec", 140);
-
-line().from("enc").to("dec").arrow("end");
-line().from("loss.bottom").to("enc.bottom").arrow("end");
-
-text("shared vocabulary").caption().below("enc", 16);
-```
-
-A row or column removes the coordinates altogether: the container carries the only one, its children lay themselves out, and connectors still find them.
-
-```ts
-slide({ name: "Pipeline" }).canvas();
-
-at("stages").row().gap(80).anchor("center");
-rect("Parse").as("parse");
-rect("Build").as("build");
-rect("Render").as("render");
-
-line().from("parse").to("build").arrow("end");
-line().from("build").to("render").arrow("end");
-```
-
-Moving the diagram is one edit, and `anchor()` places the container against the slide, so this page has no coordinates at all. Placement modifiers are `rightOf()`, `leftOf()`, `above()`, `below()`, `centerOn()`, `alignTop()`, `alignLeft()`, and `anchor()`. Connectors pick the facing edges automatically, or take an explicit anchor such as `"enc.top-right"`. Moving one box updates every connector attached to it. See [Diagrams](https://pride7.github.io/frameseq/docs/diagrams.html) for the complete model — region paths, automatic layout, names, and connectors — and [Shapes and connectors](https://pride7.github.io/frameseq/docs/shapes.html) for the primitives, arrow directions, layering, and custom SVG assets.
-
-Other layout tools include `center()`, `fullBleed()`, `left()`, and `main()`.
-
-## Styling
-
-### Tailwind, built in
-
-Pass Tailwind utilities directly to `style()`; no Tailwind config is required:
-
-```ts
-text("Designed in the source")
-  .style("rounded-2xl bg-slate-900 px-8 py-5 text-3xl font-semibold text-white");
-```
-
-Arbitrary utilities such as `text-[30px]`, `left-[80px]`, and `bg-[#0f172a]` are supported.
-
-### Chainable modifiers
-
-```ts
-text("A precise annotation")
-  .size(18)
-  .weight(600)
-  .color("#475569")
-  .margin(12, 0);
-```
-
-The object overload of `style()` accepts inline CSS when needed:
-
-```ts
-text("Custom").style({
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-});
-```
-
-## Themes and typography
-
-FrameSeq starts with a neutral `blank` theme. Choose a bundled theme:
-
-```ts
-presentation({ title: "My Talk", theme: "midnight" });
-```
-
-Academic themes can build title bars, metadata footers, and slide numbers from presentation metadata:
-
-```ts
-presentation({
-  title: "Diffusion Language Models",
-  subtitle: "From iterative recovery to continuous state spaces",
-  author: "Your Name",
-  institute: "Your Institute",
-  date: "2026",
-  theme: "minimal-academic",
-});
-
-slide().cover();
-```
-
-Override presentation-wide typography without creating a theme:
-
-```ts
-presentation({
-  title: "My Talk",
-  theme: "minimal-academic",
-  font: {
-    family: '"Noto Sans SC", sans-serif',
-    size: 24,
-    heading: { family: '"Noto Serif SC", serif', weight: 700 },
-    code: { family: '"JetBrains Mono", monospace', size: 18 },
-  },
-});
-```
-
-Or define a reusable design system:
-
-```ts
-const ocean = defineTheme({
-  name: "ocean",
-  colors: {
-    background: "#effcff",
-    foreground: "#15343b",
-    accent: "#007c91",
-  },
-});
-
-presentation({ title: "Ocean Research", theme: ocean });
-```
-
-## Posters and print
-
-```ts
-poster({
-  title: "Diffusion Language Models",
-  author: "Ada Lovelace · Alan Turing",
-  institute: "University of Cambridge",
-}).grid(3);
-
-at("cell0/introduction").card();
-text("Introduction").title();
-text("Autoregressive models write one token at a time…");
-```
-
-`poster()` starts an A0 page in the `poster` theme, with a title band built from the metadata, and the page is laid out with the same commands as a slide. Any presentation can be made for paper with `size: "A0"`, `"A4"`, `"letter"`, or `"36x48in"`. The canvas keeps units of its own, 1600 across the short side, so themes and layouts work unchanged; `mm()` and `pt()` measure the printed sheet, the layout check judges type by its printed size, and PDF, PowerPoint, and Typst print at the paper's size. See [Posters and print](https://pride7.github.io/frameseq/docs/posters.html).
-
-## FrameSeq Studio
-
-FrameSeq Studio puts the whole loop of writing a talk in one window, with nothing to install beyond FrameSeq itself:
-
-```bash
-frameseq studio talk.slides.ts
-```
-
-It opens as an app window of its own (or in the default browser when no Chromium browser is installed), and in the FrameSeq app as a desktop program whose menu bar is its title bar: live slide thumbnails on the left, the `.slides.ts` source in a TypeScript editor in the middle, the interactive preview on the right, and one list of problems beneath them.
-
-- The editor completes FrameSeq commands and methods, underlines type errors, and shows each command's documentation and parameters, all read from the project's own `tsconfig.json`.
-- Names given with `.as()` and `at()` are identifiers too: the editor completes them in `ref()`, connectors, and `at()`, `F12` jumps to where a name was given, `F2` renames it everywhere on its slide, and a name that refers to nothing is underlined.
-- An error thrown while the slides run is listed with the line of the statement it stopped in, which the editor underlines.
-- Auto-save writes only text that parses, so the preview never flashes a build error while a line is half-typed.
-- The rules of `frameseq check` run against the live deck after every save, so overflow, clipped text, and inert modifiers appear while the slide is being written.
-- Moving the cursor shows the slide that holds it. Alt-clicking or dragging in the preview edits the source through the editor, so `Ctrl+Z` undoes it.
-- Thumbnails can be dragged to reorder slides, and duplicated, inserted, or deleted from their menu, each as one undoable edit.
-- Below them, **Current slide** lists every object on the slide in the preview, and edits the positions, sizes, and colours their commands state; numbers step with the arrow keys while the preview follows.
-- A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
-- A **Terminal** beside the problems, opened with `` Ctrl+` ``, runs a shell in the presentation's folder, for `git`, `npm`, or a coding agent; it survives a reload of the window.
-- **Present** shows the slides full screen in the Studio's own window, as PowerPoint does, on a second screen with presenter view on this one when the computer has two, with a phone on the same Wi-Fi as the remote if you pair one, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
-- A menu bar holds every command, as in any desktop program: **File** starts a new presentation, opens another, or returns to a recent one, in the same window.
-- The Studio speaks English and Chinese, TypeScript's own messages included; **View › Language** switches between them.
-- An assistant beside the preview runs Claude Code or Codex on the presentation: ask for a change in your own words, and the agent edits the file, then checks the slides and looks at them through `frameseq mcp`, a Model Context Protocol server any coding agent can use.
-
-Run `frameseq studio` without a file to start from its start page, and `frameseq shortcut` to add FrameSeq Studio to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux, so it opens like any other program and stops when its window closes.
-
-The complete guide is [FrameSeq Studio](https://pride7.github.io/frameseq/docs/studio.html). In VS Code, **FrameSeq: Open in Studio** on the Slides view toolbar opens the same window.
-
-## Visual Studio Code extension
-
-FrameSeq includes a companion VS Code extension that keeps `slides.ts` on the left and a live preview on the right. It also provides a slide outline with source-and-preview synchronization, current/previous/next slide navigation, a current-slide status item, slide insertion, TypeScript snippets, Problems-panel layout diagnostics on the line of each object, completion, go to definition, rename, and diagnostics for the names given with `.as()` and `at()`, and HTML/PDF/PPTX/Typst export commands. It consumes the same local FrameSeq CLI as the terminal workflow, so there is only one rendering and validation implementation.
-
-Synchronization also runs the other way. While `frameseq dev` is serving, hold Alt over the preview to outline the object under the pointer, and Alt-click it to jump to the command that wrote it: in the VS Code preview the cursor moves in the editor beside it, and in a browser the development server opens the file. A command inside a loop or a helper function produces several objects, so more than one of them can lead back to the same line. Source positions are recorded only while serving; a built presentation has none.
-
-The `E` control goes one step further and turns on layout editing. An object placed with `position({ x, y })` can then be dragged, and one given a `width()` or a `height()` can be resized from its corner; releasing the drag rewrites those numbers in `slides.ts` and the preview reloads from the new source. Only the digits change, so comments and formatting are untouched, and a drag is refused outright if the numbers no longer match the file on disk. Escape leaves the mode.
-
-`Ctrl+Z` in the preview undoes the last drag. In a browser the development server keeps the text each drag replaced and puts it back verbatim; inside the VS Code preview the drag is applied through the workspace instead of written to disk behind the editor's back, so the editor's own undo covers it. Either way the history is dropped rather than misapplied once the document no longer matches it.
-
-An object in the document flow has no coordinates to rewrite, so dragging it changes its place among its neighbours instead: the preview draws where it would land, and releasing it carries the whole lines its command occupies there, with any comment written above or beside it. This stays inside one run of the document—a `left()`, a `cell(1)`, a new `slide()`, or a `group(a, b)` that collects the objects above it each end a run, since carrying lines across one would change which region an object belongs to rather than only its order.
-
-Editing is deliberately limited to numbers the document states outright. `position({ x: cursor, y: 90 })` computes its x, and `for (const stage of stages) rect(stage)` writes one command that becomes several objects; in both cases no single number stands for what was dragged, so FrameSeq offers no handle rather than guessing. The source stays the only description of the talk—dragging is just another way to type a number into it.
-
-Build the current extension from this repository:
-
-```bash
-npm run vscode:package
-code --install-extension output/vscode/frameseq-vscode.vsix
-```
-
-The extension lives in `packages/vscode-frameseq` and the complete setup guide is in [Visual Studio Code extension](https://pride7.github.io/frameseq/docs/vscode.html).
-
-## Preview, build, and export
-
-```bash
-# Live browser preview
-frameseq dev my-talk.slides.ts
-
-# Static interactive website in dist/
-frameseq build my-talk.slides.ts
-
-# One self-contained dist/index.html
-frameseq build my-talk.slides.ts --single-file
-
-# PDF in output/pdf/
-frameseq pdf my-talk.slides.ts
-
-# Editable PowerPoint in output/pptx/
-frameseq pptx my-talk.slides.ts
-
-# Pixel-faithful PowerPoint with one image per slide
-frameseq pptx my-talk.slides.ts --flatten
-
-# Editable Typst source in output/typst/
-frameseq typst my-talk.slides.ts
-```
-
-The default static build uses relative asset paths, so `dist/` can be hosted at a domain root or a repository subpath such as GitHub Pages. New projects include an Actions workflow that publishes `dist/` on pushes to `main` or `master`. The single-file build embeds the framework's scripts, styles, fonts, and favicon into one directly openable HTML file. PPTX export keeps normal text and shapes editable while using high-resolution image fallbacks for math, Typst, and LaTeX fragments; `--flatten` turns each complete slide into one image for maximum fidelity. Typst export keeps pages, grids, text, code, shapes, and positions editable, uses MiTeX for LaTeX math and basic text, and maps common LaTeX tables to native Typst tables. See [Deploy HTML](https://pride7.github.io/frameseq/docs/deployment.html), [Export PowerPoint](https://pride7.github.io/frameseq/docs/pptx.html), and [Typst integration and export](https://pride7.github.io/frameseq/docs/typst.html).
-
-Arrow keys, Page Up/Page Down, and Space navigate the interactive presentation.
-
-## AI-friendly layout checks
-
-FrameSeq can inspect the final browser geometry and return actionable diagnostics instead of asking an AI agent to guess from source code:
-
-```bash
-frameseq check my-talk.slides.ts
-frameseq check my-talk.slides.ts --json
-frameseq check my-talk.slides.ts --strict
-```
-
-The checker reports empty slides, objects outside the canvas, clipped text, and unreadably small type. Each issue includes the slide label, FrameSeq object type and path, the source line that wrote the object, relevant measurements, and suggested corrections. A document that cannot run is reported at once against the statement that stopped it, with that line, instead of waiting for slides that will never be drawn. Mark a deliberate blank page with `slide().allowEmpty()`; `--json` produces stable machine-readable output for coding agents and CI. See [AI-friendly layout checks](https://pride7.github.io/frameseq/docs/layout-checks.html).
-
-## Presenter view
-
-Attach private notes to any slide:
-
-```ts
-slide("Architecture")
-  .notes("Explain why FrameSeq owns structure while Typst owns complex local layout.");
-```
-
-While viewing the presentation, press `P` or use the `P` button to open presenter view in a second window. It shows the current slide, next slide, speaker notes, timer, page selector, navigation controls, and a synchronized virtual laser pointer. Press `Ctrl+L` in presenter view to toggle the laser. The audience and presenter windows stay synchronized in both directions without a server.
-
-For a phone remote on the same Wi-Fi, run:
-
-```bash
-npm run present
-```
-
-Select the `R` control and scan the QR code. The phone starts with large navigation controls, a current-slide preview, and a touch laser surface. Select **Presenter view** on the phone to see speaker notes, the next-slide preview, timer, and page selector; **Simple remote** returns to the touch-friendly controller without losing the pairing session. FrameSeq relays navigation, reveal steps, and pointer coordinates through the local presentation server—no account, internet connection, or cloud service is required.
-
-You can also append `?presenter=1` to the audience page's current URL. For example, if the audience page is running on port `5174`:
+`.split()`, `.grid()`, and `.canvas()` lay a slide out, and `right()` and `cell()` say where the next lines go. Before you present, `frameseq check` measures the drawn slides and names each overflow, clipped line, and tiny font by its object:
 
 ```text
-http://localhost:5174/?presenter=1
+$ npx frameseq check talk.slides.ts
+ERROR Slide 4 "Architecture" [text-clipped]
+  Text is clipped by 38px on the bottom.
 ```
 
-Use the port printed by `npm run dev`; Vite does not always use `5173` when that port is occupied.
+Start with the [language tour](https://pride7.github.io/frameseq/docs/language.html), then the [function reference](https://pride7.github.io/frameseq/docs/function-guide.html).
 
-Same-device synchronization uses `BroadcastChannel`; phone pairing uses a local WebSocket only while `npm run present` is active. See [Presenter view](https://pride7.github.io/frameseq/docs/presenter.html).
+## Built for real talks
 
-## Advanced object API
+- **Diagrams.** 27 shapes with colour schemes worked out against your theme, and connectors that turn at right angles around everything in their way. See [Diagrams](https://pride7.github.io/frameseq/docs/diagrams.html).
+- **Equations and typesetting.** Inline or display equations in LaTeX, and Typst or LaTeX tables where a fragment needs more.
+- **Charts and tables.** Bar, line, pie, and donut charts and ruled tables, drawn from the numbers in the file.
+- **Posters.** A0 posters from the same language, with type sized for paper and PDFs at the sheet's real size. See [Posters and print](https://pride7.github.io/frameseq/docs/posters.html).
+- **Citations, icons, and QR codes.** Import a `.bib` file and `cite()` as you write; Lucide's icons come by name, and `qr()` puts a link on the last slide.
+- **Themes.** Seven themes ship with FrameSeq, and a master or `defineTheme()` makes one your own. See [Themes](https://pride7.github.io/frameseq/docs/themes.html).
 
-The linear authoring layer is recommended for most slides. The low-level UI layer is available for special compositions:
+## Present with two screens and a phone
 
-```ts
-import { Column, Image, Row, Slides, Text } from "@pride7/frameseq";
+Press `F5` and the slides fill the screen. With a projector attached, they go to the projector, and presenter view stays on your laptop with the notes, the next slide, and a timer. Scan a QR code to change slides from your phone, read the notes on it, and point a laser at the screen.
 
-const slides = Slides("Custom layouts");
+![Presenter view with the notes, the next slide, and a timer](https://pride7.github.io/frameseq/images/studio-presenter.webp)
 
-slides.slide("Architecture").custom(
-  Row(
-    Image("diagram.png"),
-    Column(
-      Text("Compiler").size(32).bold(),
-      Text("DSL → HTML → PDF").size(20),
-    ).gap(16),
-  ).gap(40),
-);
+## One file, four formats
 
-export default slides;
-```
+Shapes, charts, and tables reach PowerPoint as native objects your colleagues can edit, and any export can take just the slides you choose.
 
-This layer includes `SlidesRoot`, `Slide`, `Row`, `Column`, `Stack`, `Text`, `Image`, `Code`, `Equation`, and chainable modifiers.
+| Format | Command | What you get |
+| --- | --- | --- |
+| PowerPoint | `frameseq pptx talk.slides.ts` | Editable text boxes, preset shapes, charts, and tables |
+| PDF | `frameseq pdf talk.slides.ts` | Faithful to the last pixel, at the paper's size for posters |
+| Website | `frameseq build talk.slides.ts` | Interactive slides with presenter view, for any static host |
+| Typst | `frameseq typst talk.slides.ts` | Typst source you can keep typesetting |
+
+The Studio's **Export** menu does the same. See the [command line reference](https://pride7.github.io/frameseq/docs/cli.html).
+
+## Fits the way you work
+
+- **Visual Studio Code.** A live preview beside the source, layout findings in Problems, export, and Open in Studio. Get the [extension](https://marketplace.visualstudio.com/items?itemName=pride7.frameseq).
+- **Command line and CI.** An overflowing slide can stop a merge, and the slides publish as a static site. See [Deployment](https://pride7.github.io/frameseq/docs/deployment.html).
+- **Git.** Every revision is a readable diff. Branch a talk for a new audience, and share pieces between talks. See [Revising slides](https://pride7.github.io/frameseq/docs/revising.html).
 
 ## Documentation
 
-- [Live Gallery](https://pride7.github.io/frameseq/)
 - [Getting started](https://pride7.github.io/frameseq/docs/getting-started.html)
-- [Language tour](https://pride7.github.io/frameseq/docs/language.html): the six ideas of FrameSeq in five minutes
+- [Language tour](https://pride7.github.io/frameseq/docs/language.html)
 - [Function reference](https://pride7.github.io/frameseq/docs/function-guide.html)
-- [Categorized documentation](https://pride7.github.io/frameseq/docs/)
-- [Version changelog](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
-
-## Continuous integration and changelog
-
-Every push and pull request runs the complete `release:check` suite on GitHub Actions: types, themes, desktop and mobile browser behavior, layout diagnostics, remote control, Gallery, static and single-file HTML, PDF, editable and flattened PPTX, and installation from packed npm tarballs. A separate least-privilege workflow builds the live Gallery and deploys it to GitHub Pages only from `main`.
-
-User-visible changes are recorded in [CHANGELOG.md](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md). Add new work under **Unreleased**, then move it into a dated semantic-version section when publishing.
+- [All documentation](https://pride7.github.io/frameseq/docs/), also [in Chinese](https://pride7.github.io/frameseq/docs/zh/)
+- [Changelog](https://github.com/pride7/frameseq/blob/main/CHANGELOG.md)
 
 ## Development
 
-Before publishing a FrameSeq release locally:
-
 ```bash
-npm run release:check
+npm ci
+npm run studio          # open slides.ts in the Studio
+npm run release:check   # everything CI runs
 ```
 
-The release check builds the library, demo, and Gallery, runs browser tests at desktop and mobile viewport sizes, packs and installs the npm tarballs in a clean project, type-checks the generated document, builds static HTML, and exports PDF and PPTX files.
+`release:check` builds the library, demo, and website, runs the browser tests at desktop and mobile sizes, installs the packed npm tarballs in a clean project, and exports PDF and PowerPoint files. Every push runs it on GitHub Actions, and pushes to `main` deploy the website. User-visible changes go under **Unreleased** in [CHANGELOG.md](CHANGELOG.md); [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html) covers publishing.
 
-Maintainers can instead publish both npm packages from a matching version tag through GitHub OIDC. See [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html) for the one-time Trusted Publisher configuration and tag workflow.
+## License
+
+[MIT](LICENSE)
