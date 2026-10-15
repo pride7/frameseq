@@ -52,7 +52,7 @@ export function insertName(kind: InsertKind): string {
   return t.insert.names[kind];
 }
 
-const svgOpen = '<svg viewBox="0 0 32 24" aria-hidden="true" focusable="false">';
+const svgOpen = '<svg class="studio-insert-picture" viewBox="0 0 32 24" aria-hidden="true" focusable="false">';
 
 /** Pictures of the content objects, in the gallery's own line style. */
 const contentPictures: Record<ContentKind, string> = {
@@ -76,8 +76,11 @@ const contentPictures: Record<ContentKind, string> = {
   icon: '<path d="m16 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>',
 };
 
-/** A small picture of what a gallery button puts on the slide; a shape is drawn from its own outline. */
-function thumbnail(kind: InsertKind): string {
+/**
+ * A small picture of what the gallery, or an Insert menu, puts on the slide; a shape is drawn
+ * from its own outline.
+ */
+export function insertPicture(kind: InsertKind): string {
   if (isContentKind(kind)) return `${svgOpen}${contentPictures[kind]}</svg>`;
   switch (kind) {
     case "text":
@@ -130,7 +133,7 @@ export function showInsertGallery(anchor: HTMLElement, pick: (kind: InsertKind) 
     const description = isContentKind(kind) ? t.insert.descriptions[kind] : undefined;
     button.title = description ? `${insertName(kind)} · ${description}` : insertName(kind);
     button.setAttribute("aria-label", insertName(kind));
-    button.innerHTML = thumbnail(kind);
+    button.innerHTML = insertPicture(kind);
     if (labelled) button.append(element("span", "studio-insert-label", insertName(kind)));
     button.addEventListener("click", () => {
       close();

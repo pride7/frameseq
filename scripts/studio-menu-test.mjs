@@ -296,8 +296,20 @@ try {
     "the slide's menu pastes, inserts, adds a slide, and switches layout editing",
   );
   await page.click(".studio-context-menu [data-command='insert']");
-  await page.waitForSelector(".studio-context-menu [data-command='insert-shapes-basic'], .studio-context-menu [data-command^='insert-']");
+  await page.waitForSelector(".studio-context-menu [data-command='insert-formulas']");
+  // The kinds inside Insert's groups are drawn as the gallery draws them, shapes by their outline.
+  await page.click(".studio-context-menu [data-command='insert-formulas']");
+  await page.waitForSelector(".studio-context-menu [data-command='insert-math'] .studio-menu-icon.is-drawing .studio-insert-picture");
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "menu-slide.png") });
+  await page.keyboard.press("Escape");
+  await page.click(".studio-context-menu [data-command='insert-basic']");
+  await page.waitForSelector(".studio-context-menu [data-command='insert-diamond'] .studio-menu-icon.is-drawing .studio-insert-picture path");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  // A new slide's layouts are drawn as small slides, as the layout picker shows them.
+  await page.click(".studio-context-menu [data-command='new-slide']");
+  await page.waitForSelector(".studio-context-menu [data-command^='new-slide-'] .studio-menu-icon.is-drawing .studio-layout-sketch");
+  if (screenshots) await page.screenshot({ path: resolve(screenshots, "menu-layouts.png") });
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   await menuClosed();

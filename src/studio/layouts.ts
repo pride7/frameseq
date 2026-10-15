@@ -41,6 +41,11 @@ export function slideLayouts(): SlideLayout[] {
 
 export const defaultSlideLayout = (): SlideLayout => slideLayouts()[0];
 
+/** A layout drawn as a small slide, for the picker and the menus that list layouts. */
+export function layoutSketch(layout: SlideLayout): string {
+  return `<svg class="studio-layout-sketch" viewBox="0 0 64 36" aria-hidden="true">${layout.sketch}</svg>`;
+}
+
 /**
  * A grid of layouts at a point on the page, for the rail's + button and its slide menu. Arrow
  * keys move across the grid, Enter adds the layout, and Escape or a click elsewhere closes it.
@@ -58,7 +63,7 @@ export function showLayoutPicker(x: number, y: number, pick: (layout: SlideLayou
     button.type = "button";
     button.setAttribute("role", "menuitem");
     button.dataset.layout = layout.id;
-    button.innerHTML = `<svg class="studio-layout-sketch" viewBox="0 0 64 36" aria-hidden="true">${layout.sketch}</svg>`;
+    button.innerHTML = layoutSketch(layout);
     button.append(element("span", "studio-layout-name", layout.name));
     button.addEventListener("click", () => {
       close();

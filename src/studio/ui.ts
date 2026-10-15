@@ -109,11 +109,13 @@ export interface MenuItem {
 
 /**
  * The column before a menu item's label, in a menu where some items have pictures: the item's
- * own, a check mark for a setting that is on and has none, or nothing, so the labels line up.
+ * icon or its drawing, a check mark for a setting that is on and has neither, or nothing, so the
+ * labels line up.
  */
-export function menuIconSlot(icon: MenuIcon | undefined, checked = false): HTMLElement {
-  const slot = element("span", "studio-menu-icon");
-  if (icon) slot.innerHTML = menuIcons[icon];
+export function menuIconSlot(icon: MenuIcon | undefined, checked = false, drawing?: string): HTMLElement {
+  const slot = element("span", `studio-menu-icon${drawing ? " is-drawing" : ""}`);
+  if (drawing) slot.innerHTML = drawing;
+  else if (icon) slot.innerHTML = menuIcons[icon];
   else if (checked) slot.textContent = "✓";
   return slot;
 }

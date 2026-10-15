@@ -77,7 +77,7 @@ import {
 } from "./screens";
 import { pairPhone, remoteSession, resumePairing } from "./remote";
 import { ProblemsPanel, type Problem } from "./problems";
-import { showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
+import { layoutSketch, showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import { StudioTerminal } from "./terminal";
 import {
@@ -88,6 +88,7 @@ import {
   insertAfter,
   insertGroups,
   insertName,
+  insertPicture,
   isContentKind,
   placedContent,
   placementCode,
@@ -2479,13 +2480,14 @@ async function start(): Promise<void> {
     return slideLayouts().map((layout) => ({
       command: `new-slide-${layout.id}`,
       label: layout.name,
+      drawing: layoutSketch(layout),
       run: () => void rearrange("insert", previewSlide, 0, layout),
     }));
   }
 
   /** What Insert puts on the slide: the gallery, content by group, and the drawing tools. */
   function insertEntries(): MenuEntry[] {
-    // Insert's own items have pictures; the kinds inside its groups are listed by name alone.
+    // Insert's own items have icons; the kinds inside its groups are drawn as the gallery draws them.
     const pictures: Partial<Record<string, MenuIcon>> = {
       writing: "text",
       formulas: "formula",
@@ -2502,6 +2504,7 @@ async function start(): Promise<void> {
       command: `insert-${kind}`,
       label: insertName(kind),
       icon: pictured ? pictures[kind] : undefined,
+      drawing: pictured ? undefined : insertPicture(kind),
       run: () => void startPlacing(kind),
     }));
     return [
