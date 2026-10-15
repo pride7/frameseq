@@ -760,12 +760,23 @@ function addThemeChrome(
   canvas.append(footer);
 }
 
+/**
+ * The presentation's master pages. The slides may come from a FrameSeq built before masters, as
+ * a project that pins an older version, or a library not rebuilt yet, makes them: that runtime
+ * has no masters, which draws every slide as it always was.
+ */
+function mastersOf(slides: SlidesRootDefinition): Record<string, FrameSeqNode> {
+  return (slides.masters as Record<string, FrameSeqNode> | undefined)
+    ?? (slides.node.props.masters as Record<string, FrameSeqNode> | undefined)
+    ?? {};
+}
+
 /** The master a slide is drawn on: the one it names, or "cover" for a cover and "content" otherwise. */
 function slideMaster(slide: FrameSeqNode, slides: SlidesRootDefinition): { name: string; page: FrameSeqNode } | undefined {
   const asked = slide.props.master;
   if (asked === false) return undefined;
   const name = typeof asked === "string" ? asked : hasClass(slide, "frameseq-cover-slide") ? "cover" : "content";
-  const page = slides.masters[name];
+  const page = mastersOf(slides)[name];
   return page ? { name, page } : undefined;
 }
 
@@ -2854,7 +2865,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   resolvePrintUnits(slidesDocument.node);
   resolveAnchors(slidesDocument.node);
   resolveShapePaint(slidesDocument.node);
-  for (const page of Object.values(slidesDocument.masters)) collectSharedSpans(page);
+  for (const page of Object.values(mastersOf(slidesDocument))) collectSharedSpans(page);
   shapeObserver?.disconnect();
   shapeObserver = typeof ResizeObserver === "undefined"
     ? undefined
@@ -2932,7 +2943,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   root.setAttribute("aria-label", "FrameSeq slide canvas");
   applyStyles(root, slidesDocument.node.styles);
 
-  const pages = masterMode ? Object.values(slidesDocument.masters) : slidesDocument.slides;
+  const pages = masterMode ? Object.values(mastersOf(slidesDocument)) : slidesDocument.slides;
   const slides = pages.map((slide, index) => {
     const frame = document.createElement("section");
     frame.className = "frameseq-slide-frame";
