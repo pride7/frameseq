@@ -133,6 +133,8 @@ The same multi-selection toolbar aligns left, horizontal centre, right, top, ver
 
 With a positioned selection active, the arrow keys nudge it by one canvas pixel and `Shift` + arrow nudges by ten. A held key is coalesced into one source edit, and a multi-selection moves as a unit without changing its internal spacing. A compact badge beside a single selection shows `x`, `y`, width, and height. `Escape` clears the selection first; pressing it again exits editing mode.
 
+`Delete` or `Backspace` deletes the selected objects: their lines leave the source as one undoable workspace edit, comments written above them included, along with any connector that ends at one of them. An object that another object is placed against by its name, an object written inside another command, and a region are refused, and the preview says why.
+
 Clicking in the embedded preview keeps keyboard focus there. If `slides.ts` is already visible beside it, its selection follows silently; a hidden source tab is not activated. The compact badge says **Selected** explicitly. For a flow-layout component it reports **flow item · drag to reorder**, because no literal `x` or `y` exists for arrow-key movement; pressing an unavailable arrow also explains which coordinate is missing.
 
 Positioned components distinguish a click from a drag before capturing the pointer. A press and release selects the component and focuses the canvas for immediate arrow-key use; only movement beyond the drag threshold captures the pointer. After an align or distribute toolbar action, focus returns to the canvas as well.

@@ -580,6 +580,12 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
   element.dataset.frameseqNode = node.type;
   element.dataset.frameseqPath = nodePath;
   if (typeof node.props.name === "string") element.dataset.frameseqName = node.props.name;
+  // The names an object depends on, so deleting the object they name can account for it.
+  const refers = [
+    ...(Array.isArray(node.props.place) ? (node.props.place as Array<{ target: string }>).map((step) => step.target) : []),
+    ...[node.props.from, node.props.to].map((end) => (end as { target?: string } | undefined)?.target),
+  ].filter((name): name is string => typeof name === "string");
+  if (refers.length > 0) element.dataset.frameseqRefers = [...new Set(refers)].join(" ");
   const span = node.props.sourceSpan as SourceSpan | undefined;
   if (span) {
     element.dataset.frameseqSource = `${span.line}:${span.column}:${span.start}:${span.end}`;
@@ -1455,6 +1461,52 @@ function enableSourceReveal(
     clearFocused();
     if (selectionSlideIndex !== undefined && selectionSlideIndex !== event.detail) clearSelection();
   }) as EventListener, { signal });
+  const explain = (message: string): void => {
+    selectionCoordinates.textContent = message;
+    selectionCoordinates.classList.add("is-visible", "is-readonly");
+  };
+  /**
+   * Delete the selected objects by removing the lines that write them, as a drawing program
+   * deletes shapes. A connector that ends at one of them goes too, since it would point at
+   * nothing; an object placed by one of their names keeps them, and says why.
+   */
+  const deleteSelected = (): void => {
+    const elements = [...selected];
+    if (elements.some((element) => ["row", "column", "stack", "slide"].includes(element.dataset.frameseqNode ?? ""))) {
+      explain("Selected · a region is deleted in the source");
+      return;
+    }
+    if (elements.some((element) => !parseSourceStatement(element))) {
+      explain("Selected · written inside another command; delete it in the source");
+      return;
+    }
+    const names = new Set(elements.map((element) => element.dataset.frameseqName).filter(Boolean));
+    const doomed = new Set(elements);
+    const dependents: HTMLElement[] = [];
+    const canvas = elements[0]?.closest<HTMLElement>(".frameseq-slide");
+    for (const other of canvas?.querySelectorAll<HTMLElement>("[data-frameseq-refers]") ?? []) {
+      if (doomed.has(other)) continue;
+      const refers = (other.dataset.frameseqRefers ?? "").split(" ").some((name) => names.has(name));
+      if (!refers) continue;
+      if (other.dataset.frameseqNode === "line" && parseSourceStatement(other)) doomed.add(other);
+      else dependents.push(other);
+    }
+    if (dependents.length > 0) {
+      explain(`Selected · ${dependents.length === 1 ? "another object is" : `${dependents.length} objects are`} placed by its name`);
+      return;
+    }
+    const lines = new Map<number, SourceStatement>();
+    for (const element of doomed) {
+      const statement = parseSourceStatement(element) as SourceStatement;
+      lines.set(statement.start, statement);
+    }
+    clearSelection();
+    sendSourceRequest({
+      remove: [...lines.values()]
+        .sort((a, b) => a.start - b.start)
+        .map(({ start, end, text }) => ({ start, end, expected: text })),
+    });
+  };
   addEventListener("keydown", (event) => {
     if (event.key === "Escape" && (focused || selected.size > 0)) {
       event.preventDefault();
@@ -1464,6 +1516,13 @@ function enableSourceReveal(
       return;
     }
     if (!document.documentElement.classList.contains("frameseq-edit-mode")) return;
+    if ((event.key === "Delete" || event.key === "Backspace") && selected.size > 0
+      && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      deleteSelected();
+      return;
+    }
     if (!event.key.startsWith("Arrow") || selected.size === 0) return;
     event.preventDefault();
     event.stopImmediatePropagation();

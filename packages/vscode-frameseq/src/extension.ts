@@ -1344,6 +1344,35 @@ async function applyPreviewMove(message: unknown): Promise<boolean> {
   return document.save();
 }
 
+/**
+ * Delete objects deleted in the preview: each one's whole lines, only while they still read as
+ * the preview saw them. One workspace edit, so one Undo brings them all back.
+ */
+async function applyPreviewRemove(message: unknown): Promise<boolean> {
+  const remove = (message as { remove?: unknown } | undefined)?.remove;
+  if (!Array.isArray(remove) || remove.length === 0 || remove.length > 100) return false;
+  const blocks: Array<{ start: number; end: number; expected: string }> = [];
+  for (const candidate of remove as Array<Record<string, unknown>>) {
+    const { start, end, expected } = candidate ?? {};
+    if (!Number.isInteger(start) || !Number.isInteger(end) || (start as number) < 0) return false;
+    if ((end as number) <= (start as number) || typeof expected !== "string") return false;
+    if (expected.length !== (end as number) - (start as number)) return false;
+    blocks.push({ start: start as number, end: end as number, expected });
+  }
+  blocks.sort((a, b) => a.start - b.start);
+  if (blocks.some((block, index) => index > 0 && block.start < blocks[index - 1].end)) return false;
+  const entry = await resolveEntry();
+  if (!entry) return false;
+
+  const document = await vscode.workspace.openTextDocument(entry.uri);
+  const ranges = blocks.map((block) => new vscode.Range(document.positionAt(block.start), document.positionAt(block.end)));
+  if (ranges.some((range, index) => document.getText(range) !== blocks[index].expected)) return false;
+  const edit = new vscode.WorkspaceEdit();
+  for (const range of ranges) edit.delete(entry.uri, range);
+  if (!await vscode.workspace.applyEdit(edit)) return false;
+  return document.save();
+}
+
 async function applyPreviewEdits(message: unknown): Promise<boolean> {
   const edits = readIncomingEdits(message);
   const entry = edits && await resolveEntry();
@@ -1547,9 +1576,11 @@ async function openPreviewUrl(
         return;
       }
       if (request?.type === "frameseq.edit") {
-        const applied = (message as { move?: unknown }).move
-          ? applyPreviewMove(message)
-          : applyPreviewEdits(message);
+        const applied = (message as { remove?: unknown }).remove
+          ? applyPreviewRemove(message)
+          : (message as { move?: unknown }).move
+            ? applyPreviewMove(message)
+            : applyPreviewEdits(message);
         void applied.then((ok) => {
           void previewPanel?.webview.postMessage({ type: "frameseq.edit-result", ok });
         });

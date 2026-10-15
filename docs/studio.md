@@ -114,6 +114,7 @@ The preview's own source links work as they do in VS Code:
 - **Alt-click** an object in the preview to put the cursor on the command that drew it.
 - Turn on layout editing with **E**, then **drag** an object placed with `position({ x, y })`, or resize one that states its `width()` or `height()`. Only the digits change, through the editor, so `Ctrl+Z` puts the object back. The same keys work while the preview has focus: `Ctrl+Z` and `Ctrl+Y` undo and redo in the editor, and `Ctrl+S` saves.
 - Drag an object in the document flow to change its place among its neighbours; its lines move in the source, comments included.
+- Click an object, or `Ctrl`-click several, and press `Delete` or `Backspace` to delete them: their lines leave the source, comments written above them included, along with any connector that ends at one of them. An object that another object is placed against by its name, an object written inside another command, and a region stay, and the preview says why. One `Ctrl+Z` brings everything back.
 - `Ctrl`-click several objects written one after another and choose **Bind region** to wrap their lines in a named `at("…").column()` region, so they can be positioned or anchored together.
 
 See [Visual Studio Code extension](vscode.md) for the rules that decide which numbers a drag may rewrite.

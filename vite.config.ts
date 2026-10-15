@@ -11,7 +11,7 @@ import { defineConfig, normalizePath } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
 import { applySourceEdits, markEdits, sourceMarks, statementEdits } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
-import { applyIncomingEdits, applyIncomingMove, undoLastEdit } from "./scripts/source-edits.mjs";
+import { applyIncomingEdits, applyIncomingMove, applyIncomingRemove, undoLastEdit } from "./scripts/source-edits.mjs";
 // @ts-expect-error -- plain JavaScript, like the other server-side halves of the preview.
 import { studioPlugin } from "./scripts/studio-server.mjs";
 // @ts-expect-error -- plain JavaScript, shared with the script that writes the icon name type.
@@ -608,10 +608,12 @@ export default defineConfig({
         };
 
         server.ws.on(sourceEditEvent, (payload, client) => {
-          const request = payload as { move?: unknown } | null;
-          settleEdit(client, request?.move
-            ? applyIncomingMove(entry, payload)
-            : applyIncomingEdits(entry, payload));
+          const request = payload as { move?: unknown; remove?: unknown } | null;
+          settleEdit(client, request?.remove
+            ? applyIncomingRemove(entry, payload)
+            : request?.move
+              ? applyIncomingMove(entry, payload)
+              : applyIncomingEdits(entry, payload));
         });
 
         server.ws.on(sourceUndoEvent, (_payload, client) => {

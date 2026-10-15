@@ -190,6 +190,28 @@ try {
   )).catch(() => false), "the connector to be drawn");
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "insert-connected.png") });
 
+  // Delete in the preview removes the selected shape's lines and the connector that ends at it;
+  // the object at the connector's other end keeps its name. One undo brings both back.
+  const diamondCentre = await waitFor(() => preview.evaluate(() => {
+    const shape = document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-shape='diamond']");
+    if (!shape || !document.documentElement.classList.contains("frameseq-edit-mode")) return undefined;
+    const box = shape.getBoundingClientRect();
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }).catch(() => undefined), "the diamond to be selectable");
+  await page.mouse.click(frameBox.x + diamondCentre.x, frameBox.y + diamondCentre.y);
+  await preview.waitForFunction(() => Boolean(document.querySelector(".is-frameseq-selected[data-frameseq-shape='diamond']")));
+  await page.keyboard.press("Delete");
+  const deleted = await waitFor(async () => {
+    const text = await read();
+    return !text.includes('shape("diamond"') && text;
+  }, "the diamond to be deleted");
+  assert.ok(!deleted.includes("line().from"), "the connector that ended at the diamond goes with it");
+  assert.match(deleted, /rect\("Box"\)[^\n]*\.as\("box1"\);/, "the box keeps its name");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("KeyZ");
+  await page.keyboard.up("Control");
+  await waitFor(async () => (await read()) === connected, "one undo to bring the diamond and its connector back");
+
   // Escape abandons drawing without writing anything.
   const before = await read();
   await page.evaluate(() => document.querySelector("[data-action='insert']").click());

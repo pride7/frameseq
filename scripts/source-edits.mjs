@@ -110,6 +110,54 @@ export async function applyIncomingMove(entry, payload) {
 }
 
 /**
+ * Read a request to delete objects: each one's whole lines, with the text the preview saw
+ * there. Like a move, it carries no text of its own; it can only take out what it names.
+ */
+export function readIncomingRemove(payload) {
+  const remove = payload?.remove;
+  if (!Array.isArray(remove) || remove.length === 0 || remove.length > maximumEdits) return undefined;
+  const parsed = [];
+  for (const candidate of remove) {
+    const { start, end, expected } = candidate ?? {};
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) return undefined;
+    if (typeof expected !== "string" || expected.length !== end - start) return undefined;
+    parsed.push({ start, end, expected });
+  }
+  const ordered = parsed.sort((a, b) => a.start - b.start);
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index].start < ordered[index - 1].end) return undefined;
+  }
+  return ordered;
+}
+
+/** Delete the lines of the objects deleted in the preview, as one step that can be undone. */
+export async function applyIncomingRemove(entry, payload) {
+  const blocks = readIncomingRemove(payload);
+  if (!blocks) return { ok: false, reason: "The delete request was malformed." };
+
+  const source = await readFile(entry, "utf8");
+  for (const block of blocks) {
+    if (block.end > source.length || source.slice(block.start, block.end) !== block.expected) {
+      return { ok: false, reason: "The slide document changed while the preview was being edited." };
+    }
+  }
+
+  let updated = source;
+  for (const block of [...blocks].reverse()) {
+    updated = updated.slice(0, block.start) + updated.slice(block.end);
+  }
+  await writeDocument(entry, updated);
+  // Undoing puts each block back where it now leaves a gap, counted in the shortened text.
+  let removed = 0;
+  pushUndo(entry, blocks.map((block) => {
+    const at = block.start - removed;
+    removed += block.end - block.start;
+    return { start: at, end: at, expected: "", text: block.expected };
+  }));
+  return { ok: true };
+}
+
+/**
  * Put the slide document back the way the last drag found it. The same check applies as on the
  * way in, so an undo never overwrites an edit made in the editor meanwhile; when that happens
  * the rest of the history no longer describes the file and is dropped with it.

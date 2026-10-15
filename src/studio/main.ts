@@ -806,6 +806,21 @@ async function start(): Promise<void> {
         ].sort((a, b) => a.from - b.from),
         userEvent: "move.preview",
       });
+    } else if (Array.isArray(request.remove)) {
+      // Objects deleted in the preview: each one's whole lines, only while they still read as
+      // the preview saw them.
+      if (request.remove.length === 0 || request.remove.length > 100) return false;
+      for (const candidate of request.remove as Array<Record<string, unknown>>) {
+        const { start, end, expected } = candidate ?? {};
+        if (!Number.isInteger(start) || !Number.isInteger(end) || typeof expected !== "string") return false;
+        const range = editorRange({ start: start as number, end: end as number });
+        if (!range || doc.sliceString(range.from, range.to) !== toEditorText(expected)) return false;
+        changes.push({ from: range.from, to: range.to, insert: "" });
+      }
+      const ordered = (changes as Array<{ from: number; to: number }>).sort((a, b) => a.from - b.from);
+      if (ordered.some((change, index) => index > 0 && change.from < ordered[index - 1].to)) return false;
+      suppressFollow = true;
+      view.dispatch({ changes: ordered, userEvent: "delete.preview" });
     } else {
       return false;
     }

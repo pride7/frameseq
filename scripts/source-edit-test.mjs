@@ -11,8 +11,10 @@ import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import {
   applyIncomingEdits,
   applyIncomingMove,
+  applyIncomingRemove,
   readIncomingEdits,
   readIncomingMove,
+  readIncomingRemove,
   undoLastEdit,
 } from "./source-edits.mjs";
 import { sourceMarks } from "./source-marks.mjs";
@@ -320,6 +322,49 @@ function markFor(source, command) {
   assert.equal((await applyIncomingMove(moveEntry, asMove(second, second.end))).ok, true);
   assert.equal(await readFile(moveEntry, "utf8"), source);
   assert.match((await undoLastEdit(moveEntry)).reason, /nothing to undo/i);
+}
+
+// Deleting objects in the preview takes out their whole lines, comments included, and one undo
+// puts them all back; a request whose text has moved on, or that overlaps itself, is refused.
+{
+  const removeEntry = resolve(workingDirectory, "remove.slides.ts");
+  const source = [
+    "presentation({});",
+    'slide("Flow").canvas();',
+    "// the box",
+    'rect("Box").as("box").position({ x: 10, y: 10 });',
+    'text("Stays");',
+    'line().from("box").to("other").arrow();',
+    'circle("Other").as("other").position({ x: 400, y: 10 });',
+    "",
+  ].join("\n");
+  await writeFile(removeEntry, source, "utf8");
+  const statementOf = (prefix) => sourceMarks(source)
+    .find((mark) => source.slice(mark.start, mark.end).startsWith(prefix)).statement;
+  const asRemoval = (...statements) => ({
+    remove: statements.map(({ start, end, text }) => ({ start, end, expected: text })),
+  });
+  const box = statementOf('rect("Box")');
+  const connector = statementOf("line()");
+
+  assert.equal(readIncomingRemove({ remove: [] }), undefined);
+  assert.equal(readIncomingRemove({ remove: [{ start: 4, end: 2, expected: "xx" }] }), undefined);
+  assert.equal(readIncomingRemove(asRemoval(box, box)), undefined, "overlapping blocks are refused");
+  assert.equal((await applyIncomingRemove(removeEntry, {
+    remove: [{ start: box.start, end: box.end, expected: box.text.replace("Box", "Bag") }],
+  })).ok, false, "a stale delete is refused");
+  assert.equal(await readFile(removeEntry, "utf8"), source);
+
+  assert.equal((await applyIncomingRemove(removeEntry, asRemoval(connector, box))).ok, true);
+  assert.equal(await readFile(removeEntry, "utf8"), [
+    "presentation({});",
+    'slide("Flow").canvas();',
+    'text("Stays");',
+    'circle("Other").as("other").position({ x: 400, y: 10 });',
+    "",
+  ].join("\n"));
+  assert.equal((await undoLastEdit(removeEntry)).ok, true);
+  assert.equal(await readFile(removeEntry, "utf8"), source, "Undo puts deleted objects back exactly");
 }
 
 // End to end: dragging an object in the browser rewrites the slide document on disk.
