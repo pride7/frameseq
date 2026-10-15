@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.38.0] - 2026-10-15
+
 ### Added
 
 - Export some of the slides. `frameseq pdf`, `pptx`, and `typst` take `--slides 1-3,5`, and in FrameSeq Studio, **File › Export** asks for PDF, PowerPoint, and Typst whether to export all the slides, the current one, or some typed by number. The slides keep their numbers, and the file is named for them, such as `talk-slides-1-3,5.pdf`, so it never replaces the export of the whole presentation.
@@ -44,6 +46,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - Start a new presentation from a template. FrameSeq Studio's **New presentation** shows one template for each built-in theme by its real cover: a blank page, a dark talk for products and code, serif pages for a story, a research talk, the same lecture in the three Beamer-inspired themes, and an A0 conference poster. `frameseq new talk.slides.ts --template poster` writes the same ones. Each passes `frameseq check --strict` as written, with placeholders in English or, in a Studio shown in Chinese, in Chinese.
 - Add a slide from a layout. The **+** above FrameSeq Studio's slides, **New slide after…** on a thumbnail, and **Slide › New slide after this one** offer twelve layouts taken from the recipes, from title and points and two columns to a table, a chart, a flow diagram, and a closing line, and select the new slide's title for typing.
 - Show FrameSeq Studio in Chinese as well as English. It starts in the browser's language, and **View › Language** or the switch on the start page changes it, keeping any unsaved text. In Chinese, TypeScript's error messages are in Chinese too, and a new presentation starts with Chinese placeholders.
+- Open, create, and switch presentations inside FrameSeq Studio. The file name in the top bar opens a menu with **New presentation…**, **Open…** (`Ctrl+O`), the recent presentations, and **Show in folder**; the other presentation opens in the same window, and the Studio works from its folder, so its exports land beside it.
+  - **New presentation** takes a title and a folder, names the file after the title, writes a cover and a first slide, and never overwrites an existing file.
+  - **Open** uses the computer's own open dialog, or asks for the path where there is none.
+  - Unsaved edits are saved or set aside only when the person says so.
+- Start `frameseq studio` without a file to open the Studio's start page: a new presentation, an existing one, or a recent one.
+- Add `frameseq shortcut`, which puts FrameSeq Studio, with its icon, in the Start menu and on the desktop on Windows, in `~/Applications` on macOS, and in the applications menu on Linux. It opens the start page; `--remove` takes it away.
+- Add `frameseq studio --background`, which runs the Studio without a terminal and stops it once its window has closed. The shortcut uses it.
 
 ### Changed
 
@@ -51,7 +60,6 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - FrameSeq Studio's **Current slide** panel is a format pane. Selecting an object, in the panel, the preview, or the code, opens its settings below its row, and clicking the row again folds them: its words, a list's items, or a formula's Typst, LaTeX, or TeX source; text style, font size, bold, colour, and alignment; background, fill, outline, and a shape's colour scheme; size and position; and **More settings** for the rest. A setting the code does not state yet is added as a method after the object's last one, and clearing it takes the call away, each as one step of the editor's history. Rows show what an object says with a tag for its kind or style, and regions, layouts, and settings are named in the Studio's language. **Delete** removes an object that is a statement of its own, with the comments above it and any connector that ends at it, as deleting it in the preview does.
 - FrameSeq Studio's problems panel starts folded. The status bar counts the problems and the editor underlines them; `Ctrl+J`, **View › Problems panel**, or the counts open it, and a build error opens it by itself.
 - FrameSeq Studio has a menu bar, **File**, **Edit**, **View**, **Slide**, **Present**, and **Help**, in place of the buttons and switches along its top. Every command is there with its shortcut; `Alt` or `F10` reaches the menus from the keyboard, and `Alt` with a menu's letter opens it. New in them are **Present › From the beginning** (`Shift+F5`), **Help › Keyboard shortcuts**, and **Help › About**.
-
 - The smallest readable type that `frameseq check` accepts now grows with the canvas: 14px on a 1280-wide slide, as before, and proportionally more on a wider one. On paper it is judged by printed size, and the finding gives both.
 - Exports and checks render with an installed Chrome or Edge when Puppeteer has no browser of its own; `FRAMESEQ_BROWSER` names another.
 
@@ -62,21 +70,6 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - A diagram centred with `anchor()` no longer comes apart in PDF export when another slide follows it: each slide is laid out as one page, instead of the diagram being split at the page's edge away from its connectors.
 - Typst export resolves named placements and connectors before writing them, rather than leaving connectors at the page's corner, and draws arrowheads.
 - Building the app on Windows no longer fails while a Studio or `frameseq dev` runs from the same checkout, whose server no longer watches `output/` and `desktop/target/`.
-
-## [0.38.0] - 2026-10-09
-
-### Added
-
-- Open, create, and switch presentations inside FrameSeq Studio. The file name in the top bar opens a menu with **New presentation…**, **Open…** (`Ctrl+O`), the recent presentations, and **Show in folder**; the other presentation opens in the same window, and the Studio works from its folder, so its exports land beside it.
-  - **New presentation** takes a title and a folder, names the file after the title, writes a cover and a first slide, and never overwrites an existing file.
-  - **Open** uses the computer's own open dialog, or asks for the path where there is none.
-  - Unsaved edits are saved or set aside only when the person says so.
-- Start `frameseq studio` without a file to open the Studio's start page: a new presentation, an existing one, or a recent one.
-- Add `frameseq shortcut`, which puts FrameSeq Studio, with its icon, in the Start menu and on the desktop on Windows, in `~/Applications` on macOS, and in the applications menu on Linux. It opens the start page; `--remove` takes it away.
-- Add `frameseq studio --background`, which runs the Studio without a terminal and stops it once its window has closed. The shortcut uses it.
-
-### Fixed
-
 - A slide document with no project of its own, such as a file in any folder run by a global install, now previews, opens in the Studio, checks, builds, and exports. It failed to resolve `@pride7/frameseq`, so only `inspect` worked; it now uses the FrameSeq that runs it.
 - The VS Code extension runs such a deck through the `frameseq` command a global install put on the PATH, and says how to install FrameSeq when there is none, where on Windows it failed to start. The extension is now version 0.7.0.
 
