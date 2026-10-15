@@ -11,6 +11,17 @@ import type {
 import { paperCanvasUnits, resolvePrintUnits } from "./paper";
 import { resolveAnchors } from "./anchors";
 import { chartPalette, chartSvg, type ChartSpec } from "./chart";
+import {
+  connectorMidpoint,
+  connectorPath,
+  resolveShapePaint,
+  shapeGeometry,
+  shapeSize,
+  svgPath,
+  type LineRoute,
+  type ShapeKind,
+  type ShapePaint,
+} from "./shapes";
 import { themeCssVariables } from "./theme";
 import { mountThumbnails } from "./thumbnails";
 
@@ -73,19 +84,36 @@ let lineMarkerSequence = 0;
 function renderLine(node: FrameSeqNode): HTMLElement {
   const element = document.createElement("div");
   const svg = document.createElementNS(svgNamespace, "svg");
-  const vector = document.createElementNS(svgNamespace, "line");
+  const route = node.props.route as LineRoute | undefined;
+  const points = node.props.points as Array<[number, number]> | undefined;
+  // A routed connector is a path through its corners; a straight one stays a plain line.
+  const routed = (route === "elbow" || route === "curve") && Array.isArray(points) && points.length >= 2;
+  const vector = document.createElementNS(svgNamespace, routed ? "path" : "line");
   const stroke = String(node.props.stroke ?? "var(--frameseq-accent)");
   const strokeWidth = String(node.props.strokeWidth ?? "3px");
   const arrow = node.props.arrow;
 
   svg.setAttribute("aria-hidden", "true");
-  vector.setAttribute("x1", String(node.props.x1));
-  vector.setAttribute("y1", String(node.props.y1));
-  vector.setAttribute("x2", String(node.props.x2));
-  vector.setAttribute("y2", String(node.props.y2));
+  if (routed) {
+    vector.setAttribute("d", connectorPath(route, points));
+    vector.setAttribute("fill", "none");
+    vector.setAttribute("stroke-linejoin", "round");
+    vector.dataset.frameseqRoute = route;
+    vector.dataset.frameseqPoints = JSON.stringify(points);
+  } else {
+    vector.setAttribute("x1", String(node.props.x1));
+    vector.setAttribute("y1", String(node.props.y1));
+    vector.setAttribute("x2", String(node.props.x2));
+    vector.setAttribute("y2", String(node.props.y2));
+  }
   vector.setAttribute("stroke", stroke);
   vector.setAttribute("stroke-width", strokeWidth);
   vector.setAttribute("stroke-linecap", "round");
+  if (node.props.dashed === true) {
+    const width = Number.parseFloat(strokeWidth) || 3;
+    vector.setAttribute("stroke-dasharray", `${Math.round(width * 3)} ${Math.round(width * 2.4)}`);
+    vector.setAttribute("stroke-linecap", "butt");
+  }
 
   if (arrow === "start" || arrow === "end" || arrow === "both") {
     lineMarkerSequence += 1;
@@ -118,7 +146,151 @@ function renderLine(node: FrameSeqNode): HTMLElement {
 
   svg.append(vector);
   element.append(svg);
+
+  const label = node.props.label;
+  if (typeof label === "string" && label) {
+    const along: Array<[number, number]> = routed ? points : [
+      [Number(node.props.x1) || 0, Number(node.props.y1) || 0],
+      [Number(node.props.x2) || 0, Number(node.props.y2) || 0],
+    ];
+    const middle = connectorMidpoint(routed ? route : "straight", along);
+    const caption = document.createElement("div");
+    caption.className = "frameseq-line-label";
+    caption.style.left = `${middle.x}px`;
+    caption.style.top = `${middle.y}px`;
+    appendTextWithInlineMath(caption, label);
+    element.append(caption);
+  }
   return element;
+}
+
+/**
+ * Shapes are drawn at the size the browser gives them, so an outline follows a resize as the
+ * layout editor drags it. One observer serves the deck mounted now.
+ */
+let shapeObserver: ResizeObserver | undefined;
+
+interface ShapeDrawing {
+  kind: ShapeKind;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  shade: string;
+  dashed: boolean;
+  radius?: number;
+  width: number;
+  height: number;
+}
+
+function drawShape(element: HTMLElement, fallback?: { width: number; height: number }): void {
+  let drawing: ShapeDrawing;
+  try {
+    drawing = JSON.parse(element.dataset.frameseqDrawing ?? "") as ShapeDrawing;
+  } catch {
+    return;
+  }
+  const width = element.offsetWidth || fallback?.width || 0;
+  const height = element.offsetHeight || fallback?.height || 0;
+  // A slide that is not shown has no size, and keeps what it was drawn at until it appears.
+  if (width < 1 || height < 1 || (width === drawing.width && height === drawing.height)) return;
+  drawing.width = width;
+  drawing.height = height;
+  element.dataset.frameseqDrawing = JSON.stringify(drawing);
+
+  const geometry = shapeGeometry(drawing.kind, width, height, {
+    strokeWidth: drawing.strokeWidth,
+    radius: drawing.radius,
+  });
+  const svg = element.querySelector<SVGSVGElement>(":scope > .frameseq-shape-outline");
+  const label = element.querySelector<HTMLElement>(":scope > .frameseq-shape-label");
+  if (!svg) return;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  const dash = drawing.dashed
+    ? `${Math.round(drawing.strokeWidth * 3.2)} ${Math.round(drawing.strokeWidth * 2.4)}`
+    : undefined;
+  const path = (segments: typeof geometry.outline, fill: string): SVGPathElement => {
+    const vector = document.createElementNS(svgNamespace, "path");
+    vector.setAttribute("d", svgPath(segments));
+    vector.setAttribute("fill", fill);
+    vector.setAttribute("stroke", drawing.stroke);
+    vector.setAttribute("stroke-width", String(drawing.strokeWidth));
+    vector.setAttribute("stroke-linejoin", "round");
+    if (dash) vector.setAttribute("stroke-dasharray", dash);
+    return vector;
+  };
+  const body = path(geometry.outline, drawing.fill);
+  body.classList.add("frameseq-shape-body");
+  const paths = [body];
+  if (geometry.shade) paths.push(path(geometry.shade, drawing.shade));
+  if (geometry.detail) paths.push(path(geometry.detail, "none"));
+  svg.replaceChildren(...paths);
+  if (label) {
+    label.style.left = `${geometry.text.x}px`;
+    label.style.top = `${geometry.text.y}px`;
+    label.style.width = `${geometry.text.width}px`;
+    label.style.height = `${geometry.text.height}px`;
+  }
+}
+
+function pixels(value: unknown): number | undefined {
+  const match = typeof value === "string" ? /^(-?\d+(?:\.\d+)?)px$/.exec(value.trim()) : null;
+  return match ? Number(match[1]) : undefined;
+}
+
+function renderShape(node: FrameSeqNode): HTMLElement {
+  const element = document.createElement("div");
+  const kind = node.props.kind as ShapeKind;
+  const paint = node.props.paint as ShapePaint | undefined;
+  const defaults = shapeSize(kind);
+  const width = pixels(node.styles.width) ?? defaults.width;
+  const height = pixels(node.styles.height) ?? (kind === "circle" ? width : defaults.height);
+  // The node's own styles are applied after these and win wherever they state a size.
+  element.style.width = `${defaults.width}px`;
+  element.style.height = kind === "circle" && node.styles.width && !node.styles.height
+    ? node.styles.width
+    : `${defaults.height}px`;
+  element.dataset.frameseqShape = kind;
+  const drawing: ShapeDrawing = {
+    kind,
+    fill: String(node.props.fill ?? paint?.fill ?? "var(--frameseq-surface)"),
+    stroke: String(node.props.stroke ?? paint?.stroke ?? "var(--frameseq-border)"),
+    strokeWidth: pixels(node.props.strokeWidth) ?? 2,
+    shade: String(paint?.shade ?? node.props.fill ?? "var(--frameseq-surface-strong)"),
+    dashed: node.props.dashed === true,
+    radius: pixels(node.styles.borderRadius),
+    width: 0,
+    height: 0,
+  };
+  element.dataset.frameseqDrawing = JSON.stringify(drawing);
+  if (paint && !node.styles.color) element.style.color = paint.text;
+
+  const svg = document.createElementNS(svgNamespace, "svg");
+  svg.classList.add("frameseq-shape-outline");
+  svg.setAttribute("aria-hidden", "true");
+  if (node.props.shadow === true) svg.classList.add("has-shadow");
+  const label = document.createElement("div");
+  label.className = "frameseq-shape-label";
+  const text = node.props.label;
+  if (typeof text === "string" && text) appendTextWithInlineMath(label, text);
+  else element.setAttribute("aria-hidden", "true");
+  element.append(svg, label);
+  drawShape(element, { width, height });
+  shapeObserver?.observe(element);
+  return element;
+}
+
+/** Paint a rect() or circle() that asks for a tone, a shadow, or a dashed outline. */
+function paintBox(element: HTMLElement, node: FrameSeqNode): void {
+  const paint = node.props.paint as ShapePaint | undefined;
+  if (paint) {
+    if (!node.styles.background) element.style.background = paint.fill;
+    if (!node.styles.borderColor) element.style.borderColor = paint.stroke;
+    if (!node.styles.color) element.style.color = paint.text;
+  }
+  if (node.props.dashed === true) element.style.borderStyle = "dashed";
+  if (node.props.shadow === true) element.classList.add("has-shadow");
 }
 
 function renderTable(node: FrameSeqNode): HTMLElement {
@@ -359,6 +531,11 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
       } else {
         element.setAttribute("aria-hidden", "true");
       }
+      paintBox(element, node);
+      break;
+    }
+    case "shape": {
+      element = renderShape(node);
       break;
     }
     case "line": {
@@ -408,7 +585,8 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
     element.dataset.frameseqSource = `${span.line}:${span.column}:${span.start}:${span.end}`;
     // A command in a loop or a helper renders several objects from one line, and a drag could
     // not say which of them to rewrite. Those objects still lead back to their source line.
-    if (!sharedSpans.has(span.start)) {
+    if (sharedSpans.has(span.start)) element.dataset.frameseqShared = "true";
+    else {
       if (span.fields) {
         element.dataset.frameseqEdit = JSON.stringify(span.fields);
         if (span.fields.x && span.fields.y) element.dataset.frameseqMove = "true";
@@ -1949,6 +2127,233 @@ function createLayoutEditor(
   };
 }
 
+/** What the Studio can ask the preview to draw onto a slide. */
+type PlacementKind = ShapeKind | "text" | "line" | "arrow" | "connector";
+
+/** An object a connector may be drawn from or to, as the Studio needs to name it. */
+function connectable(target: Element | null, canvas: HTMLElement): HTMLElement | undefined {
+  const element = target?.closest<HTMLElement>("[data-frameseq-node]");
+  if (!element || !canvas.contains(element) || element === canvas) return undefined;
+  const type = element.dataset.frameseqNode ?? "";
+  if (["slide", "line", "row", "column", "stack", "spacer"].includes(type)) return undefined;
+  return element;
+}
+
+/**
+ * Draw a new object onto the slide shown, as a drawing program does: the Studio says what, and
+ * the pointer says where. A shape or a text box is dragged out corner to corner, or clicked in at
+ * its usual size; a line runs from press to release; a connector runs from one object to
+ * another. The preview only measures, in the coordinates the object will be written in, and
+ * leaves writing it into the slide document to the Studio.
+ */
+/** The tool the Studio picked, kept while a saved document redraws the preview under it. */
+let placingKind: PlacementKind | undefined;
+
+function createPlacer(
+  root: HTMLElement,
+  activeCanvas: () => HTMLElement | undefined,
+  placed: () => void,
+  signal: AbortSignal,
+): void {
+  let kind = placingKind;
+  const choose = (next: PlacementKind | undefined): void => {
+    kind = next;
+    placingKind = next;
+  };
+  let press: { x: number; y: number; pointerId: number; from?: HTMLElement } | undefined;
+  let swallowClick = false;
+  const overlay = document.createElementNS(svgNamespace, "svg");
+  overlay.classList.add("frameseq-place-overlay");
+  overlay.setAttribute("aria-hidden", "true");
+  const ghost = document.createElementNS(svgNamespace, "path");
+  overlay.append(ghost);
+
+  const stop = (cancelled: boolean): void => {
+    if (cancelled && kind) window.parent.postMessage({ type: "frameseq.place-cancelled" }, "*");
+    choose(undefined);
+    press = undefined;
+    overlay.remove();
+    document.documentElement.classList.remove("frameseq-placing");
+    delete document.documentElement.dataset.frameseqPlacing;
+  };
+
+  addEventListener("message", (event: MessageEvent<unknown>) => {
+    const data = event.data as { type?: unknown; kind?: unknown } | null;
+    if (data?.type === "frameseq.place" && typeof data.kind === "string") {
+      choose(data.kind as PlacementKind);
+      document.documentElement.classList.add("frameseq-placing");
+      document.documentElement.dataset.frameseqPlacing = kind === "connector" ? "connector" : "draw";
+      window.focus();
+    } else if (data?.type === "frameseq.place-cancel") {
+      stop(false);
+    }
+  }, { signal });
+
+  /**
+   * The box a new object's coordinates count from: what positions it once it is written at the
+   * end of the slide, in the slide's first region, which is the nearest positioned container.
+   */
+  const frameOf = (canvas: HTMLElement): HTMLElement => {
+    const body = canvas.querySelector<HTMLElement>(".frameseq-slide-body");
+    const region = body?.querySelector<HTMLElement>(":scope > .frameseq-region-left, :scope > .frameseq-grid-cell-0")
+      ?? body
+      ?? canvas;
+    let frame: HTMLElement | null = region;
+    while (frame && frame !== canvas && getComputedStyle(frame).position === "static") frame = frame.parentElement;
+    return frame ?? canvas;
+  };
+
+  /** Lines snap to every 45° while Shift is held, as in a drawing program. */
+  const snapLine = (x: number, y: number, shift: boolean): { x: number; y: number } => {
+    if (!press || !shift) return { x, y };
+    const dx = x - press.x;
+    const dy = y - press.y;
+    const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+    const length = Math.hypot(dx, dy);
+    return { x: press.x + Math.cos(angle) * length, y: press.y + Math.sin(angle) * length };
+  };
+
+  /** The box dragged out, square while Shift is held. */
+  const dragBox = (x: number, y: number, shift: boolean): { left: number; top: number; width: number; height: number } => {
+    if (!press) return { left: x, top: y, width: 0, height: 0 };
+    let width = Math.abs(x - press.x);
+    let height = Math.abs(y - press.y);
+    if (shift) width = height = Math.max(width, height);
+    return {
+      left: x < press.x ? press.x - width : press.x,
+      top: y < press.y ? press.y - height : press.y,
+      width,
+      height,
+    };
+  };
+
+  const draw = (x: number, y: number, shift: boolean): void => {
+    if (!press || !kind) return;
+    if (kind === "line" || kind === "arrow" || kind === "connector") {
+      const end = kind === "connector" ? { x, y } : snapLine(x, y, shift);
+      ghost.setAttribute("d", `M ${press.x} ${press.y} L ${end.x} ${end.y}`);
+      return;
+    }
+    const box = dragBox(x, y, shift || kind === "circle");
+    if (kind === "text" || box.width < 2 || box.height < 2) {
+      ghost.setAttribute("d", `M ${box.left} ${box.top} h ${box.width} v ${box.height} h ${-box.width} Z`);
+      return;
+    }
+    const outline = shapeGeometry(kind, box.width, box.height).outline.map((segment) => {
+      if (segment.op === "Z") return segment;
+      if (segment.op === "C") {
+        return {
+          ...segment,
+          x1: segment.x1 + box.left, y1: segment.y1 + box.top,
+          x2: segment.x2 + box.left, y2: segment.y2 + box.top,
+          x: segment.x + box.left, y: segment.y + box.top,
+        };
+      }
+      return { ...segment, x: segment.x + box.left, y: segment.y + box.top };
+    });
+    ghost.setAttribute("d", svgPath(outline));
+  };
+
+  root.addEventListener("pointerdown", (event) => {
+    if (!kind || event.button !== 0) return;
+    const canvas = activeCanvas();
+    const target = event.target instanceof Element ? event.target : null;
+    if (!canvas || !target || !canvas.contains(target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const from = kind === "connector" ? connectable(target, canvas) : undefined;
+    if (kind === "connector" && !from) return;
+    press = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, from };
+    ghost.setAttribute("d", "");
+    document.body.append(overlay);
+  }, { capture: true, signal });
+
+  addEventListener("pointermove", (event) => {
+    if (press && event.pointerId === press.pointerId) draw(event.clientX, event.clientY, event.shiftKey);
+  }, { signal });
+
+  addEventListener("pointerup", (event) => {
+    if (!press || !kind || event.pointerId !== press.pointerId) return;
+    const canvas = activeCanvas();
+    const start = press;
+    const what = kind;
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 0);
+    if (!canvas) {
+      stop(true);
+      return;
+    }
+    const dragged = Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 5;
+
+    if (what === "connector") {
+      const to = connectable(document.elementFromPoint(event.clientX, event.clientY), canvas);
+      if (!start.from || !to || to === start.from) {
+        // Released over nothing it could connect: wait for another try.
+        press = undefined;
+        overlay.remove();
+        return;
+      }
+      const describe = (element: HTMLElement) => ({
+        name: element.dataset.frameseqName,
+        source: element.dataset.frameseqSource,
+        shared: element.dataset.frameseqShared === "true",
+        type: element.dataset.frameseqNode,
+      });
+      window.parent.postMessage({ type: "frameseq.placed", kind: what, from: describe(start.from), to: describe(to) }, "*");
+      stop(false);
+      placed();
+      return;
+    }
+
+    const frame = frameOf(canvas);
+    const scale = canvas.getBoundingClientRect().width / canvas.offsetWidth || 1;
+    const origin = frame.getBoundingClientRect();
+    const local = (x: number, y: number): { x: number; y: number } => ({
+      x: Math.round((x - origin.left) / scale - frame.clientLeft),
+      y: Math.round((y - origin.top) / scale - frame.clientTop),
+    });
+
+    if (what === "line" || what === "arrow") {
+      const end = dragged ? snapLine(event.clientX, event.clientY, event.shiftKey) : { x: start.x + 200 * scale, y: start.y };
+      const a = local(start.x, start.y);
+      const b = local(end.x, end.y);
+      window.parent.postMessage({ type: "frameseq.placed", kind: what, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, "*");
+    } else {
+      const usual = what === "text" ? { width: 360, height: 60 } : shapeSize(what);
+      const box = dragged ? dragBox(event.clientX, event.clientY, event.shiftKey || what === "circle") : undefined;
+      const corner = box ? local(box.left, box.top) : local(start.x, start.y);
+      const width = box ? Math.max(Math.round(box.width / scale), 16) : usual.width;
+      const height = box ? Math.max(Math.round(box.height / scale), 16) : usual.height;
+      // A click puts the object's middle where it was clicked.
+      const x = box ? corner.x : Math.round(corner.x - width / 2);
+      const y = box ? corner.y : Math.round(corner.y - height / 2);
+      window.parent.postMessage({ type: "frameseq.placed", kind: what, x, y, width, height }, "*");
+    }
+    stop(false);
+    placed();
+  }, { signal });
+
+  // The click that ends a placement is not a click on whatever lay beneath it.
+  root.addEventListener("click", (event) => {
+    if (!swallowClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, { capture: true, signal });
+
+  addEventListener("keydown", (event) => {
+    if (!kind || event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    stop(true);
+  }, { capture: true, signal });
+
+  // A redraw replaces the slides, not the tool: the next mount picks it up where this one left it.
+  signal.addEventListener("abort", () => {
+    press = undefined;
+    overlay.remove();
+  }, { once: true });
+}
+
 let activeMountController: AbortController | undefined;
 
 export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
@@ -1958,6 +2363,13 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   activeMountController = mountController;
   resolvePrintUnits(slidesDocument.node);
   resolveAnchors(slidesDocument.node);
+  resolveShapePaint(slidesDocument.node);
+  shapeObserver?.disconnect();
+  shapeObserver = typeof ResizeObserver === "undefined"
+    ? undefined
+    : new ResizeObserver((entries) => {
+      for (const entry of entries) drawShape(entry.target as HTMLElement);
+    });
   collectSharedSpans(slidesDocument.node);
   document.title = slidesDocument.title;
   target.replaceChildren();
@@ -2130,6 +2542,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   updateLayoutEditing(layoutEditing);
+  // An object drawn from the Studio is there to be arranged, so editing turns on once it lands.
+  if (setLayoutEditing && window.parent !== window) {
+    createPlacer(root, () => slides[currentSlide]?.canvas, () => updateLayoutEditing(true), signal);
+  }
 
   let currentSlide = 0;
   let currentStep = 0;

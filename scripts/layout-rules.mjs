@@ -23,12 +23,13 @@ export function collectLayoutIssues(win = window) {
     "latex",
     "rect",
     "circle",
+    "shape",
     "table",
     "chart",
     "qr",
     "icon",
   ]);
-  const textTypes = new Set(["text", "code", "equation", "rect", "circle", "table"]);
+  const textTypes = new Set(["text", "code", "equation", "rect", "circle", "shape", "table"]);
   const containerTypes = new Set(["row", "column", "stack"]);
   const clippingValues = new Set(["hidden", "clip"]);
   // Displays that place their children, which is what align(), gap(), and grow() need.
@@ -355,6 +356,32 @@ export function collectLayoutIssues(win = window) {
               "Increase the text box size, reduce the font size, or shorten the content.",
             ],
           });
+        }
+
+        // A shape keeps its size whatever its label says, so a long label spills past its outline.
+        const label = type === "shape" ? element.querySelector(":scope > .frameseq-shape-label") : null;
+        if (label) {
+          const spill = {
+            width: Math.max(0, label.scrollWidth - label.clientWidth),
+            height: Math.max(0, label.scrollHeight - label.clientHeight),
+          };
+          if (spill.width > tolerance || spill.height > tolerance) {
+            const kind = element.dataset.frameseqShape ?? "shape";
+            issues.push({
+              severity: "warning",
+              rule: "label-overflow",
+              slide,
+              element: elementInfo,
+              message: `The label does not fit inside its ${kind}: it runs ${[
+                spill.width > tolerance ? `${rounded(spill.width)}px too wide` : "",
+                spill.height > tolerance ? `${rounded(spill.height)}px too tall` : "",
+              ].filter(Boolean).join(" and ")}.`,
+              details: { width: rounded(spill.width), height: rounded(spill.height) },
+              suggestions: [
+                "Give the shape a larger width() or height(), shorten the label, or reduce its size().",
+              ],
+            });
+          }
         }
 
         if (!element.classList.contains("frameseq-list-marker")) {

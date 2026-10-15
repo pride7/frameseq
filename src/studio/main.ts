@@ -55,6 +55,17 @@ import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import { StudioTerminal } from "./terminal";
 import {
+  appendToSlide,
+  connectorChanges,
+  insertGroups,
+  insertName,
+  placementCode,
+  showInsertGallery,
+  type ConnectorEnd,
+  type InsertKind,
+  type Placement,
+} from "./insert";
+import {
   askChoice,
   askText,
   element,
@@ -154,6 +165,7 @@ const shell = `
         <span class="studio-pane-title">${t.shell.preview}</span>
         <span class="studio-pane-meta" data-slot="preview-slide"></span>
         <span class="studio-pane-spacer"></span>
+        <button type="button" class="studio-button studio-insert-button" data-action="insert" title="${t.insert.buttonTitle}" aria-haspopup="menu"><span aria-hidden="true">◇</span> ${t.insert.button}</button>
         <label class="studio-toggle" title="${t.shell.followTitle}"><input type="checkbox" data-control="follow"><span>${t.shell.followCursor}</span></label>
         <button type="button" class="studio-icon-button" data-action="open-browser" title="${t.shell.openBrowserTitle}">↗</button>
       </header>
@@ -368,6 +380,8 @@ async function start(): Promise<void> {
       },
       edit: applyPreviewEdit,
       bind: (targets) => void bindSelection(targets),
+      placed: (placement) => void insertPlaced(placement),
+      placeCancelled: () => placingHint?.close(),
       command: (command) => {
         if (command === "save") void save({ auto: false });
         if (command === "undo") undo(view);
@@ -1191,6 +1205,96 @@ async function start(): Promise<void> {
     await save({ auto: false });
   }
 
+  // ── Drawing objects onto a slide ───────────────────────────────────────────────────────────
+  let placingHint: ReturnType<typeof toast> | undefined;
+
+  /** The group of statements that made the slide in the preview, when objects can be added to it. */
+  async function placeableGroup(): Promise<{ map: SlideMap; group: SlideMap["groups"][number] } | undefined> {
+    const map = await settledSlideMap();
+    if (!map) {
+      toast(t.rail.catchingUp, { tone: "warning" });
+      return undefined;
+    }
+    const groupIndex = map.groupOf[previewSlide];
+    const group = groupIndex === undefined ? undefined : map.groups[groupIndex];
+    if (!group) {
+      toast(t.rail.notHere(previewSlide + 1, session.name), { tone: "warning" });
+      return undefined;
+    }
+    if (group.slides.length > 1) {
+      toast(t.insert.madeInCode(previewSlide + 1), { tone: "warning" });
+      return undefined;
+    }
+    return { map, group };
+  }
+
+  /** Let the next drag on the preview draw an object of this kind. */
+  async function startPlacing(kind: InsertKind): Promise<void> {
+    if (kind !== "connector" && !await placeableGroup()) return;
+    const name = insertName(kind);
+    const hint = kind === "connector"
+      ? t.insert.hintConnector
+      : (kind === "line" || kind === "arrow" ? t.insert.hintLine(name) : t.insert.hintDraw(name));
+    placingHint = toast(hint, {
+      tone: "info",
+      timeout: 0,
+      key: "placing",
+      actions: [{ label: t.insert.cancel, run: () => frames.cancelPlace() }],
+    });
+    frames.place(kind);
+  }
+
+  /** Write an object drawn in the preview into the slide document, as one undoable step. */
+  async function insertPlaced(message: Record<string, unknown>): Promise<void> {
+    placingHint?.close();
+    placingHint = undefined;
+    const kind = message.kind as InsertKind;
+    if (kind === "connector") {
+      const current = await inspect();
+      if (!current) return;
+      const slide = inspectedSlide()?.slide;
+      const taken = new Set<string>([
+        ...(slide?.objects ?? []).map((object) => object.name).filter((name): name is string => Boolean(name)),
+        ...(slide?.regions ?? []).map((region) => region.path),
+      ]);
+      const plan = connectorChanges(
+        view.state.doc,
+        [message.from as ConnectorEnd, message.to as ConnectorEnd],
+        editorRange,
+        reportText === editorText() ? current.statements.map((statement) => ({ from: statement.start, to: statement.end })) : [],
+        taken,
+      );
+      if (typeof plan === "string") {
+        toast(plan, { tone: "warning" });
+        return;
+      }
+      suppressFollow = true;
+      view.dispatch(plan.spec);
+      view.focus();
+      await save({ auto: false });
+      toast(t.insert.connected(...plan.names), { tone: "success" });
+      return;
+    }
+
+    const target = await placeableGroup();
+    if (!target) return;
+    const { code, select } = placementCode(message as unknown as Placement);
+    // The preview measured from the slide's first region; step back to it if the lines before
+    // moved elsewhere.
+    const slide = inspectedSlide()?.slide;
+    const last = [...(slide?.objects ?? [])]
+      .filter((object) => !object.parentId)
+      .sort((a, b) => (a.source.start ?? 0) - (b.source.start ?? 0))
+      .at(-1);
+    const elsewhere = Boolean(last && last.region !== "main");
+    suppressFollow = true;
+    view.dispatch(appendToSlide(view.state.doc, target.group, code, elsewhere, select));
+    view.focus();
+    const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+    await save({ auto: false });
+    toast(t.insert.added(insertName(kind), line), { tone: "success" });
+  }
+
   function showSlideMenu(index: number, x: number, y: number): void {
     const map = slideMap();
     const groupIndex = map?.groupOf[index];
@@ -1603,6 +1707,34 @@ async function start(): Promise<void> {
       ],
     },
     {
+      id: "insert",
+      label: t.menus.insert,
+      accessKey: "i",
+      items: () => [
+        {
+          command: "insert-gallery",
+          label: t.insert.gallery,
+          run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
+        },
+        "separator",
+        ...insertGroups[0].kinds.map((kind): MenuEntry => ({
+          command: `insert-${kind}`,
+          label: insertName(kind),
+          run: () => void startPlacing(kind),
+        })),
+        "separator",
+        ...insertGroups.slice(1).map((group): MenuEntry => ({
+          command: `insert-${group.id}`,
+          label: t.insert.groups[group.id],
+          submenu: () => group.kinds.map((kind) => ({
+            command: `insert-${kind}`,
+            label: insertName(kind),
+            run: () => void startPlacing(kind),
+          })),
+        })),
+      ],
+    },
+    {
       id: "present",
       label: t.menus.present,
       accessKey: "p",
@@ -1663,6 +1795,9 @@ async function start(): Promise<void> {
         break;
       case "open-browser":
         openOutside(`/#${previewSlide + 1}`);
+        break;
+      case "insert":
+        showInsertGallery(target, (kind) => void startPlacing(kind));
         break;
       case "toggle-panel":
         togglePanel();

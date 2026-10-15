@@ -50,7 +50,17 @@ assert.match(source, /#place\(bottom \+ left\)/);
 // only the text inside it.
 assert.match(source, /#align\(center\)\[#block\(width: 240pt\)/);
 assert.ok(result.warnings.some((warning) => warning.includes("text-blue-600")));
-assert.ok(result.warnings.some((warning) => warning.includes("arrowheads")));
+// Arrowheads are drawn as polygons at the ends of their lines, editable like the rest.
+assert.ok(!result.warnings.some((warning) => warning.includes("arrowheads")));
+assert.match(source, /#line\(start: [^\n]*\]#place\(top \+ left\)\[#polygon\(fill: rgb\("#475569"\)/);
+// A straight-edged shape is a polygon, a curved one a curve, each with its label in its room.
+assert.match(source, /#polygon\(fill: rgb\("#[0-9a-f]{6}"\), stroke: \(paint: rgb\("#[0-9a-f]{6}"\)/);
+assert.match(source, /#curve\(fill: rgb\("#[0-9a-f]{6}"\), stroke: [^\n]*curve\.cubic\(/);
+assert.match(source, /curve\.close\(mode: "straight"\)/);
+assert.match(source, /weight: "semibold", fill: rgb\("#[0-9a-f]{6}"\), size: [\d.]+pt\)\[#text\("Valid\?"\)\]/);
+// A named elbow connector is resolved before export, with its label on the background.
+assert.match(source, /#curve\(stroke: \(paint: [^\n]*curve\.move\([^\n]*curve\.line\(/);
+assert.match(source, /\[#text\("yes"\)\]/);
 
 const compileSource = source.replace(
   '#import "@preview/mitex:0.2.7": mi, mitex, mitext',

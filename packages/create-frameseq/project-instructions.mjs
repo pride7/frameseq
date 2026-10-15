@@ -41,7 +41,7 @@ note("State that the value is illustrative.");
 \`\`\`
 
 - Slide layouts: \`.cover()\`, \`.split(ratio)\`, \`.grid(columns)\`, \`.center()\`, \`.canvas()\`.
-- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`, \`table(rows)\`, \`chart(kind, data)\`, \`qr(text)\`, \`icon(name)\`.
+- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`, \`table(rows)\`, \`chart(kind, data)\`, \`qr(text)\`, \`icon(name)\`, \`shape(kind, label)\`.
 - Citations: \`presentation({ bibliography })\` with \`import bibliography from "./references.bib"\`, then \`cite(key)\` inside text, \`footnote(text)\`, and \`references()\`. Never type citation markers by hand.
 - Paper: \`poster({ title, author })\` starts an A0 poster; \`presentation({ size: "A4" })\` makes any deck for paper. On paper, \`mm()\` and \`pt()\` are printed sizes.
 - Regions: \`main()\`, \`left()\`, \`right()\`, \`cell(index)\`, \`at(path)\`.
@@ -99,6 +99,8 @@ math\`\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}\`;
 - Name diagram objects with \`.as(name)\`; place them with \`.rightOf()\`, \`.below()\`, and related constraints; connect them with \`line().from(name).to(name)\`.
 - Use \`group()\` when several objects must behave as one item. Use a named \`at()\` region when later content should continue flowing into the same container.
 - Keep connectors in the same canvas or named container as their referenced objects.
+- Draw nodes with the \`shape()\` that says what each one is: \`diamond\` for a decision, \`cylinder\` for a store, \`document\`, \`cloud\`, \`pill\` for a start or an end, \`step\` or \`chevron\` for stages. Colour them with \`.tone(color, "soft" | "solid" | "outline")\`, one tone per role, rather than hand-picked fills.
+- Connect with \`.route("elbow")\` in flowcharts and trees and \`.route("curve")\` for looser links; \`.label("yes")\` names a branch. Fix \`label-overflow\` warnings by enlarging the shape or shortening its label.
 
 ## Editing discipline
 

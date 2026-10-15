@@ -103,7 +103,7 @@ const placementModifiers = new Set(["rightOf", "leftOf", "above", "below", "cent
  */
 const knownCalls = new Set([
   "presentation", "slide", "note", "text", "image", "code", "math", "typst", "typstFile",
-  "latex", "latexFile", "rect", "circle", "line", "bullets", "steps", "metric", "spacer",
+  "latex", "latexFile", "rect", "circle", "shape", "line", "bullets", "steps", "metric", "spacer",
   "group", "ref", "card", "gridSection", "main", "left", "right", "cell", "at", "gap",
   "table", "chart", "qr", "icon", "cite", "footnote", "references", "poster",
   "px", "pt", "mm", "rem", "percent", "vw", "vh", "defineTheme",

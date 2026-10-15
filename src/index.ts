@@ -4,6 +4,36 @@ export * from "./semantic";
 export * from "./script";
 export * from "./objects";
 export { chartPalette, chartSvg, chartValue } from "./chart";
+export {
+  connectorHeading,
+  connectorMidpoint,
+  connectorPath,
+  isShapeKind,
+  polygonCorners,
+  resolveShapePaint,
+  routeConnector,
+  shapeGeometry,
+  shapeKinds,
+  shapePreset,
+  shapeSize,
+  svgPath,
+  toneNames,
+  tonePaint,
+} from "./shapes";
+export type {
+  LineRoute,
+  RouteBox,
+  RouteEnd,
+  Segment,
+  ShapeGeometry,
+  ShapeKind,
+  ShapeOptions,
+  ShapePaint,
+  TextBox,
+  ToneName,
+  ToneSpec,
+  ToneStyle,
+} from "./shapes";
 export type { ChartFrame, ChartSpec } from "./chart";
 export type { Bibliography, BibliographyEntry, CitationOptions } from "./citations";
 export { formatReference } from "./citations";

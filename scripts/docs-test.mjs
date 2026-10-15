@@ -45,6 +45,7 @@ const documentedFunctions = [
   "gap",
   "rect",
   "circle",
+  "shape",
   "line",
   "table",
   "chart",

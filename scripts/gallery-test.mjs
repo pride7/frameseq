@@ -23,7 +23,7 @@ const previewImages = (await readdir(resolve(docsOutput, "images")))
 const recipesPage = await readFile(resolve(docsOutput, "recipes.html"), "utf8");
 const referenced = [...recipesPage.matchAll(/src="images\/(recipes-\d+\.png)"/g)]
   .map((match) => match[1]);
-assert.equal(referenced.length, 10, "Every recipe should show its slide");
+assert.equal(referenced.length, 11, "Every recipe should show its slide");
 assert.equal(previewImages.length, referenced.length);
 for (const file of referenced) {
   assert.ok(previewImages.includes(file), `The recipes page references a missing ${file}`);

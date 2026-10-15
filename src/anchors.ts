@@ -5,6 +5,7 @@ import type {
   PlacementStep,
   SourceSpan,
 } from "./core";
+import { isShapeKind, routeConnector, shapeSize, type LineRoute, type RouteBox } from "./shapes";
 
 /** One reference that could not be resolved, with the command that wrote it when it is known. */
 export interface DocumentProblem {
@@ -60,6 +61,11 @@ const shapeSizes: Partial<Record<FrameSeqNode["type"], { width: number; height?:
   rect: { width: 240, height: 96 },
   circle: { width: 160 },
 };
+
+/** Kinds of object an elbow connector routes around; containers hold what it connects. */
+const obstacleTypes = new Set<FrameSeqNode["type"]>([
+  "rect", "circle", "shape", "text", "image", "code", "equation", "table", "chart", "qr", "icon",
+]);
 
 class AnchorError extends Error {}
 
@@ -151,6 +157,13 @@ function gapOf(node: FrameSeqNode): { row?: number; column?: number } {
 }
 
 function sizeOf(node: FrameSeqNode): { width?: number; height?: number } {
+  // A shape() has a size of its own kind, and states it exactly: no stylesheet minimum applies.
+  if (node.type === "shape" && isShapeKind(node.props.kind)) {
+    const defaults = shapeSize(node.props.kind);
+    const width = cssNumber(node.styles.width) ?? defaults.width;
+    const height = cssNumber(node.styles.height) ?? (node.props.kind === "circle" ? width : defaults.height);
+    return { width, height };
+  }
   const defaults = shapeSizes[node.type];
   const width = cssNumber(node.styles.width) ?? defaults?.width;
   // A shape's stylesheet sets a minimum height, and a minimum always clamps an
@@ -198,6 +211,21 @@ function slideLabel(slide: FrameSeqNode, index: number): string {
     : `Slide ${index + 1}`;
 }
 
+function isRouted(line: FrameSeqNode): line is FrameSeqNode & { props: { route: LineRoute } } {
+  return line.props.route === "elbow" || line.props.route === "curve";
+}
+
+/** Give a routed line with plain coordinates the corners or control points of its route. */
+function routeFreeLine(line: FrameSeqNode): void {
+  if (!isRouted(line)) {
+    delete line.props.points;
+    return;
+  }
+  const start = { x: Number(line.props.x1) || 0, y: Number(line.props.y1) || 0 };
+  const end = { x: Number(line.props.x2) || 0, y: Number(line.props.y2) || 0 };
+  line.props.points = routeConnector(line.props.route, { point: start }, { point: end });
+}
+
 function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProblem[]): void {
   const frames = new Map<FrameSeqNode, FrameSeqNode>();
   const parents = new Map<FrameSeqNode, FrameSeqNode>();
@@ -222,6 +250,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
       }
       if (Array.isArray(child.props.place)) placed.push(child);
       if (child.type === "line" && (child.props.from || child.props.to)) connectors.push(child);
+      else if (child.type === "line") routeFreeLine(child);
       collect(child, establishesFrame(child) ? child : frame);
     }
   };
@@ -736,6 +765,27 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
     }
   }
 
+  /** The objects an elbow connector keeps clear of: whatever in its frame has a known box. */
+  const obstacleCache = new Map<FrameSeqNode, RouteBox[]>();
+  const obstaclesFor = (frame: FrameOrigin): RouteBox[] => {
+    let found = obstacleCache.get(frame.root);
+    if (!found) {
+      found = [];
+      for (const node of frames.keys()) {
+        if (!obstacleTypes.has(node.type)) continue;
+        try {
+          const box = boxOf(node);
+          if (box.root !== frame.root || box.width === undefined || box.height === undefined) continue;
+          found.push({ x: box.x, y: box.y, width: box.width, height: box.height });
+        } catch (error) {
+          if (!(error instanceof AnchorError)) throw error;
+        }
+      }
+      obstacleCache.set(frame.root, found);
+    }
+    return found.map((box) => ({ ...box, x: box.x - frame.x, y: box.y - frame.y }));
+  };
+
   for (const line of connectors) {
     try {
       const frame = frameOrigin(frames.get(line) ?? slide);
@@ -750,17 +800,32 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
 
       const fixedStart = { x: Number(line.props.x1) || 0, y: Number(line.props.y1) || 0 };
       const fixedEnd = { x: Number(line.props.x2) || 0, y: Number(line.props.y2) || 0 };
-      const startPoint = startBox
-        ? anchorPoint(startBox, start?.side ?? facingSide(startBox, endBox ? center(endBox) : fixedEnd))
-        : fixedStart;
-      const endPoint = endBox
-        ? anchorPoint(endBox, end?.side ?? facingSide(endBox, startBox ? center(startBox) : fixedStart))
-        : fixedEnd;
+      const startSide = startBox
+        ? start?.side ?? facingSide(startBox, endBox ? center(endBox) : fixedEnd)
+        : undefined;
+      const endSide = endBox
+        ? end?.side ?? facingSide(endBox, startBox ? center(startBox) : fixedStart)
+        : undefined;
+      const startPoint = startBox && startSide ? anchorPoint(startBox, startSide) : fixedStart;
+      const endPoint = endBox && endSide ? anchorPoint(endBox, endSide) : fixedEnd;
 
       line.props.x1 = round(startPoint.x + (start?.dx ?? 0));
       line.props.y1 = round(startPoint.y + (start?.dy ?? 0));
       line.props.x2 = round(endPoint.x + (end?.dx ?? 0));
       line.props.y2 = round(endPoint.y + (end?.dy ?? 0));
+      if (isRouted(line)) {
+        const box = (found: Box | undefined): RouteBox | undefined => found && ({
+          x: found.x, y: found.y, width: found.width, height: found.height,
+        });
+        line.props.points = routeConnector(
+          line.props.route,
+          { point: { x: line.props.x1 as number, y: line.props.y1 as number }, side: startSide, box: box(startBox) },
+          { point: { x: line.props.x2 as number, y: line.props.y2 as number }, side: endSide, box: box(endBox) },
+          line.props.route === "elbow" ? obstaclesFor(frame) : [],
+        );
+      } else {
+        delete line.props.points;
+      }
     } catch (error) {
       if (!(error instanceof AnchorError)) throw error;
       problems.push(problemAt(`${label}: ${error.message}`, line));

@@ -4,6 +4,7 @@ import process from "node:process";
 import PptxGenJS from "pptxgenjs";
 import puppeteer from "puppeteer";
 import { build as viteBuild, preview } from "vite";
+import { shapePreset } from "../lib/index.js";
 import { deckReady, watchDeck } from "./document-errors.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
@@ -322,14 +323,123 @@ function addShape(pptx, slide, item) {
   addPartialBorders(pptx, slide, item);
 }
 
-function addLine(pptx, slide, item) {
-  const { x1, y1, x2, y2 } = item.line;
-  const x = Math.min(x1, x2);
-  const y = Math.min(y1, y2);
+/**
+ * A shape() becomes PowerPoint's own preset of the same outline, so it can still be restyled,
+ * resized, or swapped for another shape there. The preset places its label in its own room.
+ */
+function addVectorShape(pptx, slide, item) {
+  const { shape, box } = item;
+  const fillColor = cssColor(shape.fill, item.style.opacity);
+  const strokeColor = cssColor(shape.stroke, item.style.opacity);
+  const options = {
+    ...textOptions(item, box),
+    isTextBox: false,
+    shape: shapePreset(shape.kind),
+    fill: fillColor && fillColor.transparency < 100
+      ? { color: fillColor.color, transparency: fillColor.transparency }
+      : undefined,
+    line: strokeColor && strokeColor.transparency < 100 && shape.strokeWidth > 0
+      ? {
+        color: strokeColor.color,
+        transparency: strokeColor.transparency,
+        width: Math.max(shape.strokeWidth * pointsPerCssPixel, 0.1),
+        dashType: shape.dashed ? "dash" : "solid",
+      }
+      : emptyLine(),
+    // Left, right, bottom, top, inside the preset's own room for text.
+    margin: [6, 6, 3, 3].map((value) => value * pointsPerCssPixel),
+    align: "center",
+    valign: "mid",
+    objectName: `FrameSeq shape ${shape.kind} ${item.id}`,
+  };
+  const shortSide = Math.min(box.width, box.height);
+  const radius = shape.kind === "pill"
+    ? shortSide / 2
+    : shape.kind === "rounded" ? shape.radius ?? shortSide * 0.16667 : shape.radius;
+  if ((shape.kind === "pill" || shape.kind === "rounded" || shape.kind === "rect") && radius > 0) {
+    options.shape = pptx.ShapeType.roundRect;
+    options.rectRadius = radius / cssPixelsPerInch;
+  }
+  if (shape.shadow) {
+    options.shadow = { type: "outer", blur: 8, offset: 3, angle: 90, color: "0F172A", opacity: 0.2 };
+  }
+  slide.addText(item.text ?? "", options);
+}
+
+function lineStroke(item) {
   const stroke = cssColor(item.line.stroke, item.style.opacity) ?? {
     color: "000000",
     transparency: 0,
   };
+  return {
+    color: stroke.color,
+    transparency: stroke.transparency,
+    width: Math.max(item.line.strokeWidth * pointsPerCssPixel, 0.1),
+    dashType: item.line.dashed ? "dash" : "solid",
+    beginArrowType: item.line.startArrow ? "triangle" : "none",
+    endArrowType: item.line.endArrow ? "triangle" : "none",
+  };
+}
+
+/** A connector's label, as a small text box that hides the line behind it, as on the slide. */
+function addLineLabel(pptx, slide, item) {
+  const label = item.line.label;
+  if (!label?.text) return;
+  const labelItem = { ...item, text: label.text, style: label.style, box: label.box, nodeType: "line label" };
+  const background = cssColor(label.style.backgroundColor);
+  slide.addText(label.text, {
+    ...textOptions(labelItem, label.box),
+    isTextBox: false,
+    shape: pptx.ShapeType.roundRect,
+    rectRadius: label.box.height / 2 / cssPixelsPerInch,
+    fill: background && background.transparency < 100
+      ? { color: background.color, transparency: background.transparency }
+      : undefined,
+    line: emptyLine(),
+    margin: 0,
+    align: "center",
+    valign: "mid",
+    fit: "none",
+    objectName: `FrameSeq line label ${item.id}`,
+  });
+}
+
+function addLine(pptx, slide, item) {
+  const { x1, y1, x2, y2, points, route } = item.line;
+  // An elbow or a curve has no preset that bends where FrameSeq routed it, so it is drawn as a
+  // path of its own, still a line PowerPoint can recolour and restyle.
+  if (Array.isArray(points) && points.length >= 2 && (route === "elbow" || route === "curve")) {
+    const left = Math.min(...points.map((point) => point.x));
+    const top = Math.min(...points.map((point) => point.y));
+    const right = Math.max(...points.map((point) => point.x));
+    const bottom = Math.max(...points.map((point) => point.y));
+    const local = (point) => ({ x: (point.x - left) / cssPixelsPerInch, y: (point.y - top) / cssPixelsPerInch });
+    const path = route === "curve" && points.length === 4
+      ? [local(points[0]), {
+        ...local(points[3]),
+        curve: {
+          type: "cubic",
+          x1: local(points[1]).x,
+          y1: local(points[1]).y,
+          x2: local(points[2]).x,
+          y2: local(points[2]).y,
+        },
+      }]
+      : points.map(local);
+    slide.addShape(pptx.ShapeType.custGeom, {
+      x: left / cssPixelsPerInch,
+      y: top / cssPixelsPerInch,
+      w: Math.max((right - left) / cssPixelsPerInch, 0.001),
+      h: Math.max((bottom - top) / cssPixelsPerInch, 0.001),
+      points: path,
+      line: lineStroke(item),
+      objectName: `FrameSeq line ${item.id}`,
+    });
+    addLineLabel(pptx, slide, item);
+    return;
+  }
+  const x = Math.min(x1, x2);
+  const y = Math.min(y1, y2);
   slide.addShape(pptx.ShapeType.line, {
     x: x / cssPixelsPerInch,
     y: y / cssPixelsPerInch,
@@ -337,15 +447,10 @@ function addLine(pptx, slide, item) {
     h: Math.max(Math.abs(y2 - y1) / cssPixelsPerInch, 0.001),
     flipH: x2 < x1,
     flipV: y2 < y1,
-    line: {
-      color: stroke.color,
-      transparency: stroke.transparency,
-      width: Math.max(item.line.strokeWidth * pointsPerCssPixel, 0.1),
-      beginArrowType: item.line.startArrow ? "triangle" : "none",
-      endArrowType: item.line.endArrow ? "triangle" : "none",
-    },
+    line: lineStroke(item),
     objectName: `FrameSeq line ${item.id}`,
   });
+  addLineLabel(pptx, slide, item);
 }
 
 function tableBorder(width, style, color) {
@@ -465,6 +570,7 @@ async function captureSlides(page) {
       '[data-frameseq-node="latex"]',
       '[data-frameseq-node="rect"]',
       '[data-frameseq-node="circle"]',
+      '[data-frameseq-node="shape"]',
       '[data-frameseq-node="line"]',
       '[data-frameseq-node="table"]',
       '[data-frameseq-node="chart"]',
@@ -564,6 +670,8 @@ async function captureSlides(page) {
         if (listMarker) kind = "marker";
         else if (nodeType === "line") kind = "line";
         else if (nodeType === "rect" || nodeType === "circle") kind = "shape";
+        // A shape() label with math in it has no native equivalent, so it travels as a picture.
+        else if (nodeType === "shape") kind = element.querySelector(".frameseq-inline-math") ? "raster" : "vshape";
         // A table becomes an editable table unless math in a cell needs the picture of it.
         else if (nodeType === "table") kind = element.querySelector(".frameseq-inline-math") ? "raster" : "table";
         else if (nodeType === "chart") kind = "chart";
@@ -631,26 +739,63 @@ async function captureSlides(page) {
           };
         }
 
+        if (kind === "vshape") {
+          const drawing = JSON.parse(element.dataset.frameseqDrawing ?? "{}");
+          const body = element.querySelector(".frameseq-shape-body");
+          const label = element.querySelector(".frameseq-shape-label");
+          const bodyStyle = body ? getComputedStyle(body) : undefined;
+          item.text = (label?.innerText || label?.textContent || "").trimEnd();
+          // The label carries the type; the shape itself carries opacity and rotation.
+          item.style = {
+            ...styleSnapshot(label ? getComputedStyle(label) : computed),
+            opacity: Number.parseFloat(computed.opacity) || 1,
+            transform: computed.transform,
+          };
+          item.shape = {
+            kind: drawing.kind,
+            fill: bodyStyle?.fill,
+            stroke: bodyStyle?.stroke,
+            strokeWidth: px(bodyStyle?.strokeWidth),
+            dashed: drawing.dashed === true,
+            radius: drawing.radius,
+            shadow: Boolean(element.querySelector(".frameseq-shape-outline.has-shadow")),
+          };
+        }
+
         if (kind === "line") {
-          const vector = element.querySelector("line");
+          const vector = element.querySelector(":scope > svg > line, :scope > svg > path");
           const matrix = vector?.getScreenCTM();
           if (!vector || !matrix) continue;
           const point = (x, y) => {
             const transformed = new DOMPoint(x, y).matrixTransform(matrix);
             return { x: transformed.x - slideRect.left, y: transformed.y - slideRect.top };
           };
-          const start = point(Number(vector.getAttribute("x1")), Number(vector.getAttribute("y1")));
-          const end = point(Number(vector.getAttribute("x2")), Number(vector.getAttribute("y2")));
+          const routed = vector.tagName.toLowerCase() === "path";
+          const corners = routed ? JSON.parse(vector.dataset.frameseqPoints ?? "[]").map(([x, y]) => point(x, y)) : [];
+          const start = routed ? corners[0] : point(Number(vector.getAttribute("x1")), Number(vector.getAttribute("y1")));
+          const end = routed ? corners[corners.length - 1] : point(Number(vector.getAttribute("x2")), Number(vector.getAttribute("y2")));
+          if (!start || !end) continue;
           const vectorStyle = getComputedStyle(vector);
+          const label = element.querySelector(":scope > .frameseq-line-label");
           item.line = {
             x1: start.x,
             y1: start.y,
             x2: end.x,
             y2: end.y,
+            route: routed ? vector.dataset.frameseqRoute : "straight",
+            points: routed ? corners : undefined,
             stroke: vectorStyle.stroke,
             strokeWidth: px(vectorStyle.strokeWidth),
+            dashed: Boolean(vector.getAttribute("stroke-dasharray")),
             startArrow: Boolean(vector.getAttribute("marker-start")),
             endArrow: Boolean(vector.getAttribute("marker-end")),
+            label: label
+              ? {
+                text: (label.innerText || label.textContent || "").trim(),
+                box: relativeBox(label, slideRect, getComputedStyle(label)),
+                style: styleSnapshot(getComputedStyle(label)),
+              }
+              : undefined,
           };
         }
         items.push(item);
@@ -762,6 +907,7 @@ export async function exportPptx({
         if (item.kind === "text") addText(pptx, slide, item);
         if (item.kind === "marker") addMarker(pptx, slide, item);
         if (item.kind === "shape") addShape(pptx, slide, item);
+        if (item.kind === "vshape") addVectorShape(pptx, slide, item);
         if (item.kind === "line" && item.line) addLine(pptx, slide, item);
         if (item.kind === "table") addTable(slide, item);
         if (item.kind === "chart") addChart(pptx, slide, item);

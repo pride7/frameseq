@@ -12,6 +12,7 @@ const outputRoot = resolve(packageRoot, "tmp", "pptx-test");
 const editablePath = resolve(outputRoot, "editable.pptx");
 const flattenedPath = resolve(outputRoot, "flattened.pptx");
 const partialBorderPath = resolve(outputRoot, "partial-border.pptx");
+const shapesPath = resolve(outputRoot, "shapes.pptx");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
 
 if (!outputRoot.startsWith(resolve(packageRoot, "tmp"))) {
@@ -32,6 +33,13 @@ function run(args) {
 
 async function slideXml(zip, index) {
   return zip.file(`ppt/slides/slide${index}.xml`)?.async("string") ?? "";
+}
+
+/** The first object whose name begins this way, since names end with an export number. */
+function shapeXmlStarting(xml, prefix) {
+  const nameIndex = xml.indexOf(`name="${prefix} `);
+  assert.notEqual(nameIndex, -1, `Missing PowerPoint object ${prefix}`);
+  return xml.slice(xml.lastIndexOf("<p:sp>", nameIndex), xml.indexOf("</p:sp>", nameIndex) + "</p:sp>".length);
 }
 
 function shapeXmlByName(xml, name) {
@@ -55,6 +63,7 @@ run([
   "--output",
   partialBorderPath,
 ]);
+run(["pptx", "scripts/fixtures/pptx-shapes.slides.ts", "--output", shapesPath]);
 
 const editableBuffer = await readFile(editablePath);
 const flattenedBuffer = await readFile(flattenedPath);
@@ -97,6 +106,24 @@ assert.match(partialBorderSlide, /FrameSeq border-top/);
 assert.match(partialBorderSlide, /prst="line"/);
 assert.match(shapeXmlByName(partialBorderSlide, "FrameSeq chrome 1"), /anchor="b"/);
 
+// Each shape() becomes PowerPoint's own preset, keeping its label, colours, dashes, and shadow.
+const shapesSlide = await slideXml(await JSZip.loadAsync(await readFile(shapesPath)), 1);
+const diamond = shapeXmlStarting(shapesSlide, "FrameSeq shape diamond");
+assert.match(diamond, /prst="diamond"/);
+assert.match(diamond, /Cached\?/);
+assert.match(diamond, /<a:solidFill><a:srgbClr val="[0-9A-F]{6}"/);
+const cylinder = shapeXmlStarting(shapesSlide, "FrameSeq shape cylinder");
+assert.match(cylinder, /prst="can"/);
+assert.match(cylinder, /<a:outerShdw/);
+assert.match(shapeXmlStarting(shapesSlide, "FrameSeq shape cloud"), /prst="cloud"[\s\S]*prstDash val="dash"/);
+assert.match(shapeXmlStarting(shapesSlide, "FrameSeq shape pill"), /prst="roundRect"/);
+// Elbow and curved connectors are paths of their own, with arrowheads; straight ones stay lines.
+assert.match(shapesSlide, /<a:custGeom>[\s\S]*?<a:lnTo>[\s\S]*?<\/a:custGeom>/);
+assert.match(shapesSlide, /<a:cubicBezTo>/);
+assert.match(shapesSlide, /<a:tailEnd type="triangle"\/>/);
+assert.match(shapesSlide, /prst="line"/);
+assert.match(shapeXmlStarting(shapesSlide, "FrameSeq line label"), />yes</);
+
 // A run containing CJK text must carry a CJK typeface, not the Latin family
 // that leads the stack, because PowerPoint stores one typeface per run.
 const chineseSlide = await slideXml(partialBorder, 2);
@@ -130,4 +157,4 @@ const flattenedMedia = Object.keys(flattened.files)
   .filter((name) => /^ppt\/media\/image-\d+-\d+\.png$/.test(name));
 assert.equal(flattenedMedia.length, 8);
 
-console.log("PPTX test passed: editable objects, partial borders, centered bullets, speaker notes, 16:9 sizing, and flattened slides.");
+console.log("PPTX test passed: editable objects, native diagram shapes and connectors, partial borders, centered bullets, speaker notes, 16:9 sizing, and flattened slides.");

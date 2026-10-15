@@ -352,6 +352,22 @@ circle(label?: string): ShapeBuilder
 
 Adds a circular diagram node. Set its width to change the diameter while preserving the default square aspect ratio.
 
+### `shape(kind, label?)`
+
+```ts
+type ShapeKind =
+  | "rect" | "rounded" | "pill" | "ellipse" | "circle"
+  | "diamond" | "triangle" | "pentagon" | "hexagon" | "octagon"
+  | "parallelogram" | "trapezoid" | "star" | "plus"
+  | "cylinder" | "document" | "note" | "cube" | "cloud" | "callout"
+  | "chevron" | "step"
+  | "arrow-right" | "arrow-left" | "arrow-up" | "arrow-down" | "arrow-both";
+
+shape(kind: ShapeKind, label?: string): ShapeBuilder
+```
+
+Adds a diagram shape drawn as a vector outline, with the label set in the outline's own room: the middle of a diamond, below a cylinder's top. Each kind has a usual size, from 120 x 120 for `plus` to 240 x 120 for `callout`, which `width()` and `height()` replace. A `circle` given only a width keeps its height equal to it. Each kind exports to PowerPoint as its native preset shape and to Typst as an editable polygon or curve. Without `tone()` a shape is a soft tint of the theme's accent.
+
 ### `line(points)`
 
 ```ts
@@ -628,13 +644,22 @@ canvas(): this
 center(): this
 ```
 
-Rectangle and circle builders additionally provide:
+Rectangle, circle, and shape builders additionally provide:
 
 ```ts
+type ToneName =
+  | "accent" | "blue" | "sky" | "teal" | "green" | "lime" | "amber"
+  | "orange" | "red" | "pink" | "purple" | "indigo" | "gray";
+
 fill(value: string): this
 stroke(value: string): this
 strokeWidth(value: Length): this
+tone(color: ToneName | string, style?: "soft" | "solid" | "outline"): this
+shadow(enabled?: boolean): this
+dashed(enabled?: boolean): this
 ```
+
+`tone()` paints the fill, the outline, and the label from one colour, worked out against the theme so that a dark theme gets darker tints and lighter labels: `"soft"` (the default) is a tint with a darker label, `"solid"` fills with the colour itself, and `"outline"` draws the colour around the slide's background. `fill()`, `stroke()`, and `color()` still decide the parts they name. A shape's `radius()` rounds a `rect` or `rounded` outline.
 
 Line builders provide:
 
@@ -648,9 +673,14 @@ strokeWidth(value: Length): this
 arrow(value?: "none" | "start" | "end" | "both"): this
 from(reference: string, offset?: { dx?: number; dy?: number }): this
 to(reference: string, offset?: { dx?: number; dy?: number }): this
+route(value: "straight" | "elbow" | "curve"): this
+label(text: string): this
+dashed(enabled?: boolean): this
 ```
 
 Calling `arrow()` without an argument adds an end arrow. A line has no arrow by default.
+
+`route("elbow")` draws the connector at right angles, leaving and entering its objects square to their sides and keeping clear of the other objects on its canvas; `route("curve")` draws a smooth curve that leaves and enters square. `label()` writes a short text halfway along the connector, on the slide's background so the line stops behind it.
 
 `from()` and `to()` take the name given to an object by `as()`, optionally followed by an anchor: `"encoder"` or `"encoder.top-right"`. Without an anchor FrameSeq uses the edges that face the other end of the connector.
 

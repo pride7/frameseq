@@ -114,16 +114,16 @@ For the one diagram that does need a canvas, position a single anchor object and
 ```ts
 slide("Two-stage routing").canvas();
 
-rect("Router").as("router").position({ x: 120, y: 150 }).width(220).height(110);
-rect("Small model").as("small").rightOf("router", 160);
-rect("Large model").as("large").below("small", 40);
+shape("hexagon", "Router").as("router").position({ x: 120, y: 150 }).width(220).height(110).tone("indigo", "solid");
+shape("rounded", "Small model").as("small").rightOf("router", 160).width(220).height(100).tone("teal");
+shape("rounded", "Large model").as("large").below("small", 40).width(220).height(100).tone("purple");
 
-line().from("router").to("small").arrow("end");
-line().from("router").to("large").arrow("end");
+line().from("router").to("small").route("elbow").arrow("end");
+line().from("router").to("large").route("elbow").arrow("end");
 text("72% of inputs stop here").caption().below("small", 12);
 ```
 
-Editing one coordinate then moves every connector attached to it, so a correction pass cannot leave arrows pointing at empty canvas.
+Editing one coordinate then moves every connector attached to it, so a correction pass cannot leave arrows pointing at empty canvas. Each node is a `shape()` of the kind that says what it is, coloured with `tone()` by its role, so the diagram looks designed without a single hand-picked colour; see [Shapes and connectors](shapes.md) for every kind.
 
 ### 3. Put delivery detail in speaker notes
 
@@ -184,6 +184,7 @@ Before accepting AI-generated slides, verify that:
 - every slide has one clear message and a visible reading order;
 - structured layouts are used for ordinary pages;
 - diagram objects are named and placed relative to one another instead of by repeated coordinates;
+- diagram nodes use the `shape()` that says what they are, with one `tone()` per role;
 - formulas use tagged templates so LaTeX backslashes survive;
 - Typst fragments are static and used only for local complex typesetting;
 - LaTeX table fragments are static, body-only, and use `latex` or `latexFile()`;

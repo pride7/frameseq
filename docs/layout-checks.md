@@ -11,13 +11,14 @@ The checker builds the slides, opens them in a headless browser at their native 
 - `empty-slide` — a slide has no visible content and was not explicitly marked as intentionally blank.
 - `canvas-overflow` — a rendered object extends beyond the slide canvas.
 - `text-clipped` — text is hidden by a clipped text box or ancestor.
+- `label-overflow` — the label of a `shape()` does not fit inside its outline, which keeps its size whatever the label says.
 - `font-too-small` — text is too small to read at its size: below 14px on a 1280-wide slide, or 24px for a heading. The minimum grows with the canvas; on paper it is the same share of the sheet's short side, which on an A0 poster is about 21 pt, and the finding gives both sizes.
 - `empty-region` — a named region created by `at()` never received any content.
 - `similar-name` — two names on the same slide are one edit apart, which usually means one of them is a mistyped `at()` path or `.as()` name.
 - `inert-modifier` — a layout modifier landed somewhere it cannot mean anything, so the browser ignores it.
 - `document-error` — the slide document stopped with an error before anything could be measured.
 
-Canvas overflow, clipped text, and document errors are errors. Empty slides, small text, empty regions, near-identical names, and inert modifiers are warnings. Strict mode fails for any warning.
+Canvas overflow, clipped text, and document errors are errors. Empty slides, overflowing shape labels, small text, empty regions, near-identical names, and inert modifiers are warnings. Strict mode fails for any warning.
 
 A layout modifier only works in one context: `align()`, `justify()`, `gap()`, and `wrap()` need the object itself to be a `row()`, `column()`, or grid, while `selfAlign()`, `centerSelf()`, `grow()`, and `spacer()` need the container holding it to be one. Written anywhere else they are dropped in silence, which is why the checker names the modifier and the nearest one that would have worked:
 

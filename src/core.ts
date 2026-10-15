@@ -2,6 +2,15 @@ import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
 import { attachNode } from "./node-tree";
 import type { Bibliography, CitationOptions } from "./citations";
 import { paperCanvasUnits, paperDimensions, type PaperDimensions, type PaperSize } from "./paper";
+import {
+  isShapeKind,
+  shapeKinds,
+  toneNames,
+  type LineRoute,
+  type ShapeKind,
+  type ToneName,
+  type ToneStyle,
+} from "./shapes";
 
 export { canvasLength, paperCanvasUnits, paperDimensions, resolvePrintUnits } from "./paper";
 export type { PaperDimensions, PaperSize } from "./paper";
@@ -22,6 +31,7 @@ export type ComponentType =
   | "latex"
   | "rect"
   | "circle"
+  | "shape"
   | "line"
   | "spacer"
   | "table"
@@ -705,12 +715,18 @@ export class ShapeBuilder extends ElementBuilder {
 
   /** Set the fill colour. */
   fill(value: string): this {
-    this.node.styles.background = value;
+    // A shape() is drawn as a vector outline; rect() and circle() are boxes with a border.
+    if (this.node.type === "shape") this.node.props.fill = value;
+    else this.node.styles.background = value;
     return this;
   }
 
   /** Set the outline colour. */
   stroke(value: string): this {
+    if (this.node.type === "shape") {
+      this.node.props.stroke = value;
+      return this;
+    }
     this.node.styles.borderColor = value;
     this.node.styles.borderStyle = "solid";
     return this;
@@ -718,7 +734,37 @@ export class ShapeBuilder extends ElementBuilder {
 
   /** Set the outline width. */
   strokeWidth(value: Length): this {
-    this.node.styles.borderWidth = length(value);
+    if (this.node.type === "shape") this.node.props.strokeWidth = length(value);
+    else this.node.styles.borderWidth = length(value);
+    return this;
+  }
+
+  /**
+   * Paint the shape in a named colour, such as "blue" or "green", or in any CSS colour: a "soft"
+   * tint with a darker label (the default), a "solid" fill, or an "outline". Tints are worked
+   * out against the theme, so the same diagram reads on a dark theme. fill(), stroke(), and
+   * color() still decide the parts they name.
+   */
+  tone(color: ToneName | (string & {}), style: ToneStyle = "soft"): this {
+    if (!["soft", "solid", "outline"].includes(style)) {
+      throw new Error(`tone() expects the style "soft", "solid", or "outline", not "${style}"`);
+    }
+    if (typeof color !== "string" || !color.trim()) {
+      throw new Error(`tone() expects a colour: one of ${toneNames.join(", ")}, or a CSS colour such as "#0f766e"`);
+    }
+    this.node.props.tone = { color: color.trim(), style };
+    return this;
+  }
+
+  /** Cast a soft shadow beneath the shape. */
+  shadow(enabled = true): this {
+    this.node.props.shadow = enabled;
+    return this;
+  }
+
+  /** Draw the outline as a dashed line. */
+  dashed(enabled = true): this {
+    this.node.props.dashed = enabled;
     return this;
   }
 }
@@ -739,6 +785,30 @@ export class LineBuilder extends ElementBuilder {
   /** Draw arrowheads at the "end" (the default), the "start", "both" ends, or "none". */
   arrow(value: ArrowPlacement = "end"): this {
     this.node.props.arrow = value;
+    return this;
+  }
+
+  /**
+   * Choose how the connector travels: "straight" (the default), "elbow" for right angles that
+   * leave and enter its objects square and keep clear of them, or "curve" for a smooth arc.
+   */
+  route(value: LineRoute): this {
+    if (!["straight", "elbow", "curve"].includes(value)) {
+      throw new Error(`route() expects "straight", "elbow", or "curve", not "${value}"`);
+    }
+    this.node.props.route = value;
+    return this;
+  }
+
+  /** Write a short label halfway along the connector, such as "yes" or "HTTP". */
+  label(text: string): this {
+    this.node.props.label = String(text);
+    return this;
+  }
+
+  /** Draw the line dashed, as for an optional or asynchronous step. */
+  dashed(enabled = true): this {
+    this.node.props.dashed = enabled;
     return this;
   }
 
@@ -942,6 +1012,13 @@ export function Rect(label = ""): ShapeBuilder {
 
 export function Circle(label = ""): ShapeBuilder {
   return new ShapeBuilder(node("circle", { label }));
+}
+
+export function Shape(kind: ShapeKind, label = ""): ShapeBuilder {
+  if (!isShapeKind(kind)) {
+    throw new Error(`shape() does not know "${kind}". Use one of: ${shapeKinds.join(", ")}`);
+  }
+  return new ShapeBuilder(node("shape", { kind, label }));
 }
 
 export function Line(points: Partial<LinePoints> = {}): LineBuilder {

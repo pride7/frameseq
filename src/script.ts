@@ -13,6 +13,7 @@ import {
   type Length,
   resolvePrintUnits,
   Rect,
+  Shape,
   ShapeBuilder,
   Spacer,
   Text,
@@ -47,6 +48,7 @@ import {
   type TableCell,
 } from "./objects";
 import type { IconName } from "./icon-names";
+import type { ShapeKind } from "./shapes";
 import {
   type Bibliography,
   type CitationOptions,
@@ -398,6 +400,15 @@ export function circle(label = ""): ShapeBuilder {
   return attach(Circle(label).className("frameseq-semantic-shape"));
 }
 
+/**
+ * Add a diagram shape, optionally with a label: "diamond", "cylinder", "cloud", "arrow-right",
+ * and two dozen more. Each one exports to PowerPoint as its native shape.
+ * @example shape("diamond", "Valid?").as("check").tone("amber");
+ */
+export function shape(kind: ShapeKind, label = ""): ShapeBuilder {
+  return attach(Shape(kind, label).className("frameseq-semantic-shape"));
+}
+
 /** Add a canvas-relative vector line or connector. Omit the points when using from()/to(). */
 export function line(points: Partial<LinePoints> = {}): LineBuilder {
   return attach(Line(points).className("frameseq-semantic-line"));
@@ -603,7 +614,7 @@ function collectNames(node: FrameSeqNode, names: string[]): string[] {
 
 /** Wrap an existing node in the builder that matches what it can do. */
 function builderFor(node: FrameSeqNode): ElementBuilder {
-  if (node.type === "rect" || node.type === "circle") return new ShapeBuilder(node);
+  if (node.type === "rect" || node.type === "circle" || node.type === "shape") return new ShapeBuilder(node);
   if (node.type === "line") return new LineBuilder(node);
   if (node.type === "row" || node.type === "column" || node.type === "stack") {
     return new RegionBuilder(node);

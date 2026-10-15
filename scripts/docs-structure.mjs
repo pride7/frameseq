@@ -82,7 +82,7 @@ export const documentationGroups = [
         slug: "shapes",
         source: "docs/shapes.md",
         label: "Shapes and connectors",
-        blurb: "The primitives a diagram is built from: rectangles, circles, lines, and arrows.",
+        blurb: "The primitives a diagram is built from: 27 shapes, tones, and connectors that bend around them.",
       },
       {
         slug: "styling",
@@ -273,7 +273,7 @@ const chinese = {
     citations: { label: "引用与参考文献", blurb: "从 BibTeX 文件引用,在每页底部列出出处,并生成参考文献表。" },
     layout: { label: "布局", blurb: "普通流、分栏、网格、局部网格、区域路径和画布。" },
     diagrams: { label: "画图", blurb: "区域路径、自动行列、命名,以及跟着对象走的连线。" },
-    shapes: { label: "图形与连线", blurb: "构成一张图的图元:矩形、圆、线和箭头。" },
+    shapes: { label: "图形与连线", blurb: "构成一张图的图元:27 种形状、配色,以及会绕开它们的连线。" },
     styling: { label: "样式", blurb: "链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。" },
     themes: { label: "主题", blurb: "内置主题、全局排版、中日韩文字和自定义 token。" },
     posters: { label: "海报与打印", blurb: "为纸张做的页面:A0 海报和讲义、印刷尺寸,以及海报主题。" },

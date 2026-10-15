@@ -1,4 +1,4 @@
-<!-- translation-of: docs/content.md sha256:0f622c02e3192ea5 -->
+<!-- translation-of: docs/content.md sha256:1b13085464432b86 -->
 
 # 内容
 
@@ -177,17 +177,17 @@ TypeScript 知道每个图标的名字,所以编辑器能补全,拼错的名字�
 
 ## 图形
 
-用 `rect()`、`circle()`、`line()` 直接在源码里搭可编辑的图:
+用 `shape()` 画菱形、圆柱、云这类示意图轮廓,用 `rect()` 和 `circle()` 画普通的盒子,用 `line()` 画它们之间的连线,全部直接写在源码里:
 
 ```ts
 slide({ name: "Pipeline" }).canvas();
 
-line({ x1: 320, y1: 180, x2: 520, y2: 180 }).arrow("end");
-rect("Input").position({ x: 80, y: 125 }).width(240).height(110);
-circle("Model").position({ x: 520, y: 100 }).width(160);
+rect("Input").as("input").position({ x: 80, y: 125 }).width(240).height(110);
+shape("cylinder", "Orders").as("orders").position({ x: 760, y: 100 }).tone("purple");
+line().from("input").to("orders").route("elbow").arrow();
 ```
 
-填充、描边、箭头方向、坐标行为和自定义 SVG 见 [Shapes and connectors](../shapes.md)(英文);把这些图元组合成不用写坐标的图,见 [Diagrams](../diagrams.md)(英文)。
+所有轮廓、配色、走线方式和标签,以及自定义 SVG,见 [图形与连线](shapes.md);把这些图元组合成不用写坐标的图,见 [画图](diagrams.md)。
 
 ## 要点列表
 

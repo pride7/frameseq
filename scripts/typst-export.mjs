@@ -5,7 +5,17 @@ import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:
 import { fileURLToPath } from "node:url";
 import QRCode from "qrcode";
 import { createServer } from "vite";
-import { chartPalette, chartSvg } from "../lib/index.js";
+import {
+  chartPalette,
+  chartSvg,
+  connectorHeading,
+  connectorMidpoint,
+  polygonCorners,
+  resolveAnchors,
+  resolveShapePaint,
+  shapeGeometry,
+  shapeSize,
+} from "../lib/index.js";
 import { locateProblems, reportedProblems } from "./document-errors.mjs";
 
 /** A screen presentation's page width in points; one made for paper uses the paper's. */
@@ -1010,8 +1020,10 @@ async function serializeLatex(node, context) {
 
 async function serializeShape(node, context) {
   const styles = node.styles ?? {};
+  const paint = node.props?.paint;
   const args = commonBlockArguments(node, context, {
-    borderColor: context.theme.colors.accent,
+    background: paint?.fill,
+    borderColor: paint?.stroke ?? context.theme.colors.accent,
     height: node.type === "circle" ? "120px" : "120px",
     radius: node.type === "rect" ? context.theme.radii.medium : undefined,
     width: node.type === "circle" ? "120px" : "240px",
@@ -1029,15 +1041,131 @@ async function serializeShape(node, context) {
   return result;
 }
 
-async function serializeLine(node, context) {
-  const start = `(${length(`${Number(node.props?.x1 ?? 0)}px`, context)}, ${length(`${Number(node.props?.y1 ?? 0)}px`, context, "y")})`;
-  const end = `(${length(`${Number(node.props?.x2 ?? 0)}px`, context)}, ${length(`${Number(node.props?.y2 ?? 0)}px`, context, "y")})`;
-  const strokeWidth = length(node.props?.strokeWidth ?? "3px", context) ?? "2.25pt";
-  const strokeColor = cssColor(node.props?.stroke ?? context.theme.colors.accent, context, context.theme.colors.accent);
-  if (node.props?.arrow && node.props.arrow !== "none") {
-    context.warn("Connector arrowheads are not yet editable in Typst; the connector line itself remains editable.");
+function pixelValue(value) {
+  const match = typeof value === "string" ? /^(-?\d+(?:\.\d+)?)px$/.exec(value.trim()) : null;
+  if (match) return Number(match[1]);
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/** A point in canvas pixels as a Typst coordinate pair. */
+function typstPoint(x, y, context) {
+  return `(${length(`${x}px`, context, "x")}, ${length(`${y}px`, context, "y")})`;
+}
+
+/**
+ * Outline segments as editable Typst: a polygon when every edge is straight, and a curve
+ * otherwise. An open outline, such as a cube's inner edges, is stroked without a fill.
+ */
+function typstOutline(segments, fill, stroke, context) {
+  const corners = polygonCorners(segments);
+  if (corners) {
+    const points = corners.map(([x, y]) => typstPoint(x, y, context)).join(", ");
+    return `#place(top + left)[#polygon(fill: ${fill}, stroke: ${stroke}, ${points})]`;
   }
-  return `#place(top + left)[#line(start: ${start}, end: ${end}, stroke: ${strokeWidth} + ${strokeColor})]`;
+  const parts = segments.map((segment) => {
+    if (segment.op === "Z") return "curve.close(mode: \"straight\")";
+    if (segment.op === "M") return `curve.move(${typstPoint(segment.x, segment.y, context)})`;
+    if (segment.op === "L") return `curve.line(${typstPoint(segment.x, segment.y, context)})`;
+    return `curve.cubic(${typstPoint(segment.x1, segment.y1, context)}, ${typstPoint(segment.x2, segment.y2, context)}, ${typstPoint(segment.x, segment.y, context)})`;
+  });
+  return `#place(top + left)[#curve(fill: ${fill}, stroke: ${stroke}, ${parts.join(", ")})]`;
+}
+
+/** A shape() as its outline drawn in Typst, with the label set in the outline's room. */
+async function serializeVectorShape(node, context) {
+  const styles = node.styles ?? {};
+  const kind = node.props?.kind;
+  const paint = node.props?.paint ?? {};
+  const defaults = shapeSize(kind);
+  const width = pixelValue(styles.width) ?? defaults.width;
+  const height = pixelValue(styles.height) ?? (kind === "circle" ? width : defaults.height);
+  const strokeWidth = pixelValue(node.props?.strokeWidth) ?? 2;
+  const geometry = shapeGeometry(kind, width, height, { strokeWidth, radius: pixelValue(styles.borderRadius) });
+  const fill = cssColor(node.props?.fill ?? paint.fill ?? context.theme.colors.surface, context) ?? "none";
+  const strokeColor = cssColor(node.props?.stroke ?? paint.stroke ?? context.theme.colors.border, context);
+  const thickness = length(`${strokeWidth}px`, context) ?? "1.5pt";
+  const stroke = strokeColor && strokeColor !== "none" && strokeWidth > 0
+    ? `(paint: ${strokeColor}, thickness: ${thickness}, join: "round"${node.props?.dashed ? ", dash: \"dashed\"" : ""})`
+    : "none";
+  const shade = cssColor(paint.shade ?? node.props?.fill ?? context.theme.colors.surfaceStrong, context) ?? fill;
+  const drawing = [
+    typstOutline(geometry.outline, fill, stroke, context),
+    geometry.shade ? typstOutline(geometry.shade, shade, stroke, context) : "",
+    geometry.detail ? typstOutline(geometry.detail, "none", stroke, context) : "",
+  ].join("");
+  if (node.props?.shadow) context.warn("Shape shadows are not drawn in Typst.");
+
+  const room = geometry.text;
+  const textArguments = [`weight: ${weight(styles.fontWeight) ?? "\"semibold\""}`];
+  const textColor = cssColor(styles.color ?? paint.text ?? context.theme.colors.foreground, context);
+  if (textColor && textColor !== "none") textArguments.push(`fill: ${textColor}`);
+  const size = length(styles.fontSize ?? "22px", context);
+  if (size) textArguments.push(`size: ${size}`);
+  const text = String(node.props?.label ?? "");
+  const label = text
+    ? `#place(top + left, dx: ${length(`${room.x}px`, context, "x")}, dy: ${length(`${room.y}px`, context, "y")})`
+      + `[#box(width: ${length(`${room.width}px`, context, "x")}, height: ${length(`${room.height}px`, context, "y")})`
+      + `[#align(center + horizon)[#text(${textArguments.join(", ")})[${inlineContent(text)}]]]]`
+    : "";
+  let result = `#box(width: ${length(`${width}px`, context, "x")}, height: ${length(`${height}px`, context, "y")})[${drawing}${label}]`;
+  const rotate = styles.transform?.match(/rotate\(\s*(-?[\d.]+)deg\s*\)/i)?.[1];
+  if (rotate) result = `#rotate(${rotate}deg)[${result}]`;
+  if (styles.position === "absolute") {
+    const dx = length(styles.left ?? 0, context) ?? "0pt";
+    const dy = length(styles.top ?? 0, context, "y") ?? "0pt";
+    result = `#place(top + left, dx: ${dx}, dy: ${dy})[${result}]`;
+  }
+  return result;
+}
+
+async function serializeLine(node, context) {
+  const props = node.props ?? {};
+  const start = [Number(props.x1 ?? 0), Number(props.y1 ?? 0)];
+  const end = [Number(props.x2 ?? 0), Number(props.y2 ?? 0)];
+  const route = props.route === "elbow" || props.route === "curve" ? props.route : "straight";
+  const points = route !== "straight" && Array.isArray(props.points) && props.points.length >= 2
+    ? props.points
+    : [start, end];
+  const widthPixels = pixelValue(props.strokeWidth ?? "3px") ?? 3;
+  const strokeWidth = length(`${widthPixels}px`, context) ?? "2.25pt";
+  const strokeColor = cssColor(props.stroke ?? context.theme.colors.accent, context, context.theme.colors.accent);
+  const stroke = `(paint: ${strokeColor}, thickness: ${strokeWidth}, cap: "round", join: "round"${props.dashed ? ", dash: \"dashed\"" : ""})`;
+  const parts = [];
+  if (route === "curve" && points.length === 4) {
+    const [s, c1, c2, e] = points;
+    parts.push(`#place(top + left)[#curve(stroke: ${stroke}, curve.move(${typstPoint(...s, context)}), curve.cubic(${typstPoint(...c1, context)}, ${typstPoint(...c2, context)}, ${typstPoint(...e, context)}))]`);
+  } else if (points.length > 2) {
+    const steps = points.map(([x, y], index) => `curve.${index === 0 ? "move" : "line"}(${typstPoint(x, y, context)})`);
+    parts.push(`#place(top + left)[#curve(stroke: ${stroke}, ${steps.join(", ")})]`);
+  } else {
+    parts.push(`#place(top + left)[#line(start: ${typstPoint(...start, context)}, end: ${typstPoint(...end, context)}, stroke: ${stroke})]`);
+  }
+
+  // Arrowheads match the preview's: eight line widths long, reaching one width past the end.
+  const arrow = props.arrow;
+  for (const at of ["start", "end"]) {
+    if (!(arrow === "both" || arrow === at)) continue;
+    const heading = connectorHeading(points, at);
+    const [x, y] = at === "end" ? points[points.length - 1] : points[0];
+    const tip = [x + heading.x * widthPixels, y + heading.y * widthPixels];
+    const base = [tip[0] - heading.x * widthPixels * 8, tip[1] - heading.y * widthPixels * 8];
+    const side = [-heading.y * widthPixels * 4, heading.x * widthPixels * 4];
+    const corners = [tip, [base[0] + side[0], base[1] + side[1]], [base[0] - side[0], base[1] - side[1]]];
+    parts.push(`#place(top + left)[#polygon(fill: ${strokeColor}, ${corners.map(([px, py]) => typstPoint(px, py, context)).join(", ")})]`);
+  }
+
+  if (typeof props.label === "string" && props.label) {
+    const middle = connectorMidpoint(route, points);
+    const background = cssColor(context.theme.colors.background, context) ?? "white";
+    const color = cssColor(context.theme.colors.muted, context);
+    // A room around the midpoint, wide enough for any label, with the label centred in it.
+    const room = { width: 600, height: 80 };
+    parts.push(`#place(top + left, dx: ${length(`${middle.x - room.width / 2}px`, context, "x")}, dy: ${length(`${middle.y - room.height / 2}px`, context, "y")})`
+      + `[#box(width: ${length(`${room.width}px`, context, "x")}, height: ${length(`${room.height}px`, context, "y")})`
+      + `[#align(center + horizon)[#box(fill: ${background}, inset: (x: ${length("10px", context)}, y: ${length("2px", context, "y")}), radius: ${length("10px", context)})`
+      + `[#text(size: ${length("18px", context)}, weight: "semibold"${color && color !== "none" ? `, fill: ${color}` : ""})[${inlineContent(props.label)}]]]]]`);
+  }
+  return parts.join("");
 }
 
 async function serializeList(node, context) {
@@ -1117,6 +1245,7 @@ async function serializeNode(node, context) {
   if (node.type === "typst") return serializeTypst(node, context);
   if (node.type === "latex") return serializeLatex(node, context);
   if (node.type === "rect" || node.type === "circle") return serializeShape(node, context);
+  if (node.type === "shape") return serializeVectorShape(node, context);
   if (node.type === "line") return serializeLine(node, context);
   if (node.type === "spacer") return `${compactNumber(Number(node.styles?.flexGrow ?? 1))}fr`;
   if (node.type === "row" || node.type === "column" || node.type === "stack") {
@@ -1137,7 +1266,7 @@ function syntheticTextNode(content, className) {
 
 function hasVisibleNodeContent(node) {
   if (node.type === "text") return Boolean(String(node.props?.content ?? "").trim());
-  if (["image", "code", "equation", "typst", "latex", "rect", "circle", "line", "table", "chart", "qr", "icon"].includes(node.type)) {
+  if (["image", "code", "equation", "typst", "latex", "rect", "circle", "shape", "line", "table", "chart", "qr", "icon"].includes(node.type)) {
     return true;
   }
   return (node.children ?? []).some(hasVisibleNodeContent);
@@ -1291,6 +1420,14 @@ async function loadPresentation(entry, packageRoot, configFile) {
     if (!presentation?.node || presentation.node.type !== "slides") {
       throw new Error("The slide source did not export a FrameSeq presentation");
     }
+    // Named placements and connectors become coordinates, and tones become colours, exactly
+    // as the preview resolves them before it draws.
+    try {
+      resolveAnchors(presentation.node);
+    } catch (error) {
+      throw await locateProblems(entry, reportedProblems(error));
+    }
+    resolveShapePaint(presentation.node);
     return presentation;
   } finally {
     await server.close();

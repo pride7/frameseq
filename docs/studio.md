@@ -39,6 +39,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
 | **View** | The slide rail, the current slide, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
+| **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
 | **Present** | From the beginning, From the current slide, Open the preview in a browser |
 | **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
 
@@ -115,6 +116,19 @@ The preview's own source links work as they do in VS Code:
 - `Ctrl`-click several objects written one after another and choose **Bind region** to wrap their lines in a named `at("…").column()` region, so they can be positioned or anchored together.
 
 See [Visual Studio Code extension](vscode.md) for the rules that decide which numbers a drag may rewrite.
+
+## Drawing objects
+
+**Insert**, in the menu bar and at the top of the preview, draws objects onto the slide in the preview, as a drawing program does. Its gallery holds a text box, a line, an arrow, a connector, and every [shape](shapes.md).
+
+- Pick a shape or a text box, then drag across the slide to draw it, or click to place one at its usual size. `Shift` keeps a shape square; a circle always is.
+- Pick a line or an arrow, then drag from where it starts to where it ends. `Shift` holds it to steps of 45°.
+- Pick a connector, then drag from one object to another. An object without a name gets one, written as `.as("shape1")` at the end of its command, and the connector is written after the later of the two as `line().from("shape1").to("box1").arrow()`, so it follows them wherever they move.
+- `Esc` puts the tool down without writing anything.
+
+The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected in the editor, ready to be typed over. Layout editing turns on, so the new object can be dragged and resized at once. Each drawing is one step in the editor's history.
+
+A slide made by a loop or a helper function has no lines of its own to write into, so nothing can be drawn onto it.
 
 ## Arranging slides
 

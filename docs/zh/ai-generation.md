@@ -1,4 +1,4 @@
-<!-- translation-of: docs/ai-generation.md sha256:50ccc63c403b98f7 -->
+<!-- translation-of: docs/ai-generation.md sha256:56921a838fcfa475 -->
 
 # 用 AI 生成演示
 
@@ -116,16 +116,16 @@ text("Values are illustrative.").caption();
 ```ts
 slide("Two-stage routing").canvas();
 
-rect("Router").as("router").position({ x: 120, y: 150 }).width(220).height(110);
-rect("Small model").as("small").rightOf("router", 160);
-rect("Large model").as("large").below("small", 40);
+shape("hexagon", "Router").as("router").position({ x: 120, y: 150 }).width(220).height(110).tone("indigo", "solid");
+shape("rounded", "Small model").as("small").rightOf("router", 160).width(220).height(100).tone("teal");
+shape("rounded", "Large model").as("large").below("small", 40).width(220).height(100).tone("purple");
 
-line().from("router").to("small").arrow("end");
-line().from("router").to("large").arrow("end");
+line().from("router").to("small").route("elbow").arrow("end");
+line().from("router").to("large").route("elbow").arrow("end");
 text("72% of inputs stop here").caption().below("small", 12);
 ```
 
-这样改一个坐标就会带动所有连着它的连线,**修正一轮之后不会留下指向空白处的箭头**。
+这样改一个坐标就会带动所有连着它的连线,**修正一轮之后不会留下指向空白处的箭头**。每个节点都是能说明其身份的 `shape()`,按角色用 `tone()` 上色,所以这张图不用手挑任何颜色也像是设计过的;所有形状见 [图形与连线](shapes.md)。
 
 ### 3. 把交付细节放进备注
 
@@ -186,6 +186,7 @@ do not remove citations. Run npm run check again after editing.
 - 每一页只有一个清晰信息,且阅读顺序可见;
 - 普通页面使用结构化布局;
 - 图里的对象是命名并相对摆放的,而不是靠重复的坐标;
+- 图里的节点用能说明其身份的 `shape()`,每种角色一个 `tone()`;
 - 公式使用标签模板,LaTeX 反斜杠得以保留;
 - Typst 片段是静态的,且只用于局部的复杂排版;
 - LaTeX 表格片段是静态的正文片段,用 `latex` 或 `latexFile()`;

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/recipes.md sha256:53e36c5ed8628452 -->
+<!-- translation-of: docs/recipes.md sha256:76caf35069e69abe -->
 
 # 配方
 
@@ -123,10 +123,10 @@ text("λ prices a millisecond against a point of accuracy.").caption();
 ```ts
 slide("Request path").canvas();
 
-at("flow").row().gap(90).anchor("center");
-rect("Device").as("device").width(200).height(110);
-rect("Router").as("router").width(200).height(110);
-rect("Cloud").as("cloud").width(200).height(110);
+at("flow").row().gap(90).align("center").anchor("center");
+shape("rounded", "Device").as("device").width(200).height(110).tone("teal");
+shape("hexagon", "Router").as("router").width(200).height(110).tone("indigo", "solid");
+shape("cloud", "Cloud").as("cloud").width(230).height(140).tone("sky");
 
 line().from("device").to("router").arrow("end");
 line().from("router").to("cloud").arrow("end");
@@ -135,29 +135,52 @@ text("28% of inputs continue past the router").caption().below("router", 28);
 
 <!-- preview -->
 
-一个坐标都没有。row 负责排布,`anchor("center")` 负责放置,连线跟着框走。改 `gap(90)` 会重排整张图,连线一起动。完整模型见 [Diagrams](../diagrams.md)(英文)。
+一个坐标都没有。row 负责排布,`anchor("center")` 负责放置,连线跟着形状走。改 `gap(90)` 会重排整张图,连线一起动。每个节点都是能说明其身份的[形状](shapes.md),`tone()` 按角色上色,所以路由器作为唯一的实心形状最显眼。完整模型见 [画图](diagrams.md)。
 
 ## 二维架构图
 
 ```ts
 slide("Where the work happens").canvas();
 
-at("map").column().gap(36).anchor("center");
-at("map/device").row().gap(28);
-rect("Small model").as("small").width(230).height(96);
-rect("Confidence").as("confidence").width(230).height(96);
-at("map/cloud").row().gap(28);
-rect("Large model").as("large").width(230).height(96);
-rect("Cache").as("cache").width(230).height(96);
+at("map").column().gap(64).anchor("center");
+at("map/device").row().gap(90);
+shape("rounded", "Small model").as("small").width(230).height(110).tone("teal");
+shape("diamond", "Confident?").as("confidence").width(230).height(110).tone("amber");
+at("map/cloud").row().gap(90);
+shape("rounded", "Large model").as("large").width(230).height(110).tone("purple");
+shape("cylinder", "Cache").as("cache").width(230).height(110).tone("purple");
 
 at("map");
-line().from("confidence").to("large").arrow("end");
+line().from("small").to("confidence").arrow("end");
+line().from("confidence.bottom").to("large.top").route("elbow").arrow("end").label("no");
 line().from("large").to("cache").arrow("both");
 ```
 
 <!-- preview -->
 
 列里套行就有了第二个维度,而路径就是嵌套关系。写连线之前用 `at("map")` 回到外层容器,连线的坐标才属于它。
+
+## 判断流程图
+
+```ts
+slide("Answering a request").canvas();
+
+at("flow").column().gap(40).align("center").anchor("center");
+shape("pill", "Request").as("start").width(200).height(56).tone("green", "solid");
+shape("diamond", "Cached?").as("cached").width(220).height(110).tone("amber");
+shape("rounded", "Run the model").as("run").width(240).height(72);
+shape("cylinder", "Store the answer").as("store").width(220).height(100).tone("purple");
+
+at("flow");
+line().from("start").to("cached").arrow();
+line().from("cached").to("run").arrow().label("no");
+line().from("run").to("store").arrow();
+line().from("cached.right").to("store.right").route("elbow").arrow().label("yes");
+```
+
+<!-- preview -->
+
+胶囊开始流程,菱形提出问题,圆柱保存答案。"yes" 分支是一条折线:它从菱形的右角出发,从下面那个框的旁边绕过而不是穿过去,再从侧面进入存储。`label()` 在每个分支出发的地方标出它的名字。
 
 ## 渐进揭示
 

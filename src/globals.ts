@@ -16,6 +16,7 @@ declare global {
   const latexFile: typeof import("./script").latexFile;
   const rect: typeof import("./script").rect;
   const circle: typeof import("./script").circle;
+  const shape: typeof import("./script").shape;
   const line: typeof import("./script").line;
   const bullets: typeof import("./script").bullets;
   const steps: typeof import("./script").steps;

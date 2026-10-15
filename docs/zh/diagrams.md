@@ -1,4 +1,4 @@
-<!-- translation-of: docs/diagrams.md sha256:1b63ecd49da65651 -->
+<!-- translation-of: docs/diagrams.md sha256:67279922c78f9818 -->
 
 # 画图
 
@@ -163,6 +163,16 @@ line().from("enc.right", { dy: -20 }).to("dec"); // 显式锚点,再上移 20px
 
 一条连线也可以只锚定一端,另一端保留 `line({ x1, y1, x2, y2 })` 给的坐标。
 
+### 走线与标签
+
+连线还可以按直角折、走曲线、带标签,或者画成虚线:
+
+```ts
+line().from("check.right").to("reply.right").route("elbow").arrow().label("yes");
+```
+
+折线会绕开它所在容器里的其它对象。三种走线方式见 [图形与连线](shapes.md#走线方式)。
+
 ## 行和列里,FrameSeq 能算什么
 
 自动布局在渲染之前、从声明的源码解析出来。FrameSeq **只计算能精确算的那部分**,其余一律报错,而不是猜一个浏览器随后会否定的位置:
@@ -204,16 +214,15 @@ FrameSeq 会把无法解析的引用报成错误,指明是哪一页、哪处引�
 ```ts
 slide({ name: "Adaptive routing" }).canvas();
 
-at("flow").row().gap(120).anchor("center");
-rect("Router").as("router").width(200).height(120);
+at("flow").row().gap(120).align("center").anchor("center");
+shape("hexagon", "Router").as("router").width(200).height(120).tone("indigo", "solid");
 at("flow/models").column().gap(28);
-rect("Small model").as("small").width(220).height(100);
-rect("Large model").as("large").width(220).height(100);
+shape("rounded", "Small model").as("small").width(220).height(100).tone("teal");
+shape("rounded", "Large model").as("large").width(220).height(100).tone("purple");
 
 at("flow");
-line().from("router").to("small").arrow("end");
-line().from("router").to("large").arrow("end");
-text("72% stop here").caption().below("small", 12);
+line().from("router").to("small").route("elbow").arrow("end").label("72%");
+line().from("router").to("large").route("elbow").arrow("end");
 ```
 
-一页、一块画布,一个坐标都没有。
+一页、一块画布,一个坐标都没有。路由器是实心的六边形,两个模型各用自己颜色的浅色,所以视线先落在做决定的那一步。

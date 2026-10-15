@@ -38,6 +38,10 @@ export interface FrameEvents {
   select: (targets: SourceTarget[]) => void;
   edit: (request: Record<string, unknown>) => Promise<boolean>;
   bind: (targets: SourceTarget[]) => void;
+  /** An object was drawn onto the slide in the preview, ready to be written into the document. */
+  placed: (placement: Record<string, unknown>) => void;
+  /** Drawing was abandoned in the preview. */
+  placeCancelled: () => void;
   command: (command: "save" | "undo" | "redo") => void;
   railRendered: () => void;
   /** The slides the rail rendered, with the statement and the call each one came from. */
@@ -193,6 +197,12 @@ export class StudioFrames {
         case "frameseq.bind-selection":
           events.bind(readTargets(message.targets));
           return;
+        case "frameseq.placed":
+          events.placed(message);
+          return;
+        case "frameseq.place-cancelled":
+          events.placeCancelled();
+          return;
         case "frameseq.edit":
           void events.edit(message).then((ok) => {
             this.preview.contentWindow?.postMessage({ type: "frameseq.edit-result", ok }, "*");
@@ -256,6 +266,16 @@ export class StudioFrames {
       ...target,
       slideIndex: target.slideIndex + 1,
     }, "*");
+  }
+
+  /** Let the next press on the preview's slide draw an object of this kind. */
+  place(kind: string): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.place", kind }, "*");
+    this.preview.focus();
+  }
+
+  cancelPlace(): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.place-cancel" }, "*");
   }
 
   /** Show the rail in the palette the Studio is showing. */

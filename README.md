@@ -489,30 +489,21 @@ Coordinates are relative to the current canvas region. Numbers are pixels in Fra
 
 ### Shapes and connectors
 
-Create editable diagram nodes directly in the slide source. FrameSeq renders boxes and circles as HTML, while lines and arrowheads remain vector SVG:
+Create editable diagrams directly in the slide source. `shape()` draws 27 outlines, from a decision diamond and a database cylinder to a cloud and block arrows, each painted from one `tone()` that follows the theme. Connectors follow named shapes, turn at right angles around other shapes, and carry labels, and every shape exports to PowerPoint as its native preset:
 
 ```ts
-slide({ name: "Pipeline" }).canvas();
+slide({ name: "Request flow" }).canvas();
 
-line({ x1: 320, y1: 180, x2: 520, y2: 180 })
-  .stroke("#2563eb")
-  .strokeWidth(4)
-  .arrow("end");
+shape("diamond", "Cached?").as("cached").position({ x: 120, y: 40 }).tone("amber");
+shape("rounded", "Run the model").as("run").below("cached", 60).width(240).height(80);
+shape("cylinder", "Store").as("store").rightOf("run", 160).tone("purple", "solid");
 
-rect("TypeScript")
-  .position({ x: 80, y: 125 })
-  .width(240)
-  .height(110)
-  .fill("#dbeafe")
-  .stroke("#2563eb")
-  .radius(18);
-
-circle("FrameSeq")
-  .position({ x: 520, y: 100 })
-  .width(160)
-  .fill("#cffafe")
-  .stroke("#0891b2");
+line().from("cached").to("run").arrow().label("no");
+line().from("run").to("store").arrow();
+line().from("cached.right").to("store.top").route("elbow").arrow().label("yes");
 ```
+
+`rect()` and `circle()` draw plain boxes, and `line({ x1, y1, x2, y2 })` a line anywhere on the canvas. In FrameSeq Studio, **Insert** draws any of them with the mouse and writes the command for you.
 
 Write connectors before nodes when the lines should appear behind them.
 

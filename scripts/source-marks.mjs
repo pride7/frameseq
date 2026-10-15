@@ -17,6 +17,7 @@ const markableCommands = new Set([
   "latexFile",
   "rect",
   "circle",
+  "shape",
   "line",
   "table",
   "chart",

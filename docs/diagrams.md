@@ -161,6 +161,16 @@ Available anchors are `center`, `top`, `bottom`, `left`, `right`, `top-left`, `t
 
 A connector may anchor one end only; the other end then keeps the coordinates passed to `line({ x1, y1, x2, y2 })`.
 
+### Routes and labels
+
+A connector can also turn at right angles or curve, carry a label, or be dashed:
+
+```ts
+line().from("check.right").to("reply.right").route("elbow").arrow().label("yes");
+```
+
+An elbow keeps clear of the other objects in its container. See [Shapes and connectors](shapes.md#routes) for the three routes.
+
 ## What FrameSeq can resolve in a row or column
 
 Automatic layout is resolved before rendering, from the declared source. FrameSeq computes only the part of it that is exact, and reports anything else instead of guessing a position the browser would contradict:
@@ -202,16 +212,15 @@ Every position above is resolved before rendering, from the declared source, so 
 ```ts
 slide({ name: "Adaptive routing" }).canvas();
 
-at("flow").row().gap(120).anchor("center");
-rect("Router").as("router").width(200).height(120);
+at("flow").row().gap(120).align("center").anchor("center");
+shape("hexagon", "Router").as("router").width(200).height(120).tone("indigo", "solid");
 at("flow/models").column().gap(28);
-rect("Small model").as("small").width(220).height(100);
-rect("Large model").as("large").width(220).height(100);
+shape("rounded", "Small model").as("small").width(220).height(100).tone("teal");
+shape("rounded", "Large model").as("large").width(220).height(100).tone("purple");
 
 at("flow");
-line().from("router").to("small").arrow("end");
-line().from("router").to("large").arrow("end");
-text("72% stop here").caption().below("small", 12);
+line().from("router").to("small").route("elbow").arrow("end").label("72%");
+line().from("router").to("large").route("elbow").arrow("end");
 ```
 
-One slide, one canvas, and not a single coordinate.
+One slide, one canvas, and not a single coordinate. The router is a solid hexagon and each model a soft tint of its own colour, so the eye finds the decision first.

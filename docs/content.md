@@ -175,17 +175,17 @@ TypeScript knows every icon name, so the editor completes them and a misspelled 
 
 ## Shapes
 
-Use `rect()`, `circle()`, and `line()` to build editable diagrams directly in the slide source:
+Use `shape()` for diagram outlines such as diamonds, cylinders, and clouds, `rect()` and `circle()` for plain boxes, and `line()` for the connectors between them, all directly in the slide source:
 
 ```ts
 slide({ name: "Pipeline" }).canvas();
 
-line({ x1: 320, y1: 180, x2: 520, y2: 180 }).arrow("end");
-rect("Input").position({ x: 80, y: 125 }).width(240).height(110);
-circle("Model").position({ x: 520, y: 100 }).width(160);
+rect("Input").as("input").position({ x: 80, y: 125 }).width(240).height(110);
+shape("cylinder", "Orders").as("orders").position({ x: 760, y: 100 }).tone("purple");
+line().from("input").to("orders").route("elbow").arrow();
 ```
 
-See [Shapes and connectors](shapes.md) for fills, strokes, arrow directions, coordinate behavior, and custom SVG assets.
+See [Shapes and connectors](shapes.md) for every outline, colours, routes and labels, and custom SVG assets.
 
 ## Bullets
 

@@ -897,7 +897,7 @@ rect("Input")
 
 - `label` — `string`, optional. Defaults to an empty string.
 
-**Returns** `ShapeBuilder`, which adds `.fill()`, `.stroke()`, and `.strokeWidth()` to the common modifiers.
+**Returns** `ShapeBuilder`, which adds `.fill()`, `.stroke()`, `.strokeWidth()`, `.tone()`, `.shadow()`, and `.dashed()` to the common modifiers.
 
 ### `circle()`
 
@@ -914,6 +914,25 @@ circle("Model").position({ x: 520, y: 110 }).width(160);
 - `label` — `string`, optional. Defaults to an empty string.
 
 **Returns** `ShapeBuilder`. Its width controls the diameter unless a height is set explicitly.
+
+### `shape()`
+
+Creates a diagram shape: a vector outline with an optional label set in the outline's own room. There are 27 kinds, from flowchart symbols to block arrows, and each one exports to PowerPoint as its native shape.
+
+```ts
+shape("diamond", "Cached?").as("check").tone("amber");
+shape("cylinder", "Postgres").position({ x: 980, y: 200 }).tone("purple").shadow();
+shape("pill", "Start").tone("green", "solid").width(180).height(56);
+```
+
+**Signature** `shape(kind, label) → ShapeBuilder`
+
+**Parameters**
+
+- `kind` — `ShapeKind`, required. Basic outlines: `"rect"`, `"rounded"`, `"pill"`, `"ellipse"`, `"circle"`, `"diamond"`, `"triangle"`, `"pentagon"`, `"hexagon"`, `"octagon"`, `"parallelogram"`, `"trapezoid"`, `"star"`, `"plus"`. Diagram symbols: `"cylinder"` (a database), `"document"`, `"note"`, `"cube"`, `"cloud"`, `"callout"`. Arrows and steps: `"chevron"`, `"step"`, `"arrow-right"`, `"arrow-left"`, `"arrow-up"`, `"arrow-down"`, `"arrow-both"`.
+- `label` — `string`, optional. Defaults to an empty string. Inline math between `$` signs is supported.
+
+**Returns** `ShapeBuilder`. Each kind has a usual size that `.width()` and `.height()` replace. `.tone(color, style)` paints it from one colour, `"soft"` (the default), `"solid"`, or `"outline"`, in one of `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or any CSS colour. `.shadow()` casts a soft shadow and `.dashed()` dashes the outline.
 
 ### `line()`
 
@@ -932,7 +951,7 @@ line({ x1: 320, y1: 190, x2: 520, y2: 190 })
 
 - `points` — `{ x1: number; y1: number; x2: number; y2: number }`, optional. Omit it when both ends use `.from()` and `.to()`.
 
-**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, and `.to()`.
+**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, `.to()`, `.route("straight" | "elbow" | "curve")`, `.label(text)`, and `.dashed()`. An elbow route turns at right angles and keeps clear of the other objects on the canvas; a label sits halfway along the connector.
 
 ### `.as()`
 

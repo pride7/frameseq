@@ -115,6 +115,7 @@ const documentCommands = [
   "latexFile",
   "rect",
   "circle",
+  "shape",
   "line",
   "bullets",
   "steps",

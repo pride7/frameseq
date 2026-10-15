@@ -68,27 +68,41 @@ text("λ prices a millisecond against a point of accuracy.").caption();
 
 // Recipe: a flow diagram with no coordinates
 slide("Request path").canvas();
-at("flow").row().gap(90).anchor("center");
-rect("Device").as("device").width(200).height(110);
-rect("Router").as("router").width(200).height(110);
-rect("Cloud").as("cloud").width(200).height(110);
+at("flow").row().gap(90).align("center").anchor("center");
+shape("rounded", "Device").as("device").width(200).height(110).tone("teal");
+shape("hexagon", "Router").as("router").width(200).height(110).tone("indigo", "solid");
+shape("cloud", "Cloud").as("cloud").width(230).height(140).tone("sky");
 line().from("device").to("router").arrow("end");
 line().from("router").to("cloud").arrow("end");
 text("28% of inputs continue past the router").caption().below("router", 28);
 
 // Recipe: a two-dimensional architecture
 slide("Where the work happens").canvas();
-at("map").column().gap(36).anchor("center");
-at("map/device").row().gap(28);
-rect("Small model").as("small").width(230).height(96);
-rect("Confidence").as("confidence").width(230).height(96);
-at("map/cloud").row().gap(28);
-rect("Large model").as("large").width(230).height(96);
-rect("Cache").as("cache").width(230).height(96);
+at("map").column().gap(64).anchor("center");
+at("map/device").row().gap(90);
+shape("rounded", "Small model").as("small").width(230).height(110).tone("teal");
+shape("diamond", "Confident?").as("confidence").width(230).height(110).tone("amber");
+at("map/cloud").row().gap(90);
+shape("rounded", "Large model").as("large").width(230).height(110).tone("purple");
+shape("cylinder", "Cache").as("cache").width(230).height(110).tone("purple");
 
 at("map");
-line().from("confidence").to("large").arrow("end");
+line().from("small").to("confidence").arrow("end");
+line().from("confidence.bottom").to("large.top").route("elbow").arrow("end").label("no");
 line().from("large").to("cache").arrow("both");
+
+// Recipe: a decision flowchart
+slide("Answering a request").canvas();
+at("flow").column().gap(40).align("center").anchor("center");
+shape("pill", "Request").as("start").width(200).height(56).tone("green", "solid");
+shape("diamond", "Cached?").as("cached").width(220).height(110).tone("amber");
+shape("rounded", "Run the model").as("run").width(240).height(72);
+shape("cylinder", "Store the answer").as("store").width(220).height(100).tone("purple");
+at("flow");
+line().from("start").to("cached").arrow();
+line().from("cached").to("run").arrow().label("no");
+line().from("run").to("store").arrow();
+line().from("cached.right").to("store.right").route("elbow").arrow().label("yes");
 
 // Recipe: progressive reveal
 slide("What changed").notes("Pause after each step; the third is the surprising one.");

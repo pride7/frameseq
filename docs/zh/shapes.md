@@ -1,8 +1,8 @@
-<!-- translation-of: docs/shapes.md sha256:e34da109de0bf20f -->
+<!-- translation-of: docs/shapes.md sha256:61937f34bd854398 -->
 
 # 图形与连线
 
-FrameSeq 提供一小组图元,用来画流程图、架构图、时间线和标注。创作接口保持声明式:矩形和圆渲染为**可编辑的 HTML 元素**,连线和箭头渲染为内联 SVG。
+FrameSeq 用一小组图元来画图:有 27 种轮廓的 `shape()`,从流程图符号到块状箭头;`rect()` 和 `circle()` 两种盒子;以及 `line()` 连线,它可以在命名对象之间走直线、直角折线或曲线。它们导出后都**仍然可以编辑**:PowerPoint 拿到的是它自己的预设形状和线条,Typst 拿到的是多边形和曲线。
 
 ## 先切到画布
 
@@ -14,7 +14,51 @@ slide({ name: "Pipeline" }).canvas();
 
 坐标相对于当前的画布区域。FrameSeq 把最终的演示画布当作一个整体来映射,所以同一份构图在交互式 HTML、PDF 和 PPTX 里保持相同的相对几何关系。
 
-## 矩形
+## 形状
+
+`shape(kind, label)` 画出一个轮廓,标签可选:
+
+```ts
+shape("diamond", "Valid?").position({ x: 520, y: 200 });
+shape("cylinder", "Orders").position({ x: 900, y: 180 }).width(180).height(160);
+```
+
+| 分组 | 种类 |
+| --- | --- |
+| 基本形状 | `rect`、`rounded`、`pill`、`ellipse`、`circle`、`diamond`、`triangle`、`pentagon`、`hexagon`、`octagon`、`parallelogram`、`trapezoid`、`star`、`plus` |
+| 示意图符号 | `cylinder`(数据库)、`document`、`note`、`cube`、`cloud`、`callout` |
+| 箭头与步骤 | `chevron`、`step`、`arrow-right`、`arrow-left`、`arrow-up`、`arrow-down`、`arrow-both` |
+
+每种形状都有一个默认大小,比如菱形是 200 × 140,圆柱是 160 × 150,`width()` 和 `height()` 会替换它。只给了宽度的 `circle` 会保持正圆。
+
+标签放在轮廓**自己的文字区**里:菱形的中间一半、圆柱顶面之下、箭头的箭杆上。它支持和 `text()` 一样的行内 `$...$` 公式,并可以用 `size()`、`weight()` 和 `color()` 调整样式。
+
+比例沿用 PowerPoint 的预设形状,所以燕尾箭头的尖角、圆柱的顶沿在拉伸时保持原有的深度,导出后的形状也和幻灯片上一样。
+
+## 用 `tone()` 上色
+
+一个颜色就能给整个形状上色:填充、轮廓和标签。
+
+```ts
+shape("rounded", "Ingest").tone("blue");               // 柔和的浅色,默认样式
+shape("pill", "Start").tone("green", "solid");         // 用这个颜色本身填充
+shape("hexagon", "Gateway").tone("indigo", "outline"); // 在背景色上画出这个颜色的轮廓
+```
+
+可用的颜色名有 `accent`(主题自己的强调色)、`blue`、`sky`、`teal`、`green`、`lime`、`amber`、`orange`、`red`、`pink`、`purple`、`indigo` 和 `gray`;任何 CSS 颜色,比如 `"#0f766e"`,也可以。浅色是**按主题算出来的**,所以同一份文档在深色主题下会得到更深的填充和更亮的标签。没有 `tone()` 的 `shape()` 是强调色的柔和浅色。
+
+`fill()`、`stroke()` 和 `color()` 仍然决定它们各自指定的部分,`strokeWidth()` 设置轮廓的粗细。还有两个修饰符用来收尾:
+
+```ts
+shape("cloud", "Internet").tone("sky").shadow(); // 下方一层柔和的阴影
+shape("rounded", "Optional").dashed();           // 虚线轮廓
+```
+
+`tone()`、`shadow()` 和 `dashed()` 对 `rect()` 和 `circle()` 同样有效。
+
+## 矩形和圆
+
+`rect()` 和 `circle()` 是带边框的盒子,它们和其它内容一样可以参与行或列:
 
 ```ts
 rect("TypeScript")
@@ -29,11 +73,7 @@ rect("TypeScript")
   .color("#172554");
 ```
 
-标签是可选的。它默认居中,并且支持和 `text()` 一样的行内 `$...$` 公式语法。
-
 不设高度的矩形是 240 × 96,这也是它的最小高度。调用 `height()` 会**解除**这个最小值,所以更矮的形状会按你要求渲染;想保留自己的下限,在 `height()` 之前调用 `minHeight()`。
-
-## 圆
 
 ```ts
 circle("FrameSeq")
@@ -66,9 +106,49 @@ line({ x1: 320, y1: 180, x2: 520, y2: 180 })
 
 不带参数调用 `.arrow()` 等同于 `.arrow("end")`。不调用 `arrow()` 时线没有箭头。
 
+### 对象之间的连线
+
+一条线通常连接两个命名对象,并在它们移动时跟着走:
+
+```ts
+line().from("cache").to("reply").arrow();
+```
+
+命名、锚点和自动布局见 [画图](diagrams.md)。
+
+### 走线方式
+
+`route()` 决定连线怎么走:
+
+```ts
+line().from("check.right").to("reply.right").route("elbow").arrow();
+line().from("service").to("database").route("curve").arrow();
+```
+
+- `"straight"`,默认值,是两端之间最短的直线。
+- `"elbow"` 按直角转弯。它垂直地离开和进入对象的边,并且**绕开**画布上的其它对象而不是从中穿过,就像流程图里的连线那样。
+- `"curve"` 是一条平滑曲线,同样垂直地离开和进入对象。
+
+### 标签与虚线
+
+```ts
+line().from("check").to("run").arrow().label("no");
+line().from("worker").to("queue").route("curve").dashed().label("async");
+```
+
+`label()` 在连线中点写一小段文字,文字底色是幻灯片背景,所以线会在它后面断开。`dashed()` 把线画成虚线,适合表示可选或异步的步骤。
+
+## 在 FrameSeq Studio 里画
+
+在 [FrameSeq Studio](studio.md#在幻灯片上画对象) 里,**插入**会打开一个图形库,包含所有形状,以及文本框、直线、箭头和连接线。选一个,在预览里的幻灯片上拖出来:FrameSeq 会把命令连同你画出的坐标和大小写进源码,之后你可以继续拖动和缩放它。把连接线从一个对象拖到另一个对象,会给还没有名字的对象起名,并写出一条跟随它们的 `line().from().to()`。
+
 ## 组合成一张图
 
-命名、自动布局和连线在 [Diagrams](../diagrams.md)(英文)里讲,那一页展示如何做出**所有对象都不带坐标**的图。
+命名、自动布局和连线在 [画图](diagrams.md) 里讲,那一页展示如何做出**所有对象都不带坐标**的图。下面几个习惯能让图更好读:
+
+- 同一层级的对象用同样的大小,并用 `row()` 或 `column()`、`gap()` 和 `align("center")` 排列,而不是写坐标。
+- 每种角色用一个色调,比如输入、处理、存储和判断,一页不要超过三四种。`solid` 用来突出最重要的那个形状,比如开始或结束。
+- 流程图和树用折线连线,较松散的关系用曲线,相邻对象之间用直线。标签控制在一两个词。
 
 ## 层叠顺序
 
@@ -98,9 +178,15 @@ rect("Second step")
 
 在交互模式下,`showAt()` 跟随这一页的揭示步骤;PDF 和 PPTX 输出会显示所有步骤。
 
+## 在 PowerPoint 和 Typst 里
+
+可编辑的 PPTX 导出会把每个 `shape()` 变成 PowerPoint 自己的同款预设形状,比如菱形、圆柱或云,所以在那里还能重新上色、缩放,或者换成另一种形状。矩形和圆变成矩形和椭圆,直线变成线条,折线和曲线连线变成路径,箭头、虚线和标签都会保留。
+
+Typst 导出把形状画成 `polygon` 和 `curve` 元素,把连线画成带箭头的直线和曲线,全部是可编辑的 Typst。阴影不会导出。
+
 ## 自定义 SVG 图形
 
-当图里需要图标、logo、贝塞尔曲线或其它超出内置图元的几何时,用 `image()` 引入 SVG 文件:
+当图里需要 logo、插图或其它超出内置图元的几何时,用 `image()` 引入 SVG 文件:
 
 ```ts
 const artwork = new URL("./assets/custom-shape.svg", import.meta.url).href;
@@ -110,4 +196,4 @@ image(artwork, "Custom vector diagram")
   .width(280);
 ```
 
-这样图形在浏览器和 PDF 里保持矢量,而常见的框和连线仍然能在 TypeScript 里轻松修改。可编辑的 PPTX 导出会把矩形、圆、线和箭头映射成 PowerPoint 的原生图形。
+这样图形在浏览器和 PDF 里保持矢量。常见的符号用 [`icon()`](content.md#图标) 就够了,不需要自己准备文件。

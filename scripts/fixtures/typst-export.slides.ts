@@ -48,3 +48,6 @@ line({ x1: 320, y1: 160, x2: 760, y2: 170 })
   .stroke("#475569")
   .strokeWidth(4)
   .arrow();
+shape("diamond", "Valid?").as("check").position({ x: 80, y: 300 }).tone("amber");
+shape("cylinder", "Store").as("store").position({ x: 760, y: 470 }).tone("purple", "solid");
+line().from("check").to("store").route("elbow").arrow().label("yes");

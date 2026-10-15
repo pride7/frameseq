@@ -68,9 +68,10 @@ Presentation: `presentation(options)`, with `size: "A0" | "A4" | "letter" | "36x
 
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`, `note(content)`
 
-Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `rect()`, `circle()`, `line()`, `spacer()`, `table(rows)`, `chart(kind, data)`, `qr(text)`, `icon(name)`
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `shape(kind, label)`, `rect()`, `circle()`, `line()`, `spacer()`, `table(rows)`, `chart(kind, data)`, `qr(text)`, `icon(name)`
 Citations: `presentation({ bibliography })` with `import bibliography from "./references.bib"` (never name the import `references`), `cite(...keys)` returns a marker to write into text, `footnote(text)` returns a superscript marker, `references()` lists every cited work
 Diagram references: `.as(name)`, `.rightOf()`, `.leftOf()`, `.above()`, `.below()`, `.centerOn()`, `.alignTop()`, `.alignLeft()`, `line().from(ref)`, `line().to(ref)`
+Diagram styling: `.tone(color, "soft" | "solid" | "outline")`, `.shadow()`, `.dashed()` on shapes; `.route("elbow" | "curve")`, `.label(text)`, `.dashed()` on connectors
 
 Regions: `main()`, `left()`, `right()`, `cell(index)`, `at(path)`, `gap(rows, columns?)`
 
@@ -182,7 +183,42 @@ line().from("enc").to("dec").arrow("end");
 
 Write the connectors inside the same container. A resolved row or column needs an explicit `gap()` and children with known sizes; `wrap()`, `grow()`, and text of unknown height are refused with an error.
 
-Names are unique per slide and may be referenced before they are defined. `from()` and `to()` accept an anchor, such as `"enc.right"` or `"enc.bottom-left"`; without one FrameSeq uses the facing edges. Referenced objects must sit on the same canvas and have a resolvable box: `rect()` defaults to 240 by 96, `circle()` to 160 by 160.
+Names are unique per slide and may be referenced before they are defined. `from()` and `to()` accept an anchor, such as `"enc.right"` or `"enc.bottom-left"`; without one FrameSeq uses the facing edges. Referenced objects must sit on the same canvas and have a resolvable box: `rect()` defaults to 240 by 96, `circle()` to 160 by 160, and each `shape()` kind has a usual size of its own.
+
+## Diagrams that look good
+
+Draw diagram nodes with `shape(kind, label)` rather than plain rectangles. Choose the kind that says what a node is:
+
+- Basic: `rect`, `rounded`, `pill`, `ellipse`, `circle`, `diamond`, `triangle`, `pentagon`, `hexagon`, `octagon`, `parallelogram`, `trapezoid`, `star`, `plus`
+- Diagram symbols: `cylinder` (a database or store), `document` (a file or report), `note` (an annotation), `cube` (a component or package), `cloud` (an external service or the internet), `callout` (a remark pointing at something)
+- Arrows and steps: `chevron` and `step` (stages of a process), `arrow-right`, `arrow-left`, `arrow-up`, `arrow-down`, `arrow-both`
+
+A `pill` starts or ends a flow, a `diamond` is a decision, a `parallelogram` is input or output. Each kind has a usual size of about 200 by 120 that `.width()` and `.height()` replace; a shape does not grow with its label, so keep labels to one to three words or make the shape larger.
+
+Colour each shape with `.tone(color, style)`. `color` is `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or a CSS colour; `style` is `"soft"` (a tint with a darker label, the default), `"solid"`, or `"outline"`. Tints follow the theme, light or dark, so do not hand-pick fills and label colours. `.shadow()` lifts a shape and `.dashed()` marks it optional.
+
+Connect named shapes with `line().from(a).to(b).arrow()`. `.route("elbow")` turns at right angles and routes around other shapes, `.route("curve")` arcs, `.label("yes")` writes a word halfway along, and `.dashed()` marks an optional or asynchronous link.
+
+```ts
+slide({ name: "Request flow" }).canvas();
+
+at("flow").column().gap(44).align("center").anchor("center");
+shape("pill", "Request").as("start").width(200).height(56).tone("green", "solid");
+shape("diamond", "Cached?").as("cached").width(220).height(110).tone("amber");
+shape("rounded", "Run the model").as("run").width(240).height(72).tone("blue");
+shape("cylinder", "Store").as("store").width(180).height(96).tone("purple");
+
+at("flow");
+line().from("start").to("cached").arrow();
+line().from("cached").to("run").arrow().label("no");
+line().from("run").to("store").arrow();
+line().from("cached.right").to("store.right").route("elbow").arrow().label("yes");
+```
+
+- Give nodes of the same rank the same size and put them in a `row()` or `column()` with an explicit `gap()` and `align("center")`; anchor the container instead of positioning each node.
+- Use one tone per role, such as input, processing, storage, and decision, and no more than three or four tones on a slide. Make only the one shape that matters most `"solid"`.
+- Use elbow routes for flowcharts and trees, curves for loose relationships, and straight connectors between neighbours. Leave at least 40 pixels between connected shapes so arrowheads and labels have room.
+- Use `table()` and `chart()` for data, never shapes.
 
 ## Math, Typst, LaTeX, and Tailwind
 
@@ -237,6 +273,7 @@ text("Important")
 - Prefer `split()`, `grid()`, `gridSection()`, and `center()` over coordinates.
 - Use `canvas()` and `.position()` for diagrams, not ordinary text pages.
 - In a diagram, position one object, then name objects and place and connect the rest relative to it.
+- Draw diagram nodes with `shape()` of the kind that says what each node is, coloured with `.tone()`, and connect them by name.
 - Use text roles and a built-in theme before adding local style overrides.
 - Do not invent image paths. Use supplied assets or omit the image.
 - Preserve source citations and label illustrative or synthetic data clearly. Cite with `cite()` from a bibliography instead of typing markers by hand.
@@ -277,7 +314,7 @@ The inspect report includes slide labels, layouts, object types, notes, and sour
 
 Every issue carries `element.source`, the line of the command that made the object; edit that line. A `document-error` issue means the document threw before anything was measured; its `source` is the statement that failed.
 
-Fix `canvas-overflow` and `text-clipped` errors. Add visible content when `empty-slide` appears; use `slide().allowEmpty()` only for an intentional blank page. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further. Treat `empty-region` and `similar-name` warnings as mistyped `at()` paths or `.as()` names and correct the spelling instead of adding content to the wrong region.
+Fix `canvas-overflow` and `text-clipped` errors. Fix `label-overflow` warnings by enlarging the shape or shortening its label. Add visible content when `empty-slide` appears; use `slide().allowEmpty()` only for an intentional blank page. Treat `font-too-small` warnings as a reason to shorten content or restructure the slide before reducing type further. Treat `empty-region` and `similar-name` warnings as mistyped `at()` paths or `.as()` names and correct the spelling instead of adding content to the wrong region.
 
 ## Suggested agent workflow
 

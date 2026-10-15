@@ -21,6 +21,7 @@ const glyphs: Record<string, string> = {
   latex: "∫",
   rect: "▭",
   circle: "○",
+  shape: "◇",
   line: "╱",
   bullets: "•",
   steps: "1.",

@@ -692,7 +692,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.lang), "zh-CN");
   assert.deepEqual(
     await page.$$eval(".studio-menubar-item", (items) => items.map((item) => item.textContent)),
-    ["文件(F)", "编辑(E)", "视图(V)", "幻灯片(S)", "放映(P)", "帮助(H)"],
+    ["文件(F)", "编辑(E)", "视图(V)", "幻灯片(S)", "插入(I)", "放映(P)", "帮助(H)"],
   );
   assert.equal(await page.$eval("[data-tab='output']", (tab) => tab.textContent), "输出");
   await placeCursor('slide("End");', 'slide("End");'.length);

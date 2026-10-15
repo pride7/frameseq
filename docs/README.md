@@ -20,7 +20,7 @@ The model behind the recipes, one subject at a time.
 - [Citations and references](citations.md) — Cite from a BibTeX file, list each slide's sources at its foot, and build the reference list.
 - [Layout](layout.md) — Normal flow, split pages, grids, local grids, region paths, and canvas.
 - [Diagrams](diagrams.md) — Region paths, automatic rows and columns, names, and connectors that follow their objects.
-- [Shapes and connectors](shapes.md) — The primitives a diagram is built from: rectangles, circles, lines, and arrows.
+- [Shapes and connectors](shapes.md) — The primitives a diagram is built from: 27 shapes, tones, and connectors that bend around them.
 - [Styling](styling.md) — Chainable modifiers, text roles, dimensions, Tailwind utilities, and inline styles.
 - [Themes](themes.md) — Built-in themes, presentation-wide typography, CJK text, and custom tokens.
 - [Posters and print](posters.md) — Pages for paper: A0 posters and handouts, printed sizes, and the poster theme.
