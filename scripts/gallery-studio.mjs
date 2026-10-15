@@ -8,7 +8,6 @@ import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
-const deck = resolve(packageRoot, "gallery", "slides", "studio.slides.ts");
 
 /** The window every picture is taken in, at twice its size so it stays sharp on a high-density screen. */
 const viewport = { width: 1680, height: 1000, deviceScaleFactor: 2 };
@@ -47,12 +46,40 @@ function startStudio(workspace) {
   return { child, address };
 }
 
+/** The Studio's own words, which differ by the language it is shown in. */
+const locales = {
+  en: {
+    deck: "studio.slides.ts",
+    checked: "Layout checked",
+    shape: "Edge gateway",
+    rightClick: "Vector renderer",
+    viewMenu: "View",
+    mastersItem: "Slide master",
+    request: "Turn the roadmap into four chevrons, one per quarter, and say what each quarter brings.",
+    context: "Slide 5 “What comes next”",
+    plan: "I'll draw each quarter as a chevron in its own colour, with the quarter above it, so the steps read left to right.",
+    report: "Slide 5 now shows the roadmap as four chevrons, **Offline maps**, **3D buildings**, **Live traffic**, and **Open API**, from teal to purple, with the quarter above each. The layout check passes, and the picture of the slide looks right.",
+  },
+  zh: {
+    deck: "studio-zh.slides.ts",
+    checked: "布局已检查",
+    shape: "边缘网关",
+    rightClick: "矢量渲染器",
+    viewMenu: "视图",
+    mastersItem: "幻灯片母版",
+    request: "把路线图改成四个箭头，每季度一个，并写上每季度要做什么。",
+    context: "第 5 页「下一步」",
+    plan: "我会把每个季度画成一个不同颜色的箭头，季度写在上方，从左往右读。",
+    report: "第 5 页现在用四个箭头展示路线图：**离线地图**、**3D 建筑**、**实时路况**和**开放 API**，颜色从青绿渐变到紫色，上方标着季度。布局检查通过了，幻灯片的截图看起来也没问题。",
+  },
+};
+
 /**
  * What the assistant panel shows in its picture: one request carried out, as Claude Code reports
  * it. The build machine has no agent signed in, so the panel is given this conversation in place
  * of the Studio's own; everything else in the picture is the Studio as it runs.
  */
-const assistantState = {
+const assistantState = (words) => ({
   agents: [
     { id: "claude", name: "Claude Code", available: true, version: "2.1" },
     { id: "codex", name: "Codex", available: false },
@@ -61,27 +88,20 @@ const assistantState = {
     agent: "claude",
     running: false,
     events: [
-      {
-        type: "user",
-        text: "Turn the roadmap into four chevrons, one per quarter, and say what each quarter brings.",
-        context: "Slide 5 “What comes next”",
-      },
+      { type: "user", text: words.request, context: words.context },
       { type: "tool", id: "1", name: "mcp__frameseq__outline", status: "done" },
       { type: "tool", id: "2", name: "Read", input: "talk.slides.ts", status: "done" },
-      { type: "text", text: "I'll draw each quarter as a chevron in its own colour, with the quarter above it, so the steps read left to right." },
+      { type: "text", text: words.plan },
       { type: "break" },
       { type: "tool", id: "3", name: "Edit", input: "talk.slides.ts", status: "done" },
       { type: "tool", id: "4", name: "mcp__frameseq__check", status: "done" },
       { type: "tool", id: "5", name: "mcp__frameseq__screenshot", input: "5", status: "done" },
-      {
-        type: "text",
-        text: "Slide 5 now shows the roadmap as four chevrons, **Offline maps**, **3D buildings**, **Live traffic**, and **Open API**, from teal to purple, with the quarter above each. The layout check passes, and the picture of the slide looks right.",
-      },
+      { type: "text", text: words.report },
       { type: "break" },
       { type: "done", ok: true, seconds: 41 },
     ],
   },
-};
+});
 
 const assistantChoices = {
   models: [
@@ -95,14 +115,16 @@ const assistantChoices = {
  * Photograph FrameSeq Studio for the landing page, editing the gallery's product review: the whole
  * window, the window with the code folded away, the Insert gallery, a right-click menu, the slide
  * masters, the assistant, and presenter view. Like the recipe pictures, they are taken on every
- * build, so the page never shows an older Studio.
+ * build, so the page never shows an older Studio. The Chinese landing page has its own, of the
+ * Studio in Chinese editing the review in Chinese.
  */
-export async function captureStudio(imagesDirectory) {
-  const workspace = resolve(packageRoot, "tmp", "gallery-studio");
+export async function captureStudio(imagesDirectory, language = "en") {
+  const words = locales[language];
+  const workspace = resolve(packageRoot, "tmp", `gallery-studio-${language}`);
   await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   await mkdir(workspace, { recursive: true });
   await mkdir(imagesDirectory, { recursive: true });
-  await copyFile(deck, resolve(workspace, "talk.slides.ts"));
+  await copyFile(resolve(packageRoot, "gallery", "slides", words.deck), resolve(workspace, "talk.slides.ts"));
   const picture = (name) => resolve(imagesDirectory, name);
 
   const studio = startStudio(workspace);
@@ -111,17 +133,17 @@ export async function captureStudio(imagesDirectory) {
     const address = await studio.address;
 
     /**
-     * A fresh Studio window: light, in English, the problems folded, its panes at fixed sizes. The
-     * windows share their storage, so each starts with the code and the assistant as a new Studio
-     * has them, whatever the window before it left.
+     * A fresh Studio window: light, in the page's language, the problems folded, its panes at fixed
+     * sizes. The windows share their storage, so each starts with the code and the assistant as a
+     * new Studio has them, whatever the window before it left.
      */
     async function openStudio({ intercept } = {}) {
       const page = await browser.newPage();
       await page.setViewport(viewport);
-      await page.evaluateOnNewDocument(() => {
+      await page.evaluateOnNewDocument((language) => {
         localStorage.setItem("frameseq-studio-theme", "light");
-        // The landing page is in English, whatever language the computer building it speaks.
-        localStorage.setItem("frameseq-studio-language", "en");
+        // The page's language, whatever language the computer building it speaks.
+        localStorage.setItem("frameseq-studio-language", language);
         localStorage.setItem("frameseq-studio-panel-collapsed", "1");
         localStorage.setItem("frameseq-studio-editor-collapsed", "0");
         localStorage.setItem("frameseq-studio-assistant-open", "0");
@@ -130,12 +152,13 @@ export async function captureStudio(imagesDirectory) {
           "--studio-inspector-height": 470,
           "--studio-preview-width": 760,
         }));
-      });
+      }, language);
       if (intercept) await intercept(page);
       await page.goto(address, { waitUntil: "networkidle2" });
       await page.waitForFunction(
-        () => document.querySelector("[data-slot='check-state']")?.textContent?.includes("Layout checked"),
+        (checked) => document.querySelector("[data-slot='check-state']")?.textContent?.includes(checked),
         { timeout: 120_000 },
+        words.checked,
       );
       return page;
     }
@@ -179,7 +202,7 @@ export async function captureStudio(imagesDirectory) {
 
     async function chooseMenu(page, menu, item) {
       await page.evaluate((menu) => [...document.querySelectorAll(".studio-menubar button")]
-        .find((button) => button.textContent?.trim() === menu)?.click(), menu);
+        .find((button) => button.textContent?.trim().startsWith(menu))?.click(), menu);
       await page.waitForSelector(".studio-menu-item");
       await page.evaluate((item) => [...document.querySelectorAll(".studio-menu-item")]
         .find((button) => button.querySelector(".studio-menu-label")?.textContent?.trim().startsWith(item))?.click(), item);
@@ -230,7 +253,7 @@ export async function captureStudio(imagesDirectory) {
     // The whole window: a shape chosen on the diagram, its settings open, and its code in view.
     const page = await openStudio();
     await showSlide(page, 1);
-    await chooseObject(page, "Edge gateway");
+    await chooseObject(page, words.shape);
     await settle(page);
     await shot(page, "studio.webp");
     // The card a link preview shows: 1200 x 630, cut from the top of the same window.
@@ -243,7 +266,7 @@ export async function captureStudio(imagesDirectory) {
 
     // The same moment with the code folded away, as someone who never opens it works.
     await hideCode(page);
-    await chooseObject(page, "Edge gateway");
+    await chooseObject(page, words.shape);
     await settle(page);
     await shot(page, "studio-design.webp");
     // A phone shows the slide being edited, which reads at that size where the window does not.
@@ -265,13 +288,13 @@ export async function captureStudio(imagesDirectory) {
     // A right-click on a shape in the preview.
     const { preview: slideFrame } = framesOf(page);
     const frame = await rectOf(page, ".studio-preview-body iframe");
-    const target = await slideFrame.evaluate(() => {
+    const target = await slideFrame.evaluate((name) => {
       const slide = document.querySelector(".frameseq-slide-frame.is-active");
       const label = [...slide.querySelectorAll("*")]
-        .find((element) => element.children.length === 0 && element.textContent?.trim() === "Vector renderer");
+        .find((element) => element.children.length === 0 && element.textContent?.trim() === name);
       return label?.getBoundingClientRect().toJSON();
-    });
-    if (!target) throw new Error("The diagram has no Vector renderer to right-click");
+    }, words.rightClick);
+    if (!target) throw new Error(`The diagram has no ${words.rightClick} to right-click`);
     await page.mouse.click(frame.left + target.left + target.width / 2, frame.top + target.top + target.height / 2, { button: "right" });
     await page.waitForSelector(".studio-menu");
     await delay(800);
@@ -280,7 +303,7 @@ export async function captureStudio(imagesDirectory) {
     await page.keyboard.press("Escape");
 
     // The format pane beside the slide it formats.
-    await chooseObject(page, "Edge gateway");
+    await chooseObject(page, words.shape);
     await settle(page);
     await shot(page, "studio-format.webp", closeUp({ right: 1080, bottom: 940, width: 1080 }));
     await page.close();
@@ -288,7 +311,7 @@ export async function captureStudio(imagesDirectory) {
     // The slide masters, with the cover master in the preview.
     const masters = await openStudio();
     await hideCode(masters);
-    await chooseMenu(masters, "View", "Slide master");
+    await chooseMenu(masters, words.viewMenu, words.mastersItem);
     await masters.waitForSelector("[data-slot='master-bar']:not([hidden])");
     await waitFor(async () => {
       const { rail, preview: masterPreview } = framesOf(masters);
@@ -310,7 +333,7 @@ export async function captureStudio(imagesDirectory) {
         await assistantPage.setRequestInterception(true);
         assistantPage.on("request", (request) => {
           const path = new URL(request.url()).pathname;
-          const answer = path.endsWith("/assistant") ? assistantState
+          const answer = path.endsWith("/assistant") ? assistantState(words)
             : path.endsWith("/assistant/options") ? assistantChoices
               : path.endsWith("/assistant/usage") ? { usage: null }
                 : undefined;
@@ -341,7 +364,7 @@ export async function captureStudio(imagesDirectory) {
     await shot(presenter, "studio-presenter.webp");
     await presenter.close();
 
-    console.log("Captured the Studio for the landing page");
+    console.log(`Captured the Studio for the ${language} landing page`);
   } finally {
     await browser.close();
     studio.child.kill();
@@ -349,5 +372,5 @@ export async function captureStudio(imagesDirectory) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await captureStudio(resolve(process.argv[2] ?? resolve(packageRoot, "tmp", "gallery-studio-images")));
+  await captureStudio(resolve(process.argv[2] ?? resolve(packageRoot, "tmp", "gallery-studio-images")), process.argv[3]);
 }

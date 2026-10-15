@@ -27,11 +27,13 @@ const fingerprint = (text) => createHash("sha256").update(text).digest("hex").sl
 const galleryStyles = await readFile(resolve(packageRoot, "gallery", "styles.css"), "utf8");
 const docsStyles = await readFile(resolve(packageRoot, "gallery", "docs.css"), "utf8");
 const katexStyles = await readFile(resolve(packageRoot, "node_modules", "katex", "dist", "katex.min.css"), "utf8");
+const siteScript = await readFile(resolve(packageRoot, "gallery", "site.js"), "utf8");
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
   // The product review the Studio is photographed editing, so the landing page can show it live too.
   { slug: "atlas", entry: resolve(packageRoot, "gallery", "slides", "studio.slides.ts") },
+  { slug: "atlas-zh", entry: resolve(packageRoot, "gallery", "slides", "studio-zh.slides.ts") },
   { slug: "recipes", entry: resolve(packageRoot, "gallery", "slides", "recipes.slides.ts") },
   { slug: "ai-research", entry: resolve(packageRoot, "gallery", "slides", "ai-research.slides.ts") },
   { slug: "poster", entry: resolve(packageRoot, "gallery", "slides", "poster.slides.ts") },
@@ -150,7 +152,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
   </head>
   <body>
     <header class="docs-header">
-      <a class="docs-brand" href="../" aria-label="FrameSeq Gallery home">
+      <a class="docs-brand" href="${locale === "en" ? "../" : "../../zh/"}" aria-label="FrameSeq Gallery home">
         <span class="docs-brand-mark" aria-hidden="true"></span>
         <span>FrameSeq</span>
       </a>
@@ -160,7 +162,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
       </label>
       <nav aria-label="Documentation navigation">
         <a class="docs-nav-home" href="index.html">${locale === "en" ? "Docs" : "文档"}</a>
-        <a class="docs-nav-gallery" href="${locale === "en" ? "../" : "../../"}">Gallery</a>
+        <a class="docs-nav-gallery" href="${locale === "en" ? "../" : "../../zh/"}">${locale === "en" ? "Gallery" : "首页"}</a>
         <a class="docs-lang-switch" href="${switchHref}" lang="${other.htmlLang}">${other.label}</a>
         <a class="docs-nav-external" href="https://github.com/pride7/frameseq">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
@@ -246,12 +248,13 @@ async function captureSlides(slug) {
 }
 
 /**
- * The slides the landing page shows as pictures: each theme's example, the diagram from the
- * product review, and the poster. They are drawn as print draws them, with every reveal step
+ * The slides the landing pages show as pictures: each theme's example, the diagram from the
+ * product review in English and in Chinese, and the poster. They are drawn as print draws them, with every reveal step
  * shown, and taken on every build like the documentation's.
  */
 const landingSlides = [
   { slug: "atlas", slide: 2 },
+  { slug: "atlas-zh", slide: 2 },
   // A0 is drawn far larger than a slide, so it is taken smaller.
   { slug: "poster", slide: 1, scale: 0.5 },
   { slug: "blank", slide: 1 },
@@ -305,6 +308,7 @@ for (const slug of new Set(documentationPages.map((page) => page.previews).filte
 }
 await captureLandingSlides();
 await captureStudio(resolve(galleryOutput, "images"));
+await captureStudio(resolve(galleryOutput, "images", "zh"), "zh");
 
 for (const page of documentationPages) {
   const markdown = await readFile(resolve(packageRoot, page.source), "utf8");
@@ -330,7 +334,7 @@ for (const page of chinesePages) {
 console.log(`Documentation written: ${documentationPages.length} English, ${chinesePages.length} Chinese.`);
 
 /**
- * Typeset every `data-tex` element on the landing page with KaTeX, using the options the
+ * Typeset every `data-tex` element on a landing page with KaTeX, using the options the
  * runtime uses for `math`, so the page shows the formula FrameSeq itself would draw.
  */
 function typesetLandingPage(html) {
@@ -350,12 +354,23 @@ for (const font of (await readdir(resolve(katexDist, "fonts"))).filter((file) =>
   await copyFile(resolve(katexDist, "fonts", font), resolve(galleryOutput, "katex", "fonts", font));
 }
 
+/**
+ * A landing page as published: its formula typeset, and its stylesheets and script asked for by
+ * their content. `root` is the way from the page up to the site's root, "." or "..".
+ */
+async function writeLandingPage(source, output, root) {
+  const html = typesetLandingPage(await readFile(resolve(packageRoot, "gallery", source), "utf8"))
+    .replace(`href="${root}/styles.css"`, `href="${root}/styles.css?v=${fingerprint(galleryStyles)}"`)
+    .replace(`href="${root}/katex/katex.min.css"`, `href="${root}/katex/katex.min.css?v=${fingerprint(katexStyles)}"`)
+    .replace(`src="${root}/site.js"`, `src="${root}/site.js?v=${fingerprint(siteScript)}"`);
+  await mkdir(dirname(resolve(galleryOutput, output)), { recursive: true });
+  await writeFile(resolve(galleryOutput, output), html, "utf8");
+}
+
 await Promise.all([
-  readFile(resolve(packageRoot, "gallery", "index.html"), "utf8")
-    .then((html) => typesetLandingPage(html)
-      .replace('href="./styles.css"', `href="./styles.css?v=${fingerprint(galleryStyles)}"`)
-      .replace('href="./katex/katex.min.css"', `href="./katex/katex.min.css?v=${fingerprint(katexStyles)}"`))
-    .then((html) => writeFile(resolve(galleryOutput, "index.html"), html, "utf8")),
+  writeLandingPage("index.html", "index.html", "."),
+  writeLandingPage("zh/index.html", "zh/index.html", ".."),
+  writeFile(resolve(galleryOutput, "site.js"), siteScript, "utf8"),
   writeFile(resolve(galleryOutput, "katex", "katex.min.css"), katexStyles, "utf8"),
   writeFile(resolve(galleryOutput, "styles.css"), galleryStyles, "utf8"),
   writeFile(resolve(galleryOutput, "docs", "styles.css"), docsStyles, "utf8"),

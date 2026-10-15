@@ -93,6 +93,25 @@ const card = await stat(resolve(galleryOutput, "images", "studio-card.jpg"));
 assert.ok(card.size > 20_000, "The link-preview card is too small to be a picture of the Studio");
 assert.match(landing, /<meta property="og:image" content="https:\/\/pride7\.github\.io\/frameseq\/images\/studio-card\.jpg"/);
 
+// The Chinese landing page stands beside the English one, each a link from the other, with its
+// own pictures of the Studio in Chinese. Everything it links to or shows has to exist.
+const chineseLanding = await readFile(resolve(galleryOutput, "zh", "index.html"), "utf8");
+assert.match(chineseLanding, /<html lang="zh-Hans"/);
+assert.match(landing, /href="\.\/zh\/"[^>]*>中文</, "The English landing page should lead to the Chinese one");
+assert.match(chineseLanding, /href="\.\.\/"[^>]*>English</, "The Chinese landing page should lead to the English one");
+for (const [, target] of chineseLanding.matchAll(/href="(\.\.\/docs\/[^"#]+)"/g)) {
+  const file = resolve(galleryOutput, "zh", target.endsWith("/") ? `${target}index.html` : target);
+  assert.ok(await stat(file).catch(() => false), `The Chinese landing page links to a missing page: ${target}`);
+}
+for (const [, file] of chineseLanding.matchAll(/src(?:set)?="\.\.\/images\/([^"]+)"/g)) {
+  const { size } = await stat(resolve(galleryOutput, "images", file));
+  assert.ok(size > 20_000, `${file} is too small to be a picture taken by the build`);
+}
+assert.ok(chineseLanding.includes('src="../images/zh/studio.webp"'), "The Chinese page should show the Studio in Chinese");
+const chineseCard = await stat(resolve(galleryOutput, "images", "zh", "studio-card.jpg"));
+assert.ok(chineseCard.size > 20_000, "The Chinese link-preview card is too small to be a picture of the Studio");
+assert.match(chineseLanding, /<meta property="og:image" content="https:\/\/pride7\.github\.io\/frameseq\/images\/zh\/studio-card\.jpg"/);
+
 // Every page asks for its stylesheet by content, so a browser holding the previous release's
 // stylesheet fetches the new one instead of styling new markup with old rules.
 const fingerprint = (text) => createHash("sha256").update(text).digest("hex").slice(0, 10);
@@ -101,6 +120,10 @@ assert.ok(
   landing.includes(`href="./styles.css?v=${fingerprint(galleryStyles)}"`),
   "The landing page should ask for its stylesheet by content",
 );
+assert.ok(chineseLanding.includes(`href="../styles.css?v=${fingerprint(galleryStyles)}"`));
+const siteScript = await readFile(resolve(galleryOutput, "site.js"), "utf8");
+assert.ok(landing.includes(`src="./site.js?v=${fingerprint(siteScript)}"`), "The landing page should ask for its script by content");
+assert.ok(chineseLanding.includes(`src="../site.js?v=${fingerprint(siteScript)}"`));
 const docsStyles = await readFile(resolve(docsOutput, "styles.css"), "utf8");
 assert.ok(
   docsSources.get("index.html").includes(`href="./styles.css?v=${fingerprint(docsStyles)}"`),
@@ -269,6 +292,60 @@ try {
     .map((block) => block.textContent.trim().split(/\r?\n/)[0]));
   assert.deepEqual(clippedCode, [], "Code blocks should fit a phone");
 
+  /**
+   * What a phone shows of a landing page's header and headings: the header's links, and anything
+   * that runs past the edge of its box. A Chinese heading breaks only between its phrases, so a
+   * phrase too long for a phone would otherwise run out of its box unseen.
+   */
+  const phoneFit = () => page.evaluate(() => ({
+    header: [...document.querySelectorAll(".site-header a")]
+      .filter((link) => link.offsetParent !== null)
+      .map((link) => link.getAttribute("href")),
+    clipped: [...document.querySelectorAll(".site-header a, .site-header .header-inner, h1, h2")]
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => element.textContent.trim().slice(0, 40)),
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+  }));
+  const englishPhone = await phoneFit();
+  assert.ok(englishPhone.header.includes("./zh/"), "A phone should keep the way to the Chinese page");
+  assert.deepEqual(englishPhone.clipped, [], "Nothing in the English page's header or headings should be cut off on a phone");
+
+  await page.goto(new URL("zh/", url).href, { waitUntil: "networkidle0" });
+  const chinesePhone = await phoneFit();
+  assert.ok(chinesePhone.overflow <= 0);
+  assert.ok(chinesePhone.header.includes("../docs/zh/"), "A phone should keep the Chinese documentation in reach");
+  assert.ok(chinesePhone.header.includes("../"), "A phone should keep the way to the English page");
+  assert.deepEqual(chinesePhone.clipped, [], "Nothing in the Chinese page's header or headings should be cut off on a phone");
+  const chinesePhoneStudio = await page.$eval(".hero-shot picture img", async (image) => {
+    await image.decode();
+    return image.currentSrc;
+  });
+  assert.match(chinesePhoneStudio, /\/images\/zh\/studio-phone\.webp$/);
+  assert.ok(await formulaFits(page), "The formula should fit its card on the Chinese page on a phone");
+
+  await page.setViewport({ width: 1440, height: 1000, deviceScaleFactor: 1 });
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.$eval(".language-stage iframe", (frame) => frame.scrollIntoView({ block: "center" }));
+  await page.waitForFunction(() => {
+    const frames = Array.from(document.querySelectorAll("iframe"));
+    return frames.length === 1 && frames[0].contentDocument?.querySelector(".frameseq-slide");
+  });
+  const chineseDesktop = await page.evaluate(() => ({
+    title: document.title,
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+    bentoCards: document.querySelectorAll(".bento-card").length,
+    themeCards: document.querySelectorAll(".theme-card").length,
+    download: document.querySelector(".hero .button-primary")?.getAttribute("href"),
+  }));
+  assert.match(chineseDesktop.title, /用鼠标做幻灯片/);
+  assert.ok(chineseDesktop.overflow <= 0);
+  assert.equal(chineseDesktop.bentoCards, 5);
+  assert.equal(chineseDesktop.themeCards, 8);
+  assert.equal(chineseDesktop.download, "../docs/zh/app.html");
+  await page.click("#tab-menu");
+  assert.deepEqual(await shownPanels(), ["panel-menu"]);
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto(new URL("docs/function-guide.html", url), { waitUntil: "networkidle0" });
   const docsDesktop = await page.evaluate(() => ({
@@ -381,4 +458,4 @@ try {
   await server.close();
 }
 
-console.log("Gallery test passed: the Studio pictures, the tour, seven themes, and the generated documentation fit desktop and mobile viewports.");
+console.log("Gallery test passed: the English and Chinese landing pages, their Studio pictures, the tour, seven themes, and the generated documentation fit desktop and mobile viewports.");

@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="FrameSeq Studio 是一款演示文稿软件，有 PowerPoint 那样的菜单、插入库、格式窗格、幻灯片母版和演讲者视图。每一页都保存为可读的代码：AI 可以直接写，Git 可以管理版本，还能导出可编辑的 PowerPoint、PDF 和网页。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="FrameSeq Studio — 用鼠标做幻灯片，每一页都是读得懂的代码" />
+    <meta
+      property="og:description"
+      content="像 PowerPoint 一样直接上手的演示软件，每一页都是一份可读的文件：AI 能写，Git 能管，一条命令导出可编辑的 PowerPoint、PDF、网页和 Typst。"
+    />
+    <meta property="og:url" content="https://pride7.github.io/frameseq/zh/" />
+    <meta property="og:image" content="https://pride7.github.io/frameseq/images/zh/studio-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="alternate" hreflang="en" href="https://pride7.github.io/frameseq/" />
+    <link rel="alternate" hreflang="zh-Hans" href="https://pride7.github.io/frameseq/zh/" />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../katex/katex.min.css" />
+    <link rel="stylesheet" href="../styles.css" />
+    <script>document.documentElement.classList.add("js");</script>
+    <title>FrameSeq Studio — 用鼠标做幻灯片，每一页都是读得懂的代码</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="./" aria-label="FrameSeq 首页">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>FrameSeq</span>
+        </a>
+        <nav class="site-nav" aria-label="页面导航">
+          <a href="#studio">Studio</a>
+          <a href="#ai">AI 助手</a>
+          <a href="#present">放映</a>
+          <a href="#language">代码</a>
+          <a href="#themes">主题</a>
+          <a class="nav-docs" href="../docs/zh/">文档</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-link lang-switch" href="../" lang="en" hreflang="en">English</a>
+          <a class="header-link" href="https://github.com/pride7/frameseq" aria-label="GitHub 上的 FrameSeq">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            <span>GitHub</span>
+          </a>
+          <a class="button button-small button-dark" href="../docs/zh/app.html">下载</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <a class="hero-badge" href="../docs/changelog.html">
+            <span class="badge-new">新</span>
+            <span>幻灯片母版、右键菜单和 AI 助手</span>
+            <span aria-hidden="true">→</span>
+          </a>
+          <h1 id="hero-title">用鼠标做幻灯片，<br /><span class="gradient-text">每一页都是<wbr />读得懂的代码。</span></h1>
+          <p class="hero-lede">
+            FrameSeq Studio 有你在 PowerPoint 里熟悉的菜单、插入库、格式窗格、幻灯片母版和演讲者视图。每一页背后都是一份可读的文件：AI 可以直接写，Git 可以管理版本，一条命令就能导出可编辑的 PowerPoint、PDF 或网页。
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="../docs/zh/app.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" /></svg>
+              下载 FrameSeq
+            </a>
+            <a class="button button-secondary online-action" href="https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&amp;startScript=dev&amp;title=FrameSeq%20Playground">在线试用</a>
+          </div>
+          <p class="hero-meta">免费开源 · 支持 Windows、macOS 和 Linux · 也可以用 <code>npm create frameseq@latest</code></p>
+        </div>
+
+        <figure class="hero-shot" aria-labelledby="hero-shot-caption">
+          <div class="window">
+            <a href="../images/zh/studio.webp" aria-label="查看 FrameSeq Studio 的原尺寸截图"><picture>
+              <source media="(max-width: 720px)" srcset="../images/zh/studio-phone.webp" width="2850" height="1440" />
+              <img
+                src="../images/zh/studio.webp"
+                width="3360"
+                height="2000"
+                fetchpriority="high"
+                alt="FrameSeq Studio 正在编辑一份产品评审：左边是幻灯片缩略图和选中的“边缘网关”形状的格式设置，中间是幻灯片的代码，对应的行已高亮，右边是实时预览，形状处于选中状态，下方是演讲者备注。"
+              />
+            </picture></a>
+          </div>
+          <figcaption id="hero-shot-caption">FrameSeq Studio 中文界面，每次构建本页时实时截取。</figcaption>
+        </figure>
+      </section>
+
+      <section class="stats" aria-label="FrameSeq 的一些数字">
+        <p><strong>27</strong><span>种形状，从流程图符号到各种箭头</span></p>
+        <p><strong>12</strong><span>种版式，新建幻灯片一键套用</span></p>
+        <p><strong>4</strong><span>种导出格式：PowerPoint、PDF、网页和 Typst</span></p>
+        <p><strong>1</strong><span>个安装包，自带 Node.js、Typst 和 Tectonic</span></p>
+      </section>
+
+      <section class="section tour" id="studio" aria-labelledby="studio-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">FrameSeq Studio</p>
+          <h2 id="studio-title">PowerPoint&nbsp;里常用的，<wbr />这里都有。</h2>
+          <p>菜单栏、插入库、右键菜单、格式窗格、幻灯片母版。不用先学什么：点一点、拖一拖、打几个字，代码由 Studio 来写。</p>
+        </div>
+
+        <div class="tour-body reveal" data-tabs>
+          <div class="tour-tabs" role="tablist" aria-label="Studio 的功能">
+            <button class="tour-tab" type="button" role="tab" id="tab-insert" aria-controls="panel-insert" aria-selected="true">
+              <span class="tour-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" /><circle cx="17.5" cy="6.5" r="3.5" /><path d="m6.5 14-3.5 7h7Z" /><path d="M17.5 14v7M14 17.5h7" /></svg></span>
+              <span class="tour-tab-text"><strong>插入任何内容</strong><span>文字、公式、图片、表格、图表、图标，还有 27 种形状，都在一个插入库里。把形状拖到幻灯片上，画在哪里就落在哪里。</span></span>
+            </button>
+            <button class="tour-tab" type="button" role="tab" id="tab-format" aria-controls="panel-format" aria-selected="false">
+              <span class="tour-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></svg></span>
+              <span class="tour-tab-text"><strong>格式窗格</strong><span>选中一个对象，就能改它的文字、配色、填充、轮廓、大小和位置。每次修改都能单独撤销。</span></span>
+            </button>
+            <button class="tour-tab" type="button" role="tab" id="tab-menu" aria-controls="panel-menu" aria-selected="false">
+              <span class="tour-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 4 7.07 17 2.51-7.39L21 11.07Z" /></svg></span>
+              <span class="tour-tab-text"><strong>右键菜单</strong><span>剪切、复制、粘贴、创建副本、调整叠放次序、对齐、转到代码，快捷键和你习惯的一样。</span></span>
+            </button>
+            <button class="tour-tab" type="button" role="tab" id="tab-masters" aria-controls="panel-masters" aria-selected="false">
+              <span class="tour-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg></span>
+              <span class="tour-tab-text"><strong>幻灯片母版和模板</strong><span>Logo、页脚、标题栏只画一次，每一页都跟着变。任何一份演示都能存成你自己的模板。</span></span>
+            </button>
+          </div>
+
+          <div class="tour-stage">
+            <div class="window window-tour" role="tabpanel" id="panel-insert" aria-labelledby="tab-insert">
+              <img src="../images/zh/studio-insert.webp" width="1972" height="1174" loading="lazy" decoding="async" alt="打开在幻灯片上方的插入库：左边是文字、项目列表、引用、代码、LaTeX 和 Typst 公式、图片、表格、图表、二维码和图标，右边是文本框、线条、连接线、基本形状、流程图符号和箭头。" />
+              <p class="tour-writes"><span>写入代码</span><code>shape("diamond", "已缓存？").position({ x: 455, y: 157 })</code></p>
+            </div>
+            <div class="window window-tour" role="tabpanel" id="panel-format" aria-labelledby="tab-format">
+              <img src="../images/zh/studio-format.webp" width="2160" height="1286" loading="lazy" decoding="async" alt="幻灯片上选中了“边缘网关”形状，“当前页”面板里展开了它的设置：形状、文字、配色、样式、填充、轮廓和轮廓粗细。" />
+              <p class="tour-writes"><span>写入代码</span><code>.tone("blue").shadow()</code></p>
+            </div>
+            <div class="window window-tour" role="tabpanel" id="panel-menu" aria-labelledby="tab-menu">
+              <img src="../images/zh/studio-menu.webp" width="1920" height="1142" loading="lazy" decoding="async" alt="在“矢量渲染器”形状上打开的右键菜单：剪切、复制、粘贴、创建副本、删除、叠放次序、编辑文字、设置格式和转到代码，每项都标着快捷键。" />
+              <p class="tour-writes"><span>复制为</span><code>shape("rounded", "矢量渲染器").as("renderer")</code></p>
+            </div>
+            <div class="window window-tour" role="tabpanel" id="panel-masters" aria-labelledby="tab-masters">
+              <img src="../images/zh/studio-masters.webp" width="3360" height="2000" loading="lazy" decoding="async" alt="Studio 的母版视图：左侧列出内容母版和封面母版，预览里是封面母版，标题、副标题和作者占位符用虚线框出。" />
+              <p class="tour-writes"><span>写入代码</span><code>master("cover"); placeholder("title")</code></p>
+            </div>
+          </div>
+        </div>
+
+        <ul class="mini-features reveal" aria-label="Studio 的更多功能">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9 2 12l3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg><span><b>拖动、缩放、对齐</b>幻灯片上的对象</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 15h6" /></svg><span><b>12 种版式</b>新建幻灯片，从两栏到图表</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17Z" /><path d="M8 9h8M8 12h5" /></svg><span><b>演讲者备注</b>就写在幻灯片下方</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-15-6.7L3 13" /></svg><span><b>一切操作</b>都能用 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg><span><b>内容溢出</b>在放映前就被发现</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" /></svg><span><b>中文界面</b>，菜单、提示和报错都是中文</span></li>
+        </ul>
+      </section>
+
+      <section class="section views" id="views" aria-labelledby="views-title">
+        <div class="views-grid">
+          <div class="views-copy reveal">
+            <p class="eyebrow">同一页，两种视图</p>
+            <h2 id="views-title">可以隐藏代码，<wbr />也可以放在旁边。</h2>
+            <p>按 <kbd>Ctrl</kbd>+<kbd>E</kbd> 收起编辑器，不想看代码的人完全不用看。再次打开时，光标正停在你选中的对象上：拖动一个形状，只有它的数字会变。</p>
+            <div class="view-switch" role="group" aria-label="选择视图">
+              <button type="button" data-view="design" aria-pressed="true">只看幻灯片</button>
+              <button type="button" data-view="code" aria-pressed="false">幻灯片和代码</button>
+            </div>
+            <ul class="check-list">
+              <li>按住 <kbd>Alt</kbd> 点击任意对象，跳到对应的代码行</li>
+              <li>TypeScript 自动补全、悬停说明和实时报错</li>
+              <li>一份纯文本文件放进 Git：能比较、能审阅、能开分支</li>
+            </ul>
+          </div>
+          <div class="views-stage reveal" data-view-stage data-view-current="design">
+            <div class="window">
+              <img class="view-design" src="../images/zh/studio-design.webp" width="3360" height="2000" loading="lazy" decoding="async" alt="收起代码后的 FrameSeq Studio：左边是幻灯片缩略图和格式设置，流程图幻灯片占满了窗口其余部分。" />
+              <img class="view-code" src="../images/zh/studio.webp" width="3360" height="2000" loading="lazy" decoding="async" alt="同一时刻展开代码：代码位于格式设置和幻灯片之间。" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section ai" id="ai" aria-labelledby="ai-title">
+        <div class="ai-inner">
+          <div class="section-heading section-heading-dark reveal">
+            <p class="eyebrow">AI 助手</p>
+            <h2 id="ai-title">说一句要怎么改，<wbr />再逐条决定是否采纳。</h2>
+            <p>AI 助手面板会调用你电脑上的 Claude Code 或 Codex，用你自己的账号。它修改幻灯片、检查布局、查看自己画出的效果，再把每一处修改摆出来，由你决定接受还是拒绝。</p>
+          </div>
+          <figure class="ai-shot reveal">
+            <div class="window window-dark">
+              <img src="../images/zh/studio-assistant.webp" width="3360" height="2000" loading="lazy" decoding="async" alt="Studio 的 AI 助手面板，旁边是路线图幻灯片。请求是把路线图改成四个箭头，每季度一个；AI 读取了大纲和文件，修改后检查了幻灯片、查看了第 5 页，然后说明改了什么，用时 41 秒。" />
+            </div>
+          </figure>
+          <ol class="ai-steps reveal">
+            <li>
+              <span class="step-number">1</span>
+              <h3>用自己的话提要求</h3>
+              <p>请求会附带当前看到的幻灯片、选中的代码行和问题列表，所以你说“这一页”，它知道是哪一页。</p>
+            </li>
+            <li>
+              <span class="step-number">2</span>
+              <h3>它会检查自己的成果</h3>
+              <p>通过 <code>frameseq mcp</code>，AI 会先运行布局检查、查看幻灯片截图，确认没问题才说完成。</p>
+            </li>
+            <li>
+              <span class="step-number">3</span>
+              <h3>留不留由你决定</h3>
+              <p>编辑器把每处修改和原来的内容对照显示，逐条接受或拒绝。按 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 可以全部撤回。</p>
+            </li>
+          </ol>
+          <div class="ai-own reveal">
+            <div>
+              <h3>想用自己的 AI 工具？</h3>
+              <p>Claude Code、Codex 和 Cursor 可以连接 <code>frameseq mcp</code>，读取大纲、检查布局、查看幻灯片。任何模型都能从 <a href="../llms.txt">llms.txt</a> 学会这门语言。</p>
+              <div class="ai-links">
+                <a class="text-link" href="../docs/zh/ai-generation.html">阅读 AI 生成指南 <span aria-hidden="true">→</span></a>
+                <a class="text-link" href="../docs/zh/layout-checks.html">查看所有布局检查 <span aria-hidden="true">→</span></a>
+              </div>
+            </div>
+            <pre class="terminal" aria-label="布局检查的输出示例"><code><span class="t-prompt">$</span> npx frameseq check talk.slides.ts
+<span class="t-error">ERROR</span> Slide 4 "Architecture" [text-clipped]
+  Text is clipped by 38px on the bottom.
+  Object: text 3.1.2 "FrameSeq owns presentation…"
+  Suggestion: Increase the text box size, reduce
+  the font size, or shorten the content.</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section present" id="present" aria-labelledby="present-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">放映</p>
+          <h2 id="present-title">双屏放映，<wbr />看着备注讲，<wbr />用手机翻页。</h2>
+          <p>按 <kbd>F5</kbd>，幻灯片铺满整个屏幕。接上投影仪时，幻灯片显示在投影上，你的笔记本上则是演讲者视图：备注、下一页和计时器一目了然。</p>
+        </div>
+        <figure class="present-shot reveal">
+          <div class="window window-dark">
+            <img src="../images/zh/studio-presenter.webp" width="3360" height="1640" loading="lazy" decoding="async" alt="演讲者视图：左边是当前幻灯片，一张流程图；右边是下一页和演讲者备注；上方有计时器和激光笔，下方是翻页控制。" />
+          </div>
+        </figure>
+        <div class="present-grid reveal">
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
+            <h3>全屏放映</h3>
+            <p><kbd>F5</kbd> 从头开始，<kbd>Shift</kbd>+<kbd>F5</kbd> 从当前页开始。点击或方向键逐步展示内容，放映结束时黑屏。</p>
+          </article>
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="13" height="10" rx="1.5" /><rect x="17" y="4" width="5" height="6" rx="1" /><path d="M17 13h5M17 16h5M6 20h5M8.5 14v6" /></svg>
+            <h3>演讲者视图</h3>
+            <p>备注、下一页和计时器在你的屏幕上，幻灯片送到你选定的那块屏幕。</p>
+          </article>
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M11 18h2" /></svg>
+            <h3>手机遥控</h3>
+            <p>扫码配对后，用手机翻页、看备注，还能在大屏上用激光笔指示。</p>
+          </article>
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" /><path d="M9 13h6M9 17h4" /></svg>
+            <h3>备一份 PDF</h3>
+            <p>导出整份演示或其中几页，页码保持不变，万一现场设备出状况也不慌。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section language" id="language" aria-labelledby="language-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">背后的代码</p>
+          <h2 id="language-title">一份<wbr />从上往下读的文件。</h2>
+          <p>每一页只是几行 TypeScript，没有嵌套，也没有标记语言。代码的顺序就是阅读的顺序，所以 diff 一眼就能看出改了什么，AI 写起来也不会迷路。</p>
+        </div>
+
+        <div class="language-stage reveal">
+          <article class="code-panel">
+            <div class="panel-bar">
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span>talk.slides.ts</span>
+            </div>
+            <pre><code><span class="syntax-call">slide</span>(<span class="syntax-string">"每个版本都更快"</span>).<span class="syntax-method">split</span>(<span class="syntax-string">"38:62"</span>)
+  .<span class="syntax-method">notes</span>(<span class="syntax-string">"中位加载时间，在中端手机、4G 网络下测得。"</span>);
+<span class="syntax-call">text</span>(<span class="syntax-string">"一年里，首块瓦片的中位加载时间降低了三分之二。"</span>).<span class="syntax-method">lead</span>();
+<span class="syntax-call">bullets</span>(
+  <span class="syntax-string">"矢量瓦片取代了图片"</span>,
+  <span class="syntax-string">"每个边缘节点都有缓存"</span>,
+  <span class="syntax-string">"字体随应用一起分发"</span>,
+);
+
+<span class="syntax-call">right</span>();
+<span class="syntax-call">chart</span>(<span class="syntax-string">"bar"</span>, { <span class="syntax-string">"1.0"</span>: <span class="syntax-number">840</span>, <span class="syntax-string">"1.4"</span>: <span class="syntax-number">610</span>, <span class="syntax-string">"1.8"</span>: <span class="syntax-number">430</span>, <span class="syntax-string">"2.0"</span>: <span class="syntax-number">280</span> })
+  .<span class="syntax-method">unit</span>(<span class="syntax-string">" ms"</span>)
+  .<span class="syntax-method">colors</span>(<span class="syntax-string">"#0d9488"</span>);</code></pre>
+          </article>
+          <article class="result-panel">
+            <a class="slide-preview" href="../examples/atlas-zh/#3" aria-label="打开这一页所在的产品评审">
+              <iframe src="../examples/atlas-zh/?show#3" title="这段代码画出的幻灯片" tabindex="-1" loading="lazy"></iframe>
+            </a>
+            <div class="result-caption">
+              <p><strong>它画出的这一页</strong><span>FrameSeq 实时渲染，不是图片</span></p>
+              <a class="text-link" href="../examples/atlas-zh/">打开这份幻灯片 <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        </div>
+
+        <div class="facts reveal">
+          <article>
+            <h3>不写 CSS 也能排版</h3>
+            <p><code>.split()</code>、<code>.grid()</code> 和 <code>.canvas()</code> 安排版面，<code>right()</code> 和 <code>cell()</code> 指定接下来的内容放在哪里。</p>
+          </article>
+          <article>
+            <h3>放映前先检查</h3>
+            <p><code>frameseq check</code> 会测量渲染出来的幻灯片，按对象指出每一处溢出、被裁切的行和过小的字号。</p>
+          </article>
+          <article>
+            <h3>像代码一样审阅</h3>
+            <pre class="mini-diff"><code><span class="diff-meta">@@ slide("带来的变化") @@</span>
+<span class="diff-removed">- metric("3×", "首块瓦片提速");</span>
+<span class="diff-added">+ metric("4×", "首块瓦片提速");</span></code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="section features" id="features" aria-labelledby="features-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">为真实的演讲而生</p>
+          <h2 id="features-title">流程图、公式、<wbr />图表和海报。</h2>
+          <p>每一样都是一条带合理默认值的命令，所以 AI 能画得好；导出到 PowerPoint 之后，每一样也都还能编辑。</p>
+        </div>
+
+        <div class="bento reveal">
+          <article class="bento-card bento-diagram">
+            <div class="bento-copy">
+              <p class="card-kicker">流程图</p>
+              <h3>形状和连接线，导出后依然可编辑</h3>
+              <p>27 种形状，配色会根据主题自动调整；连接线可以直角转弯，自动绕开挡路的对象。导出到 PowerPoint 时，用的是它自带的预设形状。</p>
+            </div>
+            <a class="slide-preview" href="../examples/atlas-zh/#2" aria-label="打开流程图幻灯片">
+              <img src="../images/atlas-zh-2.webp" width="1600" height="900" loading="lazy" decoding="async" alt="一张流程图：请求经过边缘网关到达“已缓存？”判断，按“是”和“否”沿直角连接线分别走向瓦片缓存和矢量渲染器，最后都到达你的用户。" />
+            </a>
+          </article>
+
+          <article class="bento-card bento-math">
+            <p class="card-kicker">排版</p>
+            <h3>LaTeX 公式和 Typst</h3>
+            <div class="formula-stage" aria-label="用 LaTeX 排版的公式">
+              <div class="formula-tex" data-tex="\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}"></div>
+            </div>
+            <p>用熟悉的 LaTeX 写行内或独立公式；需要更复杂的排版时，可以嵌入 Typst 或 LaTeX 表格。</p>
+          </article>
+
+          <article class="bento-card bento-chart">
+            <p class="card-kicker">图表和表格</p>
+            <h3>到了 PowerPoint 还能改的数据</h3>
+            <svg class="mini-chart" viewBox="0 0 240 120" role="img" aria-label="840、610、430 和 280 毫秒的柱状图">
+              <g class="mini-chart-grid"><path d="M0 119.5h240M0 79.5h240M0 39.5h240" /></g>
+              <rect x="14" y="16" width="38" height="104" rx="4" />
+              <rect x="72" y="44" width="38" height="76" rx="4" />
+              <rect x="130" y="67" width="38" height="53" rx="4" />
+              <rect x="188" y="85" width="38" height="35" rx="4" />
+            </svg>
+            <p>柱状图、折线图、饼图、环形图和三线表，都直接由文件里的数字画出。导出后就是 PowerPoint 原生的图表和表格。</p>
+          </article>
+
+          <article class="bento-card bento-poster">
+            <div class="bento-copy">
+              <p class="card-kicker">海报</p>
+              <h3>用同一门语言做 A0 海报</h3>
+              <p>标题横幅、分栏内容块，字号按纸张尺寸设定。导出的 PDF 就是纸张的真实尺寸。</p>
+              <a class="text-link" href="../docs/zh/posters.html">海报与打印 <span aria-hidden="true">→</span></a>
+            </div>
+            <a class="poster-preview" href="../examples/poster/" aria-label="打开学术海报示例">
+              <img src="../images/poster-1.webp" width="1600" height="2263" loading="lazy" decoding="async" alt="一张关于扩散语言模型的 A0 学术海报：蓝色标题横幅，下面是引言、方法、实验设置、带两张图表的结果、要点和指向论文的二维码。" />
+            </a>
+          </article>
+
+          <article class="bento-card bento-small">
+            <p class="card-kicker">还有这些细节</p>
+            <h3>参考文献、图标和二维码</h3>
+            <p>导入 <code>.bib</code> 文件，边写边 <code>cite()</code>，每页底部自动列出引用的文献。Lucide 图标按名字调用，<code>qr()</code> 在最后一页放一个观众能扫的链接。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section outputs" id="outputs" aria-labelledby="outputs-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">一份文件，四种格式</p>
+          <h2 id="outputs-title">网页上放映，<wbr />PDF&nbsp;拿去提交，<wbr />PowerPoint&nbsp;交给同事。</h2>
+          <p>形状、图表和表格导出到 PowerPoint 后都是原生对象，同事可以直接修改；每种导出都可以只选其中几页。</p>
+        </div>
+        <div class="output-grid reveal">
+          <article>
+            <span class="output-badge output-pptx">PPTX</span>
+            <h3>PowerPoint</h3>
+            <p>可编辑的文本框、预设形状、图表和表格，母版内容画在每一页后面。</p>
+            <code>frameseq pptx talk.slides.ts</code>
+          </article>
+          <article>
+            <span class="output-badge output-pdf">PDF</span>
+            <h3>PDF</h3>
+            <p>像素级还原，海报按纸张尺寸输出，适合投稿和打印。</p>
+            <code>frameseq pdf talk.slides.ts</code>
+          </article>
+          <article>
+            <span class="output-badge output-html">HTML</span>
+            <h3>网页</h3>
+            <p>可交互的幻灯片，带演讲者视图，放到任何静态网站上，或者直接分享链接。</p>
+            <code>frameseq build talk.slides.ts</code>
+          </article>
+          <article>
+            <span class="output-badge output-typst">TYP</span>
+            <h3>Typst</h3>
+            <p>可以继续排版的 Typst 源码，形状、表格和连接线都是原生 Typst。</p>
+            <code>frameseq typst talk.slides.ts</code>
+          </article>
+        </div>
+      </section>
+
+      <section class="section themes" id="themes" aria-labelledby="themes-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">主题</p>
+          <h2 id="themes-title">从一个主题开始，<wbr />用母版变成你自己的。</h2>
+          <p>FrameSeq 自带 7 个主题，在 Studio 的“新建演示”里都能直接选用。换主题不会改变写法；一个母版或几个设计变量，就能做出你自己的风格。</p>
+        </div>
+
+        <div class="theme-grid reveal">
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/blank/" aria-label="打开 Blank 主题示例">
+              <img src="../images/blank-1.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Blank 主题：白底，一个标题、三条要点和一张代码卡片。" />
+            </a>
+            <div class="theme-copy"><div><h3>Blank</h3><span>中性简洁</span></div><a href="../examples/blank/" aria-label="打开 Blank 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/midnight/" aria-label="打开 Midnight 主题示例">
+              <img src="../images/midnight-1.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Midnight 主题：深色封面，青色点缀。" />
+            </a>
+            <div class="theme-copy"><div><h3>Midnight</h3><span>高对比深色</span></div><a href="../examples/midnight/" aria-label="打开 Midnight 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/paper/" aria-label="打开 Paper 主题示例">
+              <img src="../images/paper-1.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Paper 主题：暖色纸张底色、衬线字体和一段引语。" />
+            </a>
+            <div class="theme-copy"><div><h3>Paper</h3><span>编辑排版风</span></div><a href="../examples/paper/" aria-label="打开 Paper 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/beamer-default/" aria-label="打开 Beamer Default 主题示例">
+              <img src="../images/beamer-default-1.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Beamer Default 主题：干净的蓝色学术标题页。" />
+            </a>
+            <div class="theme-copy"><div><h3>Beamer Default</h3><span>经典学术</span></div><a href="../examples/beamer-default/" aria-label="打开 Beamer Default 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/beamer-madrid/" aria-label="打开 Beamer Madrid 主题示例">
+              <img src="../images/beamer-madrid-2.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Beamer Madrid 主题：蓝色标题栏和带作者信息的页脚。" />
+            </a>
+            <div class="theme-copy"><div><h3>Beamer Madrid</h3><span>结构清晰</span></div><a href="../examples/beamer-madrid/" aria-label="打开 Beamer Madrid 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/beamer-cambridge-us/" aria-label="打开 Beamer Cambridge US 主题示例">
+              <img src="../images/beamer-cambridge-us-1.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Cambridge US 主题：酒红和米色的学术风格。" />
+            </a>
+            <div class="theme-copy"><div><h3>Cambridge US</h3><span>温暖学术</span></div><a href="../examples/beamer-cambridge-us/" aria-label="打开 Cambridge US 主题">↗</a></div>
+          </article>
+          <article class="theme-card">
+            <a class="theme-preview" href="../examples/minimal-academic/" aria-label="打开 Minimal Academic 主题示例">
+              <img src="../images/minimal-academic-2.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Minimal Academic 主题：带下划线的标题和紧凑的页脚。" />
+            </a>
+            <div class="theme-copy"><div><h3>Minimal Academic</h3><span>研究报告</span></div><a href="../examples/minimal-academic/" aria-label="打开 Minimal Academic 主题">↗</a></div>
+          </article>
+          <article class="theme-card theme-card-cta">
+            <div>
+              <h3>你自己的主题</h3>
+              <p>用 <code>defineTheme()</code> 设定颜色、字体和间距，或者在 Studio 里画一个母版。</p>
+            </div>
+            <a class="text-link" href="../docs/zh/themes.html">主题指南 <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section tools" id="tools" aria-labelledby="tools-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">融入你的工作方式</p>
+          <h2 id="tools-title">你的编辑器、<wbr />终端和代码仓库。</h2>
+        </div>
+        <div class="tools-grid reveal">
+          <article>
+            <h3>Visual Studio Code</h3>
+            <p>源码旁边的实时预览、问题面板里的布局检查、导出，以及“在 Studio 中打开”。</p>
+            <a class="text-link" href="https://marketplace.visualstudio.com/items?itemName=pride7.frameseq">安装扩展 <span aria-hidden="true">↗</span></a>
+          </article>
+          <article>
+            <h3>命令行和 CI</h3>
+            <p>让构建失败，而不是在台上出错：溢出的幻灯片会挡住合并，幻灯片也能发布成静态网站。</p>
+            <a class="text-link" href="../docs/zh/cli.html">命令行参考 <span aria-hidden="true">→</span></a>
+          </article>
+          <article>
+            <h3>Git</h3>
+            <p>每次修改都是可读的 diff。为不同的听众开一个分支，在不同演讲之间共用内容。</p>
+            <a class="text-link" href="../docs/zh/revising.html">修改幻灯片 <span aria-hidden="true">→</span></a>
+          </article>
+          <article>
+            <h3>AI 编程工具</h3>
+            <p><code>frameseq mcp</code> 让 Claude Code、Codex 和 Cursor 读取大纲、检查布局、查看你的幻灯片。</p>
+            <a class="text-link" href="../docs/zh/ai-generation.html">AI 生成 <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section start" id="start" aria-labelledby="start-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">开始使用</p>
+          <h2 id="start-title">三种方式，<wbr />做出你的第一份幻灯片。</h2>
+        </div>
+        <div class="start-grid reveal">
+          <article class="start-card start-card-primary">
+            <span class="start-step">最简单</span>
+            <h3>下载应用</h3>
+            <p>Windows 安装包、macOS 磁盘映像和 Linux 压缩包。自带 Node.js、Typst 和 Tectonic，不需要先安装任何东西。</p>
+            <a class="button button-primary" href="../docs/zh/app.html">下载 FrameSeq</a>
+          </article>
+          <article class="start-card">
+            <span class="start-step">开发者</span>
+            <h3>用 npm 安装</h3>
+            <pre><code>npm create frameseq@latest my-talk
+cd my-talk
+npm install
+npm run studio</code></pre>
+            <a class="text-link" href="../docs/zh/getting-started.html">快速上手 <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="start-card">
+            <span class="start-step">免安装</span>
+            <h3>在浏览器里试用</h3>
+            <p>打开一个带幻灯片文件和实时预览的在线环境，马上就能改。</p>
+            <a class="text-link" href="https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&amp;startScript=dev&amp;title=FrameSeq%20Playground">打开在线环境 <span aria-hidden="true">↗</span></a>
+          </article>
+        </div>
+      </section>
+
+      <section class="final-cta" aria-labelledby="final-title">
+        <div class="final-inner reveal">
+          <span class="final-mark" aria-hidden="true"></span>
+          <h2 id="final-title">下一场演讲，<wbr />从&nbsp;Studio&nbsp;开始。</h2>
+          <p>免费、开源，内容永远是你自己的纯文本。</p>
+          <div class="hero-actions">
+            <a class="button button-light" href="../docs/zh/app.html">下载 FrameSeq</a>
+            <a class="button button-ghost" href="../docs/zh/">阅读文档</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span><span>FrameSeq</span></a>
+          <p>用鼠标做幻灯片，每一页都是读得懂的代码。</p>
+        </div>
+        <nav class="footer-links" aria-label="页脚">
+          <div>
+            <h2>产品</h2>
+            <a href="../docs/zh/studio.html">Studio</a>
+            <a href="../docs/zh/app.html">下载</a>
+            <a href="../docs/changelog.html">更新日志</a>
+          </div>
+          <div>
+            <h2>学习</h2>
+            <a href="../docs/zh/">文档</a>
+            <a href="../docs/zh/recipes.html">示例</a>
+            <a href="../" lang="en">English</a>
+          </div>
+          <div>
+            <h2>链接</h2>
+            <a href="https://github.com/pride7/frameseq">GitHub</a>
+            <a href="https://marketplace.visualstudio.com/items?itemName=pride7.frameseq">VS Code</a>
+            <a href="../llms.txt">llms.txt</a>
+          </div>
+        </nav>
+      </div>
+      <p class="footer-note">MIT 开源许可。本页的 Studio 截图都在每次构建时从真实界面拍下。</p>
+    </footer>
+
+    <script src="../site.js"></script>
+  </body>
+</html>

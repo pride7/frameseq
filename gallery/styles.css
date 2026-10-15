@@ -192,6 +192,10 @@ kbd {
   height: 18px;
 }
 
+.lang-switch {
+  border: 1px solid var(--line);
+}
+
 /* ── Buttons and links ────────────────────────────────────────────────────────────────── */
 
 .button {
@@ -384,6 +388,7 @@ kbd {
   font-weight: 780;
   line-height: 1.02;
   letter-spacing: -0.045em;
+  text-wrap: balance;
 }
 
 .hero-lede {
@@ -523,6 +528,7 @@ kbd {
   font-weight: 760;
   line-height: 1.06;
   letter-spacing: -0.04em;
+  text-wrap: balance;
 }
 
 .section-heading > p:not(.eyebrow) {
@@ -1270,8 +1276,10 @@ kbd {
   margin: 0;
 }
 
+/* The wide cards sit on the left, the narrow ones stacked beside the poster on the right. */
 .bento-chart {
-  grid-column: span 2;
+  grid-column: 5 / span 2;
+  grid-row: 2;
 }
 
 .mini-chart {
@@ -1305,7 +1313,7 @@ kbd {
 .bento-poster {
   display: grid;
   grid-column: 1 / span 4;
-  grid-row: span 2;
+  grid-row: 2 / span 2;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 28px;
   align-items: center;
@@ -1326,7 +1334,8 @@ kbd {
 }
 
 .bento-small {
-  grid-column: span 2;
+  grid-column: 5 / span 2;
+  grid-row: 3;
 }
 
 /* ── Outputs ──────────────────────────────────────────────────────────────────────────── */
@@ -1708,6 +1717,55 @@ kbd {
   font-size: 14px;
 }
 
+/* ── Chinese ──────────────────────────────────────────────────────────────────────────── */
+
+/*
+ * Chinese text sets with more leading and none of the Latin headings' tight tracking. A heading
+ * breaks only at its punctuation, spaces, and the <wbr> between its phrases, so no line ends on a
+ * stray character; a phrase too long for a phone still breaks rather than overflows.
+ */
+html:lang(zh-Hans) body {
+  line-height: 1.75;
+}
+
+:lang(zh-Hans) h1,
+:lang(zh-Hans) h2 {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+:lang(zh-Hans) .hero h1 {
+  font-size: clamp(38px, 6.2vw, 72px);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+:lang(zh-Hans) .section h2,
+:lang(zh-Hans) .final-cta h2 {
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+:lang(zh-Hans) .views-copy h2 {
+  font-size: clamp(30px, 3.2vw, 40px);
+}
+
+:lang(zh-Hans) h3,
+:lang(zh-Hans) .tour-tab-text strong,
+:lang(zh-Hans) .stats span {
+  letter-spacing: 0;
+}
+
+:lang(zh-Hans) .hero-lede,
+:lang(zh-Hans) .section-heading > p:not(.eyebrow) {
+  line-height: 1.8;
+}
+
+:lang(zh-Hans) .eyebrow,
+:lang(zh-Hans) .card-kicker {
+  letter-spacing: 0.14em;
+}
+
 /* ── Narrower screens ─────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 1080px) {
@@ -1755,10 +1813,12 @@ kbd {
   .bento-math,
   .bento-chart {
     grid-column: span 3;
+    grid-row: auto;
   }
 
   .bento-small {
     grid-column: span 6;
+    grid-row: auto;
   }
 
   .ai-own {
@@ -1784,12 +1844,23 @@ kbd {
     min-height: 56px;
   }
 
-  .header-link span {
+  /* The phone header keeps the way to the documentation, the other language, and the download. */
+  .header-link:not(.lang-switch) {
     display: none;
   }
 
   .header-link {
-    padding: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions .button-small {
+    padding: 0 13px;
+    font-size: 13px;
   }
 
   .site-nav a {
@@ -1871,6 +1942,11 @@ kbd {
 
   .section-heading > p:not(.eyebrow) {
     font-size: 17px;
+  }
+
+  :lang(zh-Hans) .section h2,
+  :lang(zh-Hans) .final-cta h2 {
+    font-size: 30px;
   }
 
   .tour-tabs {
