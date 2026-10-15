@@ -8,7 +8,9 @@ import type {
   SourceField,
   SourceSpan,
 } from "./core";
+import { paperCanvasUnits, resolvePrintUnits } from "./paper";
 import { resolveAnchors } from "./anchors";
+import { chartPalette, chartSvg, type ChartSpec } from "./chart";
 import { themeCssVariables } from "./theme";
 import { mountThumbnails } from "./thumbnails";
 
@@ -119,6 +121,162 @@ function renderLine(node: FrameSeqNode): HTMLElement {
   return element;
 }
 
+function renderTable(node: FrameSeqNode): HTMLElement {
+  const table = document.createElement("table");
+  const rows = (node.props.rows as string[][] | undefined) ?? [];
+  const header = Number(node.props.header ?? 0);
+  const align = (node.props.align as string[] | undefined) ?? [];
+  const columns = Math.max(0, ...rows.map((row) => row.length));
+  if (node.props.striped === true) table.classList.add("is-striped");
+  const section = (tag: "thead" | "tbody", from: number, to: number): void => {
+    if (to <= from) return;
+    const group = document.createElement(tag);
+    for (const row of rows.slice(from, to)) {
+      const line = document.createElement("tr");
+      for (let column = 0; column < columns; column += 1) {
+        const cell = document.createElement(tag === "thead" ? "th" : "td");
+        if (tag === "thead") cell.scope = "col";
+        cell.style.textAlign = align[column] ?? "left";
+        appendTextWithInlineMath(cell, row[column] ?? "");
+        line.append(cell);
+      }
+      group.append(line);
+    }
+    table.append(group);
+  };
+  section("thead", 0, header);
+  section("tbody", header, rows.length);
+  return table;
+}
+
+/** A QR code as vector squares with a quiet zone, dark on light so any phone can read it. */
+function renderQr(node: FrameSeqNode): HTMLElement {
+  const element = document.createElement("div");
+  const text = String(node.props.text ?? "");
+  element.setAttribute("role", "img");
+  element.setAttribute("aria-label", `QR code: ${text}`);
+  try {
+    const { modules } = QRCode.create(text, { errorCorrectionLevel: "M" });
+    const quiet = 2;
+    const size = modules.size + quiet * 2;
+    let path = "";
+    for (let row = 0; row < modules.size; row += 1) {
+      for (let column = 0; column < modules.size; column += 1) {
+        if (modules.data[row * modules.size + column]) path += `M${column + quiet} ${row + quiet}h1v1h-1z`;
+      }
+    }
+    element.innerHTML = `<svg xmlns="${svgNamespace}" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" aria-hidden="true"><rect width="${size}" height="${size}" fill="#ffffff"/><path d="${path}" fill="#000000"/></svg>`;
+  } catch (error) {
+    element.textContent = error instanceof Error ? error.message : String(error);
+    element.classList.add("frameseq-qr-error");
+  }
+  return element;
+}
+
+function renderIcon(node: FrameSeqNode): HTMLElement {
+  const element = document.createElement("span");
+  const name = String(node.props.name ?? "");
+  const svg = typeof node.props.svg === "string"
+    ? node.props.svg
+    : (globalThis as { __frameseqIcons?: Record<string, string> }).__frameseqIcons?.[name];
+  element.setAttribute("role", "img");
+  element.setAttribute("aria-label", name);
+  if (svg) element.innerHTML = svg;
+  else {
+    element.textContent = name;
+    element.classList.add("frameseq-icon-missing");
+  }
+  return element;
+}
+
+/**
+ * Shrink an object's text until the object holds it, between `minimum` and its own size. Every
+ * size inside scales by the same factor, so a list or a card keeps its proportions; math scales
+ * with the text around it. An earlier fit is undone first, since fonts that have arrived since
+ * may measure differently.
+ */
+function fitElement(element: HTMLElement, minimum: number, widthOnly = false, tooWide?: () => boolean): void {
+  const targets = [element, ...element.querySelectorAll<HTMLElement>("*")]
+    .filter((target) => target instanceof HTMLElement && !target.closest(".katex"));
+  for (const target of targets) {
+    if (target.dataset.frameseqFitSize === undefined) continue;
+    target.style.fontSize = target.dataset.frameseqFitSize;
+    delete target.dataset.frameseqFitSize;
+  }
+  const overflows = (): boolean => (tooWide ? tooWide() : element.scrollWidth > element.clientWidth + 1)
+    || (!widthOnly && element.scrollHeight > element.clientHeight + 1);
+  if (!overflows()) return;
+  const sizes = targets.map((target) => Number.parseFloat(getComputedStyle(target).fontSize) || 16);
+  for (const target of targets) target.dataset.frameseqFitSize = target.style.fontSize;
+  const apply = (scale: number): void => targets.forEach((target, index) => {
+    target.style.fontSize = `${Math.round(sizes[index] * scale * 100) / 100}px`;
+  });
+  let low = minimum;
+  let high = 1;
+  apply(low);
+  if (overflows()) return;
+  for (let step = 0; step < 8; step += 1) {
+    const middle = (low + high) / 2;
+    apply(middle);
+    if (overflows()) high = middle;
+    else low = middle;
+  }
+  apply(low);
+}
+
+function drawChart(element: HTMLElement): void {
+  let spec: ChartSpec;
+  try {
+    spec = JSON.parse(element.dataset.frameseqChart ?? "") as ChartSpec;
+  } catch {
+    return;
+  }
+  const style = getComputedStyle(element);
+  const variable = (name: string, fallback: string): string => style.getPropertyValue(name).trim() || fallback;
+  element.innerHTML = chartSvg(spec, {
+    width: element.clientWidth,
+    height: element.clientHeight,
+    fontSize: Number.parseFloat(style.fontSize) || 18,
+    foreground: variable("--frameseq-foreground", "#111827"),
+    muted: variable("--frameseq-muted", "#4b5563"),
+    grid: variable("--frameseq-border", "#e5e7eb"),
+    palette: [variable("--frameseq-accent", "#2563eb"), ...chartPalette],
+  });
+}
+
+/**
+ * Work that needs the slide laid out: fitting text to its room and drawing charts at their
+ * size. A slide is laid out only while it is shown, so this runs as each one appears, again
+ * once web fonts have arrived, and is safe to repeat.
+ */
+function settleCanvas(canvas: HTMLElement): void {
+  for (const element of canvas.querySelectorAll<HTMLElement>(".frameseq-semantic-math, [data-frameseq-fit]:not(table)")) {
+    const minimum = Number(element.dataset.frameseqFit ?? 0.5);
+    fitElement(element, minimum, element.dataset.frameseqFit === undefined);
+  }
+  // A table grows past its region rather than overflowing inside itself, so it is measured
+  // against the room its container has.
+  for (const table of canvas.querySelectorAll<HTMLElement>("table.frameseq-table")) {
+    const container = table.parentElement;
+    if (!container) continue;
+    const style = getComputedStyle(container);
+    const room = (): number => container.clientWidth
+      - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0);
+    fitElement(table, Number(table.dataset.frameseqFit ?? 0.6), table.dataset.frameseqFit === undefined, () => table.offsetWidth > room() + 1);
+  }
+  for (const element of canvas.querySelectorAll<HTMLElement>("[data-frameseq-chart]")) drawChart(element);
+  canvas.dataset.frameseqSettled = "true";
+}
+
+/** Settle canvases now, and again once the page's web fonts have loaded. */
+function settleWhenReady(canvases: () => Array<HTMLElement | undefined>, signal: AbortSignal): void {
+  for (const canvas of canvases()) if (canvas) settleCanvas(canvas);
+  void document.fonts?.ready.then(() => {
+    if (signal.aborted) return;
+    for (const canvas of canvases()) if (canvas?.isConnected) settleCanvas(canvas);
+  });
+}
+
 /** Source positions that produced more than one object, collected before rendering starts. */
 const sharedSpans = new Set<number>();
 
@@ -207,9 +365,39 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
       element = renderLine(node);
       break;
     }
+    case "table": {
+      element = renderTable(node);
+      break;
+    }
+    case "chart": {
+      element = document.createElement("div");
+      element.setAttribute("role", "img");
+      const spec = node.props as unknown as ChartSpec;
+      element.setAttribute("aria-label", `${spec.kind} chart: ${spec.labels.join(", ")}`);
+      element.dataset.frameseqChart = JSON.stringify({
+        kind: spec.kind,
+        labels: spec.labels,
+        series: spec.series,
+        colors: spec.colors,
+        unit: spec.unit,
+        showValues: spec.showValues,
+        legend: spec.legend,
+        max: spec.max,
+      } satisfies ChartSpec);
+      break;
+    }
+    case "qr": {
+      element = renderQr(node);
+      break;
+    }
+    case "icon": {
+      element = renderIcon(node);
+      break;
+    }
     default:
       element = document.createElement("div");
   }
+  if (typeof node.props.fit === "number") element.dataset.frameseqFit = String(node.props.fit);
 
   element.classList.add(`frameseq-${node.type}`);
   element.dataset.frameseqNode = node.type;
@@ -301,6 +489,27 @@ function addAutomaticTitlePage(canvas: HTMLElement, slides: SlidesRootDefinition
   canvas.append(titlePage);
 }
 
+/**
+ * The band a poster opens with: the title, and below it what the presentation says about who
+ * made it. It takes its room from the page like any other object, so the content below it
+ * shrinks to fit rather than sliding underneath.
+ */
+function addMetadataHeader(canvas: HTMLElement, slides: SlidesRootDefinition): void {
+  const header = document.createElement("header");
+  header.className = "frameseq-theme-header";
+  header.append(titlePageItem("frameseq-theme-header-title", slides.title));
+  if (slides.subtitle) header.append(titlePageItem("frameseq-theme-header-subtitle", slides.subtitle));
+  const credits = [slides.author, slides.institute, slides.date].filter((value): value is string => Boolean(value));
+  if (credits.length > 0) {
+    const line = document.createElement("div");
+    line.className = "frameseq-theme-header-credits";
+    for (const credit of credits) line.append(titlePageItem("frameseq-theme-header-credit", credit));
+    header.append(line);
+  }
+  canvas.classList.add("frameseq-has-header");
+  canvas.prepend(header);
+}
+
 function addThemeChrome(
   canvas: HTMLElement,
   slide: FrameSeqNode,
@@ -313,6 +522,7 @@ function addThemeChrome(
     addAutomaticTitlePage(canvas, slides);
   }
   if (isCover && !chrome.showOnCover) return;
+  if (chrome.header) addMetadataHeader(canvas, slides);
 
   const title = typeof slide.props.title === "string" ? slide.props.title : undefined;
   if (chrome.titleBar && title) {
@@ -1746,6 +1956,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const mountController = new AbortController();
   const { signal } = mountController;
   activeMountController = mountController;
+  resolvePrintUnits(slidesDocument.node);
   resolveAnchors(slidesDocument.node);
   collectSharedSpans(slidesDocument.node);
   document.title = slidesDocument.title;
@@ -1768,6 +1979,25 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   document.documentElement.style.setProperty("--slide-width", `${slidesDocument.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${slidesDocument.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${slidesDocument.canvasWidth} / ${slidesDocument.canvasHeight}`);
+  // The size each page prints at: the paper for a presentation made for it, and otherwise the
+  // canvas at CSS's 96 pixels to the inch.
+  const paper = slidesDocument.paper;
+  const printWidth = paper ? paper.width * 96 / 25.4 : slidesDocument.canvasWidth;
+  const printHeight = paper ? paper.height * 96 / 25.4 : slidesDocument.canvasHeight;
+  document.documentElement.style.setProperty("--slide-print-width", `${printWidth}px`);
+  document.documentElement.style.setProperty("--slide-print-height", `${printHeight}px`);
+  document.documentElement.style.setProperty("--slide-print-zoom", String(printWidth / slidesDocument.canvasWidth));
+  // How far type is read from, relative to a 1280-wide slide: the layout check scales its
+  // smallest readable size by it. Paper is measured across its short side.
+  const readingUnits = paper ? Math.min(slidesDocument.canvasWidth, slidesDocument.canvasHeight) * 1280 / paperCanvasUnits : slidesDocument.canvasWidth;
+  document.documentElement.dataset.frameseqReadingScale = String(readingUnits / 1280);
+  if (paper) {
+    document.documentElement.dataset.frameseqPaper = paper.name;
+    document.documentElement.dataset.frameseqPaperPoints = String(paper.width * 72 / 25.4 / slidesDocument.canvasWidth);
+  } else {
+    delete document.documentElement.dataset.frameseqPaper;
+    delete document.documentElement.dataset.frameseqPaperPoints;
+  }
   document.documentElement.dataset.frameseqTheme = slidesDocument.theme.name;
   document.documentElement.dataset.frameseqThemeFamily = slidesDocument.theme.family;
   document.documentElement.dataset.frameseqCoverLayout = slidesDocument.theme.coverLayout;
@@ -1778,7 +2008,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   if (printMode) {
     const pageStyle = document.createElement("style");
-    pageStyle.textContent = `@page { size: ${slidesDocument.canvasWidth / 96}in ${slidesDocument.canvasHeight / 96}in; margin: 0; }`;
+    pageStyle.textContent = `@page { size: ${printWidth / 96}in ${printHeight / 96}in; margin: 0; }`;
     document.head.append(pageStyle);
   }
 
@@ -1817,12 +2047,14 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         element.classList.add("is-visible");
       });
     }
+    settleWhenReady(() => slides.map(({ canvas }) => canvas), signal);
     document.documentElement.dataset.ready = "true";
     return;
   }
 
   if (import.meta.hot && thumbnailMode) {
     mountThumbnails(target, root, slides, (canvas, frame) => scaleCanvas(canvas, frame, slidesDocument), signal);
+    settleWhenReady(() => slides.map(({ canvas }) => canvas), signal);
     document.documentElement.dataset.ready = "true";
     return;
   }
@@ -1960,6 +2192,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       element.classList.toggle("is-visible", Number(element.dataset.step ?? 0) <= 0);
     });
     presenter.nextFrame.append(nextCanvas);
+    settleCanvas(nextCanvas);
     requestAnimationFrame(updateNextScale);
   }
 
@@ -2037,6 +2270,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       const active = index === currentSlide;
       frame.classList.toggle("is-active", active);
       if (!active) return;
+      if (canvas.dataset.frameseqSettled !== "true") settleCanvas(canvas);
       canvas.querySelectorAll<HTMLElement>(".frameseq-step").forEach((element) => {
         const step = Number(element.dataset.step ?? 0);
         element.classList.toggle("is-visible", step <= currentStep);
@@ -2542,6 +2776,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   if (presenter) resizeObserver.observe(presenter.nextFrame);
   signal.addEventListener("abort", () => resizeObserver.disconnect(), { once: true });
   update(false);
+  // Fonts that arrive after the first slide was shown change how much text fits, so the slides
+  // already shown are settled again; the others settle when they appear.
+  void document.fonts?.ready.then(() => {
+    if (signal.aborted) return;
+    for (const { canvas } of slides) {
+      if (canvas.dataset.frameseqSettled === "true" && canvas.isConnected) settleCanvas(canvas);
+    }
+    if (nextCanvas?.isConnected) settleCanvas(nextCanvas);
+  });
   postSyncMessage({ type: "request-state" });
   document.documentElement.dataset.ready = "true";
 }

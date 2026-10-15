@@ -1,4 +1,4 @@
-<!-- translation-of: docs/typst.md sha256:4b0a641d78e293ba -->
+<!-- translation-of: docs/typst.md sha256:2459305c7707646b -->
 
 # Typst 集成
 
@@ -16,7 +16,7 @@ npm run typst
 npx frameseq typst slides.ts --output reports/talk.typ
 ```
 
-FrameSeq 把每一页转换成固定尺寸的 Typst `page`。文字、代码、网格、分栏、局部网格、画布定位、矩形、圆、连线和本地图片都保持为**原生、可编辑**的 Typst 对象。原生的 `typst` 和 `typstFile()` 片段被直接放进生成的源码里。
+FrameSeq 把每一页转换成固定尺寸的 Typst `page`。文字、代码、网格、分栏、局部网格、画布定位、矩形、圆、连线、本地图片和 `table()` 对象都保持为**原生、可编辑**的 Typst 对象。图表、图标和二维码会变成 `.typ` 文件旁边的 SVG 图片,由与浏览器里相同的代码绘制。原生的 `typst` 和 `typstFile()` 片段被直接放进生成的源码里。为纸张制作的演示会得到纸张尺寸的页面;见[海报与打印](posters.md)。
 
 行内 `$...$` 公式使用 MiTeX 的 `mi()` 函数,`math()` 和公式类的 `latex` 片段使用 `mitex()`,基础 LaTeX 文本片段使用 MiTeX 的实验性 `mitext()` 模式。生成的文件会 import `@preview/mitex:0.2.7`,可以直接编译:
 

@@ -14,13 +14,16 @@ A Chinese translation of this reading path is at [中文文档](zh/README.md).
 
 The model behind the recipes, one subject at a time.
 
+- [Language tour](language.md) — The six ideas of FrameSeq: documents, slides, objects, the cursor, names, and checks.
 - [Document model](document-model.md) — How presentation(), slide(), objects, and the active region fit together.
-- [Content](content.md) — Text, lists, images, code, formulas, metrics, cards, and groups.
+- [Content](content.md) — Text, lists, images, tables, charts, icons, QR codes, formulas, metrics, cards, and groups.
+- [Citations and references](citations.md) — Cite from a BibTeX file, list each slide's sources at its foot, and build the reference list.
 - [Layout](layout.md) — Normal flow, split pages, grids, local grids, region paths, and canvas.
 - [Diagrams](diagrams.md) — Region paths, automatic rows and columns, names, and connectors that follow their objects.
 - [Shapes and connectors](shapes.md) — The primitives a diagram is built from: rectangles, circles, lines, and arrows.
 - [Styling](styling.md) — Chainable modifiers, text roles, dimensions, Tailwind utilities, and inline styles.
 - [Themes](themes.md) — Built-in themes, presentation-wide typography, CJK text, and custom tokens.
+- [Posters and print](posters.md) — Pages for paper: A0 posters and handouts, printed sizes, and the poster theme.
 
 ## Typeset mathematics and tables
 
@@ -48,6 +51,7 @@ Deliver the talk and hand the file over afterwards.
 
 Drive FrameSeq from the tools you already use.
 
+- [FrameSeq app](app.md) — Install Studio and the frameseq command in one download, with no Node.js needed.
 - [FrameSeq Studio](studio.md) — Edit, preview, check, and export a deck in one window.
 - [VS Code extension](vscode.md) — Split view, slide navigation, diagnostics, and export commands.
 - [CLI reference](cli.md) — Development, remote control, HTML, PDF, PPTX, Typst, inspection, and checking.

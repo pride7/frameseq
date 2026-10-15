@@ -3,9 +3,13 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import QRCode from "qrcode";
 import { createServer } from "vite";
+import { chartPalette, chartSvg } from "../lib/index.js";
+import { locateProblems, reportedProblems } from "./document-errors.mjs";
 
-const slideWidthPoints = 960;
+/** A screen presentation's page width in points; one made for paper uses the paper's. */
+const screenWidthPoints = 960;
 const semanticClasses = new Set([
   "frameseq-auto-title-page",
   "frameseq-body-copy",
@@ -43,8 +47,16 @@ const semanticClasses = new Set([
   "frameseq-region-card",
   "frameseq-region-left",
   "frameseq-region-right",
+  "frameseq-footnote",
+  "frameseq-reference",
+  "frameseq-references",
+  "frameseq-slide-footnotes",
+  "frameseq-semantic-chart",
   "frameseq-semantic-code",
+  "frameseq-semantic-icon",
   "frameseq-semantic-image",
+  "frameseq-semantic-qr",
+  "frameseq-semantic-table",
   "frameseq-semantic-latex",
   "frameseq-semantic-line",
   "frameseq-semantic-math",
@@ -82,6 +94,7 @@ const supportedStyles = new Set([
   "minHeight",
   "minWidth",
   "opacity",
+  "overflow",
   "padding",
   "position",
   "textAlign",
@@ -352,9 +365,12 @@ function semanticTextStyle(node, context) {
   } else if (names.has("frameseq-card-copy")) {
     style.color = theme.colors.muted;
     style.size = bodySize ?? 21;
-  } else if (names.has("frameseq-caption")) {
+  } else if (names.has("frameseq-caption") || names.has("frameseq-footnote")) {
     style.color = theme.colors.subtle;
     style.size = 15;
+  } else if (names.has("frameseq-reference")) {
+    style.color = theme.colors.muted;
+    style.size = bodySize ?? 19;
   } else if (names.has("frameseq-quote")) {
     style.size = 38;
     style.weight = 650;
@@ -432,6 +448,9 @@ function wrapCommon(node, content, context, defaults = {}) {
 }
 
 function inspectCustomStyles(node, context) {
+  if (typeof node.props?.fit === "number") {
+    context.warn("fit() shrinks text to its room in the browser, PDF, and PowerPoint; Typst keeps the text at its full size.");
+  }
   for (const name of classes(node)) {
     if (!semanticClasses.has(name) && !/^frameseq-(?:grid-cell-\d+|step)$/.test(name)) {
       context.warn(`CSS class ${typstString(name)} has no automatic Typst equivalent.`);
@@ -451,6 +470,8 @@ function makeContext(presentation, entry, outputPath) {
   const theme = presentation.theme;
   const canvasWidth = Number(presentation.canvasWidth) || 1280;
   const canvasHeight = Number(presentation.canvasHeight) || 720;
+  const paper = presentation.paper;
+  const slideWidthPoints = paper ? paper.width * 72 / 25.4 : screenWidthPoints;
   const slideHeightPoints = slideWidthPoints * canvasHeight / canvasWidth;
   const warnings = new Set();
   const assets = [];
@@ -610,6 +631,118 @@ async function serializeImage(node, context) {
   if (height) args.push(`height: ${height}`);
   args.push(`fit: ${hasClass(node, "frameseq-full-bleed-image") ? '"cover"' : '"contain"'}`);
   return wrapCommon({ ...node, styles: { ...node.styles, width: undefined, height: undefined } }, `#image(${args.join(", ")})`, context);
+}
+
+/** A table as a native Typst table, ruled as in the browser: heavy above and below, light under the heading. */
+function serializeTable(node, context) {
+  const rows = node.props?.rows ?? [];
+  const header = Number(node.props?.header ?? 0);
+  const columns = Math.max(1, ...rows.map((row) => row.length));
+  const align = Array.from({ length: columns }, (_, index) => node.props?.align?.[index] ?? "left");
+  const foreground = cssColor(context.theme.colors.foreground, context);
+  const border = cssColor(context.theme.colors.border, context, context.theme.colors.foreground);
+  const heavy = `table.hline(stroke: ${length("2px", context)} + ${foreground})`;
+  const light = `table.hline(stroke: ${length("1px", context)} + ${foreground})`;
+  const rule = `table.hline(stroke: ${length("1px", context)} + ${border})`;
+  const fill = node.props?.striped ? cssColor(context.theme.colors.surfaceStrong, context) : undefined;
+  const cells = (row, bold) => Array.from({ length: columns }, (_, index) => (
+    bold ? `[#strong[${inlineContent(row[index] ?? "")}]]` : `[${inlineContent(row[index] ?? "")}]`
+  ));
+  const body = rows.slice(header);
+  const parts = [
+    `columns: ${columns}`,
+    `align: (${align.join(", ")},)`,
+    "stroke: none",
+    `inset: (x: ${length("16px", context)}, y: ${length("9px", context, "y")})`,
+    ...(fill ? [`fill: (_, y) => if y >= ${header} and calc.even(y - ${header}) == false { ${fill} }`] : []),
+    heavy,
+    ...(header > 0 ? [`table.header(${rows.slice(0, header).flatMap((row) => cells(row, true)).join(", ")})`, light] : []),
+    ...body.flatMap((row, index) => [...(index > 0 ? [rule] : []), ...cells(row, false)]),
+    heavy,
+  ];
+  const size = length(context.font?.size ?? 21, context, "y");
+  return wrapCommon(node, `#text(size: ${size})[#table(\n  ${parts.join(",\n  ")}\n)]`, context);
+}
+
+/** Every node's parent on the slide being exported, for measuring the room an object has. */
+function recordParents(node, parents = new Map()) {
+  for (const child of node.children ?? []) {
+    parents.set(child, node);
+    recordParents(child, parents);
+  }
+  return parents;
+}
+
+/**
+ * The width an object takes in the export: its own when it states one in pixels, and otherwise
+ * the slide's content width shared out by the grids and splits around it. Typst lays out after
+ * this runs, so drawings that need a size, such as charts, take it from here.
+ */
+function objectWidth(node, context, fallback) {
+  const own = String(node.styles?.width ?? "");
+  const width = Number.parseFloat(own);
+  if (Number.isFinite(width) && /^-?[\d.]+(?:px)?$/.test(own)) return width;
+  if (fallback !== undefined) return fallback;
+  let available = context.canvasWidth - 2 * (Number.parseFloat(context.resolveVariable(context.theme.spacing.slideX)) || 84);
+  const chain = [];
+  for (let current = node; context.parents?.get(current); current = context.parents.get(current)) {
+    chain.unshift({ parent: context.parents.get(current), child: current });
+  }
+  for (const { parent, child } of chain) {
+    const template = String(parent.styles?.gridTemplateColumns ?? "");
+    if (parent.styles?.display !== "grid" || !template) continue;
+    const repeated = /^repeat\((\d+)/.exec(template);
+    const tracks = repeated
+      ? Array.from({ length: Number(repeated[1]) }, () => 1)
+      : template.split(/\s+/).map((track) => Number.parseFloat(track) || 1);
+    const index = parent.children.indexOf(child) % tracks.length;
+    const gap = Number.parseFloat(context.resolveVariable(context.theme.spacing.gridGap)) || 20;
+    available = (available - gap * (tracks.length - 1)) * tracks[index] / tracks.reduce((sum, track) => sum + track, 0);
+  }
+  return Math.max(available, 40);
+}
+
+/** A chart drawn by the same code as in the browser, as an SVG image at its size. */
+async function serializeChart(node, context) {
+  const width = objectWidth(node, context);
+  const ownHeight = Number.parseFloat(node.styles?.height ?? "");
+  const height = Number.isFinite(ownHeight) ? ownHeight : width * 9 / 16;
+  const theme = context.theme;
+  const svg = chartSvg({ ...node.props }, {
+    width,
+    height,
+    fontSize: Number.parseFloat(node.styles?.fontSize ?? "") || 18,
+    foreground: theme.colors.foreground,
+    muted: theme.colors.muted,
+    grid: theme.colors.border,
+    palette: [theme.colors.accent, ...chartPalette],
+  }).replace('font-family="inherit"', `font-family="${String(theme.fonts.body).replace(/"/g, "'")}"`);
+  const path = await writeAsset(context, svg, ".svg", "chart");
+  const strip = { ...node, styles: { ...node.styles, width: undefined, height: undefined } };
+  return wrapCommon(strip, `#image(${typstString(path)}, width: ${length(width, context)})`, context);
+}
+
+/** A QR code as a crisp SVG image, dark on light as phones expect. */
+async function serializeQr(node, context) {
+  const svg = await QRCode.toString(String(node.props?.text ?? ""), { type: "svg", errorCorrectionLevel: "M", margin: 2 });
+  const path = await writeAsset(context, svg, ".svg", "qr");
+  const size = objectWidth(node, context, 200);
+  const strip = { ...node, styles: { ...node.styles, width: undefined, height: undefined } };
+  return wrapCommon(strip, `#image(${typstString(path)}, width: ${length(size, context)})`, context);
+}
+
+/** An icon in its colour at its size; Typst draws SVG without CSS, so the colour is written in. */
+async function serializeIcon(node, context) {
+  const svg = typeof node.props?.svg === "string" ? node.props.svg : "";
+  if (!svg) {
+    context.warn(`Icon ${typstString(node.props?.name ?? "")} had no drawing and was omitted.`);
+    return "";
+  }
+  const color = context.resolveVariable(node.styles?.color ?? context.theme.colors.accent);
+  const path = await writeAsset(context, svg.replaceAll("currentColor", color), ".svg", "icon");
+  const size = Number.parseFloat(node.styles?.fontSize ?? "") || 48;
+  const strip = { ...node, styles: { ...node.styles, fontSize: undefined, color: undefined } };
+  return wrapCommon(strip, `#image(${typstString(path)}, width: ${length(size, context)})`, context);
 }
 
 async function serializeTypst(node, context) {
@@ -977,6 +1110,10 @@ async function serializeNode(node, context) {
     radius: context.theme.radii.large,
   });
   if (node.type === "image") return serializeImage(node, context);
+  if (node.type === "table") return serializeTable(node, context);
+  if (node.type === "chart") return serializeChart(node, context);
+  if (node.type === "qr") return serializeQr(node, context);
+  if (node.type === "icon") return serializeIcon(node, context);
   if (node.type === "typst") return serializeTypst(node, context);
   if (node.type === "latex") return serializeLatex(node, context);
   if (node.type === "rect" || node.type === "circle") return serializeShape(node, context);
@@ -1000,7 +1137,7 @@ function syntheticTextNode(content, className) {
 
 function hasVisibleNodeContent(node) {
   if (node.type === "text") return Boolean(String(node.props?.content ?? "").trim());
-  if (["image", "code", "equation", "typst", "latex", "rect", "circle", "line"].includes(node.type)) {
+  if (["image", "code", "equation", "typst", "latex", "rect", "circle", "line", "table", "chart", "qr", "icon"].includes(node.type)) {
     return true;
   }
   return (node.children ?? []).some(hasVisibleNodeContent);
@@ -1055,6 +1192,21 @@ function slideChrome(slide, index, presentation, context, cover, horizontal) {
   return elements;
 }
 
+/** A poster's title band, reaching the page edges past the page's own inset as it does in HTML. */
+function metadataHeader(presentation, context, horizontal, vertical) {
+  const chrome = context.theme.chrome;
+  const foreground = cssColor(chrome.headerForeground, context, "#ffffff");
+  const background = cssColor(chrome.headerBackground, context, context.theme.colors.accent);
+  const headingSize = length(context.font?.heading?.size ?? 76, context, "y");
+  const credits = [presentation.author, presentation.institute, presentation.date].filter(Boolean);
+  const lines = [
+    `#text(size: ${headingSize}, weight: 800, ${typstString(presentation.title)})`,
+    ...(presentation.subtitle ? [`#text(size: ${length(36, context, "y")}, ${typstString(presentation.subtitle)})`] : []),
+    ...(credits.length > 0 ? [`#text(size: ${length(26, context, "y")}, ${typstString(credits.join("    "))})`] : []),
+  ];
+  return `#block(width: 100%, fill: ${background}, outset: (x: ${horizontal}, top: ${vertical}), inset: (top: ${length(8, context, "y")}, bottom: ${length(48, context, "y")}))[#set text(fill: ${foreground})\n#stack(dir: ttb, spacing: ${length(14, context, "y")}, ${lines.map((line) => `[${line}]`).join(", ")})]`;
+}
+
 async function serializeSlide(slide, index, presentation, context) {
   const cover = hasClass(slide, "frameseq-cover-slide");
   const background = cssColor(
@@ -1096,7 +1248,9 @@ async function serializeSlide(slide, index, presentation, context) {
   if (context.theme.chrome.titleBar && !cover) {
     childNodes = childNodes.filter((child) => !hasClass(child, "frameseq-slide-title"));
   }
+  context.parents = recordParents(slide);
   const children = await Promise.all(childNodes.map((child) => serializeNode(child, context)));
+  if (context.theme.chrome.header && !cover) children.unshift(metadataHeader(presentation, context, horizontal, vertical));
   if (automaticTitlePage) {
     children.splice(
       Math.min(2, children.length),
@@ -1126,7 +1280,13 @@ async function loadPresentation(entry, packageRoot, configFile) {
     logLevel: "error",
   });
   try {
-    const module = await server.ssrLoadModule(entry);
+    let module;
+    try {
+      module = await server.ssrLoadModule(entry);
+    } catch (error) {
+      // The runtime ran in this process, so the statement it stopped in is still on record.
+      throw await locateProblems(entry, reportedProblems(error));
+    }
     const presentation = module.default;
     if (!presentation?.node || presentation.node.type !== "slides") {
       throw new Error("The slide source did not export a FrameSeq presentation");

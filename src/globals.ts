@@ -1,7 +1,9 @@
+/// <reference path="./modules.d.ts" preserve="true" />
 export {};
 
 declare global {
   const presentation: typeof import("./script").presentation;
+  const poster: typeof import("./script").poster;
   const slide: typeof import("./script").slide;
   const note: typeof import("./script").note;
   const text: typeof import("./script").text;
@@ -19,6 +21,13 @@ declare global {
   const steps: typeof import("./script").steps;
   const metric: typeof import("./script").metric;
   const spacer: typeof import("./script").spacer;
+  const table: typeof import("./script").table;
+  const chart: typeof import("./script").chart;
+  const qr: typeof import("./script").qr;
+  const icon: typeof import("./script").icon;
+  const cite: typeof import("./script").cite;
+  const footnote: typeof import("./script").footnote;
+  const references: typeof import("./script").references;
   const group: typeof import("./script").group;
   const ref: typeof import("./script").ref;
   const card: typeof import("./script").card;
@@ -32,6 +41,7 @@ declare global {
 
   const px: typeof import("./core").px;
   const pt: typeof import("./core").pt;
+  const mm: typeof import("./core").mm;
   const rem: typeof import("./core").rem;
   const percent: typeof import("./core").percent;
   const vw: typeof import("./core").vw;

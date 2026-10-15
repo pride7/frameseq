@@ -32,6 +32,7 @@ const examples = [
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
   { slug: "recipes", entry: resolve(packageRoot, "gallery", "slides", "recipes.slides.ts") },
   { slug: "ai-research", entry: resolve(packageRoot, "gallery", "slides", "ai-research.slides.ts") },
+  { slug: "poster", entry: resolve(packageRoot, "gallery", "slides", "poster.slides.ts") },
   { slug: "minimal-academic", entry: resolve(packageRoot, "tests", "minimal-academic.slides.ts") },
   { slug: "beamer-madrid", entry: resolve(packageRoot, "tests", "beamer.slides.ts") },
   { slug: "blank", entry: resolve(packageRoot, "gallery", "slides", "blank.slides.ts") },

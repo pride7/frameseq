@@ -11,6 +11,7 @@ import {
   LineBuilder,
   type LinePoints,
   type Length,
+  resolvePrintUnits,
   Rect,
   ShapeBuilder,
   Spacer,
@@ -34,6 +35,27 @@ import {
   Steps,
 } from "./semantic";
 import { attachNode, detachNode, nodeParent } from "./node-tree";
+import {
+  Chart,
+  type ChartBuilder,
+  type ChartData,
+  type ChartKind,
+  Icon,
+  Qr,
+  Table,
+  type TableBuilder,
+  type TableCell,
+} from "./objects";
+import type { IconName } from "./icon-names";
+import {
+  type Bibliography,
+  type CitationOptions,
+  citationLabel,
+  citationMarker,
+  formatReference,
+  similarKeys,
+  superscript,
+} from "./citations";
 
 let activeSlides: SlidesDefinition | undefined;
 let activeSlide: ContentSlideBuilder | undefined;
@@ -48,6 +70,14 @@ let runningStatement: { start: number; end: number } | undefined;
  */
 export function markStatement(start: number, end: number): void {
   runningStatement = { start, end };
+  // A document that stops with an error stops inside the statement announced last, so the
+  // preview and the CLI read it from here to say which line the error came from.
+  (globalThis as FailedStatementHolder).__frameseqStatement = runningStatement;
+}
+
+/** Where the statement running now is kept for whoever reports an error the document threw. */
+interface FailedStatementHolder {
+  __frameseqStatement?: { start: number; end: number };
 }
 
 const textRoles = [
@@ -190,6 +220,9 @@ export function presentation(titleOrOptions: string | SlidesOptions = {}): Slide
   activeSlide = undefined;
   activeRegion = undefined;
   pathRegions.clear();
+  citationNumbers.clear();
+  referenceLists.length = 0;
+  resetSlideNotes();
   return activeSlides;
 }
 
@@ -200,7 +233,22 @@ export function getActivePresentation(): SlidesDefinition {
   }
   // The document has finished running; the next run announces its own statements.
   runningStatement = undefined;
+  delete (globalThis as FailedStatementHolder).__frameseqStatement;
+  fillReferenceLists();
+  resolvePrintUnits(activeSlides.node);
   return activeSlides;
+}
+
+/**
+ * Start a poster: a presentation made for paper, A0 portrait in the poster theme unless the
+ * options say otherwise, with its one page already begun. Lay the page out as on a slide.
+ * @example poster({ title: "Diffusion Language Models", author: "Ada Lovelace" }).grid(3);
+ */
+export function poster(titleOrOptions: string | SlidesOptions = {}): ContentSlideBuilder {
+  const options = typeof titleOrOptions === "string" ? { title: titleOrOptions } : titleOrOptions;
+  // A poster lists its sources in a references() block of its own, not again at its foot.
+  presentation({ size: "A0", theme: "poster", ...options, citations: { footnotes: false, ...options.citations } });
+  return slide({ name: "Poster" });
 }
 
 /** Start a slide. Content commands belong to it until the next slide() call. */
@@ -212,6 +260,7 @@ export function slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBu
   if (runningStatement) activeSlide.node.props.sourceStatement = runningStatement;
   activeRegion = undefined;
   pathRegions.clear();
+  resetSlideNotes();
   return activeSlide;
 }
 
@@ -378,6 +427,153 @@ export function steps(...items: string[]): ElementBuilder {
  */
 export function metric(value: string, label: string): GroupBuilder {
   return attach(Metric(value, label));
+}
+
+/**
+ * Add a table. The first row is the heading; columns of numbers align right.
+ * @param rows Each row as an array of cells. Cells may hold inline math between `$` signs.
+ * @example table([["Model", "Accuracy"], ["Baseline", "91.2%"], ["Ours", "94.6%"]]);
+ */
+export function table(rows: TableCell[][]): TableBuilder {
+  return attach(Table(rows).className("frameseq-semantic-table"));
+}
+
+/**
+ * Add a chart drawn from the data written here. PowerPoint export makes it an editable chart.
+ * @param kind "bar", "hbar", "line", "pie", or "donut".
+ * @param data One series as { label: value }, or several as { labels: [...], series: { name: [values] } }.
+ * @example chart("bar", { Q1: 12, Q2: 18, Q3: 25 }).unit("%");
+ */
+export function chart(kind: ChartKind, data: ChartData): ChartBuilder {
+  return attach(Chart(kind, data).className("frameseq-semantic-chart"));
+}
+
+/**
+ * Add a QR code for a link or any text, so the audience can open it from their phones.
+ * @example qr("https://pride7.github.io/frameseq/").width(220);
+ */
+export function qr(text: string): ElementBuilder {
+  return attach(Qr(text).className("frameseq-semantic-qr"));
+}
+
+/**
+ * Add an icon from the Lucide set, drawn in the text colour at the font size; set them with
+ * .color() and .size(). Browse the names at https://lucide.dev/icons.
+ * @example icon("rocket").size(64).color("#2563eb");
+ */
+export function icon(name: IconName): ElementBuilder {
+  return attach(Icon(name).className("frameseq-semantic-icon"));
+}
+
+/** Citation numbers in the order works were first cited, kept for the whole presentation. */
+const citationNumbers = new Map<string, number>();
+/** Lists made by references(), filled once the document has run and every citation is known. */
+const referenceLists: Array<{ list: GroupBuilder; all: boolean }> = [];
+/** The current slide's footnote area, its footnote count, and the works it already lists. */
+let slideNotes: GroupBuilder | undefined;
+let slideNoteCount = 0;
+const slideCitations = new Set<string>();
+
+function resetSlideNotes(): void {
+  slideNotes = undefined;
+  slideNoteCount = 0;
+  slideCitations.clear();
+}
+
+/** The area at the foot of the current slide where its footnotes and cited works are listed. */
+function footnoteArea(): GroupBuilder | undefined {
+  if (!activeSlide) return undefined;
+  if (!slideNotes) {
+    slideNotes = Group().className("frameseq-slide-footnotes");
+    attachNode(activeSlide.node, slideNotes.node);
+  }
+  return slideNotes;
+}
+
+function bibliography(): { works: Bibliography; options: CitationOptions } {
+  if (!activeSlides) throw new Error("Create a presentation with presentation() before citing");
+  const works = activeSlides.node.props.bibliography as Bibliography | undefined;
+  if (!works) {
+    throw new Error(
+      "cite() needs a bibliography: presentation({ bibliography }), "
+      + "with `import bibliography from \"./references.bib\"` or a record of reference texts",
+    );
+  }
+  return { works, options: (activeSlides.node.props.citations as CitationOptions | undefined) ?? {} };
+}
+
+/**
+ * Cite works from the presentation's bibliography, and return the marker to write in the text:
+ * [1] or [1, 2], or (Vaswani et al., 2017) in the author-year style. The works a slide cites are
+ * listed at its foot.
+ * @example text(`Attention replaced recurrence ${cite("vaswani2017")}.`);
+ */
+export function cite(...keys: string[]): string {
+  const { works, options } = bibliography();
+  if (keys.length === 0) throw new Error("cite() needs the key of at least one work");
+  const labels = keys.map((key) => {
+    const entry = works[key];
+    if (entry === undefined) {
+      const similar = similarKeys(key, Object.keys(works));
+      throw new Error(`cite() cannot find "${key}" in the bibliography${similar.length > 0 ? `; did you mean "${similar[0]}"?` : ""}`);
+    }
+    if (!citationNumbers.has(key)) citationNumbers.set(key, citationNumbers.size + 1);
+    const number = citationNumbers.get(key) as number;
+    if (options.footnotes !== false && !slideCitations.has(key)) {
+      const area = footnoteArea();
+      if (area) {
+        slideCitations.add(key);
+        const prefix = options.style === "author-year" ? "" : `[${number}] `;
+        area.add(new TextBoxBuilder(Text(`${prefix}${formatReference(entry)}`).node).className("frameseq-footnote"));
+      }
+    }
+    return citationLabel(entry, number, options.style);
+  });
+  return citationMarker(labels, options.style);
+}
+
+/**
+ * Add a footnote to the current slide and return its marker, a superscript number, to write
+ * where it belongs. Numbers start again on each slide.
+ * @example text(`Measured on one GPU${footnote("An NVIDIA A100, batch size 32.")}.`);
+ */
+export function footnote(content: string): string {
+  const area = footnoteArea();
+  if (!area) throw new Error("Create a slide with slide() before adding a footnote");
+  slideNoteCount += 1;
+  const marker = superscript(slideNoteCount);
+  area.add(new TextBoxBuilder(Text(`${marker} ${content}`).node).className("frameseq-footnote"));
+  return marker;
+}
+
+/**
+ * Add the list of works the presentation cites, numbered as cite() numbered them, or every work
+ * in the bibliography with { all: true }. It is filled once the whole document has run, so it
+ * may come before the citations it lists.
+ */
+export function references(options: { all?: boolean } = {}): GroupBuilder {
+  const list = Group().className("frameseq-references");
+  referenceLists.push({ list, all: options.all === true });
+  return attach(list);
+}
+
+function fillReferenceLists(): void {
+  if (referenceLists.length === 0 || !activeSlides) return;
+  const works = (activeSlides.node.props.bibliography as Bibliography | undefined) ?? {};
+  const style = (activeSlides.node.props.citations as CitationOptions | undefined)?.style;
+  for (const { list, all } of referenceLists) {
+    const cited = [...citationNumbers.keys()];
+    const keys = all ? [...cited, ...Object.keys(works).filter((key) => !citationNumbers.has(key))] : cited;
+    const ordered = style === "author-year"
+      ? [...keys].sort((a, b) => formatReference(works[a]).localeCompare(formatReference(works[b])))
+      : keys;
+    for (const key of ordered) {
+      const number = citationNumbers.get(key);
+      const prefix = style === "author-year" || number === undefined ? "" : `[${number}] `;
+      list.add(new TextBoxBuilder(Text(`${prefix}${formatReference(works[key])}`).node).className("frameseq-reference"));
+    }
+  }
+  referenceLists.length = 0;
 }
 
 /**

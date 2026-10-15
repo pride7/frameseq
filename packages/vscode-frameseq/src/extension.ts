@@ -3,7 +3,8 @@ import { randomBytes } from "node:crypto";
 import { access } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import * as vscode from "vscode";
-import { cliIn, findCli, notInstalledMessage } from "./cli";
+import { cliIn, findCli, notInstalledMessage, runtimeFor } from "./cli";
+import { registerNameFeatures } from "./names";
 import {
   ancestorDirectories,
   entryExcludeGlob,
@@ -77,12 +78,20 @@ interface InspectReport {
   slides: InspectSlide[];
 }
 
+/** A line and column the check reports, both counted from 1. */
+interface ReportedSource {
+  line: number;
+  column: number;
+}
+
 interface LayoutIssue {
   severity: "error" | "warning";
   rule: string;
   message: string;
   slide: { index: number; label: string };
-  element: { type: string; path: string; text?: string };
+  element: { type: string; path: string; text?: string; source?: ReportedSource };
+  /** Where a document that could not run stopped, for a "document-error" issue. */
+  source?: ReportedSource;
   suggestions: string[];
 }
 
@@ -367,7 +376,7 @@ async function selectEntry(provider: SlidesProvider): Promise<boolean> {
 async function cliInvocation(entry: EntryDocument, args: string[]): Promise<{ command: string; args: string[] }> {
   const cli = await findCli(entry.root);
   if (!cli) throw new Error(notInstalledMessage);
-  return { command: "node", args: [cli, ...args] };
+  return { command: await runtimeFor(cli), args: [cli, ...args] };
 }
 
 /** The slide document a running Studio shows, or undefined when it does not say. */
@@ -1857,6 +1866,21 @@ function diagnosticRange(slide: InspectSlide): vscode.Range {
   return new vscode.Range(line, character, line, character + 5);
 }
 
+/**
+ * The command an issue concerns, which a FrameSeq that records source lines in its check build
+ * reports itself; an older one reports only the slide, whose first line stands in for it.
+ */
+function issueRange(document: vscode.TextDocument | undefined, issue: LayoutIssue, slide: InspectSlide | undefined): vscode.Range | undefined {
+  const source = issue.source ?? issue.element?.source;
+  if (source && source.line >= 1) {
+    const line = source.line - 1;
+    const character = Math.max(0, source.column - 1);
+    const end = document && line < document.lineCount ? document.lineAt(line).range.end.character : character + 5;
+    return new vscode.Range(line, character, line, Math.max(end, character + 1));
+  }
+  return slide ? diagnosticRange(slide) : undefined;
+}
+
 async function checkLayout(
   provider: SlidesProvider,
   diagnostics: vscode.DiagnosticCollection,
@@ -1883,11 +1907,12 @@ async function checkLayout(
       }
 
       const editorDiagnostics: vscode.Diagnostic[] = [];
+      const document = vscode.workspace.textDocuments.find((open) => open.uri.toString() === entry.uri.toString());
       for (const issue of report.issues) {
-        const slide = inspect.slides[issue.slide.index - 1];
-        if (!slide) continue;
+        const range = issueRange(document, issue, inspect.slides[issue.slide.index - 1]);
+        if (!range) continue;
         const diagnostic = new vscode.Diagnostic(
-          diagnosticRange(slide),
+          range,
           `[${issue.rule}] ${issue.message}${issue.suggestions[0] ? ` ${issue.suggestions[0]}` : ""}`,
           issue.severity === "error"
             ? vscode.DiagnosticSeverity.Error
@@ -1997,6 +2022,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     currentTree,
     previewLineDecoration,
   );
+  registerNameFeatures(context);
   context.subscriptions.push(provider.onDidChangeMessage((message) => {
     tree.message = message;
   }));

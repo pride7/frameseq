@@ -8,10 +8,30 @@ export interface SourceTarget {
 
 import type { RenderedSlide } from "./outline";
 
+/** One reason the slide document could not run, with the offsets of the code that caused it. */
+export interface PreviewFailure {
+  message: string;
+  start?: number;
+  end?: number;
+}
+
+function readFailures(value: unknown): PreviewFailure[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): PreviewFailure[] => {
+    if (!item || typeof item !== "object") return [];
+    const { message, start, end } = item as Record<string, unknown>;
+    const located = Number.isInteger(start) && Number.isInteger(end);
+    return [{
+      message: typeof message === "string" ? message : "",
+      ...(located ? { start: start as number, end: end as number } : {}),
+    }];
+  });
+}
+
 export interface FrameEvents {
   previewRendered: () => void;
   /** The slide document threw while it was being run, so the preview still shows the last deck. */
-  previewFailed: (message: string) => void;
+  previewFailed: (failures: PreviewFailure[]) => void;
   slide: (index: number, count: number, label: string) => void;
   reveal: (target: SourceTarget) => void;
   select: (targets: SourceTarget[]) => void;
@@ -84,10 +104,17 @@ export class StudioFrames {
       // A deck that throws while the page starts never reports in, and leaves no running page
       // for later saves to update. Say why, and reload the frames once the document changes.
       setTimeout(() => {
-        const page = this.preview.contentWindow as (Window & { __frameseqError?: string }) | null;
+        const page = this.preview.contentWindow as (Window & {
+          __frameseqError?: string;
+          __frameseqErrorStatement?: unknown;
+        }) | null;
         if (!page || page.document.documentElement.dataset.ready === "true") return;
-        this.events.previewFailed(page.__frameseqError || this.lastError
-          || "The slide document could not be run. Save a fix and the preview restarts.");
+        const [failure] = readFailures([{
+          message: page.__frameseqError || this.lastError
+            || "The slide document could not be run. Save a fix and the preview restarts.",
+          ...(page.__frameseqErrorStatement as object | undefined),
+        }]);
+        this.events.previewFailed([failure]);
       }, 1500);
     });
     // Build errors are listed in the Problems panel; a full-page overlay squeezed into the rail
@@ -142,9 +169,13 @@ export class StudioFrames {
           this.lastError = "";
           events.previewRendered();
           return;
-        case "frameseq.render-failed":
-          events.previewFailed(this.lastError || "The slide document threw an error while it was being run.");
+        case "frameseq.render-failed": {
+          const fallback = this.lastError || "The slide document threw an error while it was being run.";
+          const failures = readFailures(message.problems)
+            .map((failure) => ({ ...failure, message: failure.message || fallback }));
+          events.previewFailed(failures.length > 0 ? failures : [{ message: fallback }]);
           return;
+        }
         case "frameseq.slide":
           if (typeof message.index === "number" && typeof message.count === "number") {
             events.slide(message.index, message.count, typeof message.label === "string" ? message.label : "");

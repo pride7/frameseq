@@ -1,5 +1,10 @@
 import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
 import { attachNode } from "./node-tree";
+import type { Bibliography, CitationOptions } from "./citations";
+import { paperCanvasUnits, paperDimensions, type PaperDimensions, type PaperSize } from "./paper";
+
+export { canvasLength, paperCanvasUnits, paperDimensions, resolvePrintUnits } from "./paper";
+export type { PaperDimensions, PaperSize } from "./paper";
 
 export type Length = number | string;
 
@@ -18,7 +23,11 @@ export type ComponentType =
   | "rect"
   | "circle"
   | "line"
-  | "spacer";
+  | "spacer"
+  | "table"
+  | "chart"
+  | "qr"
+  | "icon";
 
 export interface FrameSeqNode {
   type: ComponentType;
@@ -91,11 +100,27 @@ export interface SlidesOptions {
   institute?: string;
   date?: string;
   ratio?: "16:9" | "4:3";
+  /**
+   * Make the pages for paper, such as a poster: "A0" to "A5", "letter", "legal", "tabloid", or
+   * a size such as "36x48in". The canvas keeps its own units, 1600 across the paper's short
+   * side, so themes, layouts, and checks work as on a slide; PDF, PowerPoint, and Typst print
+   * it at the paper size. Use mm() and pt() for printed measurements.
+   */
+  size?: PaperSize;
+  /** Which way a paper size stands; portrait by default. */
+  orientation?: "portrait" | "landscape";
   width?: number;
   height?: number;
   background?: string;
   theme?: ThemeInput;
   font?: PresentationFontOptions;
+  /**
+   * The works cite() can cite, by key: `import bibliography from "./references.bib"`, or a record of
+   * reference texts such as { knuth1984: "Knuth, D. E. (1984). Literate programming." }.
+   */
+  bibliography?: Bibliography;
+  /** How citations are written, and whether each slide lists the works it cites. */
+  citations?: CitationOptions;
 }
 
 export interface SlideOptions {
@@ -560,6 +585,20 @@ export class ElementBuilder {
     return this;
   }
 
+  /**
+   * Shrink the text inside this object until it fits the room it has, down to `minimum` of its
+   * size: 0.5 by default. Whatever still does not fit is clipped, and the layout check says so.
+   * @example text(longParagraph).fit();
+   */
+  fit(minimum = 0.5): this {
+    if (!(minimum > 0 && minimum <= 1)) throw new Error(`fit() expects a smallest scale above 0 and at most 1, not ${minimum}`);
+    this.node.props.fit = minimum;
+    this.node.styles.minWidth ??= "0px";
+    this.node.styles.minHeight ??= "0px";
+    this.node.styles.overflow = "hidden";
+    return this;
+  }
+
   /** Rotate the object, in degrees. */
   rotate(degrees: number): this {
     this.node.styles.transform = `rotate(${degrees}deg)`;
@@ -766,6 +805,11 @@ export class SlidesRootDefinition extends ElementBuilder {
     return this.node.props.theme as ThemeDefinition;
   }
 
+  /** The printed size, for a presentation made for paper. */
+  get paper(): PaperDimensions | undefined {
+    return this.node.props.paper as PaperDimensions | undefined;
+  }
+
   get font(): PresentationFontOptions | undefined {
     return this.node.props.font as PresentationFontOptions | undefined;
   }
@@ -791,8 +835,23 @@ export function SlidesRoot(titleOrOptions: string | SlidesOptions = {}): SlidesR
     ? { title: titleOrOptions }
     : titleOrOptions;
   const ratio = options.ratio ?? "16:9";
-  const width = options.width ?? 1280;
-  const height = options.height ?? Math.round(width * (ratio === "4:3" ? 3 / 4 : 9 / 16));
+  const paper = options.size === undefined ? undefined : paperDimensions(options.size, options.orientation);
+  let width: number;
+  let height: number;
+  if (paper) {
+    // The canvas has 1600 units across the paper's short side unless a width or height says
+    // otherwise, and the other side follows the paper.
+    const aspect = paper.height / paper.width;
+    const portrait = paper.width <= paper.height;
+    width = options.width
+      ?? (options.height !== undefined
+        ? Math.round(options.height / aspect)
+        : (portrait ? paperCanvasUnits : Math.round(paperCanvasUnits / aspect)));
+    height = options.height ?? Math.round(width * aspect);
+  } else {
+    width = options.width ?? 1280;
+    height = options.height ?? Math.round(width * (ratio === "4:3" ? 3 / 4 : 9 / 16));
+  }
   const theme = resolveTheme(options.theme);
   if (options.background) {
     theme.colors.background = options.background;
@@ -807,6 +866,9 @@ export function SlidesRoot(titleOrOptions: string | SlidesOptions = {}): SlidesR
     ratio,
     width,
     height,
+    paper,
+    bibliography: options.bibliography,
+    citations: options.citations,
     theme,
     font: options.font
       ? {
@@ -902,7 +964,10 @@ export function Spacer(size = 1): ElementBuilder {
 }
 
 export const px = (value: number): string => `${value}px`;
+/** Points. On a presentation made for paper, printed points: pt(32) is 32 pt type on the sheet. */
 export const pt = (value: number): string => `${value}pt`;
+/** Millimetres. On a presentation made for paper, printed millimetres on the sheet. */
+export const mm = (value: number): string => `${value}mm`;
 export const rem = (value: number): string => `${value}rem`;
 export const percent = (value: number): string => `${value}%`;
 export const vw = (value: number): string => `${value}vw`;

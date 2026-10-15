@@ -43,6 +43,12 @@ export const documentationGroups = [
     summary: "The model behind the recipes, one subject at a time.",
     pages: [
       {
+        slug: "language",
+        source: "docs/language.md",
+        label: "Language tour",
+        blurb: "The six ideas of FrameSeq: documents, slides, objects, the cursor, names, and checks.",
+      },
+      {
         slug: "document-model",
         source: "docs/document-model.md",
         label: "Document model",
@@ -52,7 +58,13 @@ export const documentationGroups = [
         slug: "content",
         source: "docs/content.md",
         label: "Content",
-        blurb: "Text, lists, images, code, formulas, metrics, cards, and groups.",
+        blurb: "Text, lists, images, tables, charts, icons, QR codes, formulas, metrics, cards, and groups.",
+      },
+      {
+        slug: "citations",
+        source: "docs/citations.md",
+        label: "Citations and references",
+        blurb: "Cite from a BibTeX file, list each slide's sources at its foot, and build the reference list.",
       },
       {
         slug: "layout",
@@ -83,6 +95,12 @@ export const documentationGroups = [
         source: "docs/themes.md",
         label: "Themes",
         blurb: "Built-in themes, presentation-wide typography, CJK text, and custom tokens.",
+      },
+      {
+        slug: "posters",
+        source: "docs/posters.md",
+        label: "Posters and print",
+        blurb: "Pages for paper: A0 posters and handouts, printed sizes, and the poster theme.",
       },
     ],
   },
@@ -150,6 +168,12 @@ export const documentationGroups = [
     label: "Editor and command line",
     summary: "Drive FrameSeq from the tools you already use.",
     pages: [
+      {
+        slug: "app",
+        source: "docs/app.md",
+        label: "FrameSeq app",
+        blurb: "Install Studio and the frameseq command in one download, with no Node.js needed.",
+      },
       {
         slug: "studio",
         source: "docs/studio.md",
@@ -244,12 +268,15 @@ const chinese = {
     recipes: { label: "配方", blurb: "讲演需要的每一种页面,各一页完整源码,配渲染结果。" },
     revising: { label: "修改一场讲演", blurb: "第二稿要做的改动,每处一段 diff,按行计价。" },
     "document-model": { label: "文档模型", blurb: "presentation()、slide()、对象和当前区域怎么组合在一起。" },
-    content: { label: "内容", blurb: "文字、列表、图片、代码、公式、指标、卡片和分组。" },
+    language: { label: "语言速览", blurb: "FrameSeq 的六个概念:文档、幻灯片、对象、光标、名字和检查。" },
+    content: { label: "内容", blurb: "文字、列表、图片、表格、图表、图标、二维码、公式、指标、卡片和分组。" },
+    citations: { label: "引用与参考文献", blurb: "从 BibTeX 文件引用,在每页底部列出出处,并生成参考文献表。" },
     layout: { label: "布局", blurb: "普通流、分栏、网格、局部网格、区域路径和画布。" },
     diagrams: { label: "画图", blurb: "区域路径、自动行列、命名,以及跟着对象走的连线。" },
     shapes: { label: "图形与连线", blurb: "构成一张图的图元:矩形、圆、线和箭头。" },
     styling: { label: "样式", blurb: "链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。" },
     themes: { label: "主题", blurb: "内置主题、全局排版、中日韩文字和自定义 token。" },
+    posters: { label: "海报与打印", blurb: "为纸张做的页面:A0 海报和讲义、印刷尺寸,以及海报主题。" },
     typst: { label: "Typst 集成", blurb: "嵌入 Typst 片段,或把整场演示导出为可编辑的 .typ 源码。" },
     latex: { label: "LaTeX 集成", blurb: "把现有的 LaTeX 表格和片段编译成演示对象。" },
     "layout-checks": { label: "布局检查", blurb: "发现空白页、溢出、裁切、过小字号和拼错的区域路径。" },
@@ -257,6 +284,7 @@ const chinese = {
     presenter: { label: "演讲者视图与遥控", blurb: "备注、下一页预览、计时器、同步控制和手机遥控。" },
     deployment: { label: "部署 HTML", blurb: "发布静态演示、用 GitHub Pages,或构建单个可移植文件。" },
     pptx: { label: "导出 PowerPoint", blurb: "可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。" },
+    app: { label: "FrameSeq 应用", blurb: "一个下载装好 Studio 和 frameseq 命令,不需要 Node.js。" },
     studio: { label: "FrameSeq Studio", blurb: "在一个窗口里编辑、预览、检查和导出一场演示。" },
     vscode: { label: "VS Code 扩展", blurb: "分屏、页面导航、诊断和导出命令。" },
     cli: { label: "CLI 参考", blurb: "开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。" },

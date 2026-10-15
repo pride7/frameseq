@@ -29,10 +29,12 @@ Editable export uses a hybrid mapping:
 | Complete borders | Native PowerPoint shape borders |
 | Partial borders such as `border-bottom` | Editable line objects on the corresponding edges |
 | Images | PowerPoint image objects |
-| LaTeX math, inline math, Typst, and compiled LaTeX fragments | High-resolution image objects |
+| `table()` | A PowerPoint table, with its rules, alignment, and editable cells |
+| `chart()` | A PowerPoint chart drawn from the same data, editable in PowerPoint |
+| LaTeX math, inline math, Typst, compiled LaTeX fragments, icons, QR codes, and tables with math in a cell | High-resolution image objects |
 | Speaker notes | PowerPoint speaker notes |
 
-Structured layouts and `position()` use the final browser geometry, so the PowerPoint coordinates follow the same `split()`, `grid()`, `canvas()`, and theme layout used by HTML and PDF.
+Structured layouts and `position()` use the final browser geometry, so the PowerPoint coordinates follow the same `split()`, `grid()`, `canvas()`, and theme layout used by HTML and PDF. Text shrunk with `.fit()` keeps the size it was given in the browser. A presentation made for paper becomes slides of the paper's size, such as 841 × 1189 mm for an A0 poster; see [Posters and print](posters.md).
 
 ## Flattened export
 

@@ -41,10 +41,12 @@ note("State that the value is illustrative.");
 \`\`\`
 
 - Slide layouts: \`.cover()\`, \`.split(ratio)\`, \`.grid(columns)\`, \`.center()\`, \`.canvas()\`.
-- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`.
+- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`, \`table(rows)\`, \`chart(kind, data)\`, \`qr(text)\`, \`icon(name)\`.
+- Citations: \`presentation({ bibliography })\` with \`import bibliography from "./references.bib"\`, then \`cite(key)\` inside text, \`footnote(text)\`, and \`references()\`. Never type citation markers by hand.
+- Paper: \`poster({ title, author })\` starts an A0 poster; \`presentation({ size: "A4" })\` makes any deck for paper. On paper, \`mm()\` and \`pt()\` are printed sizes.
 - Regions: \`main()\`, \`left()\`, \`right()\`, \`cell(index)\`, \`at(path)\`.
 - Grouping: \`group(...items)\`, \`gridSection(columns, ...items)\`, \`.as(name)\`, \`ref(name)\`.
-- Common modifiers: \`.width()\`, \`.height()\`, \`.padding()\`, \`.gap()\`, \`.position()\`, \`.color()\`, \`.background()\`, \`.style()\`, \`.showAt()\`.
+- Common modifiers: \`.width()\`, \`.height()\`, \`.padding()\`, \`.gap()\`, \`.position()\`, \`.color()\`, \`.background()\`, \`.style()\`, \`.showAt()\`, \`.fit()\`.
 - Chain a modifier on the object or layout it changes. Do not call imagined APIs; consult \`llms.txt\` or TypeScript diagnostics for exact signatures.
 
 ## Regions and \`at()\`
@@ -114,7 +116,7 @@ Run this after changing slide source or shared components:
 npm run check
 \`\`\`
 
-This performs TypeScript validation and rendered geometry checks. Fix every error and review every warning. In particular, fix \`canvas-overflow\`, \`text-clipped\`, and accidental empty slides or regions.
+This performs TypeScript validation and rendered geometry checks. Fix every error and review every warning. In particular, fix \`canvas-overflow\`, \`text-clipped\`, and accidental empty slides or regions. Each finding names the line of the command that made the object; a \`document-error\` names the statement that stopped the document.
 
 For structured diagnostics or a fast outline:
 

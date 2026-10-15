@@ -21,7 +21,7 @@ presentation({
 
 ## Built-in themes
 
-FrameSeq includes seven themes:
+FrameSeq includes eight themes:
 
 - `blank` — neutral white and the default.
 - `midnight` — the original dark FrameSeq appearance with cyan accents.
@@ -30,6 +30,7 @@ FrameSeq includes seven themes:
 - `beamer-madrid` — a blue title bar and metadata footer inspired by Beamer Madrid.
 - `beamer-cambridge-us` — a burgundy and cream academic style inspired by Beamer CambridgeUS.
 - `minimal-academic` — a restrained academic theme with a left-aligned title page, underlined frame titles, and a compact footer.
+- `poster` — a conference poster: a title band built from the presentation's metadata, columns of titled blocks, and type sized for a sheet of paper. `poster()` starts with it; see [Posters and print](posters.md).
 
 Choose one on the presentation:
 
@@ -90,6 +91,24 @@ text("Content starts here.");
 ```
 
 Automatic title-page content is only added when the cover is empty. Add your own `text()`, image, or layout objects after `slide().cover()` to keep full manual control.
+
+## Poster
+
+`poster` opens every page that is not a cover with a band holding the title, subtitle, author, institute, and date. Under the band, grid cells are plain columns, `card()` regions are blocks with an accent rule across the top, and `.title()` text heads a block.
+
+```ts
+poster({
+  title: "Diffusion Language Models",
+  author: "Ada Lovelace",
+  institute: "University of Cambridge",
+}).grid(3);
+
+at("cell0/introduction").card();
+text("Introduction").title();
+text("Autoregressive models write one token at a time.");
+```
+
+The band is the theme option `chrome.header`, with `chrome.headerBackground` and `chrome.headerForeground` for its colours, so any theme can have one.
 
 ## Create a theme
 
@@ -157,7 +176,7 @@ const conferenceTheme = defineTheme({
 - `fonts`: `body`, `heading`, and `mono` CSS font stacks.
 - `spacing`: slide padding, layout gaps, and card padding.
 - `radii`: `small`, `medium`, `large`, and `pill` CSS radii.
-- `chrome`: optional title bar, footer, slide numbering, their dimensions, and colors.
+- `chrome`: optional title bar, footer, slide numbering, a poster's title band (`header`), their dimensions, and colors.
 - `family`: `"frameseq"` or `"beamer"`; extending a theme preserves its family automatically.
 - `coverLayout`: `"default"`, `"center"`, or `"academic-left"`.
 - `coverBackground`: a CSS color, gradient, or image used by `.cover()` slides.

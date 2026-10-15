@@ -27,7 +27,8 @@ Edit FrameSeq presentations with `slides.ts` on the left and a live FrameSeq pre
 - Shows the active `at()` region in the status bar and jumps between named regions on the current slide.
 - Binds selected content commands into a new named region as one undoable edit, restoring the previous authoring cursor afterwards.
 - Inserts a new slide after the slide containing the cursor.
-- Converts `frameseq check --json` results into Problems-panel diagnostics.
+- Converts `frameseq check --json` results into Problems-panel diagnostics on the line of the command each one concerns.
+- Treats the names given with `.as()` and `at()` as identifiers: completion, Go to Definition, Find All References, Rename Symbol, hover, and a diagnostic for a name that refers to nothing on its slide.
 - Exports the active presentation to HTML, PDF, PPTX, or editable Typst source from a visible Slides-view toolbar button.
 - Opens the deck in FrameSeq Studio, a window of its own with live slide thumbnails, a TypeScript editor, the preview, and live layout checks, from the Slides-view toolbar. Needs `@pride7/frameseq` 0.36.0 or newer in the project.
 - Provides TypeScript snippets for presentations, slides, whole-page and local-grid layouts, bullets, LaTeX, and Typst.
@@ -47,6 +48,8 @@ To write a single `.slides.ts` file in any folder, with no project around it, in
 ```bash
 npm install --global @pride7/frameseq
 ```
+
+Or install the [FrameSeq app](https://github.com/pride7/frameseq/releases/latest), which needs no Node.js: the extension finds its `frameseq` command on the PATH and runs it with the app's own Node.js.
 
 The active `slides.ts` or `*.slides.ts` editor is used automatically, including one kept in a subdirectory. Otherwise the extension searches the workspace for `slides.ts` and `*.slides.ts` documents. Run **FrameSeq: Select Entry** to choose between several decks; the choice is remembered per workspace until you switch back to following the active editor. Set `frameseq.entry` when the entry file has another name.
 

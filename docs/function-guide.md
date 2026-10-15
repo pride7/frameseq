@@ -11,6 +11,8 @@ Generated `slides.ts` files expose these lowercase functions globally, so import
 - [Lists and reveals](#lists-and-reveals)
 - [Semantic objects](#semantic-objects)
 - [Media and typesetting](#media-and-typesetting)
+- [Tables, charts, and icons](#tables-charts-and-icons)
+- [Citations](#citations)
 - [Slide layouts](#slide-layouts)
 - [Regions](#regions)
 - [Shapes and connectors](#shapes-and-connectors)
@@ -42,11 +44,37 @@ presentation(options) → SlidesDefinition
 **Parameters**
 
 - `title` — `string`, optional. A short form for setting only the presentation title.
-- `options` — `SlidesOptions`, optional. Sets metadata, `theme`, `ratio`, custom `width` and `height`, `background`, and presentation-wide `font` defaults.
+- `options` — `SlidesOptions`, optional. Sets metadata, `theme`, `ratio`, custom `width` and `height`, a paper `size` and `orientation`, `background`, presentation-wide `font` defaults, a `bibliography` for `cite()`, and `citations` options.
 
 **Returns** `SlidesDefinition`, the presentation root. Most linear documents do not need to store it.
 
 Call `presentation()` once, before the first `slide()`. Calling it again starts a new authoring context.
+
+### `poster()`
+
+Starts a poster: a presentation made for paper, A0 portrait in the `poster` theme unless the options say otherwise, with its one page already begun.
+
+```ts
+poster({
+  title: "Diffusion Language Models",
+  author: "Ada Lovelace",
+  institute: "University of Cambridge",
+}).grid(3);
+```
+
+**Signature**
+
+```text
+poster(title) → ContentSlideBuilder
+poster(options) → ContentSlideBuilder
+```
+
+**Parameters**
+
+- `title` — `string`, optional. A short form for setting only the title.
+- `options` — `SlidesOptions`, optional. The same options as `presentation()`; `size`, `orientation`, and `theme` replace the poster's defaults.
+
+**Returns** `ContentSlideBuilder`, the poster's page, so its layout, such as `.grid(3)`, can follow directly. See [Posters and print](posters.md).
 
 ### `slide()`
 
@@ -510,6 +538,143 @@ latexFile("./tables/results.tex").width(720);
 
 **Returns** `ElementBuilder` containing the compiled graphic.
 
+## Tables, charts, and icons
+
+### `table()`
+
+Adds a table. The first row is the heading, and columns whose cells are all quantities align right.
+
+```ts
+table([
+  ["Model", "Accuracy", "Latency"],
+  ["Baseline", "91.2%", "18 ms"],
+  ["FrameSeq", "94.6%", "12 ms"],
+]);
+```
+
+**Signature** `table(rows) → TableBuilder`
+
+**Parameters**
+
+- `rows` — `Array<Array<string | number>>`, required. Each row as an array of cells. Cells may hold inline math between `$` signs.
+
+**Returns** `TableBuilder`, with the common object methods and:
+
+- `.header(rows)` — how many of the first rows are headings: `1` by default, `0` for none.
+- `.columnAlign(...alignments)` — `"left"`, `"center"`, or `"right"` for each column from the first.
+- `.striped(enabled)` — shade every other body row.
+
+PowerPoint export makes it an editable PowerPoint table, and Typst export a native `#table`.
+
+### `chart()`
+
+Adds a chart drawn from the data written beside it.
+
+```ts
+chart("bar", { Q1: 12, Q2: 18, Q3: 25 }).unit("%");
+chart("line", { labels: ["Jan", "Feb", "Mar"], series: { Revenue: [3, 5, 4], Cost: [2, 2, 3] } });
+```
+
+**Signature** `chart(kind, data) → ChartBuilder`
+
+**Parameters**
+
+- `kind` — `"bar" | "hbar" | "line" | "pie" | "donut"`, required.
+- `data` — required. One series as `{ label: value }`, or several as `{ labels: string[]; series: Record<string, number[]> }` with one value per label. A pie or donut takes one series of values that are not negative.
+
+**Returns** `ChartBuilder`, with the common object methods and:
+
+- `.unit(suffix)` — write values with a unit, such as `"%"` or `" ms"`.
+- `.values(show)` — show or hide the value beside each bar, point, or slice.
+- `.legend(show)` — show or hide the legend.
+- `.max(value)` — fix the top of the value axis.
+- `.colors(...colors)` — colour the series, or a pie's slices, in order.
+
+The chart fills its region's width at 16:9 unless `.width()` or `.height()` says otherwise. PowerPoint export makes it an editable PowerPoint chart.
+
+### `qr()`
+
+Adds a QR code for a link or any text.
+
+```ts
+qr("https://pride7.github.io/frameseq/").width(220);
+```
+
+**Signature** `qr(text) → ElementBuilder`
+
+**Parameters**
+
+- `text` — `string`, required. The link or text to encode.
+
+**Returns** `ElementBuilder`. The code is 200 pixels square unless `.width()` says otherwise, dark on light with a quiet margin.
+
+### `icon()`
+
+Adds an icon from the [Lucide](https://lucide.dev/icons) set, drawn in the text colour at the font size.
+
+```ts
+icon("rocket").size(64).color("#2563eb");
+```
+
+**Signature** `icon(name) → ElementBuilder`
+
+**Parameters**
+
+- `name` — `IconName`, required. An icon's name; TypeScript completes the names and rejects one that does not exist.
+
+**Returns** `ElementBuilder`; `.size()` sets the icon's size and `.color()` its colour. A built presentation includes only the icons its source names as strings.
+
+## Citations
+
+### `cite()`
+
+Cites works from the presentation's bibliography and returns the marker to write into the text.
+
+```ts
+text(`Attention replaced recurrence ${cite("vaswani2017")}.`);
+```
+
+**Signature** `cite(...keys) → string`
+
+**Parameters**
+
+- `keys` — `string[]`, at least one. Keys of the presentation's `bibliography`.
+
+**Returns** `string`: `[1]` or `[1, 2]`, numbered in the order works are first cited, or `(Vaswani et al., 2017)` with `citations: { style: "author-year" }`. The works a slide cites are listed at its foot unless `citations: { footnotes: false }`. See [Citations and references](citations.md).
+
+### `footnote()`
+
+Adds a footnote to the current slide and returns its marker.
+
+```ts
+text(`Measured on one GPU${footnote("An NVIDIA A100.")}.`);
+```
+
+**Signature** `footnote(content) → string`
+
+**Parameters**
+
+- `content` — `string`, required. The footnote's text.
+
+**Returns** `string`, a superscript number such as `¹`, counted from 1 on each slide.
+
+### `references()`
+
+Adds the list of works the presentation cites.
+
+```ts
+slide("References");
+references();
+```
+
+**Signature** `references(options) → GroupBuilder`
+
+**Parameters**
+
+- `options` — `{ all?: boolean }`, optional. `all: true` adds the works the bibliography holds but the talk never cited, after the cited ones.
+
+**Returns** `GroupBuilder`. The list is filled once the document has run, so it includes citations made after it.
+
 ## Slide layouts
 
 Without a layout method, content is placed in one vertical column in source order.
@@ -966,6 +1131,7 @@ Content functions return the object they create. These methods change that objec
 | `.clip(enabled)` | `enabled: boolean`, optional | Clip children to this object's bounds; defaults to `true`. |
 | `.position(bounds)` | `bounds: { x?: Length; y?: Length }` | Use absolute canvas coordinates. |
 | `.rotate(degrees)` | `degrees: number` | Rotate the object. |
+| `.fit(minimum)` | `minimum: number`, optional | Shrink the text inside until the object holds it, down to `minimum` of its size; `0.5` by default. |
 | `.style(classes)` | `classes: string` | Add Tailwind utility classes. |
 | `.style(properties)` | `properties: CSS values` | Add inline CSS properties. |
 | `.className(value)` | `value: string` | Add one or more CSS classes. |
@@ -979,6 +1145,7 @@ Length helpers make a CSS unit explicit. They return strings and can be used any
 ```ts
 px(20)       // "20px"
 pt(20)       // "20pt"
+mm(20)       // "20mm"
 rem(2)       // "2rem"
 percent(50)  // "50%"
 vw(40)       // "40vw"
@@ -987,4 +1154,4 @@ vh(30)       // "30vh"
 text("Label").size(pt(24)).width(percent(50));
 ```
 
-Plain numeric lengths are interpreted as pixels.
+Plain numeric lengths are interpreted as pixels. On a presentation made for paper, `pt()` and `mm()` are printed sizes on the sheet, converted to canvas units; see [Posters and print](posters.md#canvas-units-and-printed-sizes).

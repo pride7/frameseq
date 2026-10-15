@@ -5,7 +5,8 @@ export type BuiltInThemeName =
   | "beamer-default"
   | "beamer-madrid"
   | "beamer-cambridge-us"
-  | "minimal-academic";
+  | "minimal-academic"
+  | "poster";
 
 export type ThemeFamily = "frameseq" | "beamer";
 export type ThemeCoverLayout = "default" | "center" | "academic-left";
@@ -71,6 +72,13 @@ export interface ThemeChrome {
   footerAccentBackground: string;
   footerAccentForeground: string;
   footerBorderColor: string;
+  /**
+   * Open every page that is not a cover with a band holding the presentation's title, subtitle,
+   * authors, institute, and date, the way a conference poster starts.
+   */
+  header: boolean;
+  headerBackground: string;
+  headerForeground: string;
 }
 
 export interface ThemeDefinition {
@@ -152,6 +160,9 @@ const defaultChrome: ThemeChrome = {
   footerAccentBackground: "#2563eb",
   footerAccentForeground: "#ffffff",
   footerBorderColor: "transparent",
+  header: false,
+  headerBackground: "#1e3a8a",
+  headerForeground: "#ffffff",
 };
 
 const blank: ThemeDefinition = {
@@ -414,6 +425,57 @@ const minimalAcademic: ThemeDefinition = {
   coverBackground: "#ffffff",
 };
 
+/**
+ * A conference poster: a title band across the top, columns of titled blocks, and type sized to
+ * be read from a step away. Made for presentation({ size: "A0" }) or poster().
+ */
+const poster: ThemeDefinition = {
+  name: "poster",
+  family: "frameseq",
+  coverLayout: "default",
+  colors: {
+    background: "#f4f6fb",
+    foreground: "#0f172a",
+    muted: "#334155",
+    subtle: "#64748b",
+    accent: "#1d4ed8",
+    accentForeground: "#ffffff",
+    surface: "#ffffff",
+    surfaceStrong: "#e8eefc",
+    border: "#d5deef",
+    codeBackground: "#0f172a",
+    codeForeground: "#e2e8f0",
+    error: "#dc2626",
+    stage: "#cbd5e1",
+    shadow: "0 24px 80px rgb(15 23 42 / 0.18)",
+  },
+  fonts: defaultFonts,
+  spacing: {
+    slideX: "56px",
+    slideY: "48px",
+    coverX: "96px",
+    coverY: "84px",
+    contentGap: "32px",
+    regionGap: "16px",
+    splitGap: "32px",
+    gridGap: "32px",
+    cardPadding: "28px",
+  },
+  radii: {
+    small: "8px",
+    medium: "14px",
+    large: "20px",
+    pill: "999px",
+  },
+  chrome: {
+    ...defaultChrome,
+    header: true,
+    headerBackground: "#1e3a8a",
+    headerForeground: "#ffffff",
+  },
+  coverBackground: "#f4f6fb",
+};
+
 export const themes: Record<BuiltInThemeName, ThemeDefinition> = {
   blank,
   midnight,
@@ -422,6 +484,7 @@ export const themes: Record<BuiltInThemeName, ThemeDefinition> = {
   "beamer-madrid": beamerMadrid,
   "beamer-cambridge-us": beamerCambridgeUs,
   "minimal-academic": minimalAcademic,
+  poster,
 };
 
 function cloneTheme(theme: ThemeDefinition): ThemeDefinition {
@@ -514,5 +577,7 @@ export function themeCssVariables(theme: ThemeDefinition): Record<string, string
     "--frameseq-footer-accent-background": theme.chrome.footerAccentBackground,
     "--frameseq-footer-accent-foreground": theme.chrome.footerAccentForeground,
     "--frameseq-footer-border-color": theme.chrome.footerBorderColor,
+    "--frameseq-header-background": theme.chrome.headerBackground ?? defaultChrome.headerBackground,
+    "--frameseq-header-foreground": theme.chrome.headerForeground ?? defaultChrome.headerForeground,
   };
 }

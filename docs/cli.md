@@ -1,6 +1,6 @@
 # CLI reference
 
-The npm package installs the `frameseq` executable.
+The npm package installs the `frameseq` executable, and so does the [FrameSeq app](app.md), which needs no Node.js.
 
 ## Create a slide file
 
@@ -109,7 +109,7 @@ frameseq pdf quarterly.slides.ts
 frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 ```
 
-PDF export launches a headless browser, renders all pages and reveal steps, and writes a page-sized PDF with backgrounds included.
+PDF export launches a headless browser, renders all pages and reveal steps, and writes a page-sized PDF with backgrounds included. A presentation made for paper, such as a poster, prints at the paper's size; see [Posters and print](posters.md).
 
 ## Export PowerPoint
 
@@ -158,7 +158,19 @@ frameseq check talk.slides.ts --json
 frameseq check talk.slides.ts --strict
 ```
 
-Errors return a non-zero exit code. Warnings fail only in strict mode. JSON output includes the slide index and label, FrameSeq object type and path, measured geometry, and suggested corrections. See [AI-friendly layout checks](layout-checks.md).
+Errors return a non-zero exit code. Warnings fail only in strict mode. JSON output includes the slide index and label, FrameSeq object type and path, the line of the command that made the object, measured geometry, and suggested corrections. See [AI-friendly layout checks](layout-checks.md).
+
+## When the document does not run
+
+`check`, `pdf`, `pptx`, and `typst` run the slide document before anything else. When it throws, they stop at once and name the statement it was running, with the line that caused it, the way a compiler reports an error:
+
+```text
+talk.slides.ts:24:1  error  ref() cannot find an object named "decodr"; named objects on this slide: encoder, decoder
+  23 | rect("Decoder").as("decoder");
+> 24 | ref("decodr").fill("#dbeafe");
+```
+
+The exit code is non-zero. `check --json` reports it as a `document-error` issue.
 
 ## Inspect the source document
 

@@ -8,16 +8,57 @@ const app = document.querySelector<HTMLElement>("#app");
 if (!app) throw new Error("Missing #app element");
 const appRoot = app;
 
+/** Where an error came from in the slide document, as character offsets. */
+interface FailureLocation {
+  message: string;
+  start?: number;
+  end?: number;
+}
+
+/**
+ * The statement the document was running when it stopped. The runtime keeps it on the page
+ * while a preview is served, so an error thrown by a command or by plain TypeScript in the
+ * document can still be traced to the line that caused it.
+ */
+function failedStatement(): { start: number; end: number } | undefined {
+  const statement = (globalThis as { __frameseqStatement?: { start: number; end: number } }).__frameseqStatement;
+  return statement && Number.isInteger(statement.start) && Number.isInteger(statement.end)
+    ? statement
+    : undefined;
+}
+
+/** Each problem an error describes, with the offsets of the command it concerns when known. */
+function failureLocations(error: unknown): FailureLocation[] {
+  const problems = (error as { problems?: unknown } | null)?.problems;
+  if (Array.isArray(problems) && problems.length > 0) {
+    return problems.filter((problem): problem is FailureLocation => (
+      Boolean(problem) && typeof (problem as FailureLocation).message === "string"
+    ));
+  }
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return [{ message, ...failedStatement() }];
+}
+
 /**
  * Tell an embedding host, such as FrameSeq Studio, that the deck on screen is new, or that the
  * slide document could not be run and the previous deck is still showing.
  */
-function announce(type: "frameseq.rendered" | "frameseq.render-failed"): void {
-  if (import.meta.hot && window.parent !== window) window.parent.postMessage({ type }, "*");
+function announce(type: "frameseq.rendered"): void;
+function announce(type: "frameseq.render-failed", error?: unknown): void;
+function announce(type: "frameseq.rendered" | "frameseq.render-failed", error?: unknown): void {
+  if (!import.meta.hot || window.parent === window) return;
+  window.parent.postMessage(type === "frameseq.render-failed"
+    ? { type, problems: error === undefined ? [{ message: "", ...failedStatement() }] : failureLocations(error) }
+    : { type }, "*");
 }
 
-mountSlides(slides, appRoot);
-announce("frameseq.rendered");
+try {
+  mountSlides(slides, appRoot);
+  announce("frameseq.rendered");
+} catch (error) {
+  announce("frameseq.render-failed", error);
+  throw error;
+}
 let replacementVersion = 0;
 
 /**
@@ -40,7 +81,13 @@ async function replaceSlides(nextSlides: SlidesRootDefinition): Promise<void> {
     pointerEvents: "none",
   });
   document.body.append(stage);
-  mountSlides(nextSlides, stage);
+  try {
+    mountSlides(nextSlides, stage);
+  } catch (error) {
+    stage.remove();
+    announce("frameseq.render-failed", error);
+    throw error;
+  }
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   if (version !== replacementVersion) {
@@ -59,7 +106,7 @@ async function replaceSlides(nextSlides: SlidesRootDefinition): Promise<void> {
 if (import.meta.hot) {
   import.meta.hot.accept("virtual:frameseq-entry", (entry) => {
     // Vite hands over no module when the new one threw while it was being run.
-    if (entry?.default) void replaceSlides(entry.default);
+    if (entry?.default) void replaceSlides(entry.default).catch((error: unknown) => console.error(error));
     else announce("frameseq.render-failed");
   });
 }

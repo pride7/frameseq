@@ -429,9 +429,55 @@ try {
   await placeCursor('text("Last slide");', 'text("Last slide");'.length);
   await page.keyboard.type("\n(undefined as any).boom();", { delay: 5 });
   await waitFor(async () => (await problems()).some((row) => row.includes("boom")), "the runtime error to be reported");
+  // The error names the statement it came from, and the editor underlines that statement.
+  const boomLine = (await page.evaluate(() => window.frameseqStudio.view.state.doc.toString()))
+    .split("\n").findIndex((line) => line.includes(".boom()")) + 1;
+  await waitFor(async () => (await problems()).some((row) => row.includes("boom") && row.includes(`Ln ${boomLine}`)), "the runtime error to name its line");
+  await waitFor(() => page.$$eval(".cm-lintRange-error", (ranges) => ranges.some((range) => range.textContent.includes("boom"))), "the failed statement to be underlined");
   await undoInEditor();
   await waitFor(async () => (await read()) === beforeRail, "the runtime error to be undone");
   await waitFor(async () => (await problems()).length === 0, "the runtime error to clear once the preview renders");
+
+  // Names are identifiers: the editor completes them, jumps to where they were given, renames
+  // every use at once, and reports one that refers to nothing on its slide.
+  await placeCursor('text("Last slide");', 'text("Last slide");'.length);
+  await page.keyboard.type('\nrect("A").as("alpha");\nrect("B").below("al', { delay: 5 });
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".cm-tooltip-autocomplete li")].some((item) => item.textContent.includes("alpha")),
+    { timeout: 10_000 },
+  );
+  // The list ignores keys for a moment after it opens, so a fast Enter is not taken by accident.
+  await delay(300);
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await editorText()).includes('rect("B").below("alpha")'), "the completed name");
+  await page.keyboard.press("F12");
+  const selected = await page.evaluate(() => {
+    const { view } = window.frameseqStudio;
+    const { from, to } = view.state.selection.main;
+    return { text: view.state.sliceDoc(from, to), line: view.state.doc.lineAt(from).text };
+  });
+  assert.deepEqual(selected, { text: "alpha", line: 'rect("A").as("alpha");' }, "F12 must select the name where it was given");
+  await page.keyboard.press("F2");
+  await page.waitForSelector(".studio-dialog input");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("a");
+  await page.keyboard.up("Control");
+  await page.keyboard.type("first", { delay: 5 });
+  await page.keyboard.press("Enter");
+  await waitFor(async () => {
+    const text = await editorText();
+    return text.includes('.as("first")') && text.includes('.below("first")');
+  }, "the rename to reach every use of the name");
+  await placeCursor('.below("first")', '.below("first'.length);
+  await page.keyboard.type("x", { delay: 5 });
+  await waitFor(async () => (await problems()).some((row) => row.includes('named "firstx"') && row.includes('Did you mean "first"')), "a missing name to be reported");
+  // Typing, the completion, the rename, and the last key may land in fewer history events.
+  for (let step = 0; step < 8 && (await editorText()) !== lf(beforeRail); step += 1) {
+    await undoInEditor();
+    await delay(150);
+  }
+  await waitFor(async () => (await editorText()) === lf(beforeRail), "the name edits to be undone");
+  await waitFor(async () => (await problems()).length === 0, "the names problem to clear");
 
   // Exports run the CLI with its usual output locations.
   await page.click("[data-action='export']");
@@ -619,4 +665,4 @@ try {
   plain.child.kill();
 }
 
-console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, runtime and startup errors, exports, and API isolation.");
+console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, and API isolation.");

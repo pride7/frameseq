@@ -341,8 +341,9 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "prepackage": "node -e \"require('node:fs').mkdirSync('../../output/vscode', { recursive: true })\"",
-    "compile": "tsc -p .",
-    "check": "tsc -p . --noEmit",
+    "shared": "node -e \"const fs=require('node:fs');fs.mkdirSync('src/shared',{recursive:true});fs.copyFileSync('../../src/source-names.ts','src/shared/source-names.ts')\"",
+    "compile": "npm run shared && tsc -p .",
+    "check": "npm run shared && tsc -p . --noEmit",
     "package": "npm run compile && vsce package --no-dependencies --out ../../output/vscode/frameseq-vscode.vsix"
   },
   "devDependencies": {

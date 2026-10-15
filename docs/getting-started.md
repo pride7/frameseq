@@ -4,6 +4,10 @@
 
 Open the [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) to edit `slides.ts` and use the live preview entirely in the browser. StackBlitz creates a personal fork when you save, so the repository example remains unchanged.
 
+## Install the app
+
+The [FrameSeq app](app.md) installs FrameSeq Studio and the `frameseq` command in one download, with nothing to install first, Node.js included. Download it for Windows, macOS, or Linux from the [releases page](https://github.com/pride7/frameseq/releases/latest), open FrameSeq Studio, and start a new presentation from its start page.
+
 ## Write a single file
 
 Install FrameSeq once, and a `.slides.ts` file works on its own in any folder, with no `package.json` or `node_modules` beside it:

@@ -29,6 +29,18 @@ text("A memorable sentence").quote();
 
 Calling another text role replaces the previous role on that object.
 
+### Fit text to its room
+
+`.fit()` shrinks an object's text until the object holds it, down to half its size by default:
+
+```ts
+slide("Abstract");
+text(abstract).fit();
+references().fit(0.6);
+```
+
+Every size inside the object scales together, so a list, a card, or a reference list keeps its proportions, and inline math scales with the words around it. The object takes the room its region has left, so the rest of the slide keeps its place. What still does not fit at the smallest scale is clipped, and `frameseq check` reports it. Display equations do the same on their own: one wider than its region shrinks to fit across it.
+
 ## Inline math
 
 Put inline formulas between `$` delimiters:
@@ -85,6 +97,81 @@ image(diagram, "Compiler pipeline")
   .width(percent(100))
   .radius(18);
 ```
+
+## Tables
+
+`table(rows)` takes the rows as arrays of cells; the first row is the heading:
+
+```ts
+table([
+  ["Model", "Accuracy", "Latency"],
+  ["Baseline", "91.2%", "18 ms"],
+  ["FrameSeq", "94.6%", "12 ms"],
+]);
+```
+
+The table is ruled like a paper's, heavy above and below and light under the heading. A column whose cells are all quantities, such as `94.6%` or `12 ms`, aligns right, and every other column aligns left. Cells may hold inline math between `$` signs.
+
+```ts
+table(rows)
+  .header(2)                       // two heading rows; 0 for none
+  .columnAlign("left", "center")   // from the first column; the rest keep theirs
+  .striped();                      // shade every other row
+```
+
+PowerPoint export makes it a PowerPoint table, whose cells stay editable text, and Typst export a native `#table`. A table with math in a cell is exported as a picture, since PowerPoint cells hold plain text. For a table already written in LaTeX, see [LaTeX integration](latex.md).
+
+## Charts
+
+`chart(kind, data)` draws a chart from the numbers written beside it:
+
+```ts
+chart("bar", { Q1: 12, Q2: 18, Q3: 25 }).unit("%");
+
+chart("line", {
+  labels: ["Jan", "Feb", "Mar", "Apr"],
+  series: { Revenue: [3, 5, 4, 7], Cost: [2, 2, 3, 3] },
+});
+
+chart("donut", { Search: 52, Direct: 31, Social: 17 });
+```
+
+The kinds are `"bar"`, `"hbar"` (horizontal bars), `"line"`, `"pie"`, and `"donut"`. One series is written as `{ label: value }`; several as `{ labels, series: { name: values } }`, one value per label. The first series takes the theme's accent colour.
+
+| Modifier | What it does |
+| --- | --- |
+| `.unit(" ms")` | Writes values with a unit after them. |
+| `.values(false)` | Hides the value beside each bar, point, or slice. |
+| `.legend(true)` | Shows or hides the legend; it appears by itself for several series and for pies. |
+| `.max(100)` | Fixes the top of the value axis, so several charts share one scale. |
+| `.colors("#0f766e", "#f59e0b")` | Colours the series, or a pie's slices, in order. |
+
+A chart fills its region's width at a 16:9 ratio until `.width()` or `.height()` says otherwise, and its text follows `.size()`. FrameSeq draws it at its real size, so labels stay readable in a narrow column. PowerPoint export makes it a PowerPoint chart from the same data, which can be edited there; Typst export embeds the drawing.
+
+## QR codes
+
+`qr(text)` turns a link, or any text, into a code the audience can scan with their phones:
+
+```ts
+qr("https://pride7.github.io/frameseq/").width(220);
+```
+
+It is 200 pixels square by default, drawn dark on light with the quiet margin scanners expect, and stays sharp at any size.
+
+## Icons
+
+`icon(name)` adds an icon from [Lucide](https://lucide.dev/icons), drawn in the text colour at the font size:
+
+```ts
+icon("rocket");
+icon("chart-line").size(64).color("#0f766e");
+```
+
+TypeScript knows every icon name, so the editor completes them and a misspelled one is underlined before the slide runs. A preview has the whole set at hand; a built presentation carries only the icons its source names, so name icons with strings rather than building names at runtime.
+
+## Citations
+
+`cite()` numbers works from a bibliography, lists the works each slide cites at its foot, and `references()` adds the full list. See [Citations and references](citations.md).
 
 ## Shapes
 

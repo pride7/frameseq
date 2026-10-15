@@ -3,7 +3,29 @@ import type {
   AnchorSide,
   FrameSeqNode,
   PlacementStep,
+  SourceSpan,
 } from "./core";
+
+/** One reference that could not be resolved, with the command that wrote it when it is known. */
+export interface DocumentProblem {
+  message: string;
+  /** Character offsets of the command in the slide document, while a preview is served. */
+  start?: number;
+  end?: number;
+}
+
+/** An error the slide document caused, listing each of its problems with where it was written. */
+export class DocumentError extends Error {
+  constructor(message: string, readonly problems: DocumentProblem[]) {
+    super(message);
+    this.name = "DocumentError";
+  }
+}
+
+function problemAt(message: string, node?: FrameSeqNode): DocumentProblem {
+  const span = node?.props.sourceSpan as SourceSpan | undefined;
+  return span ? { message, start: span.start, end: span.end } : { message };
+}
 
 interface Point {
   x: number;
@@ -176,7 +198,7 @@ function slideLabel(slide: FrameSeqNode, index: number): string {
     : `Slide ${index + 1}`;
 }
 
-function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): void {
+function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProblem[]): void {
   const frames = new Map<FrameSeqNode, FrameSeqNode>();
   const parents = new Map<FrameSeqNode, FrameSeqNode>();
   const named = new Map<string, FrameSeqNode>();
@@ -190,9 +212,10 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       const name = child.props.name;
       if (typeof name === "string") {
         if (named.has(name)) {
-          problems.push(
+          problems.push(problemAt(
             `${label}: two objects are named "${name}"; names must be unique within a slide`,
-          );
+            child,
+          ));
         } else {
           named.set(name, child);
         }
@@ -709,7 +732,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       else node.styles.translate = `${shift(placement.tx)} ${shift(placement.ty)}`;
     } catch (error) {
       if (!(error instanceof AnchorError)) throw error;
-      problems.push(`${label}: ${error.message}`);
+      problems.push(problemAt(`${label}: ${error.message}`, node));
     }
   }
 
@@ -740,7 +763,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
       line.props.y2 = round(endPoint.y + (end?.dy ?? 0));
     } catch (error) {
       if (!(error instanceof AnchorError)) throw error;
-      problems.push(`${label}: ${error.message}`);
+      problems.push(problemAt(`${label}: ${error.message}`, line));
     }
   }
 }
@@ -751,11 +774,14 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: string[]): v
  * Running it twice on the same document produces the same result.
  */
 export function resolveAnchors(root: FrameSeqNode): void {
-  const problems: string[] = [];
+  const problems: DocumentProblem[] = [];
   for (const [index, slide] of root.children.entries()) {
     resolveSlide(slide, slideLabel(slide, index), problems);
   }
   if (problems.length > 0) {
-    throw new Error(`FrameSeq could not resolve every anchor:\n- ${problems.join("\n- ")}`);
+    throw new DocumentError(
+      `FrameSeq could not resolve every anchor:\n- ${problems.map((problem) => problem.message).join("\n- ")}`,
+      problems,
+    );
   }
 }

@@ -13,7 +13,7 @@ export interface FrameSeqRegionReference {
   visits: number;
 }
 
-const cursorCommands = new Set(["slide", "at", "main", "left", "right", "cell"]);
+const cursorCommands = new Set(["slide", "poster", "at", "main", "left", "right", "cell"]);
 
 function lineAndCharacter(source: string, offset: number): { line: number; character: number } {
   let line = 0;
@@ -133,7 +133,8 @@ export function frameSeqCursorCalls(source: string): FrameSeqCursorCall[] {
       if (name === "cell") value = cellArgument(source, openParen);
       const location = lineAndCharacter(source, start);
       calls.push({
-        kind: name as FrameSeqCursorCall["kind"],
+        // A poster begins its one page, which is a slide to the authoring cursor.
+        kind: (name === "poster" ? "slide" : name) as FrameSeqCursorCall["kind"],
         value,
         offset: start,
         ...location,

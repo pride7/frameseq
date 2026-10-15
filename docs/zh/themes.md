@@ -1,4 +1,4 @@
-<!-- translation-of: docs/themes.md sha256:360fbe243a139058 -->
+<!-- translation-of: docs/themes.md sha256:ff20caebdd0f1031 -->
 
 # 主题
 
@@ -23,7 +23,7 @@ presentation({
 
 ## 内置主题
 
-FrameSeq 内置七套主题:
+FrameSeq 内置八套主题:
 
 - `blank` —— 中性白色,默认。
 - `midnight` —— FrameSeq 最初的暗色外观,青色强调。
@@ -32,6 +32,7 @@ FrameSeq 内置七套主题:
 - `beamer-madrid` —— 蓝色标题栏加元数据页脚,取自 Beamer Madrid。
 - `beamer-cambridge-us` —— 酒红与米色的学术风,取自 Beamer CambridgeUS。
 - `minimal-academic` —— 克制的学术风:左对齐标题页、带下划线的页面标题、紧凑页脚。
+- `poster` —— 学术海报:由演示元数据生成的标题横幅、一列列带标题的版块,以及为纸张设定的字号。`poster()` 默认用它;见[海报与打印](posters.md)。
 
 在演示上选一套:
 
@@ -92,6 +93,24 @@ text("Content starts here.");
 ```
 
 只有当封面**是空的**时候才会自动填充。在 `slide().cover()` 之后写自己的 `text()`、图片或布局对象,就能完全手动控制。
+
+## 海报
+
+`poster` 主题在每一个非封面页的顶部放一条横幅,写着标题、副标题、作者、机构和日期。横幅下面,网格的单元格是没有底色的普通栏,`card()` 区域是顶部带一道强调色线条的版块,`.title()` 文字是版块的标题。
+
+```ts
+poster({
+  title: "Diffusion Language Models",
+  author: "Ada Lovelace",
+  institute: "University of Cambridge",
+}).grid(3);
+
+at("cell0/introduction").card();
+text("Introduction").title();
+text("Autoregressive models write one token at a time.");
+```
+
+这条横幅就是主题选项 `chrome.header`,颜色由 `chrome.headerBackground` 和 `chrome.headerForeground` 决定,所以任何主题都可以有。
 
 ## 自定义主题
 
@@ -159,7 +178,7 @@ const conferenceTheme = defineTheme({
 - `fonts`:`body`、`heading`、`mono` 三条 CSS 字族链。
 - `spacing`:页面内边距、布局间距、卡片内边距。
 - `radii`:`small`、`medium`、`large`、`pill` 四种圆角。
-- `chrome`:可选的标题栏、页脚、页码,以及它们的尺寸和配色。
+- `chrome`:可选的标题栏、页脚、页码、海报的标题横幅(`header`),以及它们的尺寸和配色。
 - `family`:`"frameseq"` 或 `"beamer"`;继承主题时会自动保留原有 family。
 - `coverLayout`:`"default"`、`"center"` 或 `"academic-left"`。
 - `coverBackground`:`.cover()` 页面使用的 CSS 颜色、渐变或图片。

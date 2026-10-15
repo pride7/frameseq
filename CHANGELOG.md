@@ -4,6 +4,33 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- Add posters and other pages for paper. `poster({ title, author, institute })` starts an A0 portrait page in the new `poster` theme, whose title band is built from the metadata, and returns the page so its layout can follow. Any presentation can be made for paper with `size`, `"A0"` to `"A5"`, `"letter"`, `"legal"`, `"tabloid"`, or a size such as `"36x48in"`, and `orientation`.
+  - The canvas keeps units of its own, 1600 across the paper's short side, so themes, layouts, and checks work as on a slide.
+  - `mm()` is new, and on paper `mm()` and `pt()` measure the printed sheet, wherever they appear.
+  - PDF, PowerPoint, and Typst export print at the paper's size, such as 841 × 1189 mm for A0.
+  - The theme option `chrome.header` gives any theme the poster's title band.
+- Add `table(rows)`: a table ruled like a paper's, whose columns of quantities align right, with `.header()`, `.columnAlign()`, and `.striped()`. PowerPoint export makes it a PowerPoint table with editable cells, and Typst export a native table.
+- Add `chart(kind, data)` for bar, horizontal bar, line, pie, and donut charts drawn from the data written beside them, at their real size, with `.unit()`, `.values()`, `.legend()`, `.max()`, and `.colors()`. PowerPoint export makes each one a PowerPoint chart that can be edited there.
+- Add `qr(text)` for a QR code the audience can scan, and `icon(name)` for an icon from Lucide's set. TypeScript knows every icon name, and a built presentation carries only the icons its source names.
+- Add `.fit()`, which shrinks an object's text until the object holds it. Display equations wider than their region now shrink to fit across it by themselves.
+- Add citations: `presentation({ bibliography })` takes an imported `.bib` file or references written out by key, `cite()` numbers works in citation order or writes names and years, each slide lists the works it cites at its foot, `footnote()` adds a note there, and `references()` builds the full list.
+- Make the names given with `.as()` and `at()` identifiers in FrameSeq Studio and the VS Code extension: completion in `ref()`, `group()`, connectors, placements, and `at()`, with anchor sides after a dot; go to definition; find references; rename on the slide; hover; and a diagnostic for a name that refers to nothing, a name given twice, or a layout region the slide does not have.
+- Report an error the slide document throws against the statement that caused it. The Studio lists it with its line and underlines the statement; `frameseq check`, `pdf`, `pptx`, and `typst` stop at once and print the file, line, and the code around it, instead of waiting out a timeout; `check --json` reports it as a `document-error` issue. Anchors that cannot be resolved name the object that refers to them.
+- Give every `frameseq check` finding the line of the command that made the object, as `element.source`, and place the VS Code extension's layout diagnostics on that line.
+- Add the FrameSeq app: an installer for Windows, disk images for macOS, and archives for Linux that bring their own Node.js, the Typst compiler, Tectonic, and on macOS and Linux a browser for exports, so FrameSeq Studio and the `frameseq` command need nothing installed first. `scripts/app-bundle.mjs` builds it, and version tags attach it to the GitHub release.
+- Add a language tour to the documentation, and pages on posters, citations, and the app, in English and Chinese.
+
+### Changed
+
+- The smallest readable type that `frameseq check` accepts now grows with the canvas: 14px on a 1280-wide slide, as before, and proportionally more on a wider one. On paper it is judged by printed size, and the finding gives both.
+- Exports and checks render with an installed Chrome or Edge when Puppeteer has no browser of its own; `FRAMESEQ_BROWSER` names another.
+
+### Fixed
+
+- Spaces at the end of a line no longer make `frameseq check` report text in a clipped box as clipped on the right.
+
 ## [0.38.0] - 2026-10-09
 
 ### Added

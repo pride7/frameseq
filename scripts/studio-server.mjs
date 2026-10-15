@@ -223,14 +223,17 @@ export function studioPlugin({
     name: "frameseq-studio",
     /**
      * A deck that throws before the preview has started leaves nothing running that could say
-     * why. Record the first error each page sees, so the Studio can read it from the frame.
+     * why. Record the first error each page sees, and the statement the document was running
+     * when it threw, so the Studio can read both from the frame.
      */
     transformIndexHtml(html, context) {
       if (!enabled || !context.server) return html;
       return [{
         tag: "script",
         injectTo: "head-prepend",
-        children: "addEventListener(\"error\",function(e){window.__frameseqError=window.__frameseqError||String(e.message||e.error)},true);",
+        children: "addEventListener(\"error\",function(e){if(window.__frameseqError)return;"
+          + "window.__frameseqError=String(e.message||e.error);"
+          + "window.__frameseqErrorStatement=window.__frameseqStatement},true);",
       }];
     },
     configureServer(server) {

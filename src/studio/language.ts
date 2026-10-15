@@ -1,6 +1,6 @@
 import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import { linter, type Diagnostic } from "@codemirror/lint";
-import { StateEffect, StateField, type Extension } from "@codemirror/state";
+import { EditorSelection, StateEffect, StateField, type Extension } from "@codemirror/state";
 import {
   EditorView,
   hoverTooltip,
@@ -18,7 +18,8 @@ import {
   type LanguageDiagnostic,
   type SignatureHelp,
 } from "./api";
-import { element } from "./ui";
+import { nameCompletions, nameDefinition, nameHover, prepareNameRename, renameName } from "../source-names";
+import { askText, element, toast } from "./ui";
 
 /** TypeScript's element kinds, in the vocabulary CodeMirror's completion icons understand. */
 const completionTypes: Record<string, string> = {
@@ -115,6 +116,102 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
 }
 
 export { completionSource };
+
+const nameKinds: Record<string, string> = {
+  object: "variable",
+  region: "namespace",
+  layout: "keyword",
+  anchor: "enum",
+};
+
+/**
+ * The names a string can hold where FrameSeq expects one: the objects and regions on the slide
+ * in ref() and connectors, the regions the slide can visit in at(), and anchor sides after a dot.
+ * TypeScript sees only a string there, so FrameSeq reads the slide itself.
+ */
+export function nameCompletionSource(context: CompletionContext): CompletionResult | null {
+  const result = nameCompletions(context.state.doc.toString(), context.pos);
+  if (!result || result.items.length === 0) return null;
+  return {
+    from: result.from,
+    to: result.to,
+    options: result.items.map((item): Completion => ({
+      label: item.label,
+      detail: item.detail,
+      type: nameKinds[item.kind],
+      boost: 20,
+    })),
+    validFor: /^[\w/-]*$/,
+  };
+}
+
+/** What a name in a string refers to: the object or region, where it was named, how often it is used. */
+export const nameHoverTooltip = hoverTooltip((view, position) => {
+  const hover = nameHover(view.state.doc.toString(), position);
+  if (!hover) return null;
+  return {
+    pos: hover.span.start,
+    end: hover.span.end,
+    above: true,
+    create: () => {
+      const node = element("div", "studio-doc");
+      node.append(element("p", "studio-doc-text", hover.text));
+      return { dom: node };
+    },
+  };
+}, { hoverTime: 380 });
+
+/** Jump from a name to the .as() or at() that defined it. */
+export function goToNameDefinition(view: EditorView): boolean {
+  const definition = nameDefinition(view.state.doc.toString(), view.state.selection.main.head);
+  if (!definition) return false;
+  view.dispatch({
+    selection: EditorSelection.range(definition.start, definition.end),
+    scrollIntoView: true,
+    userEvent: "select",
+  });
+  return true;
+}
+
+/** Rename a name everywhere on its slide in one undoable edit. */
+export function renameNameAtCursor(view: EditorView): boolean {
+  const text = view.state.doc.toString();
+  const head = view.state.selection.main.head;
+  const prepared = prepareNameRename(text, head);
+  if ("error" in prepared) {
+    // Not every string is a name: anywhere else, F2 has nothing to do and says so only on a name.
+    const onName = /No object|layout owns/.test(prepared.error);
+    if (onName) toast(prepared.error, { tone: "warning", timeout: 4000 });
+    return onName;
+  }
+  void askText({
+    title: "Rename",
+    message: `Rename "${prepared.name}" and every use of it on this slide.`,
+    value: prepared.name,
+    confirm: "Rename",
+    validate: (value) => {
+      if (value === prepared.name) return "Type a new name.";
+      const edits = renameName(text, head, value);
+      return "error" in edits ? edits.error : undefined;
+    },
+  }).then((value) => {
+    if (!value || view.state.doc.toString() !== text) return;
+    const edits = renameName(text, head, value);
+    if ("error" in edits) return;
+    view.dispatch({
+      changes: edits.map((edit) => ({ from: edit.start, to: edit.end, insert: edit.text })),
+      userEvent: "input.rename",
+      scrollIntoView: true,
+    });
+    view.focus();
+  });
+  return true;
+}
+
+export const nameKeymap: Extension = keymap.of([
+  { key: "F12", run: goToNameDefinition },
+  { key: "F2", run: renameNameAtCursor },
+]);
 
 /**
  * TypeScript's errors for the document, underlined in the editor. The same list is handed to

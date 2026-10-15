@@ -15,7 +15,7 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { lintGutter, lintKeymap } from "@codemirror/lint";
+import { lintGutter, lintKeymap, linter, type Diagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, RangeSet, StateEffect, StateField, type Range } from "@codemirror/state";
 import {
@@ -37,7 +37,15 @@ import {
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import type { LanguageDiagnostic } from "./api";
-import { completionSource, signatureHelp, typescriptHover, typescriptLinter } from "./language";
+import {
+  completionSource,
+  nameCompletionSource,
+  nameHoverTooltip,
+  nameKeymap,
+  signatureHelp,
+  typescriptHover,
+  typescriptLinter,
+} from "./language";
 
 /**
  * Where slides begin in the editor. A loop or a helper call makes several slides from one
@@ -237,6 +245,9 @@ const studioHighlight = HighlightStyle.define([
   { tag: tags.invalid, color: "var(--syntax-invalid)" },
 ]);
 
+/** Asks for FrameSeq's findings again, when they changed without the text changing. */
+const refreshFindings = StateEffect.define<null>();
+
 /** Tells CodeMirror's own defaults which palette the Studio is showing. */
 const darkness = new Compartment();
 
@@ -246,6 +257,8 @@ export interface EditorOptions {
   onSave: () => void;
   onDiagnostics: (diagnostics: LanguageDiagnostic[], text: string) => void;
   onSlideMarker: (index: number) => void;
+  /** FrameSeq's own findings in the text, such as the statement a failed run stopped in. */
+  documentDiagnostics: (view: EditorView) => Diagnostic[];
   dark: boolean;
 }
 
@@ -284,15 +297,23 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
         syntaxHighlighting(studioHighlight),
         bracketMatching(),
         closeBrackets(),
-        autocompletion({ override: [completionSource], icons: true, activateOnTypingDelay: 60 }),
+        autocompletion({ override: [nameCompletionSource, completionSource], icons: true, activateOnTypingDelay: 60 }),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
         highlightSelectionMatches(),
         javascript({ typescript: true }),
         typescriptLinter(options.onDiagnostics),
+        linter((view) => options.documentDiagnostics(view), {
+          delay: 120,
+          needsRefresh: (update) => update.transactions.some((transaction) => (
+            transaction.effects.some((effect) => effect.is(refreshFindings))
+          )),
+        }),
         typescriptHover,
+        nameHoverTooltip,
         signatureHelp,
+        nameKeymap,
         slideMarks,
         previewBand,
         studioTheme,
@@ -328,6 +349,11 @@ export function showPreviewSlide(view: EditorView, index: number | null): void {
 
 export function currentSlideMarks(view: EditorView): SlideMark[] {
   return view.state.field(slideMarks).marks;
+}
+
+/** Underline FrameSeq's findings again, after they changed without the text changing. */
+export function refreshDocumentDiagnostics(view: EditorView): void {
+  view.dispatch({ effects: refreshFindings.of(null) });
 }
 
 export function setEditorDarkness(view: EditorView, dark: boolean): void {

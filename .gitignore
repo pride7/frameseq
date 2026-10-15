@@ -7,3 +7,4 @@ tmp/
 *.tgz
 *.log
 .DS_Store
+packages/vscode-frameseq/src/shared/

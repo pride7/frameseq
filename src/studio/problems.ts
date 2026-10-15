@@ -1,6 +1,6 @@
 import { element } from "./ui";
 
-export type ProblemSource = "build" | "runtime" | "typescript" | "layout";
+export type ProblemSource = "build" | "runtime" | "typescript" | "names" | "layout";
 
 export interface Problem {
   source: ProblemSource;
@@ -22,12 +22,13 @@ export interface Problem {
   path?: string;
 }
 
-const sourceOrder: ProblemSource[] = ["build", "runtime", "typescript", "layout"];
+const sourceOrder: ProblemSource[] = ["build", "runtime", "typescript", "names", "layout"];
 const severityOrder = ["error", "warning", "info"] as const;
 const sourceLabels: Record<ProblemSource, string> = {
   build: "Build",
   runtime: "Preview",
   typescript: "TypeScript",
+  names: "Names",
   layout: "Layout",
 };
 

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/content.md sha256:27699a9086d2b794 -->
+<!-- translation-of: docs/content.md sha256:0f622c02e3192ea5 -->
 
 # 内容
 
@@ -30,6 +30,18 @@ text("A memorable sentence").quote();
 ```
 
 在同一个对象上再调用另一个角色,会替换掉前一个角色。
+
+### 让文字适应空间
+
+`.fit()` 会缩小对象里的文字,直到对象装得下为止,默认最多缩到原来的一半:
+
+```ts
+slide("Abstract");
+text(abstract).fit();
+references().fit(0.6);
+```
+
+对象里的所有字号一起缩放,所以列表、卡片或参考文献表保持原有比例,行内公式也跟着周围的文字一起缩放。对象占用它所在区域剩下的空间,页面上其他内容的位置不变。缩到最小仍然放不下的部分会被裁掉,`frameseq check` 会报告出来。独立公式会自动这样做:比所在区域宽的公式会缩小到正好放下。
 
 ## 行内公式
 
@@ -87,6 +99,81 @@ image(diagram, "Compiler pipeline")
   .width(percent(100))
   .radius(18);
 ```
+
+## 表格
+
+`table(rows)` 接收若干行,每行是一组单元格;第一行是表头:
+
+```ts
+table([
+  ["Model", "Accuracy", "Latency"],
+  ["Baseline", "91.2%", "18 ms"],
+  ["FrameSeq", "94.6%", "12 ms"],
+]);
+```
+
+表格按论文里的样式画线:上下各一条粗线,表头下一条细线。一列里的单元格如果全是数量,比如 `94.6%` 或 `12 ms`,这一列右对齐,其他列左对齐。单元格里可以用 `$` 写行内公式。
+
+```ts
+table(rows)
+  .header(2)                       // 两行表头;0 表示没有表头
+  .columnAlign("left", "center")   // 从第一列起;其余列保持原来的对齐
+  .striped();                      // 隔行加底色
+```
+
+导出 PowerPoint 时它是一个 PowerPoint 表格,单元格仍是可编辑的文字;导出 Typst 时是原生的 `#table`。单元格里有公式的表格会导出为图片,因为 PowerPoint 的单元格只能放纯文本。已经用 LaTeX 写好的表格,见 [LaTeX 集成](latex.md)。
+
+## 图表
+
+`chart(kind, data)` 用写在旁边的数字画一张图表:
+
+```ts
+chart("bar", { Q1: 12, Q2: 18, Q3: 25 }).unit("%");
+
+chart("line", {
+  labels: ["Jan", "Feb", "Mar", "Apr"],
+  series: { Revenue: [3, 5, 4, 7], Cost: [2, 2, 3, 3] },
+});
+
+chart("donut", { Search: 52, Direct: 31, Social: 17 });
+```
+
+种类有 `"bar"`、`"hbar"`(横向条形)、`"line"`、`"pie"` 和 `"donut"`。一组数据写成 `{ 标签: 数值 }`;多组数据写成 `{ labels, series: { 名称: 数值 } }`,每个标签对应一个数值。第一组数据使用主题的强调色。
+
+| 修饰符 | 作用 |
+| --- | --- |
+| `.unit(" ms")` | 在数值后面加上单位。 |
+| `.values(false)` | 隐藏每个柱子、点或扇区旁的数值。 |
+| `.legend(true)` | 显示或隐藏图例;多组数据和饼图会自动显示。 |
+| `.max(100)` | 固定数值轴的上限,让几张图表用同一个刻度。 |
+| `.colors("#0f766e", "#f59e0b")` | 依次给各组数据、或饼图的各扇区上色。 |
+
+图表默认铺满所在区域的宽度、宽高比 16:9,`.width()` 或 `.height()` 可以改;它的文字跟随 `.size()`。FrameSeq 按图表的实际尺寸来画,所以在窄栏里标签也清晰可读。导出 PowerPoint 时它是用同一份数据画的 PowerPoint 图表,可以在 PowerPoint 里编辑;导出 Typst 时嵌入这张图。
+
+## 二维码
+
+`qr(text)` 把一个链接或任何文字变成观众可以用手机扫的二维码:
+
+```ts
+qr("https://pride7.github.io/frameseq/").width(220);
+```
+
+默认是 200 像素见方,深色码点、浅色底,并留出扫码器需要的静区,放大缩小都清晰。
+
+## 图标
+
+`icon(name)` 加入一个 [Lucide](https://lucide.dev/icons) 图标,用文字颜色、按字号大小绘制:
+
+```ts
+icon("rocket");
+icon("chart-line").size(64).color("#0f766e");
+```
+
+TypeScript 知道每个图标的名字,所以编辑器能补全,拼错的名字在页面运行前就会画上波浪线。预览时整套图标都可用;构建出的演示只包含源码里写到的图标,所以请用字符串写图标名,而不要在运行时拼出名字。
+
+## 引用
+
+`cite()` 给参考文献里的条目编号,在每一页底部列出这一页引用的条目,`references()` 加入完整的参考文献表。见[引用与参考文献](citations.md)。
 
 ## 图形
 

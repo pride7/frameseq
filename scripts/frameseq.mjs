@@ -3,12 +3,14 @@
 import { spawn } from "node:child_process";
 import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync, openSync } from "node:fs";
-import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
+import { installedChromium } from "./browsers.mjs";
 import { inspectSlides } from "./frameseq-inspect.mjs";
+import { DocumentRunError, deckReady, displayPath, documentErrorReport, watchDeck } from "./document-errors.mjs";
 import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
@@ -125,26 +127,6 @@ async function writeProjectInstructions(directory) {
   ]);
 }
 
-/** Installed Chromium browsers, most likely first, for opening the Studio as an app window. */
-function chromiumCandidates() {
-  if (process.platform === "win32") {
-    const roots = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA]
-      .filter(Boolean);
-    return [
-      ["Google", "Chrome", "Application", "chrome.exe"],
-      ["Microsoft", "Edge", "Application", "msedge.exe"],
-      ["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
-    ].flatMap((parts) => roots.map((root) => join(root, ...parts)));
-  }
-  if (process.platform === "darwin") {
-    return ["Google Chrome", "Microsoft Edge", "Chromium", "Brave Browser"]
-      .map((name) => `/Applications/${name}.app/Contents/MacOS/${name}`);
-  }
-  const directories = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-  return ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "brave-browser"]
-    .flatMap((name) => directories.map((directory) => join(directory, name)));
-}
-
 function detachedSpawn(command, args, options = {}) {
   return new Promise((resolveSpawn) => {
     const child = spawn(command, args, { detached: true, stdio: "ignore", ...options });
@@ -162,7 +144,7 @@ function detachedSpawn(command, args, options = {}) {
  */
 async function openStudioWindow(url, { appWindow = true } = {}) {
   if (appWindow) {
-    const browser = chromiumCandidates().find((candidate) => existsSync(candidate));
+    const browser = installedChromium();
     if (browser && await detachedSpawn(browser, [`--app=${url}`, "--window-size=1600,1000"])) return;
   }
   const [command, args] = process.platform === "win32"
@@ -365,6 +347,7 @@ async function exportPdf(entry, requestedOutput) {
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-build");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
+  process.env.FRAMESEQ_SOURCE_MARKS = "1";
 
   await viteBuild({ configFile, root: packageRoot });
 
@@ -391,20 +374,30 @@ async function exportPdf(entry, requestedOutput) {
   const browser = await puppeteer.launch(puppeteerLaunchOptions());
   try {
     const page = await browser.newPage();
+    await watchDeck(page);
     await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
       waitUntil: "networkidle0",
     });
-    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    await deckReady(page, entry);
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
 
+    // A page made for paper prints at the paper's size: the canvas is scaled up as a whole, so
+    // the PDF stays vector and its layout is exactly the one that was checked.
     const dimensions = await page.evaluate(() => {
       const styles = getComputedStyle(document.documentElement);
+      const read = (name, fallback) => Number.parseFloat(styles.getPropertyValue(name)) || fallback;
+      const width = read("--slide-width", 1280);
+      const height = read("--slide-height", 720);
       return {
-        width: Number.parseFloat(styles.getPropertyValue("--slide-width")),
-        height: Number.parseFloat(styles.getPropertyValue("--slide-height")),
+        width: read("--slide-print-width", width),
+        height: read("--slide-print-height", height),
+        zoom: read("--slide-print-zoom", 1),
       };
     });
+    if (dimensions.zoom !== 1) {
+      await page.addStyleTag({ content: ".frameseq-print .frameseq-slide-frame { zoom: var(--slide-print-zoom); }" });
+    }
 
     await page.pdf({
       path: outputPath,
@@ -443,6 +436,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-check");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
+  process.env.FRAMESEQ_SOURCE_MARKS = "1";
 
   await viteBuild({
     configFile,
@@ -470,10 +464,20 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
   const browser = await puppeteer.launch(puppeteerLaunchOptions());
   try {
     const page = await browser.newPage();
+    await watchDeck(page);
     await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
       waitUntil: "networkidle0",
     });
-    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    try {
+      await deckReady(page, entry);
+    } catch (error) {
+      // Nothing could be measured, but the reason is a finding like any other: an agent or an
+      // editor reading the JSON learns which line to fix.
+      if (!json || !(error instanceof DocumentRunError)) throw error;
+      console.log(JSON.stringify(documentErrorReport(error.file, error), null, 2));
+      process.exitCode = 1;
+      return;
+    }
     await page.evaluate(() => document.fonts.ready);
 
     const results = await page.evaluate(collectLayoutIssues);
@@ -482,7 +486,7 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
     const warnings = results.issues.filter((issue) => issue.severity === "warning").length;
     const report = {
       version: 1,
-      file: (relative(process.cwd(), entry) || basename(entry)).replaceAll("\\", "/"),
+      file: displayPath(entry),
       canvas: results.canvas,
       summary: {
         slides: results.slides,

@@ -4,10 +4,13 @@ import process from "node:process";
 import PptxGenJS from "pptxgenjs";
 import puppeteer from "puppeteer";
 import { build as viteBuild, preview } from "vite";
+import { deckReady, watchDeck } from "./document-errors.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 
-const cssPixelsPerInch = 96;
-const pointsPerCssPixel = 72 / cssPixelsPerInch;
+// Canvas pixels per inch of the slide: 96 for a screen presentation, and on paper however many
+// the canvas fits across the sheet. Set for each export from the deck it renders.
+let cssPixelsPerInch = 96;
+let pointsPerCssPixel = 72 / cssPixelsPerInch;
 
 function pptxName(entry) {
   const file = basename(entry, extname(entry));
@@ -345,6 +348,100 @@ function addLine(pptx, slide, item) {
   });
 }
 
+function tableBorder(width, style, color) {
+  if (!(width > 0) || !color || style === "none" || style === "hidden" || color.transparency >= 100) return { type: "none" };
+  return { type: dashType(style) === "solid" ? "solid" : "dash", pt: Math.max(width * pointsPerCssPixel, 0.25), color: color.color };
+}
+
+/**
+ * A table becomes a PowerPoint table, so its text stays editable cell by cell and the rows keep
+ * their measured widths, heights, and rules.
+ */
+function addTable(slide, item) {
+  const { rows, columnWidths, rowHeights } = item.table;
+  const last = rows.length - 1;
+  const tableTop = tableBorder(number(item.style.borderTopWidth), item.style.borderTopStyle, cssColor(item.style.borderTopColor));
+  const tableBottom = tableBorder(number(item.style.borderBottomWidth), item.style.borderBottomStyle, cssColor(item.style.borderBottomColor));
+  const cells = rows.map((row, rowIndex) => row.map((cell) => {
+    const style = cell.style;
+    const color = cssColor(style.color) ?? { color: "000000", transparency: 0 };
+    const background = cssColor(style.backgroundColor);
+    const weight = Number.parseInt(style.fontWeight, 10);
+    const top = rowIndex === 0 ? tableTop : tableBorder(number(style.borderTopWidth), style.borderTopStyle, cssColor(style.borderTopColor));
+    const bottom = rowIndex === last ? tableBottom : tableBorder(number(style.borderBottomWidth), style.borderBottomStyle, cssColor(style.borderBottomColor));
+    return {
+      text: cell.text,
+      options: {
+        fontFace: fontFace(style.fontFamily, cell.text),
+        fontSize: Math.max(number(style.fontSize, 16) * pointsPerCssPixel, 1),
+        color: color.color,
+        bold: Number.isFinite(weight) ? weight >= 600 : false,
+        align: style.textAlign === "right" || style.textAlign === "end" ? "right" : style.textAlign === "center" ? "center" : "left",
+        valign: "middle",
+        margin: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]
+          .map((value) => number(value) / cssPixelsPerInch),
+        border: [top, { type: "none" }, bottom, { type: "none" }],
+        ...(background && background.transparency < 100 ? { fill: { color: background.color, transparency: background.transparency } } : {}),
+      },
+    };
+  }));
+  slide.addTable(cells, {
+    ...position(item.box),
+    colW: columnWidths.map((width) => width / cssPixelsPerInch),
+    rowH: rowHeights.map((height) => height / cssPixelsPerInch),
+    autoPage: false,
+    objectName: `FrameSeq table ${item.id}`,
+  });
+}
+
+/** A chart becomes a PowerPoint chart drawn from the same data, which can be edited there. */
+function addChart(pptx, slide, item) {
+  const { spec, fontFamily, fontSize, foreground, muted, grid, palette } = item.chart;
+  const hex = (value) => cssColor(value)?.color;
+  const types = { bar: pptx.ChartType.bar, hbar: pptx.ChartType.bar, line: pptx.ChartType.line, pie: pptx.ChartType.pie, donut: pptx.ChartType.doughnut };
+  const pie = spec.kind === "pie" || spec.kind === "donut";
+  const colors = (spec.colors?.length ? spec.colors : palette).map(hex).filter(Boolean);
+  const size = Math.max(fontSize * pointsPerCssPixel * 0.85, 6);
+  const named = spec.series.filter((series) => series.name).length;
+  const showValues = spec.showValues ?? (pie || (spec.kind !== "line" && spec.series.length === 1 && spec.labels.length <= 12));
+  const unit = spec.unit ? spec.unit.replace(/"/g, "") : "";
+  slide.addChart(types[spec.kind], spec.series.map((series, index) => ({
+    name: series.name || (pie ? "Share" : `Series ${index + 1}`),
+    labels: spec.labels,
+    values: series.values,
+  })), {
+    ...position(item.box),
+    chartColors: colors,
+    barDir: spec.kind === "hbar" ? "bar" : "col",
+    barGrouping: "clustered",
+    holeSize: spec.kind === "donut" ? 58 : undefined,
+    showLegend: spec.legend ?? (pie || named > 1),
+    legendPos: "t",
+    legendFontSize: size,
+    legendFontFace: fontFace(fontFamily),
+    legendColor: hex(foreground),
+    showValue: showValues && !pie,
+    showPercent: showValues && pie && !unit,
+    dataLabelFormatCode: unit ? `#,##0.##"${unit}"` : undefined,
+    dataLabelFontSize: size,
+    dataLabelColor: pie ? "FFFFFF" : hex(foreground),
+    dataLabelPosition: pie ? "ctr" : "outEnd",
+    catAxisLabelFontSize: size,
+    catAxisLabelColor: hex(foreground),
+    catAxisLabelFontFace: fontFace(fontFamily),
+    valAxisLabelFontSize: size,
+    valAxisLabelColor: hex(muted),
+    valAxisLabelFontFace: fontFace(fontFamily),
+    valAxisLabelFormatCode: unit ? `#,##0.##"${unit}"` : undefined,
+    valAxisMaxVal: spec.max,
+    valGridLine: { color: hex(grid) ?? "E5E7EB", style: "solid", size: 0.75 },
+    catGridLine: { style: "none" },
+    lineSize: 2.5,
+    lineDataSymbolSize: 7,
+    objectName: `FrameSeq chart ${item.id}`,
+  });
+}
+
 async function screenshotData(page, selector) {
   const element = await page.$(selector);
   if (!element) throw new Error(`PPTX export could not find ${selector}`);
@@ -369,6 +466,12 @@ async function captureSlides(page) {
       '[data-frameseq-node="rect"]',
       '[data-frameseq-node="circle"]',
       '[data-frameseq-node="line"]',
+      '[data-frameseq-node="table"]',
+      '[data-frameseq-node="chart"]',
+      '[data-frameseq-node="qr"]',
+      '[data-frameseq-node="icon"]',
+      ".frameseq-theme-header",
+      ".frameseq-theme-header .frameseq-text",
       ".frameseq-theme-title-bar",
       ".frameseq-theme-footer",
       ".frameseq-theme-footer-author",
@@ -461,9 +564,12 @@ async function captureSlides(page) {
         if (listMarker) kind = "marker";
         else if (nodeType === "line") kind = "line";
         else if (nodeType === "rect" || nodeType === "circle") kind = "shape";
-        else if (["image", "equation", "typst", "latex"].includes(nodeType)) kind = "raster";
+        // A table becomes an editable table unless math in a cell needs the picture of it.
+        else if (nodeType === "table") kind = element.querySelector(".frameseq-inline-math") ? "raster" : "table";
+        else if (nodeType === "chart") kind = "chart";
+        else if (["image", "equation", "typst", "latex", "qr", "icon"].includes(nodeType)) kind = "raster";
         else if (nodeType === "text" || nodeType === "code"
-          || element.matches(".frameseq-theme-title-bar, .frameseq-theme-footer-author, .frameseq-theme-footer-institute, .frameseq-theme-footer-title, .frameseq-theme-footer-details, .frameseq-auto-title-page > .frameseq-text")) {
+          || element.matches(".frameseq-theme-title-bar, .frameseq-theme-footer-author, .frameseq-theme-footer-institute, .frameseq-theme-footer-title, .frameseq-theme-footer-details, .frameseq-auto-title-page > .frameseq-text, .frameseq-theme-header .frameseq-text")) {
           kind = element.querySelector(".frameseq-inline-math") ? "raster" : "text";
         }
         else if (hasDecoration(computed)) kind = "decoration";
@@ -498,6 +604,31 @@ async function captureSlides(page) {
           };
         } else if (kind === "marker") {
           item.marker = { type: "label" };
+        }
+
+        if (kind === "table") {
+          const rows = Array.from(element.rows);
+          item.table = {
+            rows: rows.map((row) => Array.from(row.cells).map((cell) => ({
+              text: (cell.innerText || cell.textContent || "").trim(),
+              style: styleSnapshot(getComputedStyle(cell)),
+            }))),
+            columnWidths: rows[0] ? Array.from(rows[0].cells).map((cell) => cell.getBoundingClientRect().width) : [],
+            rowHeights: rows.map((row) => row.getBoundingClientRect().height),
+          };
+        }
+
+        if (kind === "chart") {
+          const variable = (name, fallback) => computed.getPropertyValue(name).trim() || fallback;
+          item.chart = {
+            spec: JSON.parse(element.dataset.frameseqChart),
+            fontFamily: computed.fontFamily,
+            fontSize: px(computed.fontSize),
+            foreground: variable("--frameseq-foreground", "#111827"),
+            muted: variable("--frameseq-muted", "#4b5563"),
+            grid: variable("--frameseq-border", "#e5e7eb"),
+            palette: [variable("--frameseq-accent", "#2563eb"), "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#64748b"],
+          };
         }
 
         if (kind === "line") {
@@ -535,10 +666,12 @@ async function captureSlides(page) {
     });
 
     const rootStyles = getComputedStyle(document.documentElement);
+    const width = Number.parseFloat(rootStyles.getPropertyValue("--slide-width"));
     return {
       title: document.title,
-      width: Number.parseFloat(rootStyles.getPropertyValue("--slide-width")),
+      width,
       height: Number.parseFloat(rootStyles.getPropertyValue("--slide-height")),
+      printWidth: Number.parseFloat(rootStyles.getPropertyValue("--slide-print-width")) || width,
       slides,
     };
   });
@@ -554,6 +687,7 @@ export async function exportPptx({
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-pptx-build");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
+  process.env.FRAMESEQ_SOURCE_MARKS = "1";
 
   await viteBuild({ configFile, root: packageRoot });
   const server = await preview({
@@ -575,10 +709,11 @@ export async function exportPptx({
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+    await watchDeck(page);
     await page.goto(`http://127.0.0.1:${address.port}/?print=1&pptx=1`, {
       waitUntil: "networkidle0",
     });
-    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    await deckReady(page, entry);
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
 
@@ -593,6 +728,8 @@ export async function exportPptx({
 
     const pptx = new PptxGenJS();
     const layoutName = "FRAMESEQ";
+    cssPixelsPerInch = slides.width / (slides.printWidth / 96);
+    pointsPerCssPixel = 72 / cssPixelsPerInch;
     const width = slides.width / cssPixelsPerInch;
     const height = slides.height / cssPixelsPerInch;
     pptx.defineLayout({ name: layoutName, width, height });
@@ -626,6 +763,8 @@ export async function exportPptx({
         if (item.kind === "marker") addMarker(pptx, slide, item);
         if (item.kind === "shape") addShape(pptx, slide, item);
         if (item.kind === "line" && item.line) addLine(pptx, slide, item);
+        if (item.kind === "table") addTable(slide, item);
+        if (item.kind === "chart") addChart(pptx, slide, item);
         if (item.kind === "raster") {
           const data = await screenshotData(page, `[data-frameseq-export-id="${item.id}"]`);
           slide.addImage({ data, ...position(item.box), objectName: `FrameSeq ${item.nodeType} ${item.id}` });

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/pptx.md sha256:8a0a1d307b123e1f -->
+<!-- translation-of: docs/pptx.md sha256:ee452311119fab10 -->
 
 # 导出 PowerPoint
 
@@ -31,10 +31,12 @@ npx frameseq pptx slides.ts --output output/my-talk.pptx
 | 完整边框 | 原生的 PowerPoint 图形边框 |
 | 局部边框(比如 `border-bottom`) | 对应边上的可编辑线条对象 |
 | 图片 | PowerPoint 图片对象 |
-| LaTeX 公式、行内公式、Typst 和编译后的 LaTeX 片段 | 高分辨率图片对象 |
+| `table()` | PowerPoint 表格,保留线条和对齐,单元格可编辑 |
+| `chart()` | 用同一份数据画的 PowerPoint 图表,可以在 PowerPoint 里编辑 |
+| LaTeX 公式、行内公式、Typst、编译后的 LaTeX 片段、图标、二维码,以及单元格里有公式的表格 | 高分辨率图片对象 |
 | 演讲者备注 | PowerPoint 演讲者备注 |
 
-结构化布局和 `position()` 使用的是**最终的浏览器几何**,所以 PowerPoint 里的坐标遵循与 HTML、PDF 相同的 `split()`、`grid()`、`canvas()` 和主题布局。
+结构化布局和 `position()` 使用的是**最终的浏览器几何**,所以 PowerPoint 里的坐标遵循与 HTML、PDF 相同的 `split()`、`grid()`、`canvas()` 和主题布局。用 `.fit()` 缩小过的文字,保持它在浏览器里得到的字号。为纸张制作的演示会变成纸张尺寸的幻灯片,比如 A0 海报是 841 × 1189 mm;见[海报与打印](posters.md)。
 
 ## 扁平化导出
 

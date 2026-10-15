@@ -26,10 +26,19 @@ import {
   toFileText,
   type FileFormat,
 } from "./document";
-import { createEditor, setEditorDarkness, showPreviewSlide, showSlideMarks, type SlideMark } from "./editor";
+import type { Diagnostic } from "@codemirror/lint";
+import {
+  createEditor,
+  refreshDocumentDiagnostics,
+  setEditorDarkness,
+  showPreviewSlide,
+  showSlideMarks,
+  type SlideMark,
+} from "./editor";
 import { Presentations, showStartPage } from "./files";
 import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
-import { StudioFrames, type SourceTarget } from "./frames";
+import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
+import { nameDiagnostics } from "../source-names";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -228,6 +237,8 @@ async function start(): Promise<void> {
   let outline: RenderedSlide[] | undefined;
   let previewSlide = 0;
   let previewLabel = "";
+  /** Why the last run of the document failed, until a run succeeds again. */
+  let runtimeFailures: PreviewFailure[] = [];
   let exporting = false;
 
   // ── Theme ───────────────────────────────────────────────────────────────────────────────
@@ -247,6 +258,7 @@ async function start(): Promise<void> {
     onSave: () => void save({ auto: false }),
     onDiagnostics: handleDiagnostics,
     onSlideMarker: (index) => goToSlide(index, { focusEditor: false }),
+    documentDiagnostics: () => documentDiagnostics(),
     dark: resolvedTheme() === "dark",
   });
   if (stash) {
@@ -272,14 +284,24 @@ async function start(): Promise<void> {
       previewRendered: () => {
         problems.set("build", []);
         problems.set("runtime", []);
+        if (runtimeFailures.length > 0) {
+          runtimeFailures = [];
+          refreshDocumentDiagnostics(view);
+        }
       },
-      previewFailed: (message) => {
-        problems.set("runtime", [{
-          source: "runtime",
-          severity: "error",
-          message,
-          detail: "The preview still shows the last version that ran. Fix the error and save to update it.",
-        }]);
+      previewFailed: (failures) => {
+        runtimeFailures = failures;
+        problems.set("runtime", failures.map((failure): Problem => {
+          const location = failure.start === undefined ? undefined : savedLineOf(failure.start);
+          return {
+            source: "runtime",
+            severity: "error",
+            message: failure.message,
+            detail: "The preview still shows the last version that ran. Fix the error and save to update it.",
+            ...(location ?? {}),
+          };
+        }));
+        refreshDocumentDiagnostics(view);
       },
       slide: (index, count, label) => {
         previewSlide = index;
@@ -623,6 +645,65 @@ async function start(): Promise<void> {
     const to = fromFileOffset(syncedDoc, target.end, format);
     if (from > syncedDoc.length || to > syncedDoc.length) return undefined;
     return { from: sinceSync.mapPos(from, 1), to: sinceSync.mapPos(to, -1) };
+  }
+
+  /** The line and column of a file offset in the saved document, which the preview ran. */
+  function savedLineOf(offset: number): { line: number; column: number } | undefined {
+    const position = fromFileOffset(syncedDoc, offset, format);
+    if (position > syncedDoc.length) return undefined;
+    const line = syncedDoc.lineAt(position);
+    return { line: line.number, column: position - line.from + 1 };
+  }
+
+  /**
+   * The statements a failed run stopped in, underlined where they are now in the editor. The
+   * preview reports them against the saved text, so typing since then only moves them.
+   */
+  function documentDiagnostics(): Diagnostic[] {
+    return [...runtimeDiagnostics(), ...namesDiagnostics()];
+  }
+
+  /**
+   * Names that refer to nothing on their slide, read from the text as it is typed. They join the
+   * Problems list beside TypeScript's, which cannot see inside the strings that hold them.
+   */
+  function namesDiagnostics(): Diagnostic[] {
+    const doc = view.state.doc;
+    const found = nameDiagnostics(doc.toString());
+    problems.set("names", found.map((item): Problem => ({
+      source: "names",
+      severity: item.severity,
+      message: item.message,
+      code: "names",
+      from: item.start,
+      to: item.end,
+      line: doc.lineAt(item.start).number,
+      slideIndex: slideIndexAt(item.start),
+    })));
+    return found.map((item) => ({
+      from: item.start,
+      to: Math.max(item.end, item.start + 1),
+      severity: item.severity,
+      message: item.message,
+      source: "FrameSeq",
+    }));
+  }
+
+  function runtimeDiagnostics(): Diagnostic[] {
+    return runtimeFailures.flatMap((failure): Diagnostic[] => {
+      if (failure.start === undefined || failure.end === undefined) return [];
+      const range = editorRange({ start: failure.start, end: failure.end });
+      if (!range || range.to <= range.from) return [];
+      // A statement over several lines is marked on its first, where it starts.
+      const firstLine = view.state.doc.lineAt(range.from);
+      return [{
+        from: range.from,
+        to: Math.min(range.to, firstLine.to),
+        severity: "error",
+        message: failure.message,
+        source: "FrameSeq",
+      }];
+    });
   }
 
   /** Where an editor position was in the saved document, which the preview is drawn from. */

@@ -71,6 +71,16 @@ The editor reads the project the way an editor would, from the nearest `tsconfig
 
 A slide number marks the line where each `slide()` call begins. Click it to show that slide. A band beside the source marks the slide the preview is showing.
 
+### Names
+
+The names a document gives with `.as()` and `at()` are strings to TypeScript, so the Studio reads them itself:
+
+- Inside the string of `ref()`, `group()`, a connector's `.from()` or `.to()`, or a placement such as `.rightOf()`, completions offer the names on that slide, and after `"encoder.` the anchor sides. Inside `at()`, they offer the slide's regions: `main`, `left` and `right` on a split slide, the cells of a grid, and the paths already visited.
+- **F12** on a name jumps to where it was given: the `.as()` that named the object, or the first `at()` that made the region. In a path, the segment under the cursor decides, so `cell0` in `"cell0/now"` leads to the `cell0` region.
+- **F2** renames a name everywhere on its slide in one step: the `.as()` or `at()` that gives it, every reference, and the paths of the regions inside a renamed region.
+- Hovering over a name says what it is, where it was given, and how often the slide refers to it.
+- A name that refers to nothing on its slide is underlined, with the nearest name it might have meant, and listed under **Names** in Problems. So are two objects given the same name, and `at("left")` on a slide that was never split. A slide that builds names at runtime, or calls helper functions that might, is left unchecked rather than guessed at.
+
 ## The editor and the preview follow each other
 
 With **Follow cursor** on, moving the cursor shows the slide that holds it and outlines the object written on that line. The preview keeps its reveal step while the cursor stays inside the same slide.
@@ -114,14 +124,15 @@ Clicking a slide made in a loop puts the cursor on the `slide()` call inside the
 
 ## Problems
 
-The Problems panel collects four kinds of finding, refreshed as you work:
+The Problems panel collects five kinds of finding, refreshed as you work:
 
 - **TypeScript**: the same errors the editor underlines.
+- **Names**: names that refer to nothing on their slide, names given twice, and layout regions the slide does not have; see [Names](#names).
 - **Layout**: the rules of [`frameseq check`](layout-checks.md), measured against the live deck after every save rather than on demand: canvas overflow, clipped text, small type, empty slides and regions, similar region names, and modifiers that have no effect.
 - **Build**: errors the server reported while compiling the deck, such as a Typst or LaTeX fragment that does not compile.
-- **Preview**: an error thrown while the deck ran. The preview keeps showing the last version that ran until the error is fixed.
+- **Preview**: an error thrown while the deck ran, with the line of the statement it stopped in, which the editor underlines. The preview keeps showing the last version that ran until the error is fixed.
 
-Click a finding to go to it: TypeScript errors select the text, and layout findings show their slide, outline the object, and put the cursor on the line that wrote it.
+Click a finding to go to it: TypeScript and name errors select the text, preview errors put the cursor on the statement that failed, and layout findings show their slide, outline the object, and put the cursor on the line that wrote it.
 
 ## Changes made elsewhere
 
@@ -150,6 +161,8 @@ The paths are relative to the directory the Studio was started from, or to the f
 | `Ctrl+O` | Open another presentation |
 | `Ctrl+Z`, `Ctrl+Y` | Undo and redo, also from the preview and the slide rail |
 | `Ctrl+Space` | Show completions |
+| `F12` | Go to where the name under the cursor was given |
+| `F2` | Rename the name under the cursor on its slide |
 | `Ctrl+F` | Find and replace in the editor |
 | `Ctrl+PageDown`, `Ctrl+PageUp` | Next and previous slide |
 | `F5` | Present from the current slide |

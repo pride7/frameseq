@@ -23,14 +23,22 @@ export function collectLayoutIssues(win = window) {
     "latex",
     "rect",
     "circle",
+    "table",
+    "chart",
+    "qr",
+    "icon",
   ]);
-  const textTypes = new Set(["text", "code", "equation", "rect", "circle"]);
+  const textTypes = new Set(["text", "code", "equation", "rect", "circle", "table"]);
   const containerTypes = new Set(["row", "column", "stack"]);
   const clippingValues = new Set(["hidden", "clip"]);
   // Displays that place their children, which is what align(), gap(), and grow() need.
   const arrangingDisplays = new Set(["flex", "inline-flex", "grid", "inline-grid"]);
 
   const rounded = (value) => Math.round(value * 10) / 10;
+  // The smallest readable type grows with the canvas: 14px on a 1280-wide slide, and the same
+  // share of a poster's short side, which on an A0 sheet is about 21pt.
+  const readingScale = Number(document.documentElement.dataset.frameseqReadingScale) || 1;
+  const pointsPerPixel = Number(document.documentElement.dataset.frameseqPaperPoints) || 0;
   const excerpt = (element) => (element.textContent ?? "")
     .replace(/\s+/g, " ")
     .trim()
@@ -315,9 +323,13 @@ export function collectLayoutIssues(win = window) {
           if (clipsX || clipsY) {
             const ancestorBounds = clippingAncestor.getBoundingClientRect();
             const clipped = overflow(visualBounds, ancestorBounds);
+            // Spaces at the end of a line hang past the edge without being seen, and a text range
+            // still measures them; an object that clips itself has the browser's own answer.
+            const hangsOnly = clippingAncestor === element
+              && element.scrollWidth <= element.clientWidth + tolerance;
             const relevant = {
-              left: clipsX ? clipped.left : 0,
-              right: clipsX ? clipped.right : 0,
+              left: clipsX && !hangsOnly ? clipped.left : 0,
+              right: clipsX && !hangsOnly ? clipped.right : 0,
               top: clipsY ? clipped.top : 0,
               bottom: clipsY ? clipped.bottom : 0,
             };
@@ -349,17 +361,20 @@ export function collectLayoutIssues(win = window) {
           const fontSize = Number.parseFloat(style.fontSize);
           const heading = element.classList.contains("frameseq-slide-title")
             || element.classList.contains("frameseq-cover-title");
-          const minimum = heading ? 24 : 14;
+          const minimum = Math.round((heading ? 24 : 14) * readingScale * 10) / 10;
           if (Number.isFinite(fontSize) && fontSize < minimum) {
+            // On paper the same numbers are printed points, which is how type on a sheet is judged.
+            const printed = (value) => (pointsPerPixel ? ` (${Math.round(value * pointsPerPixel)}pt printed)` : "");
             issues.push({
               severity: "warning",
               rule: "font-too-small",
               slide,
               element: elementInfo,
-              message: `Font size ${rounded(fontSize)}px is below the recommended ${minimum}px minimum.`,
+              message: `Font size ${rounded(fontSize)}px${printed(fontSize)} is below the recommended ${minimum}px${printed(minimum)} minimum.`,
               details: {
                 fontSize: rounded(fontSize),
                 recommendedMinimum: minimum,
+                ...(pointsPerPixel ? { printedPoints: Math.round(fontSize * pointsPerPixel * 10) / 10 } : {}),
               },
               suggestions: [
                 `Increase the font size to at least ${minimum}px.`,
@@ -375,6 +390,7 @@ export function collectLayoutIssues(win = window) {
     canvas: {
       width: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--slide-width")),
       height: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--slide-height")),
+      ...(document.documentElement.dataset.frameseqPaper ? { paper: document.documentElement.dataset.frameseqPaper } : {}),
     },
     slides: canvases.length,
     issues,

@@ -20,6 +20,10 @@ const contentCommands = new Set([
   "rect",
   "circle",
   "line",
+  "table",
+  "chart",
+  "qr",
+  "icon",
   "row",
   "column",
   "stack",
@@ -323,7 +327,7 @@ function regionReferences(sourceFile, root, after = 0) {
 }
 
 function presentationMetadata(sourceFile) {
-  const call = findIdentifierCall(sourceFile, "presentation");
+  const call = findIdentifierCall(sourceFile, "presentation") ?? findIdentifierCall(sourceFile, "poster");
   const argument = call?.arguments[0];
   return {
     title: staticString(argument) ?? objectString(argument, "title") ?? "FrameSeq",
@@ -397,14 +401,16 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
   };
 
   for (const statement of sourceFile.statements) {
-    const slideCall = findIdentifierCall(statement, "slide");
+    // A poster is a presentation whose one page poster() begins itself.
+    const posterCall = findIdentifierCall(statement, "poster");
+    const slideCall = findIdentifierCall(statement, "slide") ?? posterCall;
     if (slideCall) {
       const slideSource = location(sourceFile, slideCall);
       finishSlide(slideSource.line - 1);
 
-      const argument = slideCall.arguments[0];
+      const argument = posterCall === slideCall ? undefined : slideCall.arguments[0];
       const stringTitle = staticString(argument);
-      const name = stringTitle ?? objectString(argument, "name");
+      const name = posterCall === slideCall ? "Poster" : stringTitle ?? objectString(argument, "name");
       const title = stringTitle ?? objectString(argument, "title");
       const methods = methodCalls(statement, slideCall.getEnd()).map((call) => call.name);
       const layoutMethod = layoutPriority.find((method) => methods.includes(method));

@@ -20,6 +20,7 @@ const readme = await readFile(readmePath, "utf8");
 
 const documentedFunctions = [
   "presentation",
+  "poster",
   "slide",
   "note",
   "text",
@@ -45,6 +46,13 @@ const documentedFunctions = [
   "rect",
   "circle",
   "line",
+  "table",
+  "chart",
+  "qr",
+  "icon",
+  "cite",
+  "footnote",
+  "references",
   "defineTheme",
 ];
 

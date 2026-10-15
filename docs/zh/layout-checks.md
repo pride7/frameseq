@@ -1,4 +1,4 @@
-<!-- translation-of: docs/layout-checks.md sha256:52a6e9ca51044bab -->
+<!-- translation-of: docs/layout-checks.md sha256:7923a45ade280361 -->
 
 # 面向 AI 的布局检查
 
@@ -13,12 +13,13 @@ frameseq check slides.ts
 - `empty-slide` —— 某一页没有可见内容,而且没有被显式标记为"有意留白"。
 - `canvas-overflow` —— 渲染出的对象超出了页面画布。
 - `text-clipped` —— 文字被裁切的文本框或祖先元素遮住。
-- `font-too-small` —— 正文或代码小于 14px,或者页面标题小于 24px。
+- `font-too-small` —— 文字在它的尺寸下太小,读不清:在 1280 宽的幻灯片上小于 14px,标题小于 24px。这个下限随画布一起变大;在纸张上,它是纸张短边的同一比例,在 A0 海报上约为 21 pt,结果会同时给出两种尺寸。
 - `empty-region` —— `at()` 创建的命名区域从未收到任何内容。
 - `similar-name` —— 同一页上两个名字只差一次编辑,通常意味着某个 `at()` 路径或 `.as()` 名字拼错了。
 - `inert-modifier` —— 布局修饰符落在了它不可能生效的地方,浏览器会直接忽略它。
+- `document-error` —— 幻灯片文档在能测量任何东西之前就因错误停下了。
 
-**画布溢出和文字裁切是错误**;空白页、字号过小、空区域、近似重名、失效修饰符是警告。严格模式下任何警告都会失败。
+**画布溢出、文字裁切和文档错误是错误**;空白页、字号过小、空区域、近似重名、失效修饰符是警告。严格模式下任何警告都会失败。
 
 布局修饰符只在一种上下文里有效:`align()`、`justify()`、`gap()`、`wrap()` 需要**对象本身**是 `row()`、`column()` 或网格;`selfAlign()`、`centerSelf()`、`grow()`、`spacer()` 需要**容纳它的容器**是其中之一。写在别处它们会被悄悄丢弃,所以检查器会同时指出是哪个修饰符、以及最接近的那个本该生效的写法:
 
@@ -56,6 +57,18 @@ ERROR Slide 4 "Architecture" [text-clipped]
 
 对象路径标识的是渲染后的 FrameSeq 节点。对自动化编辑器来说,它比生成的 CSS 选择器更有用,而且不依赖浏览器生成的类名。
 
+## 无法运行的文档
+
+当文档本身抛出错误时,比如 `ref()` 引用了没有任何对象叫这个名字,或者引用了参考文献里没有的条目,就什么都测量不了。检查器会立刻报告,定位到文档当时正在执行的语句,并给出出错的那一行:
+
+```text
+talk.slides.ts:24:1  error  ref() cannot find an object named "decodr"; named objects on this slide: encoder, decoder
+  23 | rect("Decoder").as("decoder");
+> 24 | ref("decodr").fill("#dbeafe");
+```
+
+`frameseq pdf`、`pptx` 和 `typst` 也用同样的方式报告无法运行的文档。
+
 ## 给代理用的 JSON 输出
 
 当结果要被另一个程序或 AI 代理消费时,用 `--json`:
@@ -78,7 +91,8 @@ frameseq check slides.ts --json
       "element": {
         "type": "text",
         "path": "3.1.2",
-        "text": "FrameSeq owns presentation structure..."
+        "text": "FrameSeq owns presentation structure...",
+        "source": { "line": 41, "column": 1 }
       },
       "message": "Text exceeds the slide canvas by 38px on the bottom.",
       "details": { "left": 0, "right": 0, "top": 0, "bottom": 38 },
@@ -91,6 +105,19 @@ frameseq check slides.ts --json
 ```
 
 JSON 模式只把报告写到标准输出,便于重定向或直接解析。
+
+`element.source` 是写出该对象的那条命令所在的行和列,代理可以直接找到要改的代码。为纸张制作的演示会多出 `canvas.paper`,比如 `"A0"`,它的 `font-too-small` 结果会多出 `details.printedPoints`。
+
+无法运行的文档会产生同样结构的报告,其中只有一条 `document-error`,它的 `source` 就是停下的那条语句:
+
+```json
+{
+  "severity": "error",
+  "rule": "document-error",
+  "message": "ref() cannot find an object named \"decodr\"; named objects on this slide: encoder, decoder",
+  "source": { "line": 24, "column": 1 }
+}
+```
 
 ## 退出码与严格模式
 

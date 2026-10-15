@@ -120,4 +120,22 @@ assert.ok(rootPackage.files.includes("scripts/frameseq-inspect.mjs"));
 assert.ok(rootPackage.scripts["vscode:package"].includes("packages/vscode-frameseq"));
 assert.ok(rootPackage.scripts["vscode:check"].includes("vscode-preview-test.mjs"));
 
-console.log("VS Code extension test passed: outline, preview, diagnostics, export commands, and packaging metadata are present.");
+// Names given with .as() and at() are identifiers in the editor, by the same rules as the Studio.
+const names = (await readFile(resolve(extensionRoot, "src", "names.ts"), "utf8")).replace(/\r\n/g, "\n");
+assert.ok(source.includes("registerNameFeatures(context)"));
+for (const provider of [
+  "registerCompletionItemProvider",
+  "registerDefinitionProvider",
+  "registerReferenceProvider",
+  "registerRenameProvider",
+  "registerHoverProvider",
+  "registerDocumentHighlightProvider",
+]) {
+  assert.ok(names.includes(`vscode.languages.${provider}(`), `Name features must include ${provider}`);
+}
+assert.ok(names.includes('from "./shared/source-names"'), "the extension must use the module the Studio uses");
+assert.ok(manifest.scripts.shared.includes("../../src/source-names.ts"), "the extension must copy the shared names module");
+assert.ok(manifest.scripts.compile.startsWith("npm run shared"), "compiling must copy the shared names module first");
+assert.ok(rootPackage.scripts["vscode:check"].includes("source-names-test.mjs"));
+
+console.log("VS Code extension test passed: outline, preview, diagnostics, name features, export commands, and packaging metadata are present.");

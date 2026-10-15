@@ -1,10 +1,14 @@
-<!-- translation-of: docs/getting-started.md sha256:cd61dc1e0011d9ce -->
+<!-- translation-of: docs/getting-started.md sha256:f0ebca0e0845214f -->
 
 # 快速上手
 
 ## 在线试用
 
 打开 [StackBlitz 上的 FrameSeq Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground),可以直接在浏览器里编辑 `slides.ts` 并实时预览。保存时 StackBlitz 会创建你自己的副本,仓库里的示例不受影响。
+
+## 安装应用
+
+[FrameSeq 应用](app.md)一个下载就装好 FrameSeq Studio 和 `frameseq` 命令,不需要事先装任何东西,包括 Node.js。从[发布页](https://github.com/pride7/frameseq/releases/latest)下载 Windows、macOS 或 Linux 版本,打开 FrameSeq Studio,在启动页新建一份演示即可。
 
 ## 只写一个文件
 

@@ -14,12 +14,25 @@ import { applySourceEdits, markEdits, sourceMarks, statementEdits } from "./scri
 import { applyIncomingEdits, applyIncomingMove, undoLastEdit } from "./scripts/source-edits.mjs";
 // @ts-expect-error -- plain JavaScript, like the other server-side halves of the preview.
 import { studioPlugin } from "./scripts/studio-server.mjs";
+// @ts-expect-error -- plain JavaScript, shared with the script that writes the icon name type.
+import { iconNamesIn, iconSet, namesIconsAtRuntime } from "./scripts/icon-set.mjs";
+// @ts-expect-error -- plain JavaScript, so the parser can be tested on its own.
+import { parseBibtex } from "./scripts/bibtex.mjs";
+// @ts-expect-error -- plain JavaScript, shared with the CLI.
+import { runsFromBundle } from "./scripts/browsers.mjs";
+// @ts-expect-error -- plain JavaScript, shared with the Studio's server.
+import { configDirectory } from "./scripts/studio-files.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
 const buildDirectory = process.env.FRAMESEQ_BUILD_DIR ?? resolve(packageRoot, "dist");
 const virtualEntry = "virtual:frameseq-entry";
 const resolvedVirtualEntry = `\0${virtualEntry}`;
+const virtualIcons = "virtual:frameseq-icons";
+const resolvedVirtualIcons = `\0${virtualIcons}`;
+/** Replaced once every module has been read, with the icons the build turned out to need. */
+const iconSetPlaceholder = "__FRAMESEQ_ICON_SET__";
+const iconsCompletePlaceholder = "__FRAMESEQ_ICONS_COMPLETE__";
 const frameworkPackage = "@pride7/frameseq";
 const frameworkEntry = resolve(packageRoot, "lib", "index.js");
 const normalizedEntry = normalizePath(entry);
@@ -57,6 +70,20 @@ const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 // Source marks only help the live preview, so a production build stays free of them.
 let marksEnabled = false;
+let serving = false;
+/** Icon names a build has found in the project's modules, and whether one is built at runtime. */
+const namedIcons = new Set<string>();
+let iconsAtRuntime = false;
+
+/** A module the presentation itself wrote, as opposed to FrameSeq or a dependency. */
+function projectModule(id: string): boolean {
+  const path = normalizePath(id.split("?")[0]);
+  return /\.(?:[cm]?[jt]sx?)$/.test(path)
+    && !path.includes("/node_modules/")
+    && !path.startsWith("\0")
+    && !pathKey(path).startsWith(pathKey(`${normalizePath(packageRoot)}/src/`))
+    && !pathKey(path).startsWith(pathKey(`${normalizePath(packageRoot)}/lib/`));
+}
 
 function networkOrigins(port: number, protocol: "http" | "https"): string[] {
   const origins = new Set<string>();
@@ -71,6 +98,7 @@ function networkOrigins(port: number, protocol: "http" | "https"): string[] {
 
 const documentCommands = [
   "presentation",
+  "poster",
   "slide",
   "note",
   "text",
@@ -88,6 +116,13 @@ const documentCommands = [
   "steps",
   "metric",
   "spacer",
+  "table",
+  "chart",
+  "qr",
+  "icon",
+  "cite",
+  "footnote",
+  "references",
   "group",
   "ref",
   "card",
@@ -100,6 +135,7 @@ const documentCommands = [
   "gap",
   "px",
   "pt",
+  "mm",
   "rem",
   "percent",
   "vw",
@@ -470,18 +506,52 @@ export default defineConfig({
       enforce: "pre",
       async resolveId(id, importer, options) {
         if (id === virtualEntry) return resolvedVirtualEntry;
+        if (id === virtualIcons) return resolvedVirtualIcons;
         if (id !== frameworkPackage) return undefined;
         // A slide document outside any project has no node_modules of its own, so it uses the
         // FrameSeq that is serving it.
         const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
         return resolved ?? frameworkEntry;
       },
-      load(id) {
+      async load(id) {
+        if (id === resolvedVirtualIcons) {
+          // A preview has every icon at hand, so any name works while the deck is written; a
+          // build carries only the icons its modules name, filled in when the bundle is written.
+          return serving
+            ? `globalThis.__frameseqIcons = ${JSON.stringify(iconSet())};\nglobalThis.__frameseqIconsComplete = true;\n`
+            : `globalThis.__frameseqIcons = ${iconSetPlaceholder};\nglobalThis.__frameseqIconsComplete = ${iconsCompletePlaceholder};\n`;
+        }
+        // A bibliography imported from a .bib file arrives as entries the runtime can cite.
+        if (/\.bib$/i.test(id.split("?")[0])) {
+          const path = id.split("?")[0];
+          this.addWatchFile(path);
+          return `export default ${JSON.stringify(parseBibtex(await readFile(path, "utf8")))};`;
+        }
         if (id !== resolvedVirtualEntry) return undefined;
         return `export { default } from ${JSON.stringify(normalizedEntry)};`;
       },
+      buildStart() {
+        namedIcons.clear();
+        iconsAtRuntime = false;
+      },
+      renderChunk(code) {
+        if (!code.includes(iconSetPlaceholder)) return undefined;
+        const icons = iconSet() as Record<string, string>;
+        const included = iconsAtRuntime
+          ? icons
+          : Object.fromEntries([...namedIcons].sort().map((name) => [name, icons[name]]));
+        return {
+          code: code
+            .replace(iconSetPlaceholder, JSON.stringify(included))
+            .replace(iconsCompletePlaceholder, String(iconsAtRuntime)),
+          map: null,
+        };
+      },
       configResolved(config) {
-        marksEnabled = config.command === "serve";
+        serving = config.command === "serve";
+        // The CLI builds its own throwaway copy to check or export, and marks it too, so an
+        // error or a layout issue found there can name the line that caused it.
+        marksEnabled = config.command === "serve" || process.env.FRAMESEQ_SOURCE_MARKS === "1";
       },
       configureServer(server) {
         server.middlewares.use("/__frameseq/source-info", (request, response, next) => {
@@ -556,6 +626,10 @@ export default defineConfig({
       async transform(source, id) {
         const normalizedId = normalizePath(id.split("?")[0]);
         const idPathKey = pathKey(normalizedId);
+        if (!serving && projectModule(id)) {
+          for (const name of iconNamesIn(source)) namedIcons.add(name);
+          if (namesIconsAtRuntime(source)) iconsAtRuntime = true;
+        }
         if (idPathKey === styleEntryPathKey) {
           const sourceDirectives = [
             `@source ${JSON.stringify(tailwindSource)};`,
@@ -646,12 +720,10 @@ export default defineConfig({
         const markImport = marksEnabled
           ? "import { markSource as __frameSeqMark, markStatement as __frameSeqStatement } from \"@pride7/frameseq\";\n"
           : "";
-        const internalImports = `${typstImport}${latexImport}${markImport}`;
-        if (importsFramework) {
-          return edits.length > 0
-            ? { code: `${internalImports}${transformedSource}`, map: null }
-            : undefined;
-        }
+        // First, so the icons are in place before any module of the deck asks for one.
+        const iconImport = `import ${JSON.stringify(virtualIcons)};\n`;
+        const internalImports = `${iconImport}${typstImport}${latexImport}${markImport}`;
+        if (importsFramework) return { code: `${internalImports}${transformedSource}`, map: null };
 
         const hasDefaultExport = /\bexport\s+default\b/.test(source);
         const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqSlides } from "@pride7/frameseq";\n`;
@@ -672,6 +744,9 @@ export default defineConfig({
     tailwindcss(),
   ],
   optimizeDeps: studioEnabled ? { include: studioDependencies } : undefined,
+  // The standalone app may be installed where its own folder is not for writing, so the
+  // dependency cache lives with the rest of FrameSeq's per-user files.
+  cacheDir: runsFromBundle() ? resolve(configDirectory(), "vite-cache") : undefined,
   server: {
     open: openBrowser,
     fs: {

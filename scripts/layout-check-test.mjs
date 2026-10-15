@@ -39,6 +39,11 @@ assert.deepEqual(
 assert.equal(broken.report.issues[0].slide.label, "Broken layout");
 assert.equal(broken.report.issues[0].element.type, "text");
 assert.ok(broken.report.issues[0].suggestions.length > 0);
+// The check build records where each command was written, so every issue names its line.
+assert.deepEqual(
+  broken.report.issues.map((issue) => issue.element.source?.line),
+  [4, 8, 14],
+);
 
 const warning = runCheck("layout-warning.slides.ts");
 assert.equal(warning.status, 0);
@@ -129,4 +134,32 @@ assert.ok(inert.report.issues[2].suggestions.some((hint) => hint.includes("cente
 const strictInert = runCheck("layout-inert.slides.ts", "--strict");
 assert.equal(strictInert.status, 1);
 
-console.log("Layout check test passed: overflow, clipping, font size, empty slides, region names, inert modifiers, automatic covers, local grids, JSON, and strict mode.");
+// A document that cannot run is reported at once, against the statement it stopped in,
+// instead of leaving the check waiting for a deck that will never be drawn.
+const started = Date.now();
+const failed = runCheck("document-error.slides.ts");
+assert.equal(failed.status, 1);
+assert.ok(Date.now() - started < 60_000, "a document error must not wait for a timeout");
+assert.deepEqual(failed.report.summary, { slides: 0, errors: 1, warnings: 0 });
+assert.equal(failed.report.issues[0].rule, "document-error");
+assert.deepEqual(failed.report.issues[0].source, { line: 8, column: 1 });
+assert.match(failed.report.issues[0].message, /ref\(\) cannot find an object named "missing"/);
+
+// An error found while the deck is drawn names the command that caused it.
+const unresolved = runCheck("anchor-error.slides.ts");
+assert.equal(unresolved.status, 1);
+assert.equal(unresolved.report.issues[0].rule, "document-error");
+assert.deepEqual(unresolved.report.issues[0].source, { line: 5, column: 1 });
+assert.match(unresolved.report.issues[0].message, /no object is named "decoder"/);
+
+// Without --json the same error reads like a compiler's, with the line that caused it.
+const printed = spawnSync(
+  process.execPath,
+  [cli, "check", resolve(packageRoot, "scripts", "fixtures", "document-error.slides.ts")],
+  { cwd: packageRoot, encoding: "utf8" },
+);
+assert.equal(printed.status, 1);
+assert.match(printed.stderr, /document-error\.slides\.ts:8:1 {2}error {2}ref\(\) cannot find/);
+assert.match(printed.stderr, /> 8 \| ref\("missing"\)\.fill\("#ef4444"\);/);
+
+console.log("Layout check test passed: overflow, clipping, font size, empty slides, region names, inert modifiers, automatic covers, local grids, located document errors, JSON, and strict mode.");

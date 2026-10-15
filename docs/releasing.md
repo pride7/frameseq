@@ -67,3 +67,17 @@ npm view create-frameseq version
 ```
 
 Do not move or recreate a published version tag. npm package name-and-version pairs cannot be reused.
+
+## The desktop app
+
+The same version tag starts the **Desktop app** workflow (`.github/workflows/app.yml`), which builds the [FrameSeq app](app.md) on each platform and attaches it to the GitHub release of that tag, creating the release when it does not exist yet:
+
+| Runner | Builds |
+| --- | --- |
+| `windows-latest` | `FrameSeq-Setup-<version>-win-x64.exe` with Inno Setup, and the portable `FrameSeq-<version>-win-x64.zip` |
+| `macos-latest` | `FrameSeq-<version>-mac-arm64.dmg` and `FrameSeq-<version>-mac-x64.dmg` |
+| `ubuntu-latest` | `FrameSeq-<version>-linux-x64.tar.gz` and `FrameSeq-<version>-linux-arm64.tar.gz` |
+
+Each job runs `node scripts/app-bundle.mjs --platform <platform> --arch <arch>`. The script packs the package as npm would, installs its production dependencies and the optional typesetters for the target with `npm install --os --cpu`, downloads the Node.js release named by `--node` and checks it against the published checksums, adds a headless browser for macOS and Linux, and writes the launchers and the installer. Run it locally to try a build; without Inno Setup, Windows gets only the zip, and away from macOS the Mac app is zipped instead of put in a disk image.
+
+Run the workflow by hand from GitHub Actions to build the apps without a release; they are then kept as workflow artifacts. The apps are not signed or notarised yet.

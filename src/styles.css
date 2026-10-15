@@ -348,6 +348,78 @@ button {
   display: none;
 }
 
+/*
+ * The band a poster opens with. It is part of the page's own column, so the content below it
+ * gives up the room it takes, and it reaches the edges by undoing the page's padding.
+ */
+.frameseq-theme-header {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 14px;
+  margin: calc(-1 * var(--frameseq-slide-y)) calc(-1 * var(--frameseq-slide-x)) 0;
+  padding: 56px var(--frameseq-slide-x) 48px;
+  color: var(--frameseq-header-foreground);
+  background: var(--frameseq-header-background);
+}
+
+.frameseq-theme-header-title {
+  font-family: var(--frameseq-font-heading);
+  font-size: var(--frameseq-heading-font-size, 76px);
+  font-weight: var(--frameseq-heading-font-weight, 800);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.frameseq-theme-header-subtitle {
+  opacity: 0.88;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.frameseq-theme-header-credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 36px;
+  margin-top: 10px;
+  font-size: 26px;
+  line-height: 1.35;
+}
+
+.frameseq-theme-header-credit:not(:first-child) {
+  opacity: 0.82;
+}
+
+/* Under a poster's band, blocks are titled like the sections of a paper. */
+.frameseq-has-header .frameseq-slide-title {
+  max-width: none;
+  color: var(--frameseq-accent);
+  font-size: 36px;
+  letter-spacing: -0.02em;
+}
+
+/* A poster's grid cells are its columns: the blocks inside them are the cards, stacked from the top. */
+.frameseq-has-header .frameseq-grid-cell {
+  justify-content: flex-start;
+  gap: var(--frameseq-content-gap);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.frameseq-has-header .frameseq-region-card,
+.frameseq-has-header .frameseq-card {
+  justify-content: flex-start;
+  border-top: 6px solid var(--frameseq-accent);
+}
+
+.frameseq-has-header .frameseq-body-copy {
+  max-width: none;
+  font-size: var(--frameseq-body-font-size, 22px);
+}
+
 .frameseq-theme-footer {
   position: absolute;
   z-index: 20;
@@ -886,7 +958,116 @@ button {
   line-height: var(--frameseq-code-line-height, 1.48);
 }
 
+/* Tables are ruled like a paper's: a heavy rule above and below, a light one under the heading. */
+.frameseq-table {
+  width: fit-content;
+  max-width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid var(--frameseq-foreground);
+  border-bottom: 2px solid var(--frameseq-foreground);
+  color: var(--frameseq-foreground);
+  font-size: var(--frameseq-body-font-size, 21px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.frameseq-table th,
+.frameseq-table td {
+  padding: 0.45em 0.9em;
+  vertical-align: middle;
+}
+
+.frameseq-table th {
+  border-bottom: 1px solid var(--frameseq-foreground);
+  font-weight: 700;
+}
+
+.frameseq-table tbody tr + tr td {
+  border-top: 1px solid var(--frameseq-border);
+}
+
+.frameseq-table.is-striped tbody tr:nth-child(even) td {
+  background: var(--frameseq-surface-strong);
+}
+
+.frameseq-chart {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  color: var(--frameseq-foreground);
+  font-size: 18px;
+}
+
+.frameseq-chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.frameseq-qr {
+  width: 200px;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+}
+
+.frameseq-qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.frameseq-icon {
+  display: inline-flex;
+  width: fit-content;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.frameseq-semantic-icon {
+  color: var(--frameseq-accent);
+  font-size: 48px;
+}
+
+.frameseq-icon svg {
+  display: block;
+}
+
+.frameseq-icon-missing {
+  color: var(--frameseq-error);
+  font-size: 14px;
+}
+
+/* The foot of a slide: its footnotes and the works it cites, below everything else on it. */
+.frameseq-slide-footnotes {
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--frameseq-border);
+}
+
+.frameseq-footnote {
+  color: var(--frameseq-subtle);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.frameseq-references {
+  gap: 12px;
+}
+
+.frameseq-reference {
+  padding-left: 2.2em;
+  color: var(--frameseq-muted);
+  font-size: var(--frameseq-body-font-size, 19px);
+  line-height: 1.4;
+  text-indent: -2.2em;
+}
+
 .frameseq-semantic-math {
+  max-width: 100%;
+  box-sizing: border-box;
   align-self: center;
   padding: 28px 48px;
   border: 1px solid var(--frameseq-border);
@@ -1826,6 +2007,13 @@ button {
 
 .frameseq-print .frameseq-slide {
   transform: none !important;
+}
+
+/* A page made for paper prints at the paper's size, scaled up from its canvas as a whole. */
+@media print {
+  .frameseq-print .frameseq-slide-frame {
+    zoom: var(--slide-print-zoom, 1);
+  }
 }
 
 .frameseq-print .frameseq-step {

@@ -14,13 +14,16 @@
 
 配方背后的模型,一次讲一个主题。
 
+- [语言速览](language.md) — FrameSeq 的六个概念:文档、幻灯片、对象、光标、名字和检查。
 - [文档模型](document-model.md) — presentation()、slide()、对象和当前区域怎么组合在一起。
-- [内容](content.md) — 文字、列表、图片、代码、公式、指标、卡片和分组。
+- [内容](content.md) — 文字、列表、图片、表格、图表、图标、二维码、公式、指标、卡片和分组。
+- [引用与参考文献](citations.md) — 从 BibTeX 文件引用,在每页底部列出出处,并生成参考文献表。
 - [布局](layout.md) — 普通流、分栏、网格、局部网格、区域路径和画布。
 - [画图](diagrams.md) — 区域路径、自动行列、命名,以及跟着对象走的连线。
 - [图形与连线](shapes.md) — 构成一张图的图元:矩形、圆、线和箭头。
 - [样式](styling.md) — 链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。
 - [主题](themes.md) — 内置主题、全局排版、中日韩文字和自定义 token。
+- [海报与打印](posters.md) — 为纸张做的页面:A0 海报和讲义、印刷尺寸,以及海报主题。
 
 ## 排版公式与表格
 
@@ -48,6 +51,7 @@
 
 在你已有的工具里驱动 FrameSeq。
 
+- [FrameSeq 应用](app.md) — 一个下载装好 Studio 和 frameseq 命令,不需要 Node.js。
 - [FrameSeq Studio](studio.md) — 在一个窗口里编辑、预览、检查和导出一场演示。
 - [VS Code 扩展](vscode.md) — 分屏、页面导航、诊断和导出命令。
 - [CLI 参考](cli.md) — 开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。

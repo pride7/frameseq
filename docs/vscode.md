@@ -14,13 +14,14 @@ The FrameSeq extension adds presentation-aware navigation and commands to Visual
 - Region-aware editing: jump between the current slide's named regions, or bind selected content lines into a new movable region.
 - An insert-slide command and TypeScript snippets for common FrameSeq structures.
 - Start and stop controls for the live FrameSeq preview.
-- Layout-check results in the VS Code Problems panel.
+- Layout-check results in the VS Code Problems panel, on the line of the object each one concerns.
+- Names as identifiers: completion, go to definition, find references, rename, hover, and a diagnostic for a name that refers to nothing on its slide.
 - A visible export button in the Slides-view toolbar with HTML, PDF, PPTX, and editable Typst choices.
 - Alt-click in the preview to move the cursor to the command that drew an object.
 - Dragging in the preview to change the coordinates a command states, or an object's place among its neighbours, as an undoable edit.
 - **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the deck in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the deck is shown again rather than started twice, unless it has since opened another presentation, in which case it starts again on this deck; **FrameSeq: Stop Studio** ends it.
 
-The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the FrameSeq CLI: the project's own when it has one, otherwise a global install. It does not bundle another copy of the rendering runtime.
+The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the FrameSeq CLI: the project's own when it has one, otherwise a global install, either from npm or the [FrameSeq app](app.md). The app brings its own Node.js, which the extension then uses, so a computer with only the app needs nothing else. The extension does not bundle another copy of the rendering runtime.
 
 ## Build and install locally
 
@@ -108,6 +109,16 @@ main();
 
 The edit is a single undo step. A selection containing `slide()`, `at()`, `main()`, `left()`, `right()`, or `cell()` is refused because moving those boundaries would silently change content ownership.
 
+## Names
+
+The names a slide document gives with `.as()` and `at()` are strings to TypeScript, so the extension reads them by the same rules as [FrameSeq Studio](studio.md#names):
+
+- **Completion** inside the string of `ref()`, `group()`, `.from()`, `.to()`, or a placement such as `.rightOf()` offers the slide's names, and after `"encoder.` the anchor sides; inside `at()`, the slide's regions.
+- **Go to Definition** (`F12`) on a name opens the `.as()` that named the object or the first `at()` that made the region; **Find All References** (`Shift+F12`) lists every use on the slide, and the editor highlights them while the cursor is on one.
+- **Rename Symbol** (`F2`) renames the name, every reference, and the paths of regions inside a renamed region, as one edit.
+- **Hover** says what the name is, where it was given, and how often the slide refers to it.
+- A name that refers to nothing on its slide, an object name given twice, and `at("left")` on a slide that was never split appear in the Problems panel as you type. A slide that builds names at runtime, or calls helpers that might, is left unchecked.
+
 ## Current Slide inspector
 
 The compact Slides view remains at the top of the FrameSeq activity bar. **Current Slide** fills the space below it and follows the source cursor. Its summary shows the page number, layout, object count, and note state. Components are grouped by their authoring cursor (`main`, `cell0`, or a named `at()` path), and nested builders remain nested in the tree. Object labels come from literal content such as `text("Latency")` or `rect("Model")`. Preview, layout check, and PPTX export stay available in the view title bar.
@@ -148,7 +159,7 @@ Saving the active slide document refreshes the outline by default. Disable `fram
 frameseq check slides.ts --json
 ```
 
-Errors and warnings are placed on the relevant `slide()` line in the Problems panel and also appear beneath the slide in the outline. The browser renderer remains the source of truth for overflow, clipping, empty pages, and minimum text size.
+Errors and warnings are placed in the Problems panel on the line of the command that made the object, and also appear beneath the slide in the outline. A document that cannot run is reported on the statement it stopped in. With a FrameSeq older than 0.39, which reports no lines, findings go to the slide's `slide()` line. The browser renderer remains the source of truth for overflow, clipping, empty pages, and minimum text size.
 
 ## Editing from the preview
 

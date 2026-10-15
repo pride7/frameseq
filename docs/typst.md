@@ -14,7 +14,7 @@ The default output is `output/typst/slides.typ`. To choose another path:
 npx frameseq typst slides.ts --output reports/talk.typ
 ```
 
-FrameSeq converts each slide into a fixed-size Typst `page`. Text, code, grids, split layouts, local grids, canvas positions, rectangles, circles, connectors, and local images remain native, editable Typst objects. Native `typst` and `typstFile()` fragments are placed directly into the generated source.
+FrameSeq converts each slide into a fixed-size Typst `page`. Text, code, grids, split layouts, local grids, canvas positions, rectangles, circles, connectors, local images, and `table()` objects remain native, editable Typst objects. Charts, icons, and QR codes become SVG images beside the `.typ` file, drawn by the same code as in the browser. Native `typst` and `typstFile()` fragments are placed directly into the generated source. A presentation made for paper gets pages of the paper's size; see [Posters and print](posters.md).
 
 Inline `$...$` formulas use MiTeX's `mi()` function, while `math()` and equation-like `latex` fragments use `mitex()`. Basic LaTeX text fragments use MiTeX's experimental `mitext()` mode. The generated file imports `@preview/mitex:0.2.7` and can be compiled with:
 

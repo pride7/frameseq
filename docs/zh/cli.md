@@ -1,8 +1,8 @@
-<!-- translation-of: docs/cli.md sha256:8edf9ab12fc6cc83 -->
+<!-- translation-of: docs/cli.md sha256:32e825f5ebb81ede -->
 
 # CLI 参考
 
-npm 包会安装 `frameseq` 可执行文件。
+npm 包会安装 `frameseq` 可执行文件,不需要 Node.js 的 [FrameSeq 应用](app.md)也会。
 
 ## 新建幻灯片文件
 
@@ -111,7 +111,7 @@ frameseq pdf quarterly.slides.ts
 frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 ```
 
-PDF 导出会启动无头浏览器,渲染所有页面和揭示步骤,并写出按页尺寸、含背景的 PDF。
+PDF 导出会启动无头浏览器,渲染所有页面和揭示步骤,并写出按页尺寸、含背景的 PDF。为纸张制作的演示,比如海报,会按纸张尺寸打印;见[海报与打印](posters.md)。
 
 ## 导出 PowerPoint
 
@@ -160,7 +160,19 @@ frameseq check talk.slides.ts --json
 frameseq check talk.slides.ts --strict
 ```
 
-**错误**返回非零退出码;**警告**只在严格模式下失败。JSON 输出包含页码与标签、FrameSeq 对象类型与路径、测量到的几何,以及修改建议。见 [面向 AI 的布局检查](layout-checks.md)。
+**错误**返回非零退出码;**警告**只在严格模式下失败。JSON 输出包含页码与标签、FrameSeq 对象类型与路径、写出该对象的命令所在的行、测量到的几何,以及修改建议。见 [面向 AI 的布局检查](layout-checks.md)。
+
+## 文档无法运行时
+
+`check`、`pdf`、`pptx` 和 `typst` 会先运行幻灯片文档。文档一抛出错误,它们就立刻停下,像编译器报错那样,指出文档当时正在执行的语句以及出错的那一行:
+
+```text
+talk.slides.ts:24:1  error  ref() cannot find an object named "decodr"; named objects on this slide: encoder, decoder
+  23 | rect("Decoder").as("decoder");
+> 24 | ref("decodr").fill("#dbeafe");
+```
+
+退出码不为零。`check --json` 把它报告为一条 `document-error`。
 
 ## 检视源码文档
 

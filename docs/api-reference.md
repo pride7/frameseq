@@ -21,11 +21,40 @@ interface SlidesOptions {
   institute?: string;
   date?: string;
   ratio?: "16:9" | "4:3";
+  size?: PaperSize;
+  orientation?: "portrait" | "landscape";
   width?: number;
   height?: number;
   background?: string;
   theme?: BuiltInThemeName | ThemeDefinition;
   font?: PresentationFontOptions;
+  bibliography?: Bibliography;
+  citations?: CitationOptions;
+}
+
+type PaperSize =
+  | "A0" | "A1" | "A2" | "A3" | "A4" | "A5" | "letter" | "legal" | "tabloid"
+  | `${number}x${number}${"mm" | "cm" | "in"}`;
+
+type Bibliography = Record<string, BibliographyEntry | string>;
+
+interface BibliographyEntry {
+  type?: string;
+  author?: string;
+  editor?: string;
+  title?: string;
+  year?: string;
+  journal?: string;
+  booktitle?: string;
+  publisher?: string;
+  url?: string;
+  doi?: string;
+  [field: string]: string | undefined;
+}
+
+interface CitationOptions {
+  style?: "numeric" | "author-year";
+  footnotes?: boolean;
 }
 
 interface FontStyleOptions {
@@ -41,9 +70,22 @@ interface PresentationFontOptions extends FontStyleOptions {
 }
 ```
 
+`size` makes the presentation for paper. The canvas then has 1600 units across the paper's short side, unless `width` or `height` sets another number, and the other side follows the paper; exports print at the paper's size, and `pt()` and `mm()` become printed measurements. `orientation` turns a named size; a written size stands as written.
+
+`bibliography` holds the works `cite()` can cite: a `.bib` import, whose entries arrive as `BibliographyEntry` objects, or reference texts by key.
+
 The default theme is `blank`. `background` is a compatibility shortcut that overrides the selected theme's normal and cover backgrounds.
 
 `font` changes presentation-wide typography without defining a complete theme. Its top-level values apply to body text, `heading` applies to cover and slide headings, and `code` applies to code blocks. A local builder modifier such as `.size(30)` takes precedence over these defaults.
+
+### `poster(titleOrOptions?)`
+
+```ts
+poster(title?: string): ContentSlideBuilder
+poster(options?: SlidesOptions): ContentSlideBuilder
+```
+
+Calls `presentation({ size: "A0", theme: "poster", ...options })` and `slide()`, and returns the poster's page.
 
 ## Themes
 
@@ -349,6 +391,66 @@ metric(value: string, label: string): GroupBuilder
 
 Adds a large value and smaller label to the current region and returns the metric object. The returned object can be styled or passed directly to `gridSection()`.
 
+### `table(rows)`
+
+```ts
+table(rows: Array<Array<string | number>>): TableBuilder
+
+class TableBuilder extends ElementBuilder {
+  header(rows?: number): this                       // 1 by default; 0 for no heading
+  columnAlign(...alignments: Array<"left" | "center" | "right">): this
+  striped(enabled?: boolean): this
+}
+```
+
+Adds a table whose first row is the heading. A column whose body cells are all quantities aligns right unless `columnAlign()` says otherwise.
+
+### `chart(kind, data)`
+
+```ts
+chart(kind: "bar" | "hbar" | "line" | "pie" | "donut", data: ChartData): ChartBuilder
+
+type ChartData =
+  | Record<string, number>
+  | { labels: string[]; series: Record<string, number[]> };
+
+class ChartBuilder extends ElementBuilder {
+  colors(...colors: string[]): this
+  unit(suffix: string): this
+  values(show?: boolean): this
+  legend(show?: boolean): this
+  max(value: number): this
+}
+```
+
+Adds a chart. Data is checked where it is written: every series needs one finite number per label, and a pie or donut takes a single series without negative values. `chartSvg(spec, frame)` draws the same chart as SVG for tools that consume the node tree.
+
+### `qr(text)`
+
+```ts
+qr(text: string): ElementBuilder
+```
+
+Adds a QR code for the text, 200 pixels square by default.
+
+### `icon(name)`
+
+```ts
+icon(name: IconName): ElementBuilder
+```
+
+Adds an icon from the Lucide set. `IconName` is the union of every icon name, exported for helper functions that take one.
+
+### `cite(...keys)`, `footnote(content)`, and `references(options?)`
+
+```ts
+cite(...keys: string[]): string
+footnote(content: string): string
+references(options?: { all?: boolean }): GroupBuilder
+```
+
+`cite()` returns the citation marker and lists the cited works at the foot of the current slide; `footnote()` returns a superscript marker and adds the note there; `references()` adds the full list once the document has run. `formatReference(entry)` writes an entry as these lists do.
+
 ### `card(title, content?)`
 
 ```ts
@@ -506,6 +608,7 @@ centerOn(target: string): this
 alignTop(target: string): this
 alignLeft(target: string): this
 anchor(position: AnchorSide, margin?: number): this
+fit(minimum?: number): this
 rotate(degrees: number): this
 showAt(step: number): this
 className(value: string): this
@@ -558,13 +661,14 @@ Calling `arrow()` without an argument adds an end arrow. A line has no arrow by 
 ```ts
 px(value: number): string
 pt(value: number): string
+mm(value: number): string
 rem(value: number): string
 percent(value: number): string
 vw(value: number): string
 vh(value: number): string
 ```
 
-Plain numeric lengths are interpreted as pixels.
+Plain numeric lengths are interpreted as pixels. On a presentation made for paper, `pt`, `mm`, `cm`, and `in` lengths are printed sizes, converted to canvas pixels by `resolvePrintUnits(root)`, which the runtime calls once the document has run.
 
 ## Internal interfaces
 
