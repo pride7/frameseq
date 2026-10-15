@@ -24,6 +24,7 @@ use std::{
   time::{Duration, Instant},
 };
 
+use serde::{Deserialize, Serialize};
 use tauri::{
   webview::{NewWindowFeatures, NewWindowResponse, PageLoadEvent},
   window::Color,
@@ -78,6 +79,34 @@ struct Placement {
   maximized: bool,
 }
 
+/// A screen as the Studio's page sees it, in the system's pixels.
+#[derive(Serialize)]
+struct Screen {
+  name: String,
+  x: i32,
+  y: i32,
+  width: u32,
+  height: u32,
+  primary: bool,
+  /// The screen the window is on.
+  current: bool,
+}
+
+/// The top left corner of a screen, which tells it from the others.
+#[derive(Deserialize)]
+struct Corner {
+  x: i32,
+  y: i32,
+}
+
+/// Presenter view's page, and the corner of the screen it opens over.
+#[derive(Deserialize)]
+struct PresenterAt {
+  address: String,
+  x: i32,
+  y: i32,
+}
+
 /// The Node.js server this program started, and what it said last, for a failure to show.
 #[derive(Default)]
 struct Server {
@@ -116,7 +145,7 @@ fn main() {
     .manage(server.clone())
     .manage(Splash::default())
     .manage(Show::default())
-    .invoke_handler(tauri::generate_handler![open_external, start_show, end_show])
+    .invoke_handler(tauri::generate_handler![open_external, screens, start_show, end_show])
     .setup(move |app| {
       open_main_window(app.handle())?;
       match start {
@@ -312,37 +341,73 @@ fn open_external(url: String) -> Result<(), String> {
   tauri_plugin_opener::open_url(url.as_str(), None::<&str>).map_err(|error| error.to_string())
 }
 
-/// A slide show from the Studio: the window goes full screen. Given presenter view's address, on
-/// a computer with a second screen, the window takes the slides there and presenter view opens
-/// over this screen, as PowerPoint does; the answer says whether they did.
+/// The screens, for Present › Show screen to list and a slide show to place its windows on.
 #[tauri::command]
-async fn start_show(app: AppHandle, presenter: Option<String>) -> Result<bool, String> {
+async fn screens(app: AppHandle) -> Result<Vec<Screen>, String> {
+  let window = app.get_webview_window(MAIN).ok_or("The Studio's window is gone")?;
+  let here = window.current_monitor().map_err(text)?.map(|monitor| *monitor.position());
+  let primary = window.primary_monitor().map_err(text)?.map(|monitor| *monitor.position());
+  let screens = window.available_monitors().map_err(text)?;
+  Ok(
+    screens
+      .into_iter()
+      .map(|monitor| {
+        let corner = *monitor.position();
+        let size = *monitor.size();
+        Screen {
+          name: monitor.name().cloned().unwrap_or_default(),
+          x: corner.x,
+          y: corner.y,
+          width: size.width,
+          height: size.height,
+          primary: Some(corner) == primary,
+          current: Some(corner) == here,
+        }
+      })
+      .collect(),
+  )
+}
+
+/// A slide show from the Studio: the window goes full screen, onto the screen at `slides` when
+/// the page names one, and presenter view opens over the screen at `presenter`, as PowerPoint's
+/// does on a second screen.
+#[tauri::command]
+async fn start_show(
+  app: AppHandle,
+  slides: Option<Corner>,
+  presenter: Option<PresenterAt>,
+) -> Result<(), String> {
   let show = app.state::<Show>();
   let mut before = show.before.lock().unwrap();
   let window = app.get_webview_window(MAIN).ok_or("The Studio's window is gone")?;
-  let screens = match presenter {
-    Some(address) => other_screen(&window).map_err(text)?.map(|screens| (address, screens)),
-    None => None,
-  };
-  let Some((address, (here, there))) = screens else {
-    window.set_fullscreen(true).map_err(text)?;
-    return Ok(false);
-  };
-  let url = window.url().map_err(text)?.join(&address).map_err(|error| error.to_string())?;
+  match slides {
+    Some(corner) => {
+      *before = Some(Placement {
+        position: window.outer_position().map_err(text)?,
+        size: window.inner_size().map_err(text)?,
+        maximized: window.is_maximized().map_err(text)?,
+      });
+      window
+        .set_fullscreen_on_monitor(PhysicalPosition::new(corner.x as f64, corner.y as f64))
+        .map_err(text)?;
+    }
+    None => window.set_fullscreen(true).map_err(text)?,
+  }
+  let Some(presenter) = presenter else { return Ok(()) };
+  let url = window.url().map_err(text)?.join(&presenter.address).map_err(|error| error.to_string())?;
   if !is_local(&url) {
     return Err(format!("{url} is not a page of the Studio"));
   }
-  *before = Some(Placement {
-    position: window.outer_position().map_err(text)?,
-    size: window.inner_size().map_err(text)?,
-    maximized: window.is_maximized().map_err(text)?,
-  });
-  let corner = there.position();
-  window
-    .set_fullscreen_on_monitor(PhysicalPosition::new(corner.x as f64, corner.y as f64))
-    .map_err(text)?;
-  open_presenter(&app, url, &here).map_err(text)?;
-  Ok(true)
+  let corner = PhysicalPosition::new(presenter.x, presenter.y);
+  let screen = window
+    .available_monitors()
+    .map_err(text)?
+    .into_iter()
+    .find(|monitor| *monitor.position() == corner);
+  if let Some(screen) = screen {
+    open_presenter(&app, url, &screen).map_err(text)?;
+  }
+  Ok(())
 }
 
 /// The show is over: presenter view closes, and the window leaves full screen for where it was.
@@ -379,24 +444,6 @@ async fn end_show(app: AppHandle) -> Result<(), String> {
 
 fn text(error: tauri::Error) -> String {
   error.to_string()
-}
-
-/// The screen the window is on, and another for the slides: one that is not the main screen
-/// first, since a projector seldom is.
-fn other_screen(window: &WebviewWindow) -> tauri::Result<Option<(Monitor, Monitor)>> {
-  let Some(here) = window.current_monitor()? else { return Ok(None) };
-  let primary = window.primary_monitor()?.map(|monitor| *monitor.position());
-  let others: Vec<Monitor> = window
-    .available_monitors()?
-    .into_iter()
-    .filter(|monitor| monitor.position() != here.position())
-    .collect();
-  let there = others
-    .iter()
-    .find(|monitor| Some(*monitor.position()) != primary)
-    .or(others.first())
-    .cloned();
-  Ok(there.map(|there| (here, there)))
 }
 
 /// Presenter view, maximised on this screen, with the keyboard, as a presentation remote's keys

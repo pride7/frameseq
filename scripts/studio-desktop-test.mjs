@@ -30,6 +30,12 @@ async function waitFor(check, message, timeout = 30_000) {
   }
 }
 
+/** The app's screens, as Windows names them: the main one, with the window, and one to its right. */
+const appScreens = [
+  { name: "\\\\.\\DISPLAY1", x: 0, y: 0, width: 1920, height: 1080, primary: true, current: true },
+  { name: "\\\\.\\DISPLAY2", x: 1920, y: 0, width: 2560, height: 1440, primary: false, current: false },
+];
+
 /** A stand-in for the app's window, which records what the page asks of it. */
 function fakeShell(chrome) {
   return `(() => {
@@ -50,7 +56,8 @@ function fakeShell(chrome) {
       onResized: async (callback) => { resized = callback; },
       onCloseRequested: async (decide) => { window.__guard = decide; },
       openExternal: async (url) => { calls.push("open " + url); },
-      startShow: async (presenter) => { calls.push("startShow " + presenter); return presenter !== null; },
+      screens: async () => ${JSON.stringify(appScreens)},
+      startShow: async (show) => { calls.push("startShow " + JSON.stringify(show)); },
       endShow: async () => { calls.push("endShow"); },
     };
     // The window goes full screen for a show, so the page never asks for it.
@@ -152,7 +159,16 @@ try {
 
   // A slide show takes the window full screen, onto a second screen with presenter view on this
   // one when there is one; ending it brings the window back. Without presenter view the window
-  // stays on its screen.
+  // stays on its screen, unless Present › Show screen names another.
+  const onScreens = 'startShow {"slides":{"x":1920,"y":0},"presenter":{"address":"/?presenter=1&show=1#1","x":0,"y":0}}';
+  const showScreens = async () => {
+    await page.click("[data-menu='present']");
+    await page.click("[data-command='show-screen']");
+    await page.waitForSelector("[data-command='show-screen-auto']");
+    return page.$$eval("[data-command^='show-screen-']", (items) => items.map((item) => (
+      `${item.getAttribute("aria-checked") === "true" ? "✓ " : ""}${item.querySelector(".studio-menu-label").textContent}`
+    )));
+  };
   const showCalls = async () => (await calls()).filter((call) => /^(startShow|endShow|requestFullscreen)/.test(call));
   const showing = () => page.evaluate(() => Boolean(document.querySelector(".studio-show")));
   const shown = () => page.frames().find((frame) => /[?&]show=1/.test(frame.url()))
@@ -161,7 +177,7 @@ try {
   await page.keyboard.press("F5");
   await waitFor(() => shown(), "F5 to start the show");
   await waitFor(async () => (await showCalls()).length === 1, "the show to ask the window for full screen");
-  assert.deepEqual(await showCalls(), ["startShow /?presenter=1&show=1#1"]);
+  assert.deepEqual(await showCalls(), [onScreens]);
   await page.keyboard.press("Escape");
   await waitFor(async () => !(await showing()), "Escape to end the show");
   await waitFor(async () => (await showCalls()).length === 2, "the show to give the window back");
@@ -172,7 +188,22 @@ try {
   await waitFor(async () => (await showCalls()).length === 3 && (await shown()), "F5 to start a show without presenter view");
   await page.keyboard.press("Escape");
   await waitFor(async () => (await showCalls()).length === 4, "Escape to end it");
-  assert.deepEqual(await showCalls(), ["startShow /?presenter=1&show=1#1", "endShow", "startShow null", "endShow"]);
+  assert.deepEqual(await showCalls(), [onScreens, "endShow", 'startShow {"slides":null,"presenter":null}', "endShow"]);
+  // The screens go by where they are, since Windows names them by device alone.
+  assert.deepEqual(await showScreens(), [
+    "✓ Automatic",
+    "the Studio's screen · 1920 × 1080 · main display",
+    "on the right · 2560 × 1440",
+  ]);
+  await page.click("[data-command='show-screen-2']");
+  await page.focus(".cm-content");
+  await page.keyboard.press("F5");
+  await waitFor(async () => (await showCalls()).length === 5 && (await shown()), "F5 to start a show on the chosen screen");
+  await page.keyboard.press("Escape");
+  await waitFor(async () => (await showCalls()).length === 6, "Escape to end it");
+  assert.deepEqual((await showCalls()).slice(4), ['startShow {"slides":{"x":1920,"y":0},"presenter":null}', "endShow"]);
+  await showScreens();
+  await page.click("[data-command='show-screen-auto']");
   await page.click("[data-menu='present']");
   await page.click("[data-command='use-presenter-view']");
 

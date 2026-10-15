@@ -86,6 +86,16 @@ const en = {
     fromBeginning: "From the beginning",
     fromCurrent: "From the current slide",
     usePresenterView: "Use presenter view",
+    showScreen: "Show screen",
+    showScreenAuto: "Automatic",
+    findScreens: "Find the other screens…",
+    noOtherScreen: "No other screen found",
+    screenLabel: (name: string, where: "here" | "left" | "right" | "above" | "below", width: number, height: number, primary: boolean) => [
+      name,
+      { here: "the Studio's screen", left: "on the left", right: "on the right", above: "above", below: "below" }[where],
+      `${width} × ${height}`,
+      primary ? "main display" : "",
+    ].filter(Boolean).join(" · "),
     presenterView: "Presenter view in a new window",
     phoneRemote: "Phone remote…",
     openInBrowser: "Open the preview in a browser",
@@ -641,6 +651,8 @@ const en = {
     ready: "The slides fill the other screen, and presenter view this one.",
     start: "Start the slide show",
     denied: "The browser did not let the Studio use the other screen, so the slides fill this window. Allow window management in the site's settings to present on two screens.",
+    listed: "Present › Show screen now lists your screens.",
+    notListed: "The browser did not let the Studio see the other screens. Allow window management in the site's settings to choose one.",
   },
 
   editor: {
@@ -821,6 +833,16 @@ const zh: Catalog = {
     fromBeginning: "从头开始",
     fromCurrent: "从当前页开始",
     usePresenterView: "使用演讲者视图",
+    showScreen: "放映屏幕",
+    showScreenAuto: "自动",
+    findScreens: "查找其他屏幕…",
+    noOtherScreen: "没有找到其他屏幕",
+    screenLabel: (name, where, width, height, primary) => [
+      name,
+      { here: "Studio 所在的屏幕", left: "左侧", right: "右侧", above: "上方", below: "下方" }[where],
+      `${width} × ${height}`,
+      primary ? "主显示器" : "",
+    ].filter(Boolean).join(" · "),
     presenterView: "在新窗口中打开演讲者视图",
     phoneRemote: "用手机遥控…",
     openInBrowser: "在浏览器中打开预览",
@@ -1376,6 +1398,8 @@ const zh: Catalog = {
     ready: "幻灯片会全屏显示在另一块屏幕上，演讲者视图显示在这块屏幕上。",
     start: "开始放映",
     denied: "浏览器没有允许 Studio 使用另一块屏幕，所以幻灯片在这个窗口里放映。在网站设置里允许“窗口管理”，就能在两块屏幕上放映。",
+    listed: "现在可以在“放映 › 放映屏幕”里选择屏幕了。",
+    notListed: "浏览器没有允许 Studio 查看其他屏幕。在网站设置里允许“窗口管理”，就能选择屏幕。",
   },
 
   editor: {

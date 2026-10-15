@@ -9,6 +9,18 @@ import { t } from "./i18n";
  * - "overlay": the system's traffic lights sit over the top bar's left end (macOS).
  * - "native": the system draws the title bar as usual (Linux).
  */
+/** A screen as the app's window sees it, in the system's pixels. */
+export interface DesktopScreen {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  primary: boolean;
+  /** The screen the window is on. */
+  current: boolean;
+}
+
 export interface DesktopShell {
   chrome: "custom" | "overlay" | "native";
   platform: "windows" | "macos" | "linux";
@@ -21,12 +33,16 @@ export interface DesktopShell {
   /** The window closes only once `decide` resolves to true. */
   onCloseRequested(decide: () => Promise<boolean>): Promise<unknown>;
   openExternal(url: string): Promise<void>;
+  /** The screens of this computer. An app older than the Studio's page has none of the below. */
+  screens?(): Promise<DesktopScreen[]>;
   /**
-   * Take the window full screen for a slide show. Given presenter view's address, on a computer
-   * with a second screen, the window takes the slides there and presenter view opens on this
-   * screen; it answers whether they did. An app older than the Studio's page has neither.
+   * Take the window full screen for a slide show: onto the screen whose corner is at `slides`,
+   * or where it is, with presenter view's address opened over the screen at `presenter`.
    */
-  startShow?(presenter: string | null): Promise<boolean>;
+  startShow?(show: {
+    slides: { x: number; y: number } | null;
+    presenter: { address: string; x: number; y: number } | null;
+  }): Promise<void>;
   /** Close presenter view and bring the window back from full screen, to where it was. */
   endShow?(): Promise<void>;
 }

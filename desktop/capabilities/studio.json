@@ -17,6 +17,7 @@
     "core:window:allow-close",
     "core:window:allow-destroy",
     "allow-open-external",
+    "allow-screens",
     "allow-start-show",
     "allow-end-show"
   ]

@@ -4,7 +4,7 @@ fn main() {
   // served from localhost, is allowed to call them.
   tauri_build::try_build(
     tauri_build::Attributes::new().app_manifest(
-      tauri_build::AppManifest::new().commands(&["open_external", "start_show", "end_show"]),
+      tauri_build::AppManifest::new().commands(&["open_external", "screens", "start_show", "end_show"]),
     ),
   )
   .expect("failed to build the FrameSeq Studio window");

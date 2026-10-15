@@ -170,6 +170,8 @@ export class MenuBar {
         if (this.hoverTimer) clearTimeout(this.hoverTimer);
         button.focus({ preventScroll: true });
         this.hoverTimer = setTimeout(() => {
+          // A menu that closed meanwhile, as when one of its items was clicked, opens nothing.
+          if (this.levels[depth]?.menu !== menu) return;
           if (entry.submenu) this.openSubmenu(depth, button, entry, false);
           else this.closeLevels(depth + 1);
         }, 160);

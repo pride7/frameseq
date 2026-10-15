@@ -55,6 +55,16 @@ import { AssistantPanel, type AssistantContext } from "./assistant";
 import { chooseIcon } from "./icons";
 import { SlideInspector } from "./inspector";
 import { SlideShow } from "./show";
+import {
+  allowScreens,
+  chooseScreen,
+  chosenScreen,
+  direction,
+  hasScreens,
+  knownScreens,
+  refreshScreens,
+  screenName,
+} from "./screens";
 import { pairPhone, remoteSession, resumePairing } from "./remote";
 import { ProblemsPanel, type Problem } from "./problems";
 import { showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
@@ -1835,6 +1845,42 @@ async function start(): Promise<void> {
     show.start(index);
   }
 
+  // The screens are known before Present › Show screen first opens.
+  void refreshScreens();
+
+  /** Present › Show screen: Automatic, then each screen, told apart by where it is from this one. */
+  function showScreenItems(): MenuEntry[] {
+    const screens = knownScreens();
+    const chosen = chosenScreen(screens);
+    const items: MenuEntry[] = [
+      { command: "show-screen-auto", label: t.menu.showScreenAuto, checked: () => !chosen, run: () => chooseScreen(undefined) },
+      "separator",
+    ];
+    if (screens.length > 1) {
+      for (const [index, screen] of screens.entries()) {
+        items.push({
+          command: `show-screen-${index + 1}`,
+          label: t.menu.screenLabel(screenName(screen), direction(screen, screens), screen.pixels.width, screen.pixels.height, screen.primary),
+          checked: () => screen === chosen,
+          run: () => chooseScreen(screen.key),
+        });
+      }
+    } else if (hasScreens()) {
+      // A browser tells the Studio about the other screens only once it may.
+      items.push({
+        command: "show-screen-find",
+        label: t.menu.findScreens,
+        run: () => void allowScreens().then((allowed) => {
+          if (allowed) toast(t.show.listed);
+          else toast(t.show.notListed, { tone: "warning" });
+        }),
+      });
+    } else {
+      items.push({ command: "show-screen-none", label: t.menu.noOtherScreen, disabled: () => true });
+    }
+    return items;
+  }
+
   /** Presenter view, with the notes, the next slide, and a timer, for a second screen. */
   function openPresenterView(): void {
     void flushSave();
@@ -2205,23 +2251,27 @@ async function start(): Promise<void> {
       id: "present",
       label: t.menus.present,
       accessKey: "p",
-      items: () => [
-        { command: "present-beginning", label: t.menu.fromBeginning, shortcut: "⇧F5", run: () => present(0) },
-        { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
-        "separator",
-        {
-          command: "use-presenter-view",
-          label: t.menu.usePresenterView,
-          checked: () => usePresenterView,
-          run: () => {
-            usePresenterView = !usePresenterView;
-            storePreference("presenter-view", usePresenterView);
+      items: () => {
+        void refreshScreens();
+        return [
+          { command: "present-beginning", label: t.menu.fromBeginning, shortcut: "⇧F5", run: () => present(0) },
+          { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
+          "separator",
+          {
+            command: "use-presenter-view",
+            label: t.menu.usePresenterView,
+            checked: () => usePresenterView,
+            run: () => {
+              usePresenterView = !usePresenterView;
+              storePreference("presenter-view", usePresenterView);
+            },
           },
-        },
-        { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
-        { command: "phone-remote", label: t.menu.phoneRemote, run: () => void pairPhone(session, flushSave) },
-        { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
-      ],
+          { command: "show-screen", label: t.menu.showScreen, submenu: showScreenItems },
+          { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
+          { command: "phone-remote", label: t.menu.phoneRemote, run: () => void pairPhone(session, flushSave) },
+          { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
+        ];
+      },
     },
     {
       id: "help",
