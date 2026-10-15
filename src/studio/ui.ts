@@ -1,6 +1,7 @@
 /** Small pieces of interface shared by the Studio's panels. */
 
 import { t } from "./i18n";
+import { menuIcons, type MenuIcon } from "./menu-icons";
 
 export function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -103,6 +104,18 @@ export interface MenuItem {
   run: () => void;
   disabled?: boolean;
   danger?: boolean;
+  icon?: MenuIcon;
+}
+
+/**
+ * The column before a menu item's label, in a menu where some items have pictures: the item's
+ * own, a check mark for a setting that is on and has none, or nothing, so the labels line up.
+ */
+export function menuIconSlot(icon: MenuIcon | undefined, checked = false): HTMLElement {
+  const slot = element("span", "studio-menu-icon");
+  if (icon) slot.innerHTML = menuIcons[icon];
+  else if (checked) slot.textContent = "✓";
+  return slot;
 }
 
 let openMenu: { close: () => void } | undefined;
@@ -140,6 +153,7 @@ export function showMenu(
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", label);
   const buttons: HTMLButtonElement[] = [];
+  const iconic = items.some((item) => typeof item === "object" && "icon" in item && item.icon);
   for (const item of items) {
     if (item === "separator") {
       menu.append(element("div", "studio-menu-separator"));
@@ -157,6 +171,7 @@ export function showMenu(
     button.type = "button";
     button.setAttribute("role", "menuitem");
     button.disabled = Boolean(item.disabled);
+    if (iconic) button.append(menuIconSlot(item.icon));
     button.append(element("span", "studio-menu-label", item.label));
     if (item.shortcut) button.append(element("kbd", "studio-menu-shortcut", item.shortcut));
     button.addEventListener("click", () => {

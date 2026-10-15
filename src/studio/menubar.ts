@@ -1,10 +1,13 @@
-import { closeMenus, element, holdMenu } from "./ui";
+import type { MenuIcon } from "./menu-icons";
+import { closeMenus, element, holdMenu, menuIconSlot } from "./ui";
 
 /** One command in a menu. Its state is asked for each time the menu opens. */
 export interface MenuCommand {
   /** A stable name for the command, independent of the language the menu is shown in. */
   command: string;
   label: string;
+  /** A picture before the label, which a menu that has any shows in a column of its own. */
+  icon?: MenuIcon;
   shortcut?: string;
   run?: () => void;
   /** A check mark beside the label: a setting that is on, or the chosen one of several. */
@@ -75,7 +78,9 @@ class MenuStack {
     menu.setAttribute("role", "menu");
     const commands: MenuCommand[] = [];
     const buttons: HTMLButtonElement[] = [];
-    const checkable = entries.some((entry) => entry !== "separator" && entry.checked);
+    // A menu with pictures shows a setting that is on by its picture, or a check mark in its place.
+    const iconic = entries.some((entry) => entry !== "separator" && entry.icon);
+    const checkable = !iconic && entries.some((entry) => entry !== "separator" && entry.checked);
     // A menu put together from parts that may be missing shows each separator once, between items.
     const shown = entries.filter((entry, index) => entry !== "separator" || (
       index > 0 && entries[index - 1] !== "separator" && entries.slice(index + 1).some((next) => next !== "separator")
@@ -92,6 +97,7 @@ class MenuStack {
       button.setAttribute("role", entry.checked ? "menuitemcheckbox" : "menuitem");
       if (entry.checked) button.setAttribute("aria-checked", String(Boolean(checked)));
       button.disabled = Boolean(entry.disabled?.());
+      if (iconic) button.append(menuIconSlot(entry.icon, checked));
       if (checkable) button.append(element("span", "studio-menu-check", checked ? "✓" : ""));
       button.append(element("span", "studio-menu-label", entry.label));
       if (entry.shortcut) button.append(element("kbd", "studio-menu-shortcut", entry.shortcut));

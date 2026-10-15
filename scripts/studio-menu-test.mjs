@@ -126,6 +126,10 @@ try {
     command: item.dataset.command,
     disabled: item.disabled,
   })));
+  /** The items of the open menu that have no picture before their label. */
+  const withoutPictures = () => page.$eval(".studio-context-menu", (menu) => [...menu.querySelectorAll(":scope > .studio-menu-item")]
+    .filter((item) => !item.querySelector(":scope > .studio-menu-icon svg"))
+    .map((item) => item.dataset.command));
   const menuOpen = () => page.waitForSelector(".studio-context-menu", { timeout: 10_000 });
   const menuClosed = () => page.waitForFunction(() => !document.querySelector(".studio-context-menu"));
   const choose = async (...path) => {
@@ -181,6 +185,7 @@ try {
     "the object's menu offers the clipboard, duplicating, deleting, stacking, and its settings and code",
   );
   assert.ok(objectMenu.find((item) => item.command === "paste").disabled, "nothing has been copied to paste");
+  assert.deepEqual(await withoutPictures(), [], "every command in the object's menu has a picture");
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "menu-object.png") });
 
   // Escape closes the menu; the arrow keys reach its items.
@@ -354,6 +359,7 @@ try {
   assert.ok(!codeMenu.find((item) => item.command === "rename-name").disabled, "a name under the pointer can be renamed");
   const head = await page.evaluate(() => window.frameseqStudio.view.state.selection.main.head);
   assert.ok(Math.abs(head - nameAt.at) <= 1, `a right-click moves the cursor to where it landed, not to ${head}`);
+  assert.deepEqual(await withoutPictures(), [], "every command in the code's menu has a picture");
   if (screenshots) await page.screenshot({ path: resolve(screenshots, "menu-code.png") });
   await choose("toggle-comment");
   await waitFor(() => page.evaluate(() => window.frameseqStudio.view.state.doc.toString().includes('// rect("Box")')), "the line to be commented out");

@@ -45,7 +45,8 @@ import {
 import { Presentations, showStartPage } from "./files";
 import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
-import { MenuBar, showContextMenu, type MenuEntry } from "./menubar";
+import { MenuBar, showContextMenu, type MenuCommand, type MenuEntry } from "./menubar";
+import type { MenuIcon } from "./menu-icons";
 import { notesText, readNotes, SpeakerNotes } from "./notes";
 import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideGroup, type SlideMap } from "./outline";
 import {
@@ -1727,16 +1728,16 @@ async function start(): Promise<void> {
       items.push({ note: t.rail.outsideNote(session.name) });
     }
     items.push(
-      { label: t.rail.newAfter, run: () => chooseLayout(index, x, y) },
-      { label: t.rail.duplicate, disabled: !movable, run: () => void rearrange("duplicate", index) },
+      { label: t.rail.newAfter, icon: "newSlide", run: () => chooseLayout(index, x, y) },
+      { label: t.rail.duplicate, icon: "duplicate", disabled: !movable, run: () => void rearrange("duplicate", index) },
       "separator",
-      { label: t.rail.moveUp, disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
-      { label: t.rail.moveDown, disabled: downTo === undefined, run: () => void rearrange("move", index, downTo ?? 0) },
+      { label: t.rail.moveUp, icon: "up", disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
+      { label: t.rail.moveDown, icon: "down", disabled: downTo === undefined, run: () => void rearrange("move", index, downTo ?? 0) },
       "separator",
-      { label: t.rail.goToSource, run: () => goToSource(index) },
-      { label: t.rail.presentFromHere, shortcut: "F5", run: () => present(index) },
+      { label: t.rail.goToSource, icon: "code", run: () => goToSource(index) },
+      { label: t.rail.presentFromHere, icon: "present", shortcut: "F5", run: () => present(index) },
       "separator",
-      { label: t.rail.delete, shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
+      { label: t.rail.delete, icon: "delete", shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
     );
     showMenu(x, y, items, t.rail.menuLabel(index + 1));
   }
@@ -1950,6 +1951,7 @@ async function start(): Promise<void> {
   const pasteEntry = (): MenuEntry => ({
     command: "paste",
     label: t.objects.paste,
+    icon: "paste",
     shortcut: `${mod}+V`,
     disabled: () => !copied,
     run: () => void pasteObjects(),
@@ -1959,10 +1961,10 @@ async function start(): Promise<void> {
   const objectEnds = (object: InspectObject | undefined, reveal: () => void): MenuEntry[] => [
     "separator",
     ...(object && inspector.hasWords(object)
-      ? [{ command: "edit-text", label: t.objects.editText, run: () => openSettings(object, true) }]
+      ? [{ command: "edit-text", label: t.objects.editText, icon: "text" as const, run: () => openSettings(object, true) }]
       : []),
-    ...(object ? [{ command: "format", label: t.objects.format, run: () => openSettings(object, false) }] : []),
-    { command: "go-to-code", label: t.objects.goToCode, shortcut: isMac ? "⌥Click" : "Alt+Click", run: reveal },
+    ...(object ? [{ command: "format", label: t.objects.format, icon: "format" as const, run: () => openSettings(object, false) }] : []),
+    { command: "go-to-code", label: t.objects.goToCode, icon: "code", shortcut: isMac ? "⌥Click" : "Alt+Click", run: reveal },
   ];
 
   /**
@@ -1972,19 +1974,20 @@ async function start(): Promise<void> {
   function selectionEntries(selection: PreviewSelection, object: InspectObject | undefined): MenuEntry[] {
     const { objects, arrange, stacking } = selection;
     const whole = objects.every((item) => item.statement);
-    const act = (command: SelectionAction, label: string, enabled = true): MenuEntry => ({
+    const act = (command: SelectionAction, label: string, icon: MenuIcon, enabled = true): MenuEntry => ({
       command,
       label,
+      icon,
       disabled: () => !enabled,
       run: () => frames.selectionAction(command),
     });
     const entries: MenuEntry[] = [
-      { command: "cut", label: t.objects.cut, shortcut: `${mod}+X`, disabled: () => !whole, run: () => copySelected(selection, true) },
-      { command: "copy", label: t.objects.copy, shortcut: `${mod}+C`, disabled: () => !whole, run: () => copySelected(selection, false) },
+      { command: "cut", label: t.objects.cut, icon: "cut", shortcut: `${mod}+X`, disabled: () => !whole, run: () => copySelected(selection, true) },
+      { command: "copy", label: t.objects.copy, icon: "copy", shortcut: `${mod}+C`, disabled: () => !whole, run: () => copySelected(selection, false) },
       pasteEntry(),
       "separator",
-      { command: "duplicate", label: t.objects.duplicate, shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateSelected(selection) },
-      { command: "delete", label: t.objects.delete, shortcut: "Del", danger: true, run: () => frames.selectionAction("delete") },
+      { command: "duplicate", label: t.objects.duplicate, icon: "duplicate", shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateSelected(selection) },
+      { command: "delete", label: t.objects.delete, icon: "delete", shortcut: "Del", danger: true, run: () => frames.selectionAction("delete") },
       "separator",
     ];
     if (stacking) {
@@ -1992,21 +1995,23 @@ async function start(): Promise<void> {
         ? {
           command: "order",
           label: t.objects.order,
+          icon: "layers",
           submenu: () => [
-            act("bring-to-front", t.objects.bringToFront, stacking.forward),
-            act("bring-forward", t.objects.bringForward, stacking.forward),
-            act("send-backward", t.objects.sendBackward, stacking.backward),
-            act("send-to-back", t.objects.sendToBack, stacking.backward),
+            act("bring-to-front", t.objects.bringToFront, "bringToFront", stacking.forward),
+            act("bring-forward", t.objects.bringForward, "up", stacking.forward),
+            act("send-backward", t.objects.sendBackward, "down", stacking.backward),
+            act("send-to-back", t.objects.sendToBack, "sendToBack", stacking.backward),
           ],
         }
         : {
           command: "order",
           label: t.objects.flowOrder,
+          icon: "order",
           submenu: () => [
-            act("send-to-back", t.objects.moveToStart, stacking.backward),
-            act("send-backward", t.objects.moveEarlier, stacking.backward),
-            act("bring-forward", t.objects.moveLater, stacking.forward),
-            act("bring-to-front", t.objects.moveToEnd, stacking.forward),
+            act("send-to-back", t.objects.moveToStart, "toStart", stacking.backward),
+            act("send-backward", t.objects.moveEarlier, "up", stacking.backward),
+            act("bring-forward", t.objects.moveLater, "down", stacking.forward),
+            act("bring-to-front", t.objects.moveToEnd, "toEnd", stacking.forward),
           ],
         });
     }
@@ -2015,27 +2020,29 @@ async function start(): Promise<void> {
         {
           command: "align",
           label: t.objects.align,
+          icon: "alignLeft",
           disabled: () => !arrange.x && !arrange.y,
           submenu: () => [
-            act("align-left", t.objects.alignLeft, arrange.x),
-            act("align-center", t.objects.alignCenter, arrange.x),
-            act("align-right", t.objects.alignRight, arrange.x),
+            act("align-left", t.objects.alignLeft, "alignLeft", arrange.x),
+            act("align-center", t.objects.alignCenter, "alignCenter", arrange.x),
+            act("align-right", t.objects.alignRight, "alignRight", arrange.x),
             "separator",
-            act("align-top", t.objects.alignTop, arrange.y),
-            act("align-middle", t.objects.alignMiddle, arrange.y),
-            act("align-bottom", t.objects.alignBottom, arrange.y),
+            act("align-top", t.objects.alignTop, "alignTop", arrange.y),
+            act("align-middle", t.objects.alignMiddle, "alignMiddle", arrange.y),
+            act("align-bottom", t.objects.alignBottom, "alignBottom", arrange.y),
             "separator",
-            act("distribute-horizontal", t.objects.distributeHorizontally, arrange.distributeX),
-            act("distribute-vertical", t.objects.distributeVertically, arrange.distributeY),
+            act("distribute-horizontal", t.objects.distributeHorizontally, "distributeHorizontally", arrange.distributeX),
+            act("distribute-vertical", t.objects.distributeVertically, "distributeVertically", arrange.distributeY),
           ],
         },
         {
           command: "bind-region",
           label: t.objects.bindRegion,
+          icon: "group",
           run: () => void bindSelection(objects.map((item) => item.target)),
         },
         "separator",
-        { command: "go-to-code", label: t.objects.goToCode, run: () => revealTarget(objects[0].target) },
+        { command: "go-to-code", label: t.objects.goToCode, icon: "code", run: () => revealTarget(objects[0].target) },
       );
     } else {
       entries.push(...objectEnds(object, () => revealTarget(objects[0].target)));
@@ -2048,18 +2055,19 @@ async function start(): Promise<void> {
     return [
       pasteEntry(),
       "separator",
-      { command: "insert", label: t.menus.insert, submenu: insertEntries },
-      { command: "new-slide", label: t.menu.newSlide, submenu: newSlideEntries },
+      { command: "insert", label: t.menus.insert, icon: "insert", submenu: insertEntries },
+      { command: "new-slide", label: t.menu.newSlide, icon: "newSlide", submenu: newSlideEntries },
       "separator",
       {
         command: "layout-editing",
         label: t.objects.layoutEditing,
+        icon: "move",
         checked: () => selection.editing,
         run: () => frames.setLayoutEditing(!selection.editing),
       },
       "separator",
-      slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)),
-      { command: "present-here", label: t.rail.presentFromHere, shortcut: "F5", run: () => present() },
+      { ...slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)), icon: "code" },
+      { command: "present-here", label: t.rail.presentFromHere, icon: "present", shortcut: "F5", run: () => present() },
     ];
   }
 
@@ -2085,12 +2093,12 @@ async function start(): Promise<void> {
       if (cut) inspector.remove(object);
     };
     return [
-      { command: "cut", label: t.objects.cut, shortcut: `${mod}+X`, disabled: () => !whole, run: () => copyObject(true) },
-      { command: "copy", label: t.objects.copy, shortcut: `${mod}+C`, disabled: () => !whole, run: () => copyObject(false) },
+      { command: "cut", label: t.objects.cut, icon: "cut", shortcut: `${mod}+X`, disabled: () => !whole, run: () => copyObject(true) },
+      { command: "copy", label: t.objects.copy, icon: "copy", shortcut: `${mod}+C`, disabled: () => !whole, run: () => copyObject(false) },
       pasteEntry(),
       "separator",
-      { command: "duplicate", label: t.objects.duplicate, shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateInspected(object) },
-      { command: "delete", label: t.objects.delete, shortcut: "Del", danger: true, disabled: () => !whole, run: () => inspector.remove(object) },
+      { command: "duplicate", label: t.objects.duplicate, icon: "duplicate", shortcut: `${mod}+D`, disabled: () => !whole, run: () => duplicateInspected(object) },
+      { command: "delete", label: t.objects.delete, icon: "delete", shortcut: "Del", danger: true, disabled: () => !whole, run: () => inspector.remove(object) },
       ...objectEnds(object, () => {
         if (object.source.start !== undefined) revealPosition(object.source.start);
       }),
@@ -2462,7 +2470,7 @@ async function start(): Promise<void> {
   }
 
   // ── The menu bar ──────────────────────────────────────────────────────────────────────────
-  function slideCommand(command: string, label: string, run: () => void, disabled?: () => boolean, shortcut?: string): MenuEntry {
+  function slideCommand(command: string, label: string, run: () => void, disabled?: () => boolean, shortcut?: string): MenuCommand {
     return { command, label, run, shortcut, disabled: () => renderedCount === 0 || Boolean(disabled?.()) };
   }
 
@@ -2477,29 +2485,46 @@ async function start(): Promise<void> {
 
   /** What Insert puts on the slide: the gallery, content by group, and the drawing tools. */
   function insertEntries(): MenuEntry[] {
-    const kinds = (list: InsertKind[]): MenuEntry[] => list.map((kind) => ({
+    // Insert's own items have pictures; the kinds inside its groups are listed by name alone.
+    const pictures: Partial<Record<string, MenuIcon>> = {
+      writing: "text",
+      formulas: "formula",
+      media: "picture",
+      text: "textBox",
+      line: "line",
+      arrow: "arrow",
+      connector: "connector",
+      basic: "shapes",
+      diagram: "diagram",
+      arrows: "arrows",
+    };
+    const kinds = (list: InsertKind[], pictured = false): MenuEntry[] => list.map((kind) => ({
       command: `insert-${kind}`,
       label: insertName(kind),
+      icon: pictured ? pictures[kind] : undefined,
       run: () => void startPlacing(kind),
     }));
     return [
       {
         command: "insert-gallery",
         label: t.insert.gallery,
+        icon: "gallery",
         run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
       },
       "separator",
       ...contentGroups.map((group): MenuEntry => ({
         command: `insert-${group.id}`,
         label: t.insert.groups[group.id],
+        icon: pictures[group.id],
         submenu: () => kinds(group.kinds),
       })),
       "separator",
-      ...kinds(insertGroups[0].kinds),
+      ...kinds(insertGroups[0].kinds, true),
       "separator",
       ...insertGroups.slice(1).map((group): MenuEntry => ({
         command: `insert-${group.id}`,
         label: t.insert.groups[group.id],
+        icon: pictures[group.id],
         submenu: () => kinds(group.kinds),
       })),
     ];
@@ -2784,17 +2809,17 @@ async function start(): Promise<void> {
     const named = Boolean(nameDefinition(text, head));
     const renamable = !("error" in prepareNameRename(text, head));
     return [
-      { command: "go-to-definition", label: t.menu.goToDefinition, shortcut: "F12", disabled: () => !named, run: inEditor(goToNameDefinition) },
-      { command: "rename-name", label: t.menu.renameName, shortcut: "F2", disabled: () => !renamable || locked, run: inEditor(renameNameAtCursor) },
+      { command: "go-to-definition", label: t.menu.goToDefinition, icon: "definition", shortcut: "F12", disabled: () => !named, run: inEditor(goToNameDefinition) },
+      { command: "rename-name", label: t.menu.renameName, icon: "rename", shortcut: "F2", disabled: () => !renamable || locked, run: inEditor(renameNameAtCursor) },
       "separator",
       // With nothing selected, the editor cuts and copies the whole line, as it does with the keys.
-      { command: "cut", label: t.editor.cut, shortcut: `${mod}+X`, disabled: () => locked, run: () => editorClipboard("cut") },
-      { command: "copy", label: t.editor.copy, shortcut: `${mod}+C`, run: () => editorClipboard("copy") },
-      { command: "paste", label: t.editor.paste, shortcut: `${mod}+V`, disabled: () => locked, run: () => void pasteIntoEditor() },
+      { command: "cut", label: t.editor.cut, icon: "cut", shortcut: `${mod}+X`, disabled: () => locked, run: () => editorClipboard("cut") },
+      { command: "copy", label: t.editor.copy, icon: "copy", shortcut: `${mod}+C`, run: () => editorClipboard("copy") },
+      { command: "paste", label: t.editor.paste, icon: "paste", shortcut: `${mod}+V`, disabled: () => locked, run: () => void pasteIntoEditor() },
       "separator",
-      { command: "toggle-comment", label: t.editor.toggleComment, shortcut: `${mod}+/`, disabled: () => locked, run: inEditor(toggleComment) },
-      { command: "select-all", label: t.menu.selectAll, shortcut: `${mod}+A`, run: inEditor(selectAll) },
-      { command: "find", label: t.menu.find, shortcut: `${mod}+F`, run: inEditor(openSearchPanel) },
+      { command: "toggle-comment", label: t.editor.toggleComment, icon: "comment", shortcut: `${mod}+/`, disabled: () => locked, run: inEditor(toggleComment) },
+      { command: "select-all", label: t.menu.selectAll, icon: "selectAll", shortcut: `${mod}+A`, run: inEditor(selectAll) },
+      { command: "find", label: t.menu.find, icon: "find", shortcut: `${mod}+F`, run: inEditor(openSearchPanel) },
     ];
   }
 

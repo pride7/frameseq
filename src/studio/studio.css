@@ -2311,6 +2311,40 @@ textarea.studio-text-input[style*="height"] {
   outline: none;
 }
 
+/* A command's picture, in a column of its own so the labels line up. */
+.studio-menu-icon {
+  display: grid;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-right: -8px;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--studio-muted);
+  font-size: 12px;
+}
+
+.studio-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.studio-menu-item:hover:not(:disabled) .studio-menu-icon,
+.studio-menu-item:focus-visible .studio-menu-icon {
+  color: var(--studio-text);
+}
+
+.studio-menu-item.is-danger .studio-menu-icon {
+  color: var(--studio-danger);
+}
+
+/* A setting that is on has its picture framed, as a pressed button would be. */
+.studio-menu-item[aria-checked="true"] .studio-menu-icon {
+  color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--studio-accent);
+}
+
 .studio-menu-check {
   width: 12px;
   margin-right: -10px;
