@@ -421,8 +421,16 @@ try {
     'text("Last slide");',
     'text("Last slide");\r\ntext("Overflow").position({ x: 1200, y: 640 }).width(400);',
   );
+  // Written twice in quick succession, as a formatter or an agent may, inside the 50 ms in which
+  // the file watcher reports one change alone: the Studio and its frames follow the second.
+  await writeFile(deck, overflowing.replace('text("Overflow")', 'text("Interim")'), "utf8");
+  await delay(20);
   await writeFile(deck, overflowing, "utf8");
   await waitFor(async () => (await editorText()) === lf(overflowing), "the external edit to reload");
+  await waitFor(
+    async () => (await rail.$$eval(".frameseq-thumbnail", (items) => items[2]?.textContent ?? "").catch(() => "")).includes("Overflow"),
+    "the rail to draw the second of two quick writes",
+  );
   await waitFor(async () => (await problems()).some((row) => row.includes("exceeds the slide canvas")), "a live layout problem");
   await retrying(async () => (await page.$(".studio-problem.is-error")).click());
   await waitFor(async () => (await activeSlide()) === 2, "the problem to show its slide");
@@ -439,14 +447,29 @@ try {
   await autosave();
   await placeCursor('"Third"', 6);
   await page.keyboard.type(" slide", { delay: 10 });
+  // Keep is pressed the moment the question shows, so the kept version is written within the
+  // 50 ms in which the file watcher reports only the other change.
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const keep = document.querySelectorAll("[data-slot='banner']:not([hidden]) [data-slot='banner-actions'] button")[1];
+      if (!keep) return;
+      observer.disconnect();
+      window.__keptFrom = document.querySelector("[data-slot='save-state']")?.dataset.state;
+      keep.click();
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+  });
   await writeFile(deck, beforeDrag.replace('text("Last slide");', 'text("Changed elsewhere");'), "utf8");
-  await page.waitForSelector("[data-slot='banner']:not([hidden])", { timeout: 15_000 });
-  assert.equal(await saveState(), "conflict");
-  const [, keep] = await page.$$("[data-slot='banner-actions'] button");
-  await keep.click();
+  await waitFor(() => page.evaluate(() => window.__keptFrom), "the conflict banner", 15_000);
+  assert.equal(await page.evaluate(() => window.__keptFrom), "conflict");
   await waitFor(async () => (await read()).includes('slide("Third slide");'), "keeping the editor's version");
   assert.ok(!(await read()).includes("Changed elsewhere"), "keeping my version must overwrite the other change");
   await autosave();
+  // The rail draws the version kept, not the one it replaced.
+  await waitFor(
+    async () => (await rail.$$eval(".frameseq-thumbnail-label", (items) => items[2]?.textContent).catch(() => "")) === "Third slide",
+    "the rail to draw the version kept",
+  );
 
   // Slides can be duplicated and moved from the rail, and the editor's history undoes both,
   // once the rail has caught up with the version just kept.
