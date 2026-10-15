@@ -89,6 +89,12 @@ export async function forgetPresentation(path) {
   });
 }
 
+/** Keep the person's templates in this folder from now on; none returns to the usual one. */
+export async function rememberTemplateFolder(path) {
+  const { templates: _previous, ...settings } = await readSettings();
+  await writeSettings(path ? { ...settings, templates: path } : settings);
+}
+
 /** Where a new presentation goes unless told otherwise: where the last one went, or Documents. */
 export async function defaultFolder(current) {
   const settings = await readSettings();

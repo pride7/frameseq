@@ -105,7 +105,7 @@ const placementModifiers = new Set(["rightOf", "leftOf", "above", "below", "cent
  * own commands, and the common globals of TypeScript itself.
  */
 const knownCalls = new Set([
-  "presentation", "slide", "note", "text", "image", "code", "math", "typst", "typstFile",
+  "presentation", "slide", "master", "placeholder", "note", "text", "image", "code", "math", "typst", "typstFile",
   "latex", "latexFile", "rect", "circle", "shape", "line", "bullets", "steps", "metric", "spacer",
   "group", "ref", "card", "gridSection", "main", "left", "right", "cell", "at", "gap",
   "table", "chart", "qr", "icon", "cite", "footnote", "references", "poster",
@@ -413,7 +413,8 @@ export function analyzeNames(source: string): SlideNames[] {
   const calls = readCalls(tokens, pairs);
   const opens = new Map<number, number>();
   for (const [open, closing] of pairs) opens.set(closing, open);
-  const boundaries = calls.filter((call) => !call.method && ["slide", "presentation", "poster"].includes(tokens[call.name].value));
+  // A master page holds names of its own, as a slide does.
+  const boundaries = calls.filter((call) => !call.method && ["slide", "master", "presentation", "poster"].includes(tokens[call.name].value));
   const slides: SlideNames[] = [];
 
   for (const [position, boundary] of boundaries.entries()) {

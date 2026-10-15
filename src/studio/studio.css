@@ -972,6 +972,23 @@ body:has(.studio-topbar) .studio-window-drag {
   height: 26px;
 }
 
+/* The master view says so above everything it changes, with the way back beside it. A banner
+   about the file on disk matters more, and takes the row while it shows. */
+.studio-master-bar {
+  border-bottom-color: var(--studio-accent);
+  color: var(--studio-text);
+  background: var(--studio-accent-soft);
+}
+
+.studio-banner:not([hidden]) ~ .studio-master-bar {
+  display: none;
+}
+
+.studio.is-master-view .studio-rail .studio-pane-title,
+.studio.is-master-view .studio-inspector .studio-pane-title {
+  color: var(--studio-accent);
+}
+
 /* ── Workspace ─────────────────────────────────────────────────────────────────────────── */
 
 /* Slides, editor, preview, and the assistant, each column folding on its own. The preview and
@@ -3016,6 +3033,41 @@ textarea.studio-text-input[style*="height"] {
   min-height: 1.4em;
   margin-top: 6px;
   font-size: 12px;
+}
+
+/* FrameSeq's templates, then the person's own, each under a quiet heading. */
+.studio-dialog .studio-template-heading {
+  margin: 4px 0 2px;
+  color: var(--studio-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-template-grid.is-own {
+  margin-bottom: 2px;
+}
+
+.studio-dialog .studio-template-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--studio-border);
+  border-radius: 8px;
+  color: var(--studio-muted);
+  font-size: 12px;
+}
+
+.studio-dialog .studio-template-folder {
+  margin: 0;
+  color: var(--studio-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-template-folder code {
+  font-size: 11px;
 }
 
 @media (max-width: 640px) {

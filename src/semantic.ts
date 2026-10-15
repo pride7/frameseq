@@ -407,7 +407,29 @@ export class ContentSlideBuilder extends SlideBuilder {
     this.content.className("frameseq-layout-canvas").stack();
     return this;
   }
+
+  /**
+   * Draw the slide on the master page of this name, or on none with false. Without it, a cover
+   * uses the master named "cover" and every other slide the one named "content".
+   * @example slide("Part two").master("section");
+   */
+  master(name: string | false): this {
+    if (name !== false && (typeof name !== "string" || !masterName.test(name))) {
+      throw new Error(`master() expects the name of a master, such as "section", or false for none`);
+    }
+    this.node.props.master = name;
+    return this;
+  }
 }
+
+/** A master's name: letters, digits, "_" and "-", starting with a letter. */
+export const masterName = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+
+/**
+ * A master page: objects drawn behind every slide that uses it, and placeholders that say where
+ * those slides' own titles and content go.
+ */
+export class MasterBuilder extends ContainerBuilder {}
 
 export class CoverSlideBuilder extends RegionBuilder {
   /** Set the cover's speaker notes, shown in presenter view and PPTX. */

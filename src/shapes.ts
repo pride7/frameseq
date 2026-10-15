@@ -663,6 +663,7 @@ export function resolveShapePaint(root: FrameSeqNode): void {
     for (const child of node.children) visit(child);
   };
   visit(root);
+  for (const page of Object.values((root.props.masters ?? {}) as Record<string, FrameSeqNode>)) visit(page);
 }
 
 // ── Connectors ─────────────────────────────────────────────────────────────────────────────

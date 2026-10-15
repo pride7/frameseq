@@ -7,9 +7,11 @@ import {
   type OpenResponse,
   type RecentPresentation,
   type StudioSession,
+  type TemplatesResponse,
+  type UserTemplate,
 } from "./api";
 import { language, switchLanguage, t } from "./i18n";
-import { askText, element, required, showMenu, toast, type MenuItem } from "./ui";
+import { askChoice, askText, element, required, showMenu, toast, type MenuItem } from "./ui";
 
 /** What the open document must settle before another presentation replaces it. */
 export interface LeaveGuard {
@@ -38,10 +40,11 @@ function folderPrefix(folder: string): string {
 const templateKey = "frameseq-studio-template";
 
 /** The template this browser last made a presentation from, or the blank one. */
-function lastTemplate(): string {
+function lastTemplate(mine: UserTemplate[]): string {
   try {
     const stored = localStorage.getItem(templateKey);
     if (stored && presentationTemplate(stored)) return stored;
+    if (stored?.startsWith("user:") && mine.some((template) => `user:${template.name}` === stored)) return stored;
   } catch {
     // Storage may be unavailable; every dialog then starts on the blank template.
   }
@@ -56,44 +59,175 @@ function rememberTemplate(id: string): void {
   }
 }
 
+/** Why a name cannot be a template's, which is a file's name on every system; undefined when it can. */
+export function templateNameProblem(value: string): string | undefined {
+  // eslint-disable-next-line no-control-regex
+  const bad = !value || value !== value.trim() || value.endsWith(".") || value.length > 80 || /[\\/:*?"<>|\u0000-\u001f]/.test(value);
+  return bad ? t.files.badTemplateName : undefined;
+}
+
+const emptyTemplates: TemplatesResponse = { folder: "", templates: [] };
+
+/** The person's own templates and where they are kept. */
+export function ownTemplates(): Promise<TemplatesResponse> {
+  return call<TemplatesResponse>("GET", "templates").catch(() => emptyTemplates);
+}
+
 /**
  * The templates as a choice among their real covers, each drawn in a small frame by the runtime
- * that shows any presentation, with a line about the chosen one underneath.
+ * that shows any presentation, with a line about the chosen one underneath: those FrameSeq
+ * ships, then the person's own. A right click on one offers what can be done with it: a copy of
+ * one FrameSeq ships to change, or one's own to edit, find, or delete.
  */
-function templatePicker(): { field: HTMLFieldSetElement; value: () => string } {
+function templatePicker(
+  initial: TemplatesResponse,
+  actions: { edit: (template: UserTemplate) => void; folders: boolean },
+): { field: HTMLFieldSetElement; value: () => string } {
+  let mine = initial;
   const field = element("fieldset", "studio-field studio-templates");
   field.append(element("legend", "", t.files.template));
-  const grid = element("div", "studio-template-grid");
+  const builtIn = element("div", "studio-template-grid");
+  const own = element("div", "studio-template-grid is-own");
   const summary = element("p", "studio-template-summary");
-  let chosen = lastTemplate();
+  const folderLine = element("p", "studio-template-folder");
+  let chosen = lastTemplate(mine.templates);
   const describe = (): void => {
-    summary.textContent = presentationTemplate(chosen)?.summaries[language] ?? "";
+    const owned = chosen.startsWith("user:");
+    summary.textContent = owned ? t.files.ownSummary(mine.folder) : presentationTemplate(chosen)?.summaries[language] ?? "";
   };
-  for (const template of presentationTemplates) {
-    const option = element("label", "studio-template");
-    option.dataset.template = template.id;
-    option.title = template.summaries[language];
+  const option = (id: string, name: string, title: string, preview: string, menu: () => Array<MenuItem | "separator">): HTMLLabelElement => {
+    const choice = element("label", "studio-template");
+    choice.dataset.template = id;
+    choice.title = title;
     const radio = element("input");
     radio.type = "radio";
     radio.name = "template";
-    radio.value = template.id;
-    radio.checked = template.id === chosen;
+    radio.value = id;
+    radio.checked = id === chosen;
     radio.addEventListener("change", () => {
-      chosen = template.id;
+      chosen = id;
       describe();
     });
     const cover = element("span", "studio-template-cover");
     const frame = element("iframe");
-    frame.src = `/__frameseq/studio/template-preview?template=${encodeURIComponent(template.id)}&language=${language}`;
-    frame.title = template.names[language];
+    frame.src = preview;
+    frame.title = name;
     frame.tabIndex = -1;
     frame.setAttribute("aria-hidden", "true");
     frame.addEventListener("load", () => cover.classList.add("is-ready"), { once: true });
     cover.append(frame);
-    option.append(radio, cover, element("span", "studio-template-name", template.names[language]));
-    grid.append(option);
+    choice.append(radio, cover, element("span", "studio-template-name", name));
+    choice.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      showMenu(event.clientX, event.clientY, menu(), name);
+    });
+    return choice;
+  };
+
+  const refresh = async (): Promise<void> => {
+    mine = await ownTemplates();
+    if (chosen.startsWith("user:") && !mine.templates.some((template) => `user:${template.name}` === chosen)) chosen = "blank";
+    showOwn();
+    describe();
+  };
+
+  const copy = async (id: string, suggestion: string): Promise<void> => {
+    const taken = new Set(mine.templates.map((template) => template.name.toLowerCase()));
+    const name = await askText({
+      title: t.files.copyTitle,
+      message: t.files.copyMessage,
+      value: suggestion,
+      confirm: t.files.copyConfirm,
+      validate: (value) => templateNameProblem(value) ?? (taken.has(value.toLowerCase()) ? t.files.exists(value) : undefined),
+    });
+    if (!name) return;
+    try {
+      await call("POST", "templates/copy", { template: id, name, language });
+      chosen = `user:${name}`;
+      await refresh();
+      toast(t.files.copied(name), { tone: "success" });
+    } catch (error) {
+      toast(message(error), { tone: "error" });
+    }
+  };
+
+  const remove = async (template: UserTemplate): Promise<void> => {
+    const sure = await askChoice({
+      title: t.files.deleteTitle(template.name),
+      message: t.files.deleteMessage,
+      choices: [{ label: t.files.deleteConfirm, value: "delete", primary: true }],
+    });
+    if (sure !== "delete") return;
+    try {
+      await call("POST", "templates/delete", { name: template.name, language });
+      await refresh();
+      toast(t.files.deleted(template.name), { tone: "info" });
+    } catch (error) {
+      toast(message(error), { tone: "error" });
+    }
+  };
+
+  for (const template of presentationTemplates) {
+    builtIn.append(option(
+      template.id,
+      template.names[language],
+      template.summaries[language],
+      `/__frameseq/studio/template-preview?template=${encodeURIComponent(template.id)}&language=${language}`,
+      () => [{ label: t.files.copyToMine, run: () => void copy(template.id, template.names[language]) }],
+    ));
   }
-  field.append(grid, summary);
+
+  function showOwn(): void {
+    own.replaceChildren(...mine.templates.map((template) => option(
+      `user:${template.name}`,
+      template.name,
+      template.path,
+      `/__frameseq/studio/template-preview?file=${encodeURIComponent(template.path)}`,
+      () => [
+        { label: t.files.editTemplate, run: () => actions.edit(template) },
+        { label: t.files.showTemplate, run: () => void call("POST", "templates/reveal", { name: template.name }).catch((error) => toast(message(error), { tone: "error" })) },
+        "separator",
+        { label: t.files.deleteTemplate, danger: true, run: () => void remove(template) },
+      ],
+    )));
+    if (mine.templates.length === 0) own.replaceChildren(element("p", "studio-template-empty", t.files.noOwnTemplates));
+    for (const radio of field.querySelectorAll<HTMLInputElement>("input[name='template']")) radio.checked = radio.value === chosen;
+    showFolder();
+  }
+
+  function showFolder(): void {
+    const open = element("button", "studio-link-button", t.files.openFolder);
+    open.type = "button";
+    open.addEventListener("click", () => void call("POST", "templates/reveal", {}).catch((error) => toast(message(error), { tone: "error" })));
+    const parts: Array<Node | string> = [`${t.files.templatesFolder}: `, element("code", "", mine.folder), " ", open];
+    if (actions.folders) {
+      const change = element("button", "studio-link-button", t.files.changeFolder);
+      change.type = "button";
+      change.addEventListener("click", () => void (async () => {
+        try {
+          const chosenFolder = await call<ChooseResponse>("POST", "files/choose", { kind: "folder", folder: mine.folder });
+          if (!chosenFolder.path) return;
+          const changed = await call<{ folder: string }>("POST", "templates/folder", { path: chosenFolder.path, language });
+          await refresh();
+          toast(t.files.folderChanged(changed.folder), { tone: "success" });
+        } catch (error) {
+          toast(message(error), { tone: "error" });
+        }
+      })());
+      parts.push(" · ", change);
+    }
+    folderLine.replaceChildren(...parts);
+  }
+
+  field.append(
+    element("p", "studio-template-heading", t.files.builtIn),
+    builtIn,
+    element("p", "studio-template-heading", t.files.myTemplates),
+    own,
+    summary,
+    folderLine,
+  );
+  showOwn();
   describe();
   return { field, value: () => chosen };
 }
@@ -181,7 +315,10 @@ export class Presentations {
 
   /** Name a new presentation and choose its folder; it opens as soon as it is written. */
   async create(): Promise<void> {
-    const { folder } = await this.files().catch(() => ({ folder: "", recent: [] }));
+    const [{ folder }, mine] = await Promise.all([
+      this.files().catch(() => ({ folder: "", recent: [] })),
+      ownTemplates(),
+    ]);
     const dialog = element("dialog", "studio-dialog studio-new-dialog");
     const form = element("form");
     form.method = "dialog";
@@ -220,7 +357,14 @@ export class Presentations {
     }
     const placeField = element("label", "studio-field");
     placeField.append(element("span", "", t.files.folder), row);
-    const templates = templatePicker();
+    // A template of one's own is a presentation, and it is edited by opening it.
+    const templates = templatePicker(mine, {
+      edit: (template) => {
+        dialog.close();
+        void this.openPath(template.path);
+      },
+      folders: this.session.dialogs,
+    });
     const file = element("p", "studio-new-file");
     const problem = element("p", "studio-dialog-problem");
     const actions = element("div", "studio-dialog-actions");

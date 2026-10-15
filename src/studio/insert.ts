@@ -18,14 +18,26 @@ export const contentKinds = [
 
 export type ContentKind = (typeof contentKinds)[number];
 
+/** On a master page, the boxes that say where the slides drawn on it put their own text. */
+export const placeholderKinds = ["placeholder-title", "placeholder-subtitle", "placeholder-author", "placeholder-body"] as const;
+
+export type PlaceholderKind = (typeof placeholderKinds)[number];
+
 /** What can be put onto a slide from the Studio. */
-export type InsertKind = ShapeKind | "text" | "line" | "arrow" | "connector" | ContentKind;
+export type InsertKind = ShapeKind | "text" | "line" | "arrow" | "connector" | ContentKind | PlaceholderKind;
 
 export type InsertGroup = keyof typeof t.insert.groups;
 
 export function isContentKind(kind: string): kind is ContentKind {
   return (contentKinds as readonly string[]).includes(kind);
 }
+
+export function isPlaceholderKind(kind: string): kind is PlaceholderKind {
+  return (placeholderKinds as readonly string[]).includes(kind);
+}
+
+/** Placeholders, offered only while a master page is edited. */
+export const placeholderGroup: { id: InsertGroup; kinds: PlaceholderKind[] } = { id: "placeholders", kinds: [...placeholderKinds] };
 
 /** The content side of the gallery: what a slide says. */
 export const contentGroups: Array<{ id: InsertGroup; kinds: ContentKind[] }> = [
@@ -76,12 +88,23 @@ const contentPictures: Record<ContentKind, string> = {
   icon: '<path d="m16 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>',
 };
 
+/** Pictures of the placeholders: a dashed box holding a hint of the text it takes. */
+const placeholderPictures: Record<PlaceholderKind, string> = {
+  "placeholder-title": '<path class="is-stroke" d="M10 12h12" stroke-width="3"/>',
+  "placeholder-subtitle": '<path class="is-stroke" d="M9 12h14"/>',
+  "placeholder-author": '<circle class="is-ink" cx="12" cy="10.5" r="2"/><path class="is-stroke" d="M8.5 16c.8-2 2-3 3.5-3s2.7 1 3.5 3M18 12h5"/>',
+  "placeholder-body": '<path class="is-stroke" d="M9 8.5h14M9 12h14M9 15.5h9"/>',
+};
+
 /**
  * A small picture of what the gallery, or an Insert menu, puts on the slide; a shape is drawn
  * from its own outline.
  */
 export function insertPicture(kind: InsertKind): string {
   if (isContentKind(kind)) return `${svgOpen}${contentPictures[kind]}</svg>`;
+  if (isPlaceholderKind(kind)) {
+    return `${svgOpen}<rect class="is-stroke" x="4" y="4" width="24" height="16" rx="1.5" stroke-dasharray="2.5 2"/>${placeholderPictures[kind]}</svg>`;
+  }
   switch (kind) {
     case "text":
       return `${svgOpen}<path class="is-stroke" d="M9 6h14M16 6v13"/></svg>`;
@@ -115,7 +138,11 @@ let openGallery: { close: () => void } | undefined;
  * Everything that can be put on a slide, below the button that opened it: content on one side,
  * named so it can be told apart, and shapes and lines on the other, drawn as they will look.
  */
-export function showInsertGallery(anchor: HTMLElement, pick: (kind: InsertKind) => void): void {
+export function showInsertGallery(
+  anchor: HTMLElement,
+  pick: (kind: InsertKind) => void,
+  { placeholders = false }: { placeholders?: boolean } = {},
+): void {
   if (openGallery) {
     openGallery.close();
     return;
@@ -130,7 +157,7 @@ export function showInsertGallery(anchor: HTMLElement, pick: (kind: InsertKind) 
     button.type = "button";
     button.setAttribute("role", "menuitem");
     button.dataset.kind = kind;
-    const description = isContentKind(kind) ? t.insert.descriptions[kind] : undefined;
+    const description = isContentKind(kind) || isPlaceholderKind(kind) ? t.insert.descriptions[kind] : undefined;
     button.title = description ? `${insertName(kind)} · ${description}` : insertName(kind);
     button.setAttribute("aria-label", insertName(kind));
     button.innerHTML = insertPicture(kind);
@@ -153,7 +180,8 @@ export function showInsertGallery(anchor: HTMLElement, pick: (kind: InsertKind) 
     }
     return side;
   };
-  gallery.append(column(t.insert.content, contentGroups, true), column(t.insert.drawing, insertGroups, false));
+  const content: Array<{ id: InsertGroup; kinds: InsertKind[] }> = placeholders ? [placeholderGroup, ...contentGroups] : contentGroups;
+  gallery.append(column(t.insert.content, content, true), column(t.insert.drawing, insertGroups, false));
   document.body.append(gallery);
   const box = anchor.getBoundingClientRect();
   const size = gallery.getBoundingClientRect();
@@ -344,6 +372,11 @@ export function placementCode(placement: Placement): { code: string; select?: [n
   }
   const label = JSON.stringify(t.insert.placeholder);
   const position = `.position({ x: ${integer(placement.x)}, y: ${integer(placement.y)} })`;
+  if (isPlaceholderKind(kind)) {
+    const role = kind.slice("placeholder-".length);
+    const head = role === "body" ? "placeholder()" : `placeholder(${JSON.stringify(role)})`;
+    return { code: `${head}${position}.width(${integer(placement.width)}).height(${integer(placement.height)});` };
+  }
   const head = kind === "text" ? `text(${label})` : `shape(${JSON.stringify(kind)}, ${label})`;
   const size = kind === "text"
     ? `.width(${integer(placement.width)})`

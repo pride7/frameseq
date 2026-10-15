@@ -131,8 +131,14 @@ export function collectLayoutIssues(win = window) {
       index: slideIndex + 1,
       label: canvas.dataset.frameseqSlideLabel || `Slide ${slideIndex + 1}`,
     };
-    const nodes = Array.from(canvas.querySelectorAll("[data-frameseq-node]"));
-    const hasAutomaticTitlePage = Boolean(canvas.querySelector(".frameseq-auto-title-page"));
+    // A master's objects are drawn on every slide that uses it, so they are not this slide's.
+    const nodes = Array.from(canvas.querySelectorAll("[data-frameseq-node]"))
+      .filter((element) => !element.closest(".frameseq-master-layer"));
+    // An empty cover whose master writes the presentation's title is a title page, as the
+    // automatic one is.
+    const hasAutomaticTitlePage = Boolean(canvas.querySelector(
+      ".frameseq-auto-title-page, .frameseq-master-layer[data-frameseq-title-page]",
+    ));
     const hasVisibleContent = nodes.some((element) => {
       const type = element.dataset.frameseqNode ?? "unknown";
       if (type === "slide" || type === "spacer" || !visible(element, type)) return false;

@@ -24,6 +24,8 @@ import { runsFromBundle } from "./scripts/browsers.mjs";
 import { configDirectory } from "./scripts/studio-files.mjs";
 // Plain JavaScript, shared with the CLI and the Studio's server.
 import { presentationTemplates, templateDeck } from "./scripts/presentation-file.mjs";
+// @ts-expect-error -- plain JavaScript, shared with the CLI and the Studio's server.
+import { templateDirectory } from "./scripts/user-templates.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -155,6 +157,8 @@ const documentCommands = [
   "presentation",
   "poster",
   "slide",
+  "master",
+  "placeholder",
   "note",
   "text",
   "image",
@@ -732,7 +736,10 @@ export default defineConfig({
             map: null,
           };
         }
-        if (idPathKey !== entryPathKey) return undefined;
+        // A template of the person's own runs as a slide document too, for its cover in the Studio.
+        const template = studioEnabled && /[?&]frameseq-template\b/.test(id);
+        if (idPathKey !== entryPathKey && !template) return undefined;
+        const document = template ? normalizedId : entry;
 
         const typstSourceReplacements = typstReplacements(source);
         const latexSourceReplacements = latexReplacements(source);
@@ -745,8 +752,8 @@ export default defineConfig({
             let sourceLabel = replacement.label;
 
             if (replacement.label === "Typst file") {
-              const absolutePath = resolve(dirname(entry), replacement.source);
-              const relativePath = normalizePath(relative(dirname(entry), absolutePath));
+              const absolutePath = resolve(dirname(document), replacement.source);
+              const relativePath = normalizePath(relative(dirname(document), absolutePath));
               if (isAbsolute(relativePath) || relativePath === ".." || relativePath.startsWith("../")) {
                 throw new Error("typstFile() must point to a file inside the slide document directory");
               }
@@ -772,8 +779,8 @@ export default defineConfig({
           let sourceLabel = replacement.label;
 
           if (replacement.file) {
-            const absolutePath = resolve(dirname(entry), replacement.source);
-            const relativePath = normalizePath(relative(dirname(entry), absolutePath));
+            const absolutePath = resolve(dirname(document), replacement.source);
+            const relativePath = normalizePath(relative(dirname(document), absolutePath));
             if (isAbsolute(relativePath) || relativePath === ".." || relativePath.startsWith("../")) {
               throw new Error("latexFile() must point to a file inside the slide document directory");
             }
@@ -789,7 +796,7 @@ export default defineConfig({
           });
         }
 
-        const marks: SourceMark[] = marksEnabled ? sourceMarks(source, normalizedEntry) : [];
+        const marks: SourceMark[] = marksEnabled && !template ? sourceMarks(source, normalizedEntry) : [];
         const edits: SourceEdit[] = [
           ...compiledReplacements.map((replacement) => ({
             start: replacement.start,
@@ -798,7 +805,7 @@ export default defineConfig({
             text: replacement.code,
           })),
           ...marks.flatMap((mark) => markEdits(mark) as SourceEdit[]),
-          ...(marksEnabled ? statementEdits(source, normalizedEntry) as SourceEdit[] : []),
+          ...(marksEnabled && !template ? statementEdits(source, normalizedEntry) as SourceEdit[] : []),
         ];
         transformedSource = applySourceEdits(transformedSource, edits);
 
@@ -845,7 +852,8 @@ export default defineConfig({
     ...(remoteServerEnabled ? { host: true } : {}),
     open: openBrowser,
     fs: {
-      allow: [packageRoot, dirname(entry)],
+      // The Studio draws the covers of the person's own templates, kept in a folder of their own.
+      allow: [packageRoot, dirname(entry), ...(studioEnabled ? [templateDirectory()] : [])],
     },
     // In a checkout, the app's builds and the Rust window's target folder are no source; on
     // Windows a watched folder cannot even be renamed, as the app's build does with its own.

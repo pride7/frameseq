@@ -28,6 +28,7 @@ const contentCommands = new Set([
   "row",
   "column",
   "stack",
+  "placeholder",
 ]);
 
 const layoutPriority = ["cover", "canvas", "split", "grid", "center", "fullBleed"];
@@ -482,17 +483,20 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
     ts.ScriptKind.TS,
   );
   const slides = [];
+  // Master pages, written like slides but drawn behind them, are reported beside the slides.
+  const masters = [];
   let currentSlide;
 
   const finishSlide = (endLine) => {
     if (!currentSlide) return;
     currentSlide.source.endLine = Math.max(currentSlide.source.line, endLine);
     currentSlide.objectCount = currentSlide.objects.length;
+    const prefix = currentSlide.master ? `master:${currentSlide.master}` : `slide:${currentSlide.index}`;
     const objectIds = new Map();
     for (const [objectIndex, object] of currentSlide.objects.entries()) {
       object.id = object.name
-        ? `slide:${currentSlide.index}:name:${object.name}`
-        : `slide:${currentSlide.index}:object:${object.source.start}:${objectIndex}`;
+        ? `${prefix}:name:${object.name}`
+        : `${prefix}:object:${object.source.start}:${objectIndex}`;
       objectIds.set(object.source.start, object.id);
     }
     let cursorIndex = 0;
@@ -520,18 +524,40 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
       else namedRegions.set(region.path, {
         ...region,
         sources: [region.source],
-        id: `slide:${currentSlide.index}:region:${region.path}`,
+        id: `${prefix}:region:${region.path}`,
         visits: 1,
       });
     }
     currentSlide.regions = [...namedRegions.values()];
     delete currentSlide.regionReferences;
     delete currentSlide.cursorReferences;
-    slides.push(currentSlide);
+    (currentSlide.master ? masters : slides).push(currentSlide);
     currentSlide = undefined;
   };
 
   for (const statement of sourceFile.statements) {
+    const masterCall = findIdentifierCall(statement, "master");
+    if (masterCall && !findIdentifierCall(statement, "slide") && !findIdentifierCall(statement, "poster")) {
+      const masterSource = location(sourceFile, masterCall);
+      finishSlide(masterSource.line - 1);
+      const name = staticString(masterCall.arguments[0]) ?? "master";
+      currentSlide = {
+        index: masters.length + 1,
+        master: name,
+        label: name,
+        name,
+        layout: "canvas",
+        notes: false,
+        noteSources: [],
+        source: { ...masterSource, endLine: masterSource.line },
+        objects: contentObjects(sourceFile, statement, masterCall.getEnd()),
+        cursorReferences: cursorReferences(sourceFile, statement, masterCall.getEnd()),
+        regionReferences: regionReferences(sourceFile, statement, masterCall.getEnd()),
+        regions: [],
+        objectCount: 0,
+      };
+      continue;
+    }
     // A poster is a presentation whose one page poster() begins itself.
     const posterCall = findIdentifierCall(statement, "poster");
     const slideCall = findIdentifierCall(statement, "slide") ?? posterCall;
@@ -556,6 +582,10 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
           .filter((method) => method.name === "notes")
           .map((method) => noteSource(sourceFile, method.node.arguments[0], direct)),
       ].filter(Boolean);
+      // The master the slide names with .master(), with the range that replaces or removes it.
+      const masterMethod = direct ? chainEdits(sourceFile, chain).methods.findLast((method) => method.name === "master") : undefined;
+      const masterArgument = masterMethod ? chain.methods.findLast((method) => method.name === "master")?.node.arguments[0] : undefined;
+      const masterValue = masterArgument?.kind === ts.SyntaxKind.FalseKeyword ? false : staticString(masterArgument);
       currentSlide = {
         index,
         label: name ?? title ?? (layout === "cover" ? "Cover" : `Slide ${index}`),
@@ -566,6 +596,9 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
         noteSources,
         // Where .notes() can be added to the slide() call, when the statement is that call.
         ...(direct ? { notesAt: chain.root.getEnd() } : {}),
+        ...(masterMethod && masterValue !== undefined
+          ? { masterChoice: { value: masterValue, start: masterMethod.removeFrom, end: masterMethod.end } }
+          : {}),
         source: {
           ...slideSource,
           endLine: slideSource.line,
@@ -603,7 +636,9 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
     summary: {
       slides: slides.length,
       objects: slides.reduce((total, slide) => total + slide.objectCount, 0),
+      masters: masters.length,
     },
     slides,
+    masters,
   };
 }

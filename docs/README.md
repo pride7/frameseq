@@ -23,6 +23,7 @@ The model behind the recipes, one subject at a time.
 - [Shapes and connectors](shapes.md) — The primitives a diagram is built from: 27 shapes, tones, and connectors that bend around them.
 - [Styling](styling.md) — Chainable modifiers, text roles, dimensions, Tailwind utilities, and inline styles.
 - [Themes](themes.md) — Built-in themes, presentation-wide typography, CJK text, and custom tokens.
+- [Masters and templates](masters.md) — Slide masters drawn behind every slide, placeholders for titles and content, and templates of your own.
 - [Posters and print](posters.md) — Pages for paper: A0 posters and handouts, printed sizes, and the poster theme.
 
 ## Typeset mathematics and tables

@@ -6,6 +6,8 @@ import ts from "typescript";
  */
 const markableCommands = new Set([
   "slide",
+  "master",
+  "placeholder",
   "poster",
   "text",
   "image",
@@ -111,7 +113,7 @@ function editableFields(sourceFile, node) {
 function isRegionBarrier(node) {
   if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false;
   const name = node.expression.text;
-  if (["presentation", "poster", "slide", "main", "left", "right", "cell", "at"].includes(name)) return true;
+  if (["presentation", "poster", "slide", "master", "main", "left", "right", "cell", "at"].includes(name)) return true;
   // group(a, b) and gridSection(2, a, b) collect objects written above them into a container.
   if (name === "group") return node.arguments.length > 0;
   if (name === "gridSection") return node.arguments.length > 1;
@@ -203,7 +205,7 @@ export function sourceMarks(source, fileName = "slides.ts") {
         // A slide is not one object among neighbours; its content lives in later statements.
         // Neither is a call that collects the objects written above it: moving it past them
         // would leave it reaching for objects that do not exist yet.
-        statement: ["slide", "poster", "at"].includes(chainRoot(node) ?? "") || isRegionBarrier(node)
+        statement: ["slide", "master", "poster", "at"].includes(chainRoot(node) ?? "") || isRegionBarrier(node)
           ? undefined
           : statementBlock(sourceFile, node),
       });
@@ -236,9 +238,27 @@ function runs(statement) {
     || ts.isThrowStatement(statement);
 }
 
+/** Whether a statement begins a slide or a master page with a plain slide(), poster(), or master() call. */
+function pageStart(statement) {
+  let found;
+  const visit = (node) => {
+    if (found) return;
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const name = node.expression.text;
+      if (name === "slide" || name === "poster") found = "slide";
+      else if (name === "master") found = "master";
+    }
+    // A helper declared here makes slides only where it is called.
+    if (!ts.isFunctionLike(node)) ts.forEachChild(node, visit);
+  };
+  if (!ts.isFunctionDeclaration(statement)) ts.forEachChild(statement, visit);
+  return found;
+}
+
 /**
- * The top-level statements of a slide document in order, each with its range and whether it
- * runs. A directive such as "use strict" at the top is left out, since nothing may precede it.
+ * The top-level statements of a slide document in order, each with its range, whether it runs,
+ * and whether it begins a slide or a master page. A directive such as "use strict" at the top is
+ * left out, since nothing may precede it.
  */
 export function documentStatements(source, fileName = "slides.ts") {
   const sourceFile = ts.createSourceFile(
@@ -254,10 +274,12 @@ export function documentStatements(source, fileName = "slides.ts") {
       && ts.isExpressionStatement(statement)
       && ts.isStringLiteral(statement.expression);
     if (!directive) prologue = false;
+    const starts = pageStart(statement);
     return {
       start: statement.getStart(sourceFile),
       end: statement.getEnd(),
       runs: !directive && runs(statement),
+      ...(starts ? { starts } : {}),
     };
   });
 }

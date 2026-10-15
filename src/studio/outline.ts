@@ -14,6 +14,8 @@ export interface DocumentStatement {
   start: number;
   end: number;
   runs: boolean;
+  /** A statement that begins a slide or a master page. */
+  starts?: "slide" | "master";
 }
 
 /**
@@ -107,10 +109,14 @@ export function buildSlideMap(
   for (const [index, group] of groups.entries()) {
     group.from = blockStart(doc, group.anchor);
     const next = groups[index + 1];
-    const nextStart = next ? blockStart(doc, next.anchor) : doc.length;
+    // A slide or master page the rail does not show, such as a master while the slides show,
+    // still ends the group before it.
+    const page = statements.findIndex((statement, position) => position > group.statement && statement.starts);
+    const end = Math.min(next ? next.statement : statements.length, page < 0 ? statements.length : page);
+    const nextStart = end < statements.length ? blockStart(doc, statements[end].start) : doc.length;
     // A group's lines run through its last statement that runs, and the blank lines after it.
     // A helper function declared between two slides stays where it is when either one moves.
-    const own = statements.slice(group.statement, next ? next.statement : statements.length);
+    const own = statements.slice(group.statement, end);
     const last = own.filter((statement) => statement.runs).pop() ?? statements[group.statement];
     let line = doc.lineAt(Math.min(last.end, doc.length)).number;
     while (line < doc.lines && doc.line(line + 1).from < nextStart && !doc.line(line + 1).text.trim()) line += 1;

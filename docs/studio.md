@@ -38,11 +38,11 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 
 | Menu | Commands |
 | --- | --- |
-| **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Export |
+| **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Save as template, Open templates folder, Export |
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
-| **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
-| **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
-| **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
+| **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Slide master; Theme; Language |
+| **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source; Master |
+| **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group; in the master view, Placeholders |
 | **Present** | From the beginning, From the current slide, Presenter view in a new window, Phone remote…, Open the preview in a browser |
 | **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
 
@@ -59,7 +59,7 @@ Right-click something, or press `Shift+F10` or the menu key, for the commands th
 | **The slide itself** | Paste; Insert; New slide after this one; Layout editing; Go to the slide's source; Present from here |
 | **An object in Current slide** | Cut, Copy, Paste, Duplicate, Delete, Edit text, Format…, Go to code |
 | **The code** | Go to definition, Rename; Cut, Copy, Paste; Comment or uncomment; Select all; Find and replace |
-| **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Delete |
+| **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Edit the master, Delete; in the master view, New master, Go to source, Delete |
 
 A right-click on an object selects it, alone, and turns layout editing on, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** opens the object's settings in Current slide with its words selected, and **Format…** opens them at its row. Each command is one step in the editor's history.
 
@@ -83,6 +83,7 @@ The Studio speaks English and Chinese. It starts in the language of the browser,
 
 - **New presentation** asks for a title, a template, and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes the template into it with the title in place. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
 - The templates are shown by their real covers, rendered as the presentation will be. There is one for each built-in theme: **Blank**, a cover and a first slide; **Midnight**, a dark talk for products and code; **Paper**, serif pages for a story; **Academic talk**, a research talk in `minimal-academic`; **Beamer**, **Beamer Madrid**, and **Beamer CambridgeUS**, the same lecture in the three Beamer-inspired themes; and **Poster**, an A0 conference poster in three columns. Each passes the layout check as written. Double-click a template to create the presentation at once; the next dialog starts on the template used last.
+- **My templates**, below them, are your own: presentations kept with **File › Save as template…**, masters and theme included. Right-click one to edit it, show it in its folder, or delete it, and right-click a built-in template to keep a copy among yours to change. The line under the templates names the templates folder, with buttons that open it and move it elsewhere; see [Masters and templates](masters.md#templates-of-your-own).
 - **Open** shows this computer's own open dialog. Where there is none, as on Linux without `zenity` or `kdialog`, the Studio asks for the file's path instead; `FRAMESEQ_NO_DIALOGS=1` makes it always ask.
 - When the open document has unsaved changes, the Studio asks whether to save them first. **Cancel** keeps the document open.
 
@@ -198,7 +199,7 @@ The slide rail edits the document by the statements that make slides. A slide's 
 
 - **Click** a thumbnail to show the slide and move the editor to the code that made it.
 - **Drag** a thumbnail up or down to move the slide.
-- **Right-click** for **New slide after…**, **Duplicate**, **Move up**, **Move down**, **Go to source**, **Present from here**, and **Delete**. `Delete` also works on the selected thumbnail.
+- **Right-click** for **New slide after…**, **Duplicate**, **Move up**, **Move down**, **Go to source**, **Present from here**, **Edit the master**, and **Delete**. `Delete` also works on the selected thumbnail.
 - **+** above the rail adds a slide after the one in the preview, from a layout you pick: title and text, title and points, a section title, two columns, three numbers, code and notes, a formula, a table, a chart, a flow diagram, steps revealed one by one, or a closing line. The slide comes in with its title, or its main line, selected for typing. **Slide › New slide after this one** lists the same layouts.
 
 The layouts are the slides of the [recipes](recipes.md), with placeholders in the Studio's language, and each passes the layout check as it comes in.
@@ -221,6 +222,14 @@ section("Results"); // a helper that writes two slides
 No block of lines belongs to any one of those slides, so they are moved, duplicated, and deleted together, as the statement that made them. The rail brackets such slides, the editor numbers the statement with all of them (`2–4`), the slide menu says how many slides an action touches, and dropping a dragged slide is only possible between groups. Moving the slides around a loop still works one slide at a time, and a helper function declared between two slides stays where it is.
 
 Clicking a slide made in a loop puts the cursor on the `slide()` call inside the loop; clicking one made by a helper puts it on the call that ran the helper. A slide made outside the slide document, by an imported module, can be shown but not rearranged.
+
+## Slide masters
+
+**View › Slide master** shows the presentation's [master pages](masters.md) in the rail and the preview in place of the slides, under a bar that says so and closes the view. A master page is edited the way a slide is: drag and resize its objects, set them in **Current master**, and add pictures, shapes, and text from **Insert**. **Insert › Placeholders** draws the boxes the slides' own title, subtitle, author, and content go into; a placeholder's settings are the type its text takes on every slide.
+
+The rail's **+** adds the cover master, the content master, or a master named as you like, written after `presentation()`. Each starts where the theme already puts things, so the slides look the same until it is changed. **Slide › Delete** and the rail's right-click menu delete a master, and **Present** leaves the view and shows the slides.
+
+With the slides showing, **Slide › Master** picks the master the slide in the preview is drawn on: its usual one, another by name, or none, written as the slide's `.master()`. **Edit the master**, there and in the rail's right-click menu, opens the master view on the slide's master.
 
 ## Problems
 

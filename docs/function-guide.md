@@ -17,6 +17,7 @@ Generated `slides.ts` files expose these lowercase functions globally, so import
 - [Regions](#regions)
 - [Shapes and connectors](#shapes-and-connectors)
 - [Themes](#themes)
+- [Masters](#masters)
 - [Common object methods](#common-object-methods)
 - [Length helpers](#length-helpers)
 
@@ -1121,6 +1122,64 @@ presentation({ title: "Ocean", theme: ocean });
 **Returns** a complete `ThemeDefinition` that can be passed to `presentation()` or extended by another theme.
 
 See [Themes](themes.md) for all token names and built-in previews.
+
+## Masters
+
+### `master()`
+
+Starts a master page: objects drawn behind every slide that uses it, as a slide master is in PowerPoint. The objects after it belong to the master until the next `slide()` or `master()` call.
+
+```ts
+master("content");
+rect().position({ x: 0, y: 0 }).width(1280).height(96).fill("#1e3a8a");
+placeholder("title").position({ x: 60, y: 0 }).width(1160).height(96).color("#ffffff");
+text("{page} / {total}").position({ x: 1120, y: 676 }).width(100).textAlign("right").caption();
+```
+
+**Signature** `master(name) → MasterBuilder`
+
+**Parameters**
+
+- `name` — `string`, required. Letters, digits, `_`, and `-`, starting with a letter. Covers are drawn on the master named `"cover"` and every other slide on the one named `"content"`; any other name is used by the slides that ask for it with `.master()`.
+
+**Returns** `MasterBuilder`, the master page. `.background()` paints the page of every slide drawn on it.
+
+A master page is a canvas: place its objects with `.position()`. Text on it may show `{title}`, `{subtitle}`, `{author}`, `{institute}`, and `{date}` from the presentation, `{page}` and `{total}`, and `{slide}`, the slide's own title. Each name is written once per presentation. See [Masters and templates](masters.md).
+
+### `placeholder()`
+
+Marks, on a master page, where the slides drawn on it put their own content.
+
+```ts
+master("cover");
+placeholder("title").position({ x: 500, y: 180 }).width(700).height(220).size(60);
+placeholder().position({ x: 500, y: 420 }).width(700).height(200);
+```
+
+**Signature** `placeholder(role) → ElementBuilder`
+
+**Parameters**
+
+- `role` — `"body"`, `"title"`, `"subtitle"`, or `"author"`, optional. Defaults to `"body"`: everything the slide holds flows inside it. `"title"` takes a slide's title, or a cover's `.hero()` text; `"subtitle"` and `"author"` take a cover's.
+
+**Returns** the placeholder. `.position()`, `.width()`, and `.height()` give its box; text settings such as `.size()`, `.color()`, `.weight()`, and `.textAlign()` style the text it holds on every slide, unless the slide sets them itself; `.justify("start" | "center" | "end")` puts that text at the top, the middle, or the foot of the box.
+
+A master has at most one placeholder of each role. A placeholder written outside a master is an error.
+
+### `.master()`
+
+Draws a slide on another master, or on none.
+
+```ts
+slide("Part two").master("section");
+slide({ name: "Photo" }).master(false).fullBleed(photo, "The lab at night");
+```
+
+**Signature** `master(name) → slide`
+
+**Parameters**
+
+- `name` — `string` or `false`, required. The name of a master the presentation defines, or `false` for no master. A name the presentation does not define is reported with the slide that asked for it.
 
 ## Common object methods
 

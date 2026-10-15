@@ -843,6 +843,9 @@ export function resolveAnchors(root: FrameSeqNode): void {
   for (const [index, slide] of root.children.entries()) {
     resolveSlide(slide, slideLabel(slide, index), problems);
   }
+  for (const [name, page] of Object.entries((root.props.masters ?? {}) as Record<string, FrameSeqNode>)) {
+    resolveSlide(page, `master("${name}")`, problems);
+  }
   if (problems.length > 0) {
     throw new DocumentError(
       `FrameSeq could not resolve every anchor:\n- ${problems.map((problem) => problem.message).join("\n- ")}`,

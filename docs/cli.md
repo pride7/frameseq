@@ -35,6 +35,14 @@ frameseq new poster.slides.ts --template poster
 
 Each template is named after the [theme](themes.md) it uses, and passes `frameseq check --strict` as written. An unknown name lists the templates. [FrameSeq Studio](studio.md) offers the same templates, with their covers, when it makes a new presentation. The command writes English placeholders; the Studio writes Chinese ones when it is shown in Chinese.
 
+`--template` also takes the name of one of your own templates, the presentations kept in your templates folder, `FrameSeq/Templates` in Documents unless `FRAMESEQ_TEMPLATES` names another:
+
+```bash
+frameseq new weekly-sync.slides.ts --template "Group meeting"
+```
+
+The new presentation is titled after its file name, here *weekly sync*, and gets the files a folder template holds beside it. A template FrameSeq ships wins over one of yours with the same name. See [Masters and templates](masters.md#templates-of-your-own).
+
 ## Start the development server
 
 ```bash

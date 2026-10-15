@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:48c5f0a08ce4d84b -->
+<!-- translation-of: docs/cli.md sha256:94b0f611845d3c82 -->
 
 # CLI 参考
 
@@ -36,6 +36,14 @@ frameseq new poster.slides.ts --template poster
 | `poster` | 三栏的 A0 学术会议海报。 |
 
 每个模板都以它使用的[主题](themes.md)命名，原样就能通过 `frameseq check --strict`。名字写错时，命令会列出所有模板。[FrameSeq Studio](studio.md) 新建演示时提供同样的模板，并显示它们的封面。命令行写出的占位文字是英文的；Studio 用中文显示时，占位文字是中文。
+
+`--template` 后面也可以写你自己的模板名。你的模板是存放在模板文件夹里的演示，默认是“文档”里的 `FrameSeq/Templates`，环境变量 `FRAMESEQ_TEMPLATES` 可以指定别的文件夹：
+
+```bash
+frameseq new weekly-sync.slides.ts --template "Group meeting"
+```
+
+新演示以文件名为标题，这里是 *weekly sync*；文件夹模板里的文件会复制到它旁边。如果你的模板和 FrameSeq 自带的模板同名，用的是自带的那个。见[母版与模板](masters.md#你自己的模板)。
 
 ## 启动开发服务器
 

@@ -42,7 +42,7 @@ import {
   showSlideMarks,
   type SlideMark,
 } from "./editor";
-import { Presentations, showStartPage } from "./files";
+import { ownTemplates, Presentations, showStartPage, templateNameProblem } from "./files";
 import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
 import { MenuBar, showContextMenu, type MenuCommand, type MenuEntry } from "./menubar";
@@ -80,6 +80,7 @@ import { ProblemsPanel, type Problem } from "./problems";
 import { layoutSketch, showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import { StudioTerminal } from "./terminal";
+import { insertMaster, masterInsertion, masterName, masterNames, starterMaster, type PageGeometry } from "./masters";
 import {
   appendToSlide,
   connectorChanges,
@@ -90,6 +91,8 @@ import {
   insertName,
   insertPicture,
   isContentKind,
+  isPlaceholderKind,
+  placeholderGroup,
   placedContent,
   placementCode,
   showInsertGallery,
@@ -165,10 +168,14 @@ const shell = `
     <span data-slot="banner-text"></span>
     <span class="studio-banner-actions" data-slot="banner-actions"></span>
   </div>
+  <div class="studio-banner studio-master-bar" data-slot="master-bar" hidden>
+    <span>${t.masters.banner}</span>
+    <span class="studio-banner-actions"><button type="button" class="studio-button is-primary" data-action="close-masters">${t.masters.close}</button></span>
+  </div>
   <main class="studio-workspace">
     <section class="studio-rail" aria-label="${t.shell.slides}">
       <header class="studio-pane-header">
-        <span class="studio-pane-title">${t.shell.slides}</span>
+        <span class="studio-pane-title" data-slot="rail-title">${t.shell.slides}</span>
         <span class="studio-pane-meta" data-slot="slide-count"></span>
         <span class="studio-pane-spacer"></span>
         <button type="button" class="studio-icon-button" data-action="new-slide" title="${t.shell.newSlideTitle}">+</button>
@@ -178,7 +185,7 @@ const shell = `
       <section class="studio-inspector" aria-label="${t.shell.currentSlide}">
         <header class="studio-pane-header">
           <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="${t.shell.toggleInspector}"></button>
-          <span class="studio-pane-title">${t.shell.currentSlide}</span>
+          <span class="studio-pane-title" data-slot="inspector-title">${t.shell.currentSlide}</span>
           <span class="studio-pane-meta" data-slot="inspector-meta"></span>
         </header>
         <div class="studio-inspector-body" data-slot="inspector" role="tree" aria-label="${t.shell.inspectorLabel}"></div>
@@ -320,6 +327,8 @@ async function start(): Promise<void> {
   let renderedCount = 0;
   /** The slides as the rail last rendered them, with where each one came from. */
   let outline: RenderedSlide[] | undefined;
+  /** Whether the preview and the rail show the master pages, to be edited, instead of the slides. */
+  let masterView = false;
   let previewSlide = 0;
   let previewLabel = "";
   /** The notes of the slide in the preview as they rendered; unknown again once the text changes. */
@@ -585,6 +594,11 @@ async function start(): Promise<void> {
     },
   });
 
+  /** The slides, or the master pages while the master view shows them, as the outline reads them. */
+  function pages(source: InspectReport | undefined = report): InspectSlide[] {
+    return (masterView ? source?.masters : source?.slides) ?? [];
+  }
+
   /**
    * The outline of the slide the preview shows: the statement whose lines hold the slide's own
    * slide() call, which for a loop is the loop and for a helper the helper's body.
@@ -596,16 +610,16 @@ async function start(): Promise<void> {
     if (!map) {
       if (outline) return undefined;
       const index = slideIndexAt(view.state.selection.main.head);
-      return { slide: index === undefined ? undefined : report.slides[index], note: "" };
+      return { slide: index === undefined ? undefined : pages()[index], note: "" };
     }
     const groupIndex = map.groupOf[previewSlide];
     const group = groupIndex === undefined ? undefined : map.groups[groupIndex];
     if (!group) return { note: t.inspector.madeOutside(previewSlide + 1, session.name) };
     const call = map.calls[previewSlide];
     const callLine = call === undefined ? undefined : doc.lineAt(call).number;
-    const slide = (callLine === undefined ? undefined : report.slides.find((candidate) => (
+    const slide = (callLine === undefined ? undefined : pages().find((candidate) => (
       callLine >= candidate.source.line && callLine <= candidate.source.endLine
-    ))) ?? report.slides.find((candidate) => {
+    ))) ?? pages().find((candidate) => {
       const line = doc.line(Math.min(candidate.source.line, doc.lines));
       return line.from >= group.from && line.from < group.to;
     });
@@ -666,7 +680,8 @@ async function start(): Promise<void> {
     const current = inspectedSlide();
     if (!current) return;
     inspector.show(current.slide, current.note);
-    const label = outline?.[previewSlide]?.label ?? current.slide?.label ?? "";
+    const label = outline?.[previewSlide]?.label
+      ?? (masterView ? t.masters.label(current.slide?.master ?? "") : current.slide?.label) ?? "";
     slot("inspector-meta").textContent = renderedCount > 0
       ? `${previewSlide + 1} / ${renderedCount}${label ? ` · ${label}` : ""}`
       : (label ? label : "");
@@ -1101,7 +1116,7 @@ async function start(): Promise<void> {
       }));
     } else if (!outline && report && reportText === editorText()) {
       // Until the rail has rendered, the static outline is the best guess.
-      marks = report.slides.map((slide) => ({
+      marks = pages().map((slide) => ({
         indices: [slide.index - 1],
         line: slide.source.line,
         endLine: slide.source.endLine,
@@ -1117,13 +1132,13 @@ async function start(): Promise<void> {
     if (map && report) return slideAt(map, report.statements, position, prefer);
     if (!report || reportText !== editorText() || outline) return undefined;
     const line = view.state.doc.lineAt(position).number;
-    const slide = report.slides.find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
+    const slide = pages().find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
     return slide ? slide.index - 1 : undefined;
   }
 
-  /** The innermost object written at an editor position. */
+  /** The innermost object written at an editor position, on a slide or a master page. */
   function objectAt(position: number) {
-    return (report?.slides ?? [])
+    return [...(report?.slides ?? []), ...(report?.masters ?? [])]
       .flatMap((slide) => slide.objects)
       .filter((object) => (object.source.start ?? Infinity) <= position && position <= (object.source.end ?? -1))
       .sort((a, b) => ((a.source.end ?? 0) - (a.source.start ?? 0)) - ((b.source.end ?? 0) - (b.source.start ?? 0)))[0];
@@ -1157,7 +1172,7 @@ async function start(): Promise<void> {
       ? (call !== undefined && call >= group.from && call < group.to ? call : group.anchor)
       : call;
     if (position === undefined && !outline && report && reportText === editorText()) {
-      const slide = report.slides[index];
+      const slide = pages()[index];
       if (slide) position = view.state.doc.line(Math.min(slide.source.line, view.state.doc.lines)).from;
     }
     if (position !== undefined) {
@@ -1215,16 +1230,21 @@ async function start(): Promise<void> {
       crumb.textContent = "";
       return;
     }
-    const label = outline?.[index]?.label ?? report?.slides[index]?.label ?? "";
+    // The rail names a master page as the Studio does; the outline only knows its name.
+    const label = outline?.[index]?.label
+      ?? (masterView ? t.masters.label(pages()[index]?.master ?? "") : pages()[index]?.label) ?? "";
     const object = objectAt(selection.head);
-    crumb.textContent = `${t.status.slide(index + 1)}${label ? ` · ${label}` : ""}${object ? ` › ${object.type}` : ""}`;
+    const place = masterView ? label : `${t.status.slide(index + 1)}${label ? ` · ${label}` : ""}`;
+    crumb.textContent = `${place}${object ? ` › ${object.type}` : ""}`;
     inspector.highlight(object);
   }
 
   function showPreviewPosition(): void {
     const text = renderedCount > 0 ? `${previewSlide + 1} / ${renderedCount}${previewLabel ? ` · ${previewLabel}` : ""}` : "";
     slot("preview-slide").textContent = text;
-    slot("status-slide").textContent = renderedCount > 0 ? t.status.slideOf(previewSlide + 1, renderedCount) : "";
+    slot("status-slide").textContent = renderedCount > 0
+      ? (masterView ? t.masters.slideOf : t.status.slideOf)(previewSlide + 1, renderedCount)
+      : "";
     slot("slide-count").textContent = renderedCount > 0 ? String(renderedCount) : "";
   }
 
@@ -1424,7 +1444,7 @@ async function start(): Promise<void> {
       .map(editorRange)
       .filter((range): range is { from: number; to: number } => Boolean(range))
       .map((range) => range.from);
-    const plan = planBinding(view.state.doc, current.slides, starts);
+    const plan = planBinding(view.state.doc, pages(current), starts);
     if (typeof plan === "string") {
       toast(plan, { tone: "warning" });
       return;
@@ -1473,6 +1493,8 @@ async function start(): Promise<void> {
 
   /** Let the next drag on the preview draw an object of this kind. */
   async function startPlacing(kind: InsertKind): Promise<void> {
+    // A placeholder belongs on a master page.
+    if (isPlaceholderKind(kind) && !masterView) return;
     if (isContentKind(kind)) {
       await insertContent(kind);
       return;
@@ -1533,15 +1555,15 @@ async function start(): Promise<void> {
     const current = await inspect();
     const layoutAt = (position: number): string => {
       const line = doc.lineAt(position).number;
-      return current?.slides.find((slide) => slide.source.line === line)?.layout ?? "default";
+      return pages(current).find((slide) => slide.source.line === line)?.layout ?? "default";
     };
     if (slideMap()) {
       const target = await placeableGroup();
       return target && { group: target.group, layout: layoutAt(target.group.anchor) };
     }
     const line = doc.lineAt(view.state.selection.main.head).number;
-    const slide = (current && current.slides.length === renderedCount ? current.slides[previewSlide] : undefined)
-      ?? current?.slides.find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
+    const slide = (current && pages(current).length === renderedCount ? pages(current)[previewSlide] : undefined)
+      ?? pages(current).find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
     if (!slide) {
       toast(t.rail.catchingUp, { tone: "warning" });
       return undefined;
@@ -1703,6 +1725,18 @@ async function start(): Promise<void> {
   }
 
   function showSlideMenu(index: number, x: number, y: number): void {
+    if (masterView) {
+      const map = slideMap();
+      const movable = !map || map.groupOf[index] !== undefined;
+      showMenu(x, y, [
+        { label: t.masters.add, run: () => showMenu(x, y, newMasterItems(), t.masters.add) },
+        "separator",
+        { label: t.rail.goToSource, run: () => goToSource(index) },
+        "separator",
+        { label: t.rail.delete, shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
+      ], outline?.[index]?.label ?? t.masters.panel);
+      return;
+    }
     const map = slideMap();
     const groupIndex = map?.groupOf[index];
     const groups = map?.groups ?? [];
@@ -1737,6 +1771,7 @@ async function start(): Promise<void> {
       "separator",
       { label: t.rail.goToSource, icon: "code", run: () => goToSource(index) },
       { label: t.rail.presentFromHere, icon: "present", shortcut: "F5", run: () => present(index) },
+      { label: t.rail.editMaster, icon: "master", run: () => openMasterOf(index) },
       "separator",
       { label: t.rail.delete, icon: "delete", shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
     );
@@ -2106,6 +2141,218 @@ async function start(): Promise<void> {
     ];
   }
 
+  /** Open the master view on the master a slide is drawn on. */
+  function openMasterOf(index: number): void {
+    const map = slideMap();
+    const call = map?.calls[index];
+    const line = call === undefined ? undefined : view.state.doc.lineAt(call).number;
+    const slide = line === undefined ? report?.slides[index] : report?.slides.find((candidate) => line >= candidate.source.line && line <= candidate.source.endLine);
+    const chosen = slide?.masterChoice?.value;
+    setMasterView(true, typeof chosen === "string" ? chosen : usualMaster(slide));
+  }
+
+  // ── Slide masters ─────────────────────────────────────────────────────────────────────────
+  /** The slide the preview showed before the master view opened, to return to when it closes. */
+  let slideBeforeMasters = 0;
+
+  /**
+   * Show the master pages in the preview and the rail, where they are edited as slides are, or
+   * the slides again. `focus` names the master to open on.
+   */
+  function setMasterView(on: boolean, focus?: string): void {
+    const names = masterNames(report?.masters);
+    if (on === masterView) {
+      if (on && focus && names.includes(focus)) goToSlide(names.indexOf(focus), { focusEditor: false });
+      return;
+    }
+    if (on) slideBeforeMasters = previewSlide;
+    masterView = on;
+    outline = undefined;
+    renderedCount = 0;
+    previewLabel = "";
+    previewSlide = on ? Math.max(0, focus ? names.indexOf(focus) : 0) : slideBeforeMasters;
+    root.classList.toggle("is-master-view", on);
+    slot("master-bar").hidden = !on;
+    slot("rail-title").textContent = on ? t.masters.panel : t.shell.slides;
+    slot("inspector-title").textContent = on ? t.masters.current : t.shell.currentSlide;
+    required<HTMLElement>(root, "[data-action='new-slide']").title = on ? t.masters.addTitle : t.shell.newSlideTitle;
+    frames.cancelPlace();
+    frames.setMasters(on, previewSlide);
+    showPreviewPosition();
+    showMarks();
+    refreshInspector();
+    if (on && names.length > 0) toast(t.masters.hint, { tone: "info", key: "master-hint" });
+  }
+
+  /** The canvas and the theme's margins, as the preview has them, for a new master to start from. */
+  function pageGeometry(): PageGeometry {
+    const page = frames.preview.contentDocument?.documentElement;
+    const read = (name: string, fallback: number): number => {
+      const value = page ? Number.parseFloat(getComputedStyle(page).getPropertyValue(name)) : Number.NaN;
+      return Number.isFinite(value) ? value : fallback;
+    };
+    return {
+      width: read("--slide-width", 1280),
+      height: read("--slide-height", 720),
+      slideX: read("--frameseq-slide-x", 84),
+      slideY: read("--frameseq-slide-y", 68),
+      coverX: read("--frameseq-cover-x", 96),
+      coverY: read("--frameseq-cover-y", 84),
+      gap: read("--frameseq-content-gap", 24),
+    };
+  }
+
+  /** Write a new master page, starting from where the theme puts things, and show it. */
+  async function addMaster(name?: string): Promise<void> {
+    const current = await inspect();
+    if (!current || reportText !== editorText()) {
+      toast(t.rail.catchingUp, { tone: "warning" });
+      return;
+    }
+    const taken = masterNames(current.masters);
+    let chosen = name;
+    if (!chosen) {
+      chosen = (await askText({
+        title: t.masters.nameTitle,
+        message: t.masters.nameMessage,
+        value: taken.includes("section") ? "" : "section",
+        confirm: t.masters.add,
+        validate: (value) => (!masterName.test(value) ? t.masters.badName : taken.includes(value) ? t.masters.taken(value) : undefined),
+      }))?.trim();
+      if (!chosen) return;
+    }
+    if (taken.includes(chosen)) {
+      toast(t.masters.exists(t.masters.label(chosen)), { tone: "warning" });
+      setMasterView(true, chosen);
+      return;
+    }
+    const doc = view.state.doc;
+    suppressFollow = true;
+    view.dispatch(insertMaster(doc, masterInsertion(doc, current.statements), starterMaster(chosen, pageGeometry())));
+    await save({ auto: false });
+    await inspect();
+    if (masterView) {
+      // The rail redraws with the new master among the others; show it once it is there.
+      const index = masterNames(report?.masters).indexOf(chosen);
+      if (index >= 0) setTimeout(() => goToSlide(index, { focusEditor: false }), 400);
+    } else {
+      setMasterView(true, chosen);
+    }
+    toast(t.masters.added(t.masters.label(chosen)), { tone: "success" });
+  }
+
+  /** The masters that can be added from a menu: the two used by default, then any other. */
+  function newMasterItems(): Array<{ label: string; run: () => void; disabled?: boolean }> {
+    const taken = masterNames(report?.masters);
+    return [
+      { label: t.masters.cover, disabled: taken.includes("cover"), run: () => void addMaster("cover") },
+      { label: t.masters.content, disabled: taken.includes("content"), run: () => void addMaster("content") },
+      { label: t.masters.other, run: () => void addMaster() },
+    ];
+  }
+
+  /** The master a slide is drawn on: the one it names, or its usual one. */
+  function usualMaster(slide: InspectSlide | undefined): string {
+    return slide?.layout === "cover" ? "cover" : "content";
+  }
+
+  /**
+   * Draw the slide in the preview on another master: one by name, none with false, or its usual
+   * one with undefined. The choice is the slide() call's .master(), written, changed, or removed.
+   */
+  async function chooseMaster(choice: string | false | undefined): Promise<void> {
+    const current = await inspect();
+    const slide = current && reportText === editorText() ? inspectedSlide()?.slide : undefined;
+    if (!slide) {
+      toast(t.rail.catchingUp, { tone: "warning" });
+      return;
+    }
+    const code = choice === undefined ? "" : `.master(${choice === false ? "false" : JSON.stringify(choice)})`;
+    const existing = slide.masterChoice;
+    let change: ChangeSpec | undefined;
+    if (existing) change = { from: existing.start, to: existing.end, insert: code };
+    else if (slide.notesAt !== undefined && code) change = { from: slide.notesAt, insert: code };
+    else if (code) {
+      toast(t.masters.cannotChoose, { tone: "warning" });
+      return;
+    }
+    if (!change) return;
+    suppressFollow = true;
+    view.dispatch({ changes: change, userEvent: "input.master" });
+    await save({ auto: false });
+    const index = previewSlide + 1;
+    toast(choice === undefined
+      ? t.masters.chosenAutomatic(index)
+      : choice === false ? t.masters.chosenNone(index) : t.masters.chosen(t.masters.label(choice), index), { tone: "success" });
+  }
+
+  /** Slide › Master: the masters this slide can be drawn on, with the one it is drawn on checked. */
+  function masterChoices(): MenuEntry[] {
+    const slide = inspectedSlide()?.slide;
+    const chosen = slide?.masterChoice?.value;
+    const names = masterNames(report?.masters);
+    return [
+      { command: "master-automatic", label: t.masters.automatic, checked: () => chosen === undefined, run: () => void chooseMaster(undefined) },
+      "separator",
+      ...names.map((name): MenuEntry => ({
+        command: `master-${name}`,
+        label: t.masters.label(name),
+        checked: () => chosen === name,
+        run: () => void chooseMaster(name),
+      })),
+      ...(names.length > 0 ? ["separator" as const] : []),
+      { command: "master-none", label: t.masters.none, checked: () => chosen === false, run: () => void chooseMaster(false) },
+      "separator",
+      { command: "edit-master", label: t.rail.editMaster, icon: "master", run: () => setMasterView(true, typeof chosen === "string" ? chosen : usualMaster(slide)) },
+    ];
+  }
+
+  // ── Templates of one's own ──────────────────────────────────────────────────────────────
+  /**
+   * Keep this presentation as a template, masters and theme included, so new ones can start
+   * from it. One of the same name is replaced only once that is confirmed.
+   */
+  async function saveAsTemplate(): Promise<void> {
+    await flushSave();
+    const mine = await ownTemplates();
+    const title = report?.presentation.title;
+    const name = await askText({
+      title: t.files.saveTitle,
+      message: t.files.saveMessage(mine.folder),
+      value: title && title !== "FrameSeq" ? title : session.name.replace(/\.slides\.ts$|\.ts$/i, ""),
+      confirm: t.files.saveConfirm,
+      validate: templateNameProblem,
+    });
+    if (!name) return;
+    type Saved = { path: string; assets: string[]; same?: boolean };
+    const send = (overwrite: boolean): Promise<Saved> => call<Saved>("POST", "templates/save", { name, overwrite, language });
+    let saved: Saved;
+    try {
+      saved = await send(false);
+    } catch (error) {
+      if (!(error instanceof StudioRequestError && error.status === 409 && error.data.exists)) {
+        toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+        return;
+      }
+      const replace = await askChoice({
+        title: t.files.replaceTitle(name),
+        message: t.files.replaceMessage,
+        choices: [{ label: t.files.replace, value: "replace", primary: true }],
+      });
+      if (replace !== "replace") return;
+      try {
+        saved = await send(true);
+      } catch (again) {
+        toast(again instanceof Error ? again.message : String(again), { tone: "error" });
+        return;
+      }
+    }
+    toast(saved.same ? t.files.savedSame : t.files.saved(name, saved.assets.length), {
+      tone: "success",
+      actions: [{ label: t.files.showTemplate, run: () => void call("POST", "templates/reveal", { name }) }],
+    });
+  }
+
   // ── Other presentations ─────────────────────────────────────────────────────────────────
   /** Set once the person chose to drop unsaved edits, so leaving the page no longer warns. */
   let leaving = false;
@@ -2220,6 +2467,13 @@ async function start(): Promise<void> {
 
   function present(index = previewSlide): void {
     void flushSave();
+    // A show presents the slides; from the master view it starts from the slide left for it.
+    if (masterView) {
+      const slide = slideBeforeMasters;
+      setMasterView(false);
+      show.start(index === 0 ? 0 : slide);
+      return;
+    }
     show.start(index);
   }
 
@@ -2430,7 +2684,7 @@ async function start(): Promise<void> {
   }
 
   function stepSlide(step: number): void {
-    const count = renderedCount || (report?.slides.length ?? 0);
+    const count = renderedCount || pages().length;
     goToSlide(Math.min(Math.max(previewSlide + step, 0), Math.max(count - 1, 0)), { focusEditor: true });
   }
 
@@ -2512,9 +2766,16 @@ async function start(): Promise<void> {
         command: "insert-gallery",
         label: t.insert.gallery,
         icon: "gallery",
-        run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind)),
+        run: () => showInsertGallery(required<HTMLElement>(root, "[data-action='insert']"), (kind) => void startPlacing(kind), { placeholders: masterView }),
       },
       "separator",
+      // A master page takes the boxes the slides drawn on it put their own text into.
+      ...(masterView ? [{
+        command: "insert-placeholders",
+        label: t.insert.groups.placeholders,
+        icon: "master",
+        submenu: () => kinds(placeholderGroup.kinds),
+      } satisfies MenuEntry, "separator" as const] : []),
       ...contentGroups.map((group): MenuEntry => ({
         command: `insert-${group.id}`,
         label: t.insert.groups[group.id],
@@ -2545,6 +2806,9 @@ async function start(): Promise<void> {
         "separator",
         { command: "save", label: t.menu.save, shortcut: `${mod}+S`, run: () => void save({ auto: false }) },
         { command: "autosave", label: t.menu.autoSave, checked: () => autosave, run: () => setAutosave(!autosave) },
+        "separator",
+        { command: "save-template", label: t.files.saveTemplate, run: () => void saveAsTemplate() },
+        { command: "open-templates", label: t.files.openTemplatesFolder, run: () => void call("POST", "templates/reveal", {}).catch((error) => toast(String(error instanceof Error ? error.message : error), { tone: "error" })) },
         "separator",
         {
           command: "export",
@@ -2591,6 +2855,8 @@ async function start(): Promise<void> {
         "separator",
         { command: "follow", label: t.menu.followCursor, checked: () => follow, run: () => setFollow(!follow), disabled: () => root.classList.contains("is-editor-collapsed") },
         "separator",
+        { command: "slide-master", label: t.masters.view, icon: "master", checked: () => masterView, run: () => setMasterView(!masterView) },
+        "separator",
         {
           command: "theme",
           label: t.menu.theme,
@@ -2625,8 +2891,25 @@ async function start(): Promise<void> {
       id: "slide",
       label: t.menus.slide,
       accessKey: "s",
-      items: () => [
-        { command: "new-slide", label: t.menu.newSlide, submenu: newSlideEntries },
+      items: () => masterView ? [
+        {
+          command: "new-master",
+          label: t.masters.add,
+          submenu: () => newMasterItems().map((item, position) => ({
+            command: `new-master-${position}`,
+            label: item.label,
+            disabled: () => Boolean(item.disabled),
+            run: item.run,
+          })),
+        },
+        slideCommand("delete-master", t.rail.delete, () => void rearrange("delete", previewSlide)),
+        "separator",
+        slideCommand("previous-master", t.menu.previousSlide, () => stepSlide(-1), () => previewSlide === 0, `${mod}+PgUp`),
+        slideCommand("next-master", t.menu.nextSlide, () => stepSlide(1), () => previewSlide >= renderedCount - 1, `${mod}+PgDn`),
+        slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)),
+        "separator",
+        { command: "close-masters", label: t.masters.close, run: () => setMasterView(false) },
+      ] : [        { command: "new-slide", label: t.menu.newSlide, submenu: newSlideEntries },
         slideCommand("duplicate-slide", t.menu.duplicateSlide, () => void rearrange("duplicate", previewSlide)),
         slideCommand("move-slide-up", t.menu.moveSlideUp, () => void rearrange("move", previewSlide, previewSlide - 1), () => previewSlide === 0),
         slideCommand("move-slide-down", t.menu.moveSlideDown, () => void rearrange("move", previewSlide, previewSlide + 2), () => previewSlide >= renderedCount - 1),
@@ -2635,6 +2918,8 @@ async function start(): Promise<void> {
         slideCommand("previous-slide", t.menu.previousSlide, () => stepSlide(-1), () => previewSlide === 0, `${mod}+PgUp`),
         slideCommand("next-slide", t.menu.nextSlide, () => stepSlide(1), () => previewSlide >= renderedCount - 1, `${mod}+PgDn`),
         slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)),
+        "separator",
+        { command: "slide-master-choice", label: t.masters.choose, icon: "master", submenu: () => masterChoices(), disabled: () => renderedCount === 0 },
       ],
     },
     {
@@ -2716,14 +3001,18 @@ async function start(): Promise<void> {
         break;
       case "new-slide": {
         const box = target.getBoundingClientRect();
-        chooseLayout(previewSlide, box.left, box.bottom + 6);
+        if (masterView) showMenu(box.left, box.bottom + 6, newMasterItems(), t.masters.add);
+        else chooseLayout(previewSlide, box.left, box.bottom + 6);
         break;
       }
+      case "close-masters":
+        setMasterView(false);
+        break;
       case "open-browser":
         openOutside(`/#${previewSlide + 1}`);
         break;
       case "insert":
-        showInsertGallery(target, (kind) => void startPlacing(kind));
+        showInsertGallery(target, (kind) => void startPlacing(kind), { placeholders: masterView });
         break;
       case "toggle-panel":
         togglePanel();

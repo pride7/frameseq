@@ -555,6 +555,25 @@ async function screenshotData(page, selector) {
   return `data:image/png;base64,${data}`;
 }
 
+/**
+ * A picture on a slide's master, taken with the slide's own content hidden, which a screenshot
+ * would otherwise bake into it: the slide's objects are exported above it on their own.
+ */
+async function masterScreenshotData(page, slideIndex, id) {
+  const toggle = (on) => page.evaluate((index, hidden) => {
+    const slide = document.querySelector(`[data-frameseq-export-slide="${index}"]`);
+    for (const child of slide?.children ?? []) {
+      if (!child.classList.contains("frameseq-master-layer")) child.style.visibility = hidden ? "hidden" : "";
+    }
+  }, slideIndex, on);
+  await toggle(true);
+  try {
+    return await screenshotData(page, `[data-frameseq-export-id="${id}"]`);
+  } finally {
+    await toggle(false);
+  }
+}
+
 async function captureSlides(page) {
   return page.evaluate(() => {
     const slideElements = Array.from(document.querySelectorAll(".frameseq-slide-frame > .frameseq-slide"));
@@ -693,6 +712,7 @@ async function captureSlides(page) {
           id,
           kind,
           nodeType: nodeType ?? "chrome",
+          master: Boolean(element.closest(".frameseq-master-layer")),
           text: kind === "text" || kind === "shape" || kind === "marker"
             ? (element.innerText || element.textContent || "").trimEnd()
             : undefined,
@@ -804,11 +824,17 @@ async function captureSlides(page) {
         items.push(item);
       }
 
+      // A master that paints the whole page paints the slide's background.
+      const master = slide.querySelector(":scope > .frameseq-master-layer");
+      const masterBackground = master ? getComputedStyle(master).backgroundColor : "";
+      const paintsBackground = masterBackground
+        && masterBackground !== "transparent"
+        && !/rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(masterBackground);
       return {
         index: slideIndex,
         label: slide.dataset.frameseqSlideLabel ?? `Slide ${slideIndex + 1}`,
         notes: slide.dataset.frameseqNotes ?? "",
-        backgroundColor: getComputedStyle(slide).backgroundColor,
+        backgroundColor: paintsBackground ? masterBackground : getComputedStyle(slide).backgroundColor,
         items,
       };
     });
@@ -917,7 +943,9 @@ export async function exportPptx({
         if (item.kind === "table") addTable(slide, item);
         if (item.kind === "chart") addChart(pptx, slide, item);
         if (item.kind === "raster") {
-          const data = await screenshotData(page, `[data-frameseq-export-id="${item.id}"]`);
+          const data = item.master
+            ? await masterScreenshotData(page, slideData.index, item.id)
+            : await screenshotData(page, `[data-frameseq-export-id="${item.id}"]`);
           slide.addImage({ data, ...position(item.box), objectName: `FrameSeq ${item.nodeType} ${item.id}` });
         }
       }

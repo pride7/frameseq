@@ -23,7 +23,8 @@ const report = JSON.parse(result.stdout);
 assert.equal(report.version, 1);
 assert.equal(report.file, "scripts/fixtures/inspect.slides.ts");
 assert.equal(report.presentation.title, "Inspectable talk");
-assert.deepEqual(report.summary, { slides: 3, objects: 6 });
+assert.deepEqual(report.summary, { slides: 3, objects: 6, masters: 0 });
+assert.deepEqual(report.masters, []);
 assert.deepEqual(
   report.slides.map((slide) => ({
     label: slide.label,

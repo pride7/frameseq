@@ -103,6 +103,7 @@ export function resolvePrintUnits(root: FrameSeqNode): void {
     node.children.forEach(visit);
   };
   visit(root);
+  for (const page of Object.values((root.props.masters ?? {}) as Record<string, FrameSeqNode>)) visit(page);
 
   const font = root.props.font as PresentationFontOptions | undefined;
   if (font) {

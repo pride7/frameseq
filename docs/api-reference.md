@@ -244,6 +244,31 @@ allowEmpty(enabled?: boolean): ContentSlideBuilder
 
 Marks the current slide as intentionally blank so `frameseq check` does not report `empty-slide`. Prefer adding visible content unless the blank page is part of the presentation's pacing.
 
+### `master(name)`
+
+```ts
+master(name: string): MasterBuilder
+```
+
+Starts a master page. The content commands after it, until the next `slide()` or `master()`, add objects to the master, which is drawn behind every slide that uses it: `"cover"` behind covers, `"content"` behind every other slide, and any other name behind the slides that choose it with `.master(name)`. `MasterBuilder` is a container builder; `.background()` paints the page of every slide drawn on it. A name may be used once per presentation. Text on a master may hold the fields `{title}`, `{subtitle}`, `{author}`, `{institute}`, `{date}`, `{page}`, `{total}`, and `{slide}`. Masters are kept on the presentation as `SlidesRootDefinition.masters`, never among `slides`. See [Masters and templates](masters.md).
+
+### `placeholder(role?)`
+
+```ts
+type PlaceholderRole = "body" | "title" | "subtitle" | "author";
+placeholder(role?: PlaceholderRole): ElementBuilder
+```
+
+On a master page, marks the box a slide's own content goes into: everything it holds for `"body"`, the default; its title, or a cover's hero text, for `"title"`; a cover's subtitle or author for the others. Its position and size give the box; its text settings style that text where the slide sets none; `justify()` places the text in the box. A master has at most one placeholder of each role.
+
+### `master(name)` on a slide
+
+```ts
+master(name: string | false): ContentSlideBuilder
+```
+
+Draws the slide on the master of that name, or on none with `false`. A name the presentation does not define is reported once the document has run, with the slide that asked for it.
+
 ## Content
 
 ### `text(content)`

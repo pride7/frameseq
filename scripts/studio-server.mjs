@@ -19,7 +19,18 @@ import {
   pictureExtensions,
   recentPresentations,
   rememberPresentation,
+  rememberTemplateFolder,
 } from "./studio-files.mjs";
+import {
+  createFromTemplate,
+  deleteTemplate,
+  findUserTemplate,
+  saveTemplate,
+  templateDirectory,
+  templateNameProblem,
+  userTemplates,
+  writeTemplate,
+} from "./user-templates.mjs";
 import { createAssistant } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
@@ -245,6 +256,14 @@ function fileMessages(language) {
       noFile: (path) => `${path} 这个文件不存在。`,
       fullPicture: "请给出图片的完整路径。",
       notPicture: (extensions) => `只能插入这些格式的图片：${extensions}。`,
+      templateName: {
+        empty: "请给模板起个名字。",
+        edges: "模板名称不能以空格或句点开头或结尾。",
+        characters: "模板名称不能包含 \\ / : * ? \" < > | 这些字符。",
+        reserved: "这个名字是系统保留的，请换一个。",
+        long: "模板名称太长了。",
+      },
+      noOwnTemplate: (name) => `你的模板里没有“${name}”。`,
     }
     : {
       noTitle: "Give the presentation a title.",
@@ -257,6 +276,14 @@ function fileMessages(language) {
       noFile: (path) => `There is no file at ${path}.`,
       fullPicture: "Give the full path of the picture.",
       notPicture: (extensions) => `A picture must be one of ${extensions}.`,
+      templateName: {
+        empty: "Give the template a name.",
+        edges: "A template's name cannot begin or end with a space or a full stop.",
+        characters: "A template's name cannot hold any of \\ / : * ? \" < > |.",
+        reserved: "That name is kept by the system; choose another.",
+        long: "That name is too long for a template.",
+      },
+      noOwnTemplate: (name) => `There is no template named “${name}” among yours.`,
     };
 }
 
@@ -389,6 +416,21 @@ export function studioPlugin({
       const currentFolder = () => defaultFolder(start ? undefined : entry);
 
       /**
+       * Let the page load the person's templates, which the new-presentation dialog draws the
+       * covers of, from wherever their folder is now.
+       */
+      const allowTemplates = () => {
+        const allow = server.config.server.fs.allow;
+        const folder = templateDirectory();
+        try {
+          if (Array.isArray(allow) && !allow.some((item) => deckKey(item) === deckKey(folder))) allow.push(folder);
+        } catch {
+          // A configuration that cannot grow keeps the folder it started with until the next start.
+        }
+      };
+      allowTemplates();
+
+      /**
        * Turn the phone remote on: the server starts again on the local network, with the relay
        * that carries a phone's steps to the slide show, and the page reloads. Only the person at
        * this computer may open it to the network.
@@ -518,17 +560,82 @@ export function studioPlugin({
           const template = typeof body.template === "string" ? body.template : "blank";
           const say = fileMessages(body.language);
           if (!title) return [400, { error: say.noTitle }];
-          if (!presentationTemplate(template)) return [400, { error: say.noTemplate(template) }];
+          // "user:name" is one of the person's own templates, kept in their templates folder.
+          const own = template.startsWith("user:") ? await findUserTemplate(template.slice("user:".length)) : undefined;
+          if (template.startsWith("user:") && !own) return [400, { error: say.noOwnTemplate(template.slice("user:".length)) }];
+          if (!own && !presentationTemplate(template)) return [400, { error: say.noTemplate(template) }];
           if (!folder || !isAbsolute(folder)) return [400, { error: say.fullFolder }];
           if (!await isDirectory(folder)) return [404, { error: say.noFolder(resolve(folder)) }];
           const target = join(resolve(folder), presentationFileName(title));
           try {
-            await writeFile(target, templateDeck(template, title, body.language === "zh" ? "zh" : "en"), { encoding: "utf8", flag: "wx" });
+            if (own) await createFromTemplate(own, target, title);
+            else await writeFile(target, templateDeck(template, title, body.language === "zh" ? "zh" : "en"), { encoding: "utf8", flag: "wx" });
           } catch (error) {
             if (error?.code !== "EEXIST") throw error;
             return [409, { error: say.exists(basename(target)), path: target }];
           }
           return openPresentation(target);
+        },
+
+        // ── The person's own templates, kept in a folder of their own ───────────────────────
+        "GET /templates": async () => ({
+          folder: templateDirectory(),
+          templates: (await userTemplates()).map(({ name, path, folder }) => ({ name, path, folder: Boolean(folder) })),
+        }),
+
+        /** Keep the open presentation as a template; one of the same name is replaced on request. */
+        "POST /templates/save": async (body) => {
+          if (start) return [409, { error: "No presentation is open." }];
+          const name = typeof body.name === "string" ? body.name.trim() : "";
+          const say = fileMessages(body.language);
+          const problem = templateNameProblem(name);
+          if (problem) return [400, { error: say.templateName[problem] }];
+          const saved = await saveTemplate({ entry, name, overwrite: body.overwrite === true });
+          if (saved.exists) return [409, { exists: true, path: saved.path }];
+          return { ...saved, folder: templateDirectory() };
+        },
+
+        /** Keep a copy of a template FrameSeq ships among the person's own, to change as they like. */
+        "POST /templates/copy": async (body) => {
+          const id = typeof body.template === "string" ? body.template : "";
+          const name = typeof body.name === "string" ? body.name.trim() : "";
+          const say = fileMessages(body.language);
+          if (!presentationTemplate(id)) return [400, { error: say.noTemplate(id) }];
+          const problem = templateNameProblem(name);
+          if (problem) return [400, { error: say.templateName[problem] }];
+          const written = await writeTemplate({ name, source: templateDeck(id, "", body.language === "zh" ? "zh" : "en") });
+          if (written.exists) return [409, { exists: true, path: written.path }];
+          return written;
+        },
+
+        "POST /templates/delete": async (body) => {
+          const template = typeof body.name === "string" ? await findUserTemplate(body.name) : undefined;
+          if (!template) return [404, { error: fileMessages(body.language).noOwnTemplate(String(body.name ?? "")) }];
+          await deleteTemplate(template);
+          return { ok: true };
+        },
+
+        /** Show the templates folder, or one template in it, made first if it is not there yet. */
+        "POST /templates/reveal": async (body) => {
+          const template = typeof body.name === "string" ? await findUserTemplate(body.name) : undefined;
+          if (template) {
+            revealInFolder(template.folder ?? template.path, Boolean(template.folder));
+            return { ok: true };
+          }
+          await mkdir(templateDirectory(), { recursive: true });
+          revealInFolder(templateDirectory(), true);
+          return { ok: true, folder: templateDirectory() };
+        },
+
+        /** Keep the templates in another folder from now on, or in the usual one again. */
+        "POST /templates/folder": async (body) => {
+          const path = typeof body.path === "string" ? body.path.trim() : "";
+          const say = fileMessages(body.language);
+          if (path && !isAbsolute(path)) return [400, { error: say.fullFolder }];
+          if (path && !await isDirectory(path)) return [404, { error: say.noFolder(resolve(path)) }];
+          await rememberTemplateFolder(path ? resolve(path) : undefined);
+          allowTemplates();
+          return { folder: templateDirectory() };
         },
 
         "POST /files/forget": async (body) => {
@@ -682,7 +789,8 @@ export function studioPlugin({
           const url = new URL(request.url ?? "/", "http://studio.local");
 
           // A template's cover for the new-presentation dialog: a page in a frame, which cannot
-          // carry a header either, and which shows only what FrameSeq itself ships.
+          // carry a header either. It shows what FrameSeq ships, or one of the person's own
+          // templates, which the page loads from their templates folder.
           if (request.method === "GET" && url.pathname === "/template-preview") {
             const page = await server.transformIndexHtml(
               `/__frameseq/studio${url.pathname}${url.search}`,

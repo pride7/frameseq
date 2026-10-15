@@ -1273,11 +1273,12 @@ function hasVisibleNodeContent(node) {
   return (node.children ?? []).some(hasVisibleNodeContent);
 }
 
-function slideChrome(slide, index, presentation, context, cover, horizontal) {
+function slideChrome(slide, index, presentation, context, cover, horizontal, masterTakesTitle = false) {
   const chrome = context.theme.chrome;
   if (cover && !chrome.showOnCover) return [];
   const elements = [];
-  const title = typeof slide.props?.title === "string" ? slide.props.title : undefined;
+  // A master that places the title has taken the title bar's job.
+  const title = typeof slide.props?.title === "string" && !masterTakesTitle ? slide.props.title : undefined;
   if (chrome.titleBar && title) {
     const height = length(chrome.titleBarHeight, context, "y") ?? "40.5pt";
     const foreground = cssColor(chrome.titleBarForeground, context, context.theme.colors.accent);
@@ -1337,10 +1338,79 @@ function metadataHeader(presentation, context, horizontal, vertical) {
   return `#block(width: 100%, fill: ${background}, outset: (x: ${horizontal}, top: ${vertical}), inset: (top: ${length(8, context, "y")}, bottom: ${length(48, context, "y")}))[#set text(fill: ${foreground})\n#stack(dir: ttb, spacing: ${length(14, context, "y")}, ${lines.map((line) => `[${line}]`).join(", ")})]`;
 }
 
+const masterFields = /\{(title|subtitle|author|institute|date|page|total|slide)\}/g;
+
+/** A master object with {page}, {title}, and the other fields in its text filled in for one slide. */
+function withFields(node, values) {
+  const fill = (value) => (
+    typeof value === "string" ? value.replace(masterFields, (_whole, key) => values[key] ?? "") : value
+  );
+  return {
+    ...node,
+    props: { ...node.props, content: fill(node.props?.content), label: fill(node.props?.label) },
+    children: (node.children ?? []).map((child) => withFields(child, values)),
+  };
+}
+
+/** The master a slide is drawn on, as the renderer chooses it. */
+function slideMaster(slide, presentation) {
+  const asked = slide.props?.master;
+  if (asked === false) return undefined;
+  const name = typeof asked === "string" ? asked : hasClass(slide, "frameseq-cover-slide") ? "cover" : "content";
+  const page = (presentation.node.props.masters ?? {})[name];
+  return page ? { name, page } : undefined;
+}
+
+/** A placeholder's rectangle in canvas pixels, or undefined when it was given no position. */
+function placeholderBox(node, context) {
+  const units = (value, whole) => {
+    const match = value === undefined ? null : /^(-?\d*\.?\d+)(px|%)?$/.exec(String(value).trim());
+    if (!match) return undefined;
+    return match[2] === "%" ? Number(match[1]) * whole / 100 : Number(match[1]);
+  };
+  const left = units(node.styles?.left, context.canvasWidth);
+  const top = units(node.styles?.top, context.canvasHeight);
+  if (left === undefined || top === undefined) return undefined;
+  return {
+    left,
+    top,
+    width: units(node.styles?.width, context.canvasWidth) ?? context.canvasWidth - left,
+    height: units(node.styles?.height, context.canvasHeight) ?? context.canvasHeight - top,
+  };
+}
+
+const placeholderTextStyles = ["color", "fontFamily", "fontSize", "fontStyle", "fontWeight", "letterSpacing", "lineHeight", "textAlign", "textTransform"];
+
+/** The first node in a tree with this class, and the tree without it. */
+function takeNode(nodes, className) {
+  let found;
+  const visit = (list) => list.flatMap((node) => {
+    if (found) return [node];
+    if (hasClass(node, className)) {
+      found = node;
+      return [];
+    }
+    const original = node.children ?? [];
+    const children = visit(original);
+    const changed = children.length !== original.length || children.some((child, index) => child !== original[index]);
+    return [changed ? { ...node, children } : node];
+  });
+  const rest = visit(nodes);
+  return { found, rest };
+}
+
+function verticalAlignment(value) {
+  if (value === "flex-start" || value === "start") return "top";
+  if (value === "flex-end" || value === "end") return "bottom";
+  return "horizon";
+}
+
 async function serializeSlide(slide, index, presentation, context) {
   const cover = hasClass(slide, "frameseq-cover-slide");
+  const master = slideMaster(slide, presentation);
+  const masterBackground = master?.page.styles?.background;
   const background = cssColor(
-    cover ? context.theme.coverBackground : context.theme.colors.background,
+    masterBackground ?? (cover ? context.theme.coverBackground : context.theme.colors.background),
     context,
     context.theme.colors.background,
   );
@@ -1375,7 +1445,71 @@ async function serializeSlide(slide, index, presentation, context) {
         : []),
     ];
   }
-  if (context.theme.chrome.titleBar && !cover) {
+  // The master draws behind the slide, takes the text its placeholders hold out of the slide's
+  // column, and sets the room the rest of the slide's content has.
+  const masterLayer = [];
+  const placedText = [];
+  let contentInset = `(x: ${horizontal}, y: ${vertical})`;
+  let contentAlign;
+  let masterTakesTitle = false;
+  if (master) {
+    const values = {
+      title: presentation.title,
+      subtitle: presentation.subtitle ?? "",
+      author: presentation.author ?? "",
+      institute: presentation.institute ?? "",
+      date: presentation.date ?? "",
+      page: String(index + 1),
+      total: String(presentation.slides.length),
+      slide: typeof slide.props?.title === "string" ? slide.props.title : "",
+    };
+    context.parents = recordParents(master.page);
+    for (const child of master.page.children ?? []) {
+      if (typeof child.props?.placeholder === "string") continue;
+      masterLayer.push(await serializeNode(withFields(child, values), context));
+    }
+    for (const placeholder of master.page.children ?? []) {
+      const role = placeholder.props?.placeholder;
+      if (typeof role !== "string") continue;
+      const box = placeholderBox(placeholder, context);
+      if (role === "body") {
+        if (box) {
+          const side = (value, axis) => length(`${value}px`, context, axis);
+          contentInset = `(left: ${side(box.left)}, top: ${side(box.top, "y")}, right: ${side(context.canvasWidth - box.left - box.width)}, bottom: ${side(context.canvasHeight - box.top - box.height, "y")})`;
+        }
+        const justify = placeholder.styles?.justifyContent;
+        if (justify === "center" || justify === "flex-end") contentAlign = verticalAlignment(justify);
+        continue;
+      }
+      const roleClass = role === "title"
+        ? (cover ? "frameseq-cover-title" : "frameseq-slide-title")
+        : `frameseq-cover-${role}`;
+      // A slide's title is its own first line; a cover's text sits in its body.
+      const { found, rest } = role === "title" && !cover
+        ? { found: childNodes.find((child) => hasClass(child, roleClass)), rest: childNodes.filter((child) => !hasClass(child, roleClass)) }
+        : takeNode(childNodes, roleClass);
+      if (!found) continue;
+      const styles = { ...found.styles };
+      for (const property of placeholderTextStyles) {
+        if (placeholder.styles?.[property] && !styles[property] && supportedStyles.has(property)) {
+          styles[property] = placeholder.styles[property];
+        }
+      }
+      const text = { ...found, styles };
+      if (!box) {
+        found.styles = styles;
+        continue;
+      }
+      if (role === "title") masterTakesTitle = true;
+      childNodes = rest;
+      context.parents = recordParents(slide);
+      const content = await serializeNode(text, context);
+      const dx = length(`${box.left}px`, context);
+      const dy = length(`${box.top}px`, context, "y");
+      placedText.push(`#place(top + left, dx: ${dx}, dy: ${dy})[#block(width: ${length(`${box.width}px`, context)}, height: ${length(`${box.height}px`, context, "y")})[#align(${verticalAlignment(placeholder.styles?.justifyContent)})[${content}]]]`);
+    }
+  }
+  if (context.theme.chrome.titleBar && !cover && !masterTakesTitle) {
     childNodes = childNodes.filter((child) => !hasClass(child, "frameseq-slide-title"));
   }
   context.parents = recordParents(slide);
@@ -1390,12 +1524,15 @@ async function serializeSlide(slide, index, presentation, context) {
   }
   let body = `#stack(dir: ttb, spacing: ${gap}, ${children.map(childArgument).join(", ")})`;
   if (cover && context.theme.coverLayout === "center") body = `#align(center + horizon)[${body}]`;
+  else if (contentAlign) body = `#align(${contentAlign})[${body}]`;
   const slideLabel = slide.props?.name ?? slide.props?.title ?? `Slide ${index + 1}`;
   const notes = typeof slide.props?.notes === "string" && slide.props.notes.trim()
     ? `\n// Speaker notes: ${slide.props.notes.replaceAll("\n", " ")}`
     : "";
-  const chrome = slideChrome(slide, index, presentation, context, cover, horizontal).join("\n  ");
-  return `// Slide ${index + 1}: ${String(slideLabel).replaceAll("\n", " ")}${notes}\n#page(\n  width: ${compactNumber(context.slideWidthPoints)}pt,\n  height: ${compactNumber(context.slideHeightPoints)}pt,\n  margin: 0pt,\n  fill: ${background},\n)[\n  #set text(fill: ${cssColor(context.theme.colors.foreground, context)})\n  #block(\n    width: 100%,\n    height: 100%,\n    inset: (x: ${horizontal}, y: ${vertical}),\n  )[\n    ${body}\n  ]\n  ${chrome}\n]`;
+  const chrome = slideChrome(slide, index, presentation, context, cover, horizontal, masterTakesTitle).join("\n  ");
+  const behind = masterLayer.length > 0 ? `${masterLayer.join("\n  ")}\n  ` : "";
+  const placed = placedText.length > 0 ? `\n  ${placedText.join("\n  ")}` : "";
+  return `// Slide ${index + 1}: ${String(slideLabel).replaceAll("\n", " ")}${notes}\n#page(\n  width: ${compactNumber(context.slideWidthPoints)}pt,\n  height: ${compactNumber(context.slideHeightPoints)}pt,\n  margin: 0pt,\n  fill: ${background},\n)[\n  #set text(fill: ${cssColor(context.theme.colors.foreground, context)})\n  ${behind}#block(\n    width: 100%,\n    height: 100%,\n    inset: ${contentInset},\n  )[\n    ${body}\n  ]${placed}\n  ${chrome}\n]`;
 }
 
 async function loadPresentation(entry, packageRoot, configFile) {

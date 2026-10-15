@@ -85,6 +85,8 @@ Centre one object inside its region with `.centerSelf()` (or `.selfAlign("start"
 
 Built-in themes: `blank`, `midnight`, `paper`, `beamer-default`, `beamer-madrid`, `beamer-cambridge-us`, `minimal-academic`, `poster`
 
+Masters: `master("cover")` and `master("content")`, written after `presentation()`, draw the objects that follow behind every cover and every other slide, as PowerPoint's slide master does; place them with `.position()`. `placeholder()` marks where each slide's content flows, and `placeholder("title" | "subtitle" | "author")` where its title (a cover's hero), subtitle, or author goes, with `.size()`, `.color()`, and `.justify()` styling that text on every slide. Master text may show `{title}`, `{author}`, `{date}`, `{page}`, `{total}`, and `{slide}`. Other names are chosen per slide with `slide("Part two").master("section")`; `.master(false)` uses none. Change one master instead of repeating a footer or a logo on every slide.
+
 On paper, numbers are canvas units (1600 across the paper's short side), and `mm()` and `pt()` are printed sizes on the sheet.
 
 Chinese, Japanese, and Korean content needs no configuration: every theme font stack ends with CJK families and resolves per character, so Latin text keeps the theme font. Override the face with `presentation({ font: { family: "..." } })`. The rendering machine must have a CJK font installed for PDF, PPTX, and Typst export.

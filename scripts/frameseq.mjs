@@ -17,6 +17,7 @@ import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import { presentationTemplate, presentationTemplates, templateDeck } from "./presentation-file.mjs";
 import { keepSlides, readSlides, slidesFileSuffix } from "./slide-selection.mjs";
+import { createFromTemplate, findUserTemplate, templateDirectory, userTemplates } from "./user-templates.mjs";
 import { configDirectory } from "./studio-files.mjs";
 import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
@@ -52,7 +53,8 @@ Usage:
                                       outline, check, screenshots, and the guide
   frameseq new [file] [--template name]
                                       Create a .slides.ts file, blank or from a template:
-                                      ${presentationTemplates.map((template) => template.id).join(", ")}
+                                      ${presentationTemplates.map((template) => template.id).join(", ")},
+                                      or one of your own from your templates folder
 
 Examples:
   frameseq dev talk.slides.ts
@@ -119,17 +121,26 @@ function chosenSlides() {
   throw new Error(`${problem} Write numbers and ranges, such as --slides 1-3,5.`);
 }
 
-/** The template `frameseq new` was asked for, blank when none was named. */
-function chosenTemplate() {
-  if (!process.argv.includes("--template")) return "blank";
+/**
+ * The template `frameseq new` was asked for, blank when none was named: one FrameSeq ships, or
+ * else one of the person's own, kept in their templates folder.
+ */
+async function chosenTemplate() {
+  if (!process.argv.includes("--template")) return { builtIn: "blank" };
   const name = option("--template");
-  if (name && !name.startsWith("-") && presentationTemplate(name)) return name;
-  const width = Math.max(...presentationTemplates.map((template) => template.id.length));
+  if (name && !name.startsWith("-") && presentationTemplate(name)) return { builtIn: name };
+  const own = name && !name.startsWith("-") ? await findUserTemplate(name) : undefined;
+  if (own) return { own };
+  const mine = await userTemplates();
+  const width = Math.max(...[...presentationTemplates.map((template) => template.id), ...mine.map((template) => template.name)].map((id) => id.length));
   const list = presentationTemplates
     .map((template) => `  ${template.id.padEnd(width)}  ${template.summaries.en}`)
     .join("\n");
+  const owned = mine.length > 0
+    ? `\nYour own, in ${templateDirectory()}:\n${mine.map((template) => `  ${template.name}`).join("\n")}`
+    : `\nYour own templates go in ${templateDirectory()}.`;
   const problem = name && !name.startsWith("-") ? `There is no template named "${name}".` : "Name a template after --template.";
-  throw new Error(`${problem} The templates are:\n${list}`);
+  throw new Error(`${problem} The templates are:\n${list}${owned}`);
 }
 
 async function createSlidesFile(target, template) {
@@ -141,7 +152,14 @@ async function createSlidesFile(target, template) {
   }
 
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, templateDeck(template), "utf8");
+  if (template.own) {
+    // A template of one's own is a presentation already; the new one takes its file's name.
+    const title = basename(target).replace(/\.slides\.ts$|\.ts$/i, "").replace(/[-_]+/g, " ").trim();
+    const { copied } = await createFromTemplate(template.own, target, title);
+    for (const file of copied) console.log(`Copied ${file} from the template`);
+  } else {
+    await writeFile(target, templateDeck(template.builtIn), "utf8");
+  }
   await writeProjectInstructions(dirname(target));
   console.log(`Created ${target}`);
 }
@@ -629,7 +647,7 @@ try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
   } else if (command === "new") {
-    await createSlidesFile(resolve(process.cwd(), file), chosenTemplate());
+    await createSlidesFile(resolve(process.cwd(), file), await chosenTemplate());
   } else if (command === "mcp") {
     // `--preview` names a running server to render in, as the Studio's assistant passes its own.
     await startMcpServer({ entry: resolve(process.cwd(), file), packageRoot, configFile, preview: option("--preview") });
@@ -708,7 +726,11 @@ try {
       const report = await inspectSlides(entry);
       if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
       else {
-        console.log(`${report.presentation.title} — ${report.summary.slides} slides`);
+        const masters = report.masters.length > 0 ? `, ${report.masters.length} masters` : "";
+        console.log(`${report.presentation.title} — ${report.summary.slides} slides${masters}`);
+        for (const page of report.masters) {
+          console.log(`master("${page.master}") line ${page.source.line} · ${page.objectCount} objects`);
+        }
         for (const slide of report.slides) {
           console.log(`${slide.index}. ${slide.label} [${slide.layout}] line ${slide.source.line} · ${slide.objectCount} objects`);
         }

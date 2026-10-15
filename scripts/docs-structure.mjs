@@ -97,6 +97,12 @@ export const documentationGroups = [
         blurb: "Built-in themes, presentation-wide typography, CJK text, and custom tokens.",
       },
       {
+        slug: "masters",
+        source: "docs/masters.md",
+        label: "Masters and templates",
+        blurb: "Slide masters drawn behind every slide, placeholders for titles and content, and templates of your own.",
+      },
+      {
         slug: "posters",
         source: "docs/posters.md",
         label: "Posters and print",
@@ -276,6 +282,7 @@ const chinese = {
     shapes: { label: "图形与连线", blurb: "构成一张图的图元:27 种形状、配色,以及会绕开它们的连线。" },
     styling: { label: "样式", blurb: "链式修饰符、文字角色、尺寸、Tailwind 工具类和内联样式。" },
     themes: { label: "主题", blurb: "内置主题、全局排版、中日韩文字和自定义 token。" },
+    masters: { label: "母版与模板", blurb: "画在每页后面的幻灯片母版、放标题和正文的占位符,以及你自己的模板。" },
     posters: { label: "海报与打印", blurb: "为纸张做的页面:A0 海报和讲义、印刷尺寸,以及海报主题。" },
     typst: { label: "Typst 集成", blurb: "嵌入 Typst 片段,或把整场演示导出为可编辑的 .typ 源码。" },
     latex: { label: "LaTeX 集成", blurb: "把现有的 LaTeX 表格和片段编译成演示对象。" },

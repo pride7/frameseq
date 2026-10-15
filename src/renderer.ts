@@ -760,6 +760,232 @@ function addThemeChrome(
   canvas.append(footer);
 }
 
+/** The master a slide is drawn on: the one it names, or "cover" for a cover and "content" otherwise. */
+function slideMaster(slide: FrameSeqNode, slides: SlidesRootDefinition): { name: string; page: FrameSeqNode } | undefined {
+  const asked = slide.props.master;
+  if (asked === false) return undefined;
+  const name = typeof asked === "string" ? asked : hasClass(slide, "frameseq-cover-slide") ? "cover" : "content";
+  const page = slides.masters[name];
+  return page ? { name, page } : undefined;
+}
+
+const masterFields = /\{(title|subtitle|author|institute|date|page|total|slide)\}/g;
+
+/** A master object with {page}, {title}, and the other fields in its text filled in for one slide. */
+function withFields(node: FrameSeqNode, values: Record<string, string>): FrameSeqNode {
+  const fill = (value: unknown): unknown => (
+    typeof value === "string" ? value.replace(masterFields, (_whole, key: string) => values[key] ?? "") : value
+  );
+  return {
+    ...node,
+    props: { ...node.props, content: fill(node.props.content), label: fill(node.props.label) },
+    children: node.children.map((child) => withFields(child, values)),
+  };
+}
+
+/** A length on the slide in canvas units, from pixels or a percentage of `whole`. */
+function canvasUnits(value: string | undefined, whole: number): number | undefined {
+  const match = value === undefined ? null : /^(-?\d*\.?\d+)(px|%)?$/.exec(value.trim());
+  if (!match) return undefined;
+  const number = Number(match[1]);
+  return match[2] === "%" ? number * whole / 100 : number;
+}
+
+/** The rectangle a placeholder covers, or undefined when it was given no position. */
+function placeholderBox(node: FrameSeqNode, slides: SlidesRootDefinition): { left: number; top: number; width: number; height: number } | undefined {
+  const { canvasWidth: width, canvasHeight: height } = slides;
+  const left = canvasUnits(node.styles.left, width);
+  const top = canvasUnits(node.styles.top, height);
+  if (left === undefined || top === undefined) return undefined;
+  return {
+    left,
+    top,
+    width: canvasUnits(node.styles.width, width) ?? width - left,
+    height: canvasUnits(node.styles.height, height) ?? height - top,
+  };
+}
+
+/** Typography a title, subtitle, or author placeholder passes to the text it holds. */
+const placeholderTextStyles = [
+  "color",
+  "fontFamily",
+  "fontSize",
+  "fontStyle",
+  "fontWeight",
+  "letterSpacing",
+  "lineHeight",
+  "textAlign",
+  "textTransform",
+] as const;
+
+/** Give text the placeholder's typography wherever the slide did not set its own. */
+function applyPlaceholderText(element: HTMLElement, styles: Record<string, string>): void {
+  for (const property of placeholderTextStyles) {
+    const value = styles[property];
+    if (value && !element.style[property]) element.style[property] = value;
+  }
+}
+
+/** The text of a slide that a title, subtitle, or author placeholder takes. */
+function placeholderText(canvas: HTMLElement, role: string, cover: boolean): HTMLElement | null {
+  if (role === "title") {
+    return cover
+      ? canvas.querySelector<HTMLElement>(".frameseq-cover-title")
+      : canvas.querySelector<HTMLElement>(":scope > .frameseq-slide-title");
+  }
+  if (role === "subtitle") return canvas.querySelector<HTMLElement>(".frameseq-cover-subtitle");
+  if (role === "author") return canvas.querySelector<HTMLElement>(".frameseq-cover-author");
+  return null;
+}
+
+/**
+ * Put a slide's own content where its master's placeholders say: everything it holds inside the
+ * body placeholder, and its title, subtitle, or author in theirs.
+ */
+function fillPlaceholder(canvas: HTMLElement, node: FrameSeqNode, slides: SlidesRootDefinition, cover: boolean): void {
+  const role = String(node.props.placeholder);
+  const box = placeholderBox(node, slides);
+  if (role === "body") {
+    if (box) {
+      const right = slides.canvasWidth - box.left - box.width;
+      const bottom = slides.canvasHeight - box.top - box.height;
+      canvas.style.padding = `${box.top}px ${right}px ${bottom}px ${box.left}px`;
+    }
+    for (const property of ["justifyContent", "alignItems", "textAlign"] as const) {
+      if (node.styles[property]) canvas.style[property] = node.styles[property];
+    }
+    return;
+  }
+
+  const text = placeholderText(canvas, role, cover);
+  if (!text) return;
+  applyPlaceholderText(text, node.styles);
+  if (!box) return;
+  // The master takes over the title, so a theme's title bar would only say it a second time.
+  if (role === "title") {
+    canvas.querySelector(":scope > .frameseq-theme-title-bar")?.remove();
+    canvas.classList.remove("frameseq-has-title-bar");
+  }
+  const holder = document.createElement("div");
+  holder.className = "frameseq-placeholder-box";
+  holder.dataset.frameseqPlaceholder = role;
+  Object.assign(holder.style, {
+    left: `${box.left}px`,
+    top: `${box.top}px`,
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    justifyContent: node.styles.justifyContent ?? "center",
+    alignItems: node.styles.alignItems ?? "stretch",
+  });
+  if (!text.style.margin) text.style.margin = "0";
+  if (!text.style.maxWidth) text.style.maxWidth = "none";
+  holder.append(text);
+  canvas.append(holder);
+}
+
+/**
+ * Draw the slide's master behind it, with its fields filled in for this slide, and move the
+ * slide's content into the master's placeholders. The master's objects belong to the master,
+ * so nothing on them leads to the source from here, and the slide's own objects stay on top.
+ */
+function addMaster(canvas: HTMLElement, slide: FrameSeqNode, index: number, slides: SlidesRootDefinition): void {
+  const master = slideMaster(slide, slides);
+  if (!master) return;
+  const values: Record<string, string> = {
+    title: slides.title,
+    subtitle: slides.subtitle ?? "",
+    author: slides.author ?? "",
+    institute: slides.institute ?? "",
+    date: slides.date ?? "",
+    page: String(index + 1),
+    total: String(slides.slides.length),
+    slide: typeof slide.props.title === "string" ? slide.props.title : "",
+  };
+  const layer = document.createElement("div");
+  layer.className = "frameseq-master-layer";
+  layer.dataset.frameseqMaster = master.name;
+  layer.setAttribute("aria-hidden", "true");
+  applyStyles(layer, master.page.styles);
+  const placeholders: FrameSeqNode[] = [];
+  for (const [childIndex, child] of master.page.children.entries()) {
+    if (typeof child.props.placeholder === "string") placeholders.push(child);
+    else layer.append(renderNode(withFields(child, values), `${index}.master.${childIndex}`));
+  }
+  const sourceAttributes = ["source", "edit", "move", "statement", "region", "shared", "path", "refers"];
+  for (const element of layer.querySelectorAll<HTMLElement>("[data-frameseq-source], [data-frameseq-path]")) {
+    for (const name of sourceAttributes) delete element.dataset[`frameseq${name[0].toUpperCase()}${name.slice(1)}`];
+  }
+  canvas.classList.add("frameseq-has-master");
+  canvas.dataset.frameseqMaster = master.name;
+  canvas.prepend(layer);
+  const cover = hasClass(slide, "frameseq-cover-slide");
+  const writesTitle = (node: FrameSeqNode): boolean => (
+    [node.props.content, node.props.label].some((value) => typeof value === "string" && value.includes("{title}"))
+    || node.children.some(writesTitle)
+  );
+  if (cover && master.page.children.some(writesTitle)) layer.dataset.frameseqTitlePage = "true";
+  for (const placeholder of placeholders) fillPlaceholder(canvas, placeholder, slides, cover);
+}
+
+/** Whether an editor showing the master pages speaks Chinese, as the Studio says when it asks. */
+function speaksChinese(): boolean {
+  return document.documentElement.lang.startsWith("zh") || new URLSearchParams(location.search).get("lang") === "zh";
+}
+
+/** A master page's name as an editor shows it. */
+function masterLabel(name: string): string {
+  const chinese = speaksChinese();
+  if (name === "cover") return chinese ? "封面母版" : "Cover master";
+  if (name === "content") return chinese ? "内容页母版" : "Content master";
+  return chinese ? `母版“${name}”` : `Master “${name}”`;
+}
+
+/** What a placeholder shows on its master page, so its box reads as what it will hold. */
+function placeholderSample(role: string, master: string, slides: SlidesRootDefinition): { className: string; text: string } {
+  const chinese = speaksChinese();
+  const cover = master === "cover";
+  if (role === "title") {
+    return cover
+      ? { className: "frameseq-cover-title", text: slides.title }
+      : { className: "frameseq-slide-title", text: chinese ? "幻灯片标题" : "Slide title" };
+  }
+  if (role === "subtitle") return { className: "frameseq-cover-subtitle", text: slides.subtitle || (chinese ? "副标题" : "Subtitle") };
+  if (role === "author") return { className: "frameseq-cover-author", text: slides.author || (chinese ? "作者" : "Author") };
+  return { className: "frameseq-placeholder-label", text: chinese ? "正文" : "Body" };
+}
+
+/**
+ * A master page as an editor shows it: its objects where they are drawn, its fields as written,
+ * and each placeholder as a dashed box holding sample text in the placeholder's typography.
+ */
+function renderMasterCanvas(page: FrameSeqNode, index: number, slides: SlidesRootDefinition): HTMLElement {
+  const name = String(page.props.masterPage);
+  const canvas = renderNode(page, `master.${index}`);
+  canvas.classList.add(name === "cover" ? "frameseq-cover-slide" : "frameseq-content-slide");
+  canvas.dataset.frameseqMasterPage = name;
+  canvas.dataset.frameseqSlideLabel = masterLabel(name);
+  const statement = page.props.sourceStatement as { start: number; end: number } | undefined;
+  if (statement) canvas.dataset.frameseqSlideStatement = `${statement.start}:${statement.end}`;
+  const placeholders = page.children.filter((child) => typeof child.props.placeholder === "string");
+  const boxes = canvas.querySelectorAll<HTMLElement>(":scope > .frameseq-placeholder");
+  for (const [boxIndex, box] of boxes.entries()) {
+    const node = placeholders[boxIndex];
+    if (!node) continue;
+    const role = String(node.props.placeholder);
+    box.dataset.frameseqPlaceholder = role;
+    const sample = placeholderSample(role, name, slides);
+    const text = document.createElement("div");
+    text.className = `frameseq-text frameseq-placeholder-sample ${sample.className}`;
+    text.textContent = sample.text;
+    if (role !== "body") applyPlaceholderText(text, node.styles);
+    box.append(text);
+  }
+  canvas.setAttribute("role", "group");
+  canvas.setAttribute("aria-roledescription", "master");
+  canvas.setAttribute("aria-label", masterLabel(name));
+  return canvas;
+}
+
 function slideLabel(slide: FrameSeqNode, index: number): string {
   const label = typeof slide.props.title === "string"
     ? slide.props.title
@@ -777,6 +1003,7 @@ function renderSlideCanvas(
   const label = slideLabel(slide, index);
   const canvas = renderNode(slide, String(index));
   addThemeChrome(canvas, slide, index, slides);
+  addMaster(canvas, slide, index, slides);
   canvas.dataset.frameseqSlideLabel = label;
   // The top-level statement that made the slide, which a loop or a helper shares between several.
   const statement = slide.props.sourceStatement as { start: number; end: number } | undefined;
@@ -2375,6 +2602,10 @@ function usualBox(kind: string): { width: number; height: number } {
     case "qr": return { width: 200, height: 200 };
     case "icon": return { width: 96, height: 96 };
     case "code": return { width: 560, height: 120 };
+    case "placeholder-title": return { width: 960, height: 90 };
+    case "placeholder-subtitle": return { width: 960, height: 60 };
+    case "placeholder-author": return { width: 480, height: 44 };
+    case "placeholder-body": return { width: 960, height: 400 };
     default: return { width: 480, height: 120 };
   }
 }
@@ -2623,6 +2854,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   resolvePrintUnits(slidesDocument.node);
   resolveAnchors(slidesDocument.node);
   resolveShapePaint(slidesDocument.node);
+  for (const page of Object.values(slidesDocument.masters)) collectSharedSpans(page);
   shapeObserver?.disconnect();
   shapeObserver = typeof ResizeObserver === "undefined"
     ? undefined
@@ -2649,6 +2881,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   // Presenter view beside that show, on another screen: it ends the show as the show itself does.
   const besideShow = presenterMode && searchParams.has("show");
   const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode && !showMode;
+  // The master pages in place of the slides, for FrameSeq Studio's master view, where they are
+  // edited like slides. Only a development server offers it.
+  const masterMode = localEditingAvailable && !printMode && !remoteMode && !presenterMode && !showMode
+    && searchParams.has("masters");
+  document.documentElement.classList.toggle("frameseq-master-mode", masterMode);
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
   document.documentElement.classList.toggle("frameseq-remote-mode", remoteMode);
@@ -2695,12 +2932,15 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   root.setAttribute("aria-label", "FrameSeq slide canvas");
   applyStyles(root, slidesDocument.node.styles);
 
-  const slides = slidesDocument.slides.map((slide, index) => {
+  const pages = masterMode ? Object.values(slidesDocument.masters) : slidesDocument.slides;
+  const slides = pages.map((slide, index) => {
     const frame = document.createElement("section");
     frame.className = "frameseq-slide-frame";
     frame.dataset.index = String(index);
 
-    const canvas = renderSlideCanvas(slide, index, slidesDocument);
+    const canvas = masterMode
+      ? renderMasterCanvas(slide, index, slidesDocument)
+      : renderSlideCanvas(slide, index, slidesDocument);
     if (pptxMode && typeof slide.props.notes === "string") {
       canvas.dataset.frameseqNotes = slide.props.notes;
     }
@@ -2711,7 +2951,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       canvas,
       maxStep: maxStep(slide),
       node: slide,
-      label: slideLabel(slide, index),
+      label: masterMode ? masterLabel(String(slide.props.masterPage)) : slideLabel(slide, index),
     };
   });
 
@@ -2732,6 +2972,19 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   if (import.meta.hot && thumbnailMode) {
     mountThumbnails(target, root, slides, (canvas, frame) => scaleCanvas(canvas, frame, slidesDocument), signal);
     settleWhenReady(() => slides.map(({ canvas }) => canvas), signal);
+    document.documentElement.dataset.ready = "true";
+    return;
+  }
+
+  // A presentation with no master pages yet has nothing for the master view to show.
+  if (masterMode && slides.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "frameseq-master-empty";
+    empty.textContent = searchParams.get("lang") === "zh"
+      ? "这份演示还没有母版。"
+      : "This presentation has no master pages yet.";
+    target.append(empty);
+    window.parent.postMessage({ type: "frameseq.slide", index: 0, count: 0, label: "", notes: "" }, "*");
     document.documentElement.dataset.ready = "true";
     return;
   }

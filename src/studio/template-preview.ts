@@ -1,17 +1,20 @@
 import "katex/dist/katex.min.css";
 import "../index.css";
 import { templates } from "virtual:frameseq-templates";
+import type { SlidesRootDefinition } from "../core";
 import { mountSlides } from "../renderer";
 
 /**
  * One template's cover, rendered by the same runtime as any presentation, for the Studio's
- * new-presentation dialog. The query names the template and the language of its placeholders;
- * the page has no controls, since the dialog only shows it.
+ * new-presentation dialog. The query names a template FrameSeq ships and the language of its
+ * placeholders, or the file of one of the person's own; the page has no controls, since the
+ * dialog only shows it.
  */
 const query = new URLSearchParams(location.search);
-const run = templates[`${query.get("template")}:${query.get("language") === "zh" ? "zh" : "en"}`];
 const app = document.querySelector<HTMLElement>("#app");
-if (app && run) {
+
+function show(slides: SlidesRootDefinition): void {
+  if (!app) return;
   const quiet = document.createElement("style");
   // The slide fills the page edge to edge, without the margins a browser tab leaves around it.
   quiet.textContent = `
@@ -26,5 +29,19 @@ if (app && run) {
     }
   `;
   document.head.append(quiet);
-  mountSlides(run(), app);
+  mountSlides(slides, app);
+}
+
+const file = query.get("file");
+if (file) {
+  // The server compiles a template of one's own as it compiles the presentation being edited.
+  const path = file.replaceAll("\\", "/").replace(/^\/+/, "");
+  void import(/* @vite-ignore */ `/@fs/${path}?frameseq-template`)
+    .then((module: { default?: SlidesRootDefinition }) => {
+      if (module.default) show(module.default);
+    })
+    .catch(() => document.documentElement.classList.add("frameseq-template-broken"));
+} else {
+  const run = templates[`${query.get("template")}:${query.get("language") === "zh" ? "zh" : "en"}`];
+  if (run) show(run());
 }

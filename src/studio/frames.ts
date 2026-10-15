@@ -6,7 +6,7 @@ export interface SourceTarget {
   end: number;
 }
 
-import { t } from "./i18n";
+import { language, t } from "./i18n";
 import type { RenderedSlide } from "./outline";
 
 /** One reason the slide document could not run, with the offsets of the code that caused it. */
@@ -370,6 +370,17 @@ export class StudioFrames {
   /** Turn the preview's layout editing on or off. */
   setLayoutEditing(active: boolean): void {
     this.preview.contentWindow?.postMessage({ type: "frameseq.layout-editing", active }, "*");
+  }
+
+  /**
+   * Show the master pages in the preview and the rail in place of the slides, or the slides
+   * again. The layout check keeps measuring the slides.
+   */
+  setMasters(masters: boolean, slide = 0): void {
+    // A placeholder's sample text is written in the Studio's language.
+    const flag = masters ? `&masters=1&lang=${language}` : "";
+    this.preview.src = `/?frameseq-preview=studio${flag}#${slide + 1}`;
+    this.rail.src = `/?thumbnails=1&frameseq-preview=studio-rail${flag}&studio-theme=${this.theme}`;
   }
 
   /** Show the rail in the palette the Studio is showing. */

@@ -355,6 +355,73 @@ button {
   line-height: var(--frameseq-body-line-height, normal);
 }
 
+/*
+ * A slide's master is drawn behind everything the slide holds: its layer sits below the page's
+ * own stacking context, which the page isolates so the layer never falls behind the page itself.
+ */
+.frameseq-has-master {
+  isolation: isolate;
+}
+
+.frameseq-master-layer {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Text a master's title, subtitle, or author placeholder holds, in the placeholder's place. */
+.frameseq-placeholder-box {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A master page edited on its own: objects sit where they are drawn on the slides. */
+.frameseq-slide.frameseq-master-page {
+  padding: 0;
+}
+
+.frameseq-master-page > .frameseq-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 2px dashed color-mix(in srgb, var(--frameseq-accent) 55%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--frameseq-accent) 5%, transparent);
+}
+
+.frameseq-master-page > .frameseq-placeholder[data-frameseq-placeholder="body"] {
+  justify-content: flex-start;
+  padding: 12px 16px;
+}
+
+.frameseq-master-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--frameseq-muted);
+  font: 500 16px/1.5 system-ui, sans-serif;
+}
+
+.frameseq-placeholder-sample {
+  max-width: none;
+  margin: 0;
+  pointer-events: none;
+}
+
+.frameseq-placeholder-label {
+  color: color-mix(in srgb, var(--frameseq-accent) 75%, var(--frameseq-foreground));
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
 .frameseq-laser-pointer {
   position: absolute;
   z-index: 1000;

@@ -149,6 +149,17 @@ export function planFor(type: string): Plan {
       more: ["height", "background", "padding", "radius", "opacity"],
     };
   }
+  // A master's placeholder: the type it gives the text it holds, and where that text sits in it.
+  if (type === "placeholder") {
+    return {
+      sections: [
+        { id: "text", fields: ["fontSize", "color", "fontWeight", "textAlign"] },
+        { id: "layout", fields: ["justify"] },
+        { id: "size", fields: ["width", "height"] },
+      ],
+      more: ["lineHeight"],
+    };
+  }
   if (containers.has(type)) {
     return {
       sections: [

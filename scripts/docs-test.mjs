@@ -55,6 +55,8 @@ const documentedFunctions = [
   "footnote",
   "references",
   "defineTheme",
+  "master",
+  "placeholder",
 ];
 
 for (const name of documentedFunctions) {

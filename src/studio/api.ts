@@ -189,6 +189,10 @@ export interface InspectSlide {
   noteSources?: Array<{ start: number; end: number; value?: string }>;
   /** Where .notes() can be added to the slide() call, when the statement is that call. */
   notesAt?: number;
+  /** The master the slide names with .master(), and the range of that call. */
+  masterChoice?: { value: string | false; start: number; end: number };
+  /** On a master page, the master's name. */
+  master?: string;
   source: { line: number; character: number; endLine: number };
   objects: InspectObject[];
   regions?: InspectRegion[];
@@ -197,13 +201,28 @@ export interface InspectSlide {
 
 export interface InspectReport {
   presentation: { title?: string };
-  summary: { slides: number; objects: number };
+  summary: { slides: number; objects: number; masters?: number };
   slides: InspectSlide[];
+  /** The master pages, written like slides and drawn behind them. */
+  masters?: InspectSlide[];
   /** The top-level statements of the inspected text, which the preview names slides by. */
-  statements: Array<{ start: number; end: number; runs: boolean }>;
+  statements: Array<{ start: number; end: number; runs: boolean; starts?: "slide" | "master" }>;
 }
 
-export type ExportFormat = "html" | "html-single" | "pdf" | "pptx" | "pptx-flat" | "typst";
+/** One of the person's own templates: a presentation file, or a folder holding one and its files. */
+export interface UserTemplate {
+  name: string;
+  path: string;
+  folder: boolean;
+}
+
+export interface TemplatesResponse {
+  /** Where the templates are kept, whether or not the folder exists yet. */
+  folder: string;
+  templates: UserTemplate[];
+}
+
+export type ExportFormat ="html" | "html-single" | "pdf" | "pptx" | "pptx-flat" | "typst";
 
 export interface ExportResult {
   ok: boolean;

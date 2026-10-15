@@ -888,6 +888,14 @@ export class SlidesRootDefinition extends ElementBuilder {
     return this.node.children;
   }
 
+  /**
+   * The master pages, by name: what master() drew, behind every slide that uses it. They are
+   * kept beside the slides rather than among them, so a slide count never includes them.
+   */
+  get masters(): Record<string, FrameSeqNode> {
+    return (this.node.props.masters as Record<string, FrameSeqNode> | undefined) ?? {};
+  }
+
   slide(nameOrOptions: string | SlideOptions = {}): SlideBuilder {
     const slide = Slide(nameOrOptions);
     attachNode(this.node, slide.node);

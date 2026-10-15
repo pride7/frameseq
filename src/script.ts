@@ -1,6 +1,7 @@
 import {
   Circle,
   Code,
+  Column,
   Equation,
   Image,
   Latex,
@@ -15,6 +16,7 @@ import {
   Rect,
   Shape,
   ShapeBuilder,
+  Slide,
   Spacer,
   Text,
   Typst,
@@ -23,12 +25,14 @@ import {
 import {
   Card,
   Bullets,
-  type ContentSlideBuilder,
+  ContentSlideBuilder,
   GridSection,
   type GridColumns,
   type GridSectionBuilder,
   Group,
   type GroupBuilder,
+  MasterBuilder,
+  masterName,
   Metric,
   RegionBuilder,
   Slides,
@@ -36,6 +40,7 @@ import {
   Steps,
 } from "./semantic";
 import { attachNode, detachNode, nodeParent } from "./node-tree";
+import { DocumentError, type DocumentProblem } from "./anchors";
 import {
   Chart,
   type ChartBuilder,
@@ -62,6 +67,8 @@ import {
 let activeSlides: SlidesDefinition | undefined;
 let activeSlide: ContentSlideBuilder | undefined;
 let activeRegion: RegionBuilder | undefined;
+/** The master page being written, from master() until the next slide() or master(). */
+let activeMaster: string | undefined;
 /** The top-level statement of the slide document running now, while a preview is served. */
 let runningStatement: { start: number; end: number } | undefined;
 
@@ -221,6 +228,7 @@ export function presentation(titleOrOptions: string | SlidesOptions = {}): Slide
   activeSlides = Slides(titleOrOptions);
   activeSlide = undefined;
   activeRegion = undefined;
+  activeMaster = undefined;
   pathRegions.clear();
   citationNumbers.clear();
   referenceLists.length = 0;
@@ -237,8 +245,31 @@ export function getActivePresentation(): SlidesDefinition {
   runningStatement = undefined;
   delete (globalThis as FailedStatementHolder).__frameseqStatement;
   fillReferenceLists();
+  checkMasterNames(activeSlides);
   resolvePrintUnits(activeSlides.node);
   return activeSlides;
+}
+
+/**
+ * Every master a slide asks for by name exists. Checked once the document has run, since a
+ * master may be written after the slides that use it.
+ */
+function checkMasterNames(slides: SlidesDefinition): void {
+  const known = Object.keys(slides.masters);
+  const problems: DocumentProblem[] = [];
+  for (const [index, slide] of slides.slides.entries()) {
+    const wanted = slide.props.master;
+    if (typeof wanted !== "string" || known.includes(wanted)) continue;
+    const span = slide.props.sourceSpan as { start: number; end: number } | undefined;
+    const listed = known.length === 0
+      ? "it defines none"
+      : `it defines ${known.map((name) => `"${name}"`).join(", ")}`;
+    problems.push({
+      message: `Slide ${index + 1} asks for master("${wanted}"), which this presentation does not define; ${listed}`,
+      ...(span ? { start: span.start, end: span.end } : {}),
+    });
+  }
+  if (problems.length > 0) throw new DocumentError(problems.map((problem) => problem.message).join("\n"), problems);
 }
 
 /**
@@ -261,9 +292,80 @@ export function slide(nameOrOptions: string | SlideOptions = {}): ContentSlideBu
   activeSlide = activeSlides.slide(nameOrOptions);
   if (runningStatement) activeSlide.node.props.sourceStatement = runningStatement;
   activeRegion = undefined;
+  activeMaster = undefined;
   pathRegions.clear();
   resetSlideNotes();
   return activeSlide;
+}
+
+/**
+ * Start a master page: the objects that follow, until the next slide() or master(), are drawn
+ * behind every slide that uses it, as a slide master is in PowerPoint. Covers use the master
+ * named "cover" and other slides the one named "content"; slide().master(name) picks another.
+ * Place objects with .position(), and mark where each slide's own content goes with placeholder().
+ * Text on a master may show {title}, {subtitle}, {author}, {institute}, {date}, {page}, {total},
+ * and {slide}, the slide's own title.
+ * @example master("content");
+ * text("{page} / {total}").position({ x: 1140, y: 680 }).caption();
+ */
+export function master(name: string): MasterBuilder {
+  if (!activeSlides) {
+    throw new Error("Create a presentation with presentation() before calling master()");
+  }
+  if (typeof name !== "string" || !masterName.test(name)) {
+    throw new Error(
+      `master() expects a name such as "cover", "content", or "section": `
+      + `letters, digits, "_" and "-", starting with a letter`,
+    );
+  }
+  const masters = (activeSlides.node.props.masters ??= {}) as Record<string, FrameSeqNode>;
+  if (masters[name]) {
+    throw new Error(`master("${name}") is written twice; a presentation has one master of each name`);
+  }
+  const page = new MasterBuilder(Slide({ name }).className("frameseq-master-page").node);
+  page.node.props.masterPage = name;
+  if (runningStatement) page.node.props.sourceStatement = runningStatement;
+  masters[name] = page.node;
+  // Written to like a slide, so regions, names, and every content command work on it as well.
+  activeSlide = new ContentSlideBuilder(page.node, new RegionBuilder(page.node));
+  activeRegion = undefined;
+  activeMaster = name;
+  pathRegions.clear();
+  resetSlideNotes();
+  return page;
+}
+
+/** What a placeholder holds of the slides drawn on its master. */
+export type PlaceholderRole = "body" | "title" | "subtitle" | "author";
+const placeholderRoles: readonly PlaceholderRole[] = ["body", "title", "subtitle", "author"];
+
+/**
+ * Mark, on a master page, where the slides drawn on it put their own content: "body", the
+ * default, for everything they hold; "title" for a slide's title or a cover's hero; "subtitle"
+ * and "author" for a cover's. Give it .position(), .width(), and .height(); text settings on a
+ * title, subtitle, or author placeholder, such as .size() and .color(), style that text on every
+ * slide, unless the slide sets them itself.
+ * @example placeholder("title").position({ x: 60, y: 30 }).width(1160).height(80).color("#1e3a8a");
+ */
+export function placeholder(role: PlaceholderRole = "body"): ElementBuilder {
+  if (!activeMaster || !activeSlide) {
+    throw new Error(
+      `placeholder() marks where a slide's content goes on a master page; `
+      + `call master("cover") or master("content") first`,
+    );
+  }
+  if (!placeholderRoles.includes(role)) {
+    throw new Error(`placeholder() expects "body", "title", "subtitle", or "author", not "${String(role)}"`);
+  }
+  const page = activeSlide.node;
+  if (page.children.some((child) => child.props.placeholder === role)) {
+    throw new Error(`master("${activeMaster}") already has a ${role} placeholder`);
+  }
+  const element = Column().className("frameseq-placeholder");
+  element.node.props.placeholder = role;
+  // Always on the page itself, so its coordinates are the slide's, whatever region is current.
+  attachNode(page, element.node);
+  return element;
 }
 
 /**

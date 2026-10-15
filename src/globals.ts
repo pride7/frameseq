@@ -5,6 +5,8 @@ declare global {
   const presentation: typeof import("./script").presentation;
   const poster: typeof import("./script").poster;
   const slide: typeof import("./script").slide;
+  const master: typeof import("./script").master;
+  const placeholder: typeof import("./script").placeholder;
   const note: typeof import("./script").note;
   const text: typeof import("./script").text;
   const image: typeof import("./script").image;
