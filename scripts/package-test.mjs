@@ -122,11 +122,16 @@ async function checkInstalledStudio(cli, cwd) {
     const page = await browser.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    // The Studio follows the browser's language; the check reads English.
+    await page.evaluateOnNewDocument(() => localStorage.setItem("frameseq-studio-language", "en"));
     await page.goto(url, { waitUntil: "networkidle2" });
     await page.waitForFunction(
       () => document.querySelector("[data-slot='check-state']")?.textContent?.includes("Layout checked"),
       { timeout: 120_000 },
     );
+    // The terminal's native pseudo-terminal and xterm.js must ship and load too.
+    await page.click("[data-tab='terminal']");
+    await page.waitForFunction(() => window.frameseqStudio?.terminal?.status === "open", { timeout: 60_000 });
     const rail = page.frames().find((frame) => frame.url().includes("thumbnails=1"));
     const thumbnails = await rail?.$$eval(".frameseq-thumbnail", (items) => items.length);
     // TypeScript reports through the linter shortly after the editor opens.
