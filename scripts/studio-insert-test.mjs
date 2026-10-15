@@ -356,8 +356,12 @@ text("Angle $\theta$");`);
   });
   await page.keyboard.press("Enter");
   await page.keyboard.type("chart");
-  const snippet = await page.waitForSelector(".cm-tooltip-autocomplete li:has(.cm-completionIcon-snippet)");
-  await snippet.evaluate((item) => item.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+  // The list redraws when TypeScript's completions arrive, so press the item it shows now.
+  await waitFor(() => page.evaluate(() => {
+    const item = document.querySelector(".cm-tooltip-autocomplete li:has(.cm-completionIcon-snippet)");
+    item?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    return Boolean(item);
+  }), "the chart snippet to be offered");
   await waitFor(
     async () => (await read()).includes('text("Hello");\nchart("bar", { "Q1": 12, "Q2": 18, "Q3": 25 });\n'),
     "the chart snippet to be written",
