@@ -76,6 +76,7 @@ import {
   screenName,
 } from "./screens";
 import { pairPhone, remoteSession, resumePairing } from "./remote";
+import { updateMenu, watchForUpdates } from "./updates";
 import { ProblemsPanel, type Problem } from "./problems";
 import { layoutSketch, showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -283,6 +284,7 @@ async function start(): Promise<void> {
   let source: SourceResponse;
   try {
     session = await openSession();
+    void watchForUpdates();
     if (session.start) {
       await showStartPage(root, session, logo);
       return;
@@ -2962,6 +2964,8 @@ async function start(): Promise<void> {
         { command: "documentation", label: t.menu.documentation, run: () => openOutside(docsBase) },
         { command: "language-tour", label: t.menu.languageTour, run: () => openOutside(`${docsBase}language.html`) },
         { command: "shortcuts", label: t.menu.shortcuts, run: showShortcuts },
+        "separator",
+        ...updateMenu(),
         "separator",
         { command: "report-issue", label: t.menu.reportIssue, run: () => openOutside("https://github.com/pride7/frameseq/issues") },
         { command: "about", label: t.menu.about, run: showAbout },

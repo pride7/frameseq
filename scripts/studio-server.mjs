@@ -34,6 +34,7 @@ import {
 import { createAssistant } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
+import { createUpdates } from "./studio-updates.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
 export const studioSourceEvent = "frameseq:studio-source";
@@ -348,6 +349,7 @@ export function studioPlugin({
         language = undefined;
       };
       const frameseqVersion = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version;
+      const updates = createUpdates({ packageRoot, current: frameseqVersion, daily: remember });
       // The assistant's events reach the page as they come, on the connection hot reload uses.
       const assistant = createAssistant({ cliPath, send: (event) => server.ws.send("frameseq:assistant", event) });
       server.httpServer?.once("close", () => assistant.close());
@@ -491,6 +493,15 @@ export function studioPlugin({
 
         // ── Presentations: the recent ones, opening one, and starting a new one ──────────
         "GET /files": async () => ({ recent: await recentPresentations(), folder: await currentFolder() }),
+
+        // ── Updates: whether a newer FrameSeq is out, checked at most daily unless asked ──
+        "GET /update": () => updates.status(),
+
+        /** Check now, keep the daily check on or off, or stop mentioning a version. */
+        "POST /update": async (body) => {
+          await updates.remember({ automatic: body.automatic, skip: body.skip });
+          return updates.status({ force: body.check === true });
+        },
 
         /** Every icon icon() can show, by name, for the Studio's icon picker. */
         "GET /icons": async () => iconBodies(),
@@ -839,7 +850,12 @@ export function studioPlugin({
             send(response, 403, { error: "The assistant only works on the computer running the Studio." });
             return;
           }
-          if (start && !files && url.pathname !== "/session") {
+          // Like the files, updates belong to the computer the Studio was installed on.
+          if (url.pathname === "/update" && !isLoopback(request.socket.remoteAddress)) {
+            send(response, 403, { error: "Updates are checked on the computer running the Studio." });
+            return;
+          }
+          if (start && !files && url.pathname !== "/session" && url.pathname !== "/update") {
             send(response, 409, { error: "No presentation is open. Open or create one first." });
             return;
           }

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/app.md sha256:243da81d02539dd0 -->
+<!-- translation-of: docs/app.md sha256:f93134cd85d3c936 -->
 
 # FrameSeq 应用
 
@@ -55,7 +55,7 @@ PDF、PowerPoint 和 `frameseq check` 用 Chromium 浏览器渲染。应用按�
 
 ## 更新与卸载
 
-把新版本装在旧版本上即可。在 Windows 上,从 **设置 › 应用** 卸载 FrameSeq;在 macOS 上,把 FrameSeq Studio 移到废纸篓;在 Linux 上,先运行 `frameseq shortcut --remove` 把 Studio 从菜单里移除,再删除 `~/.local/share/frameseq` 和 `~/.local/bin/frameseq`。
+FrameSeq Studio 每天检查一次有没有更新的 FrameSeq,有就会提示;提示里的 **下载** 按钮打开发布页,把新版本装在旧版本上即可。**帮助 › 检查更新…** 立即检查;见[更新](studio.md#更新)。在 Windows 上,从 **设置 › 应用** 卸载 FrameSeq;在 macOS 上,把 FrameSeq Studio 移到废纸篓;在 Linux 上,先运行 `frameseq shortcut --remove` 把 Studio 从菜单里移除,再删除 `~/.local/share/frameseq` 和 `~/.local/bin/frameseq`。
 
 ## 用应用还是用 npm?
 
@@ -72,4 +72,6 @@ Studio 的窗口是 `desktop/` 里的 [Tauri](https://tauri.app) 程序,由 `nod
 ```bash
 node scripts/desktop-build.mjs
 FRAMESEQ_DESKTOP_CLI=scripts/frameseq.mjs desktop/target/release/frameseq-studio talk.slides.ts
-```推送版本标签时,GitHub Actions 会构建所有平台,并把下载附加到发布页上。见 [Release automation](../releasing.md)(英文)。
+```
+
+推送版本标签时,GitHub Actions 会构建所有平台,并把下载附加到发布页上。见 [Release automation](../releasing.md)(英文)。

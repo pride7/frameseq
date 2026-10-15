@@ -103,6 +103,8 @@ const en = {
     languageTour: "Language tour",
     shortcuts: "Keyboard shortcuts",
     reportIssue: "Report an issue",
+    checkUpdates: "Check for updates…",
+    automaticUpdates: "Check for updates automatically",
     about: "About FrameSeq Studio",
   },
 
@@ -921,6 +923,21 @@ const en = {
     aboutText: "Write slides and posters as an editable TypeScript document, preview them as you type, and export HTML, PDF, PowerPoint, and Typst.",
     docsPath: "docs/",
   },
+
+  updates: {
+    checking: "Checking for updates…",
+    available: (version: string) => `FrameSeq ${version} is available`,
+    availableToast: (version: string, current: string) => `FrameSeq ${version} is available. This is ${current}.`,
+    current: (version: string) => `This is FrameSeq ${version}.`,
+    npmHint: (command: string) => `Update it in a terminal with ${command}`,
+    upToDate: (version: string) => `FrameSeq ${version} is the latest version.`,
+    failed: (message: string) => `Could not check for updates: ${message}`,
+    download: "Download",
+    whatsNew: "What's new",
+    copyCommand: "Copy the command",
+    copied: "Copied the command.",
+    skip: "Skip this version",
+  },
 };
 
 export type Catalog = typeof en;
@@ -989,6 +1006,8 @@ const zh: Catalog = {
     languageTour: "语言速览",
     shortcuts: "键盘快捷键",
     reportIssue: "报告问题",
+    checkUpdates: "检查更新…",
+    automaticUpdates: "自动检查更新",
     about: "关于 FrameSeq Studio",
   },
 
@@ -1804,6 +1823,21 @@ const zh: Catalog = {
     aboutVersion: (version) => `FrameSeq ${version}`,
     aboutText: "把幻灯片和海报写成一份可编辑的 TypeScript 文档，一边写一边预览，并导出 HTML、PDF、PowerPoint 和 Typst。",
     docsPath: "docs/zh/",
+  },
+
+  updates: {
+    checking: "正在检查更新…",
+    available: (version) => `FrameSeq ${version} 已发布`,
+    availableToast: (version, current) => `FrameSeq ${version} 已发布，当前是 ${current}。`,
+    current: (version) => `当前是 FrameSeq ${version}。`,
+    npmHint: (command) => `在终端里运行 ${command} 即可更新。`,
+    upToDate: (version) => `FrameSeq ${version} 已是最新版本。`,
+    failed: (message) => `无法检查更新：${message}`,
+    download: "下载",
+    whatsNew: "更新内容",
+    copyCommand: "复制命令",
+    copied: "已复制命令。",
+    skip: "跳过这个版本",
   },
 };
 

@@ -53,7 +53,7 @@ PDF, PowerPoint, and `frameseq check` render with a Chromium browser. The app lo
 
 ## Updating and removing
 
-Install a newer version over the old one. On Windows, FrameSeq is removed from **Settings › Apps**; on macOS, move FrameSeq Studio to the Bin; on Linux, delete `~/.local/share/frameseq` and `~/.local/bin/frameseq`, and run `frameseq shortcut --remove` first to take Studio out of the menu.
+FrameSeq Studio checks once a day whether a newer FrameSeq is out, and says so; its **Download** button opens the release page, and the new version installs over the old one. **Help › Check for updates…** checks at once; see [Updates](studio.md#updates). On Windows, FrameSeq is removed from **Settings › Apps**; on macOS, move FrameSeq Studio to the Bin; on Linux, delete `~/.local/share/frameseq` and `~/.local/bin/frameseq`, and run `frameseq shortcut --remove` first to take Studio out of the menu.
 
 ## The app or npm?
 
@@ -70,4 +70,6 @@ The Studio's window is the [Tauri](https://tauri.app) program in `desktop/`, bui
 ```bash
 node scripts/desktop-build.mjs
 FRAMESEQ_DESKTOP_CLI=scripts/frameseq.mjs desktop/target/release/frameseq-studio talk.slides.ts
-``` Version tags build every platform on GitHub Actions and attach the downloads to the release. See [Release automation](releasing.md).
+```
+
+Version tags build every platform on GitHub Actions and attach the downloads to the release. See [Release automation](releasing.md).
