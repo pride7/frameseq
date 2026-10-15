@@ -30,6 +30,8 @@ const katexStyles = await readFile(resolve(packageRoot, "node_modules", "katex",
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
+  // The product review the Studio is photographed editing, so the landing page can show it live too.
+  { slug: "atlas", entry: resolve(packageRoot, "gallery", "slides", "studio.slides.ts") },
   { slug: "recipes", entry: resolve(packageRoot, "gallery", "slides", "recipes.slides.ts") },
   { slug: "ai-research", entry: resolve(packageRoot, "gallery", "slides", "ai-research.slides.ts") },
   { slug: "poster", entry: resolve(packageRoot, "gallery", "slides", "poster.slides.ts") },
@@ -243,9 +245,65 @@ async function captureSlides(slug) {
   }
 }
 
+/**
+ * The slides the landing page shows as pictures: each theme's example, the diagram from the
+ * product review, and the poster. They are drawn as print draws them, with every reveal step
+ * shown, and taken on every build like the documentation's.
+ */
+const landingSlides = [
+  { slug: "atlas", slide: 2 },
+  // A0 is drawn far larger than a slide, so it is taken smaller.
+  { slug: "poster", slide: 1, scale: 0.5 },
+  { slug: "blank", slide: 1 },
+  { slug: "midnight", slide: 1 },
+  { slug: "paper", slide: 1 },
+  { slug: "beamer-default", slide: 1 },
+  { slug: "beamer-madrid", slide: 2 },
+  { slug: "beamer-cambridge-us", slide: 1 },
+  { slug: "minimal-academic", slide: 2 },
+];
+
+async function captureLandingSlides() {
+  const imagesDirectory = resolve(galleryOutput, "images");
+  await mkdir(imagesDirectory, { recursive: true });
+  const server = await preview({
+    configFile: false,
+    root: packageRoot,
+    build: { outDir: galleryOutput },
+    preview: { host: "127.0.0.1", port: 0, open: false },
+  });
+  const url = server.resolvedUrls?.local[0];
+  if (!url) throw new Error("Gallery preview did not expose a local URL");
+
+  const browser = await puppeteer.launch(puppeteerLaunchOptions());
+  try {
+    const page = await browser.newPage();
+    // A slide is 1280 pixels across, taken at 1.25 times that: sharp in a card, light to load.
+    for (const { slug, slide, scale = 1.25 } of landingSlides) {
+      await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: scale });
+      await page.goto(new URL(`examples/${slug}/?print=1`, url).href, { waitUntil: "networkidle0" });
+      await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+      await page.evaluate(() => document.fonts.ready);
+      const slides = await page.$$(".frameseq-slide");
+      if (!slides[slide - 1]) throw new Error(`${slug} has no slide ${slide} to show on the landing page`);
+      await slides[slide - 1].screenshot({
+        path: resolve(imagesDirectory, `${slug}-${slide}.webp`),
+        type: "webp",
+        quality: 88,
+        optimizeForSpeed: false,
+      });
+    }
+    console.log(`Captured ${landingSlides.length} slides for the landing page`);
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+}
+
 for (const slug of new Set(documentationPages.map((page) => page.previews).filter(Boolean))) {
   await captureSlides(slug);
 }
+await captureLandingSlides();
 await captureStudio(resolve(galleryOutput, "images"));
 
 for (const page of documentationPages) {

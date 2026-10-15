@@ -143,16 +143,18 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 1000, deviceScaleFactor: 1 });
   await page.goto(url, { waitUntil: "networkidle0" });
+  // The one live slide waits below the fold, so it loads once it is near the screen.
+  await page.$eval(".language-stage iframe", (frame) => frame.scrollIntoView({ block: "center" }));
   await page.waitForFunction(() => {
     const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.length === 9
+    return frames.length === 1
       && frames.every((frame) => frame.contentDocument?.querySelector(".frameseq-slide"));
   });
 
   const desktop = await page.evaluate(() => ({
     title: document.title,
     themeCards: document.querySelectorAll(".theme-card").length,
-    capabilityCards: document.querySelectorAll(".capability-card").length,
+    bentoCards: document.querySelectorAll(".bento-card").length,
     frames: document.querySelectorAll("iframe").length,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
     themeLinks: Array.from(document.querySelectorAll(".theme-copy > a"))
@@ -161,11 +163,12 @@ try {
     outputHeading: document.querySelector("#outputs-title")?.textContent,
     onlineAction: document.querySelector(".online-action")?.getAttribute("href"),
     docsLink: document.querySelector('nav a[href="./docs/"]')?.getAttribute("href"),
+    download: document.querySelector(".hero .button-primary")?.getAttribute("href"),
   }));
-  assert.equal(desktop.title, "FrameSeq — Declarative presentations in TypeScript");
-  assert.equal(desktop.themeCards, 7);
-  assert.equal(desktop.capabilityCards, 4);
-  assert.equal(desktop.frames, 9);
+  assert.equal(desktop.title, "FrameSeq Studio — Slides you can click. Code you can read.");
+  assert.equal(desktop.themeCards, 8);
+  assert.equal(desktop.bentoCards, 5);
+  assert.equal(desktop.frames, 1);
   assert.ok(desktop.overflow <= 0);
   assert.match(desktop.languageHeading ?? "", /top to bottom/i);
   assert.match(desktop.outputHeading ?? "", /web/i);
@@ -174,27 +177,53 @@ try {
     "https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground",
   );
   assert.equal(desktop.docsLink, "./docs/");
+  assert.equal(desktop.download, "./docs/app.html");
   assert.equal(
-    await page.$eval(".ai-example-preview iframe", (frame) => frame.getAttribute("src")),
-    "./examples/ai-research/#2",
+    await page.$eval(".language-stage iframe", (frame) => frame.getAttribute("src")),
+    "./examples/atlas/?show#3",
   );
-  const studio = await page.$eval(".studio-window picture img", async (image) => {
+  const studio = await page.$eval(".hero-shot picture img", async (image) => {
     await image.decode();
     return {
       width: image.naturalWidth,
       height: image.naturalHeight,
       shown: image.getBoundingClientRect().width,
       source: image.currentSrc,
-      closeUp: getComputedStyle(document.querySelector(".studio-phone-preview")).display,
     };
   });
   assert.match(studio.source, /\/images\/studio\.webp$/, "A desktop should show the whole Studio window");
-  assert.equal(studio.closeUp, "none", "A desktop needs no close-up of the preview");
   assert.ok(studio.width >= 2400 && studio.height >= 1400, `The Studio picture should be sharp, found ${studio.width}x${studio.height}`);
   assert.ok(studio.shown > 1000, "The Studio picture should span the page on a desktop");
-  assert.equal(await page.$$eval("#studio .studio-feature", (cards) => cards.length), 6);
+
+  // The tour shows one picture of the Studio at a time, the one its chosen tab names.
+  const shownPanels = () => page.$$eval(".tour-stage [role='tabpanel']", (panels) => panels
+    .filter((panel) => getComputedStyle(panel).display !== "none")
+    .map((panel) => panel.id));
+  assert.equal(await page.$$eval(".tour-tab", (tabs) => tabs.length), 4);
+  assert.deepEqual(await shownPanels(), ["panel-insert"]);
+  await page.click("#tab-masters");
+  assert.deepEqual(await shownPanels(), ["panel-masters"]);
+  assert.equal(await page.$eval("#tab-masters", (tab) => tab.getAttribute("aria-selected")), "true");
+
+  // The switch between the two views shows one picture of the window at a time.
+  const shownView = () => page.$$eval("[data-view-stage] img", (images) => images
+    .filter((image) => Number(getComputedStyle(image).opacity) > 0)
+    .map((image) => image.className));
+  await page.$eval(".view-switch", (element) => element.scrollIntoView({ block: "center" }));
+  assert.deepEqual(await shownView(), ["view-design"]);
+  await page.click(".view-switch [data-view='code']");
+  await new Promise((resolveWait) => setTimeout(resolveWait, 600));
+  assert.deepEqual(await shownView(), ["view-code"]);
+
+  // Every picture the page shows comes out of the build, the Studio's and the slides' alike.
+  for (const [, file] of landing.matchAll(/src(?:set)?="\.\/images\/([^"]+)"/g)) {
+    const { size } = await stat(resolve(galleryOutput, "images", file));
+    assert.ok(size > 20_000, `${file} is too small to be a picture taken by the build`);
+  }
+
   // The formula is typeset by KaTeX at build time and drawn in KaTeX's own fonts, not
   // approximated with superscripts in the page's serif.
+  await page.$eval(".formula-tex", (element) => element.scrollIntoView({ block: "center" }));
   const formula = await page.evaluate(async () => {
     await document.fonts.ready;
     return {
@@ -225,24 +254,14 @@ try {
   assert.ok(!mobile.columns.includes(" "));
   assert.ok(await formulaFits(page), "The formula should fit its card on a phone without a scroll bar");
 
-  // The whole Studio window is unreadable at phone width, so a phone shows two close-ups.
-  const phoneStudio = await page.evaluate(async () => {
-    const window = document.querySelector(".studio-window picture img");
-    const closeUp = document.querySelector(".studio-phone-preview");
-    closeUp.scrollIntoView();
-    await window.decode();
-    await closeUp.decode();
-    return {
-      source: window.currentSrc,
-      width: window.naturalWidth,
-      closeUp: closeUp.naturalWidth,
-      shown: closeUp.getBoundingClientRect().width,
-    };
+  // The whole Studio window is unreadable at phone width, so a phone shows the slide being edited.
+  const phoneStudio = await page.$eval(".hero-shot picture img", async (image) => {
+    await image.decode();
+    return { source: image.currentSrc, width: image.naturalWidth, shown: image.getBoundingClientRect().width };
   });
-  assert.match(phoneStudio.source, /\/images\/studio-phone-source\.webp$/, "A phone should show the inspector beside the code");
-  assert.equal(phoneStudio.width, 1200);
-  assert.equal(phoneStudio.closeUp, 1280);
-  assert.ok(phoneStudio.shown > 300, "A phone should show the preview close-up across the page");
+  assert.match(phoneStudio.source, /\/images\/studio-phone\.webp$/, "A phone should show the slide being edited");
+  assert.ok(phoneStudio.width >= 2000, `The phone picture should be sharp, found ${phoneStudio.width}`);
+  assert.ok(phoneStudio.shown > 300, "A phone should show the slide across the page");
 
   // Code on a phone wraps between words or fits; it is never cut off at the card's edge.
   const clippedCode = await page.$$eval("pre", (blocks) => blocks
@@ -362,4 +381,4 @@ try {
   await server.close();
 }
 
-console.log("Gallery test passed: the Studio picture, product examples, seven themes, and the generated documentation fit desktop and mobile viewports.");
+console.log("Gallery test passed: the Studio pictures, the tour, seven themes, and the generated documentation fit desktop and mobile viewports.");
