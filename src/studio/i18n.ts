@@ -85,6 +85,7 @@ const en = {
     goToSource: "Go to the slide's source",
     fromBeginning: "From the beginning",
     fromCurrent: "From the current slide",
+    usePresenterView: "Use presenter view",
     presenterView: "Presenter view in a new window",
     phoneRemote: "Phone remote…",
     openInBrowser: "Open the preview in a browser",
@@ -632,6 +633,16 @@ const en = {
     threw: "The slide document threw an error while it was being run.",
   },
 
+  show: {
+    screensTitle: "Present on two screens",
+    screensMessage: "This computer has a second screen. The slides can fill it while presenter view, with the notes, the next slide, and a timer, shows on this one. The browser asks once whether the Studio may place windows on your screens. Present › Use presenter view turns this off.",
+    bothScreens: "Use both screens",
+    thisScreen: "This screen only",
+    ready: "The slides fill the other screen, and presenter view this one.",
+    start: "Start the slide show",
+    denied: "The browser did not let the Studio use the other screen, so the slides fill this window. Allow window management in the site's settings to present on two screens.",
+  },
+
   editor: {
     marker: (index: number, label: string) => `Slide ${index}: ${label} — click to preview`,
     markerGroup: (first: number, last: number) => `Slides ${first} to ${last}, made by this statement — click to preview`,
@@ -809,6 +820,7 @@ const zh: Catalog = {
     goToSource: "转到这一页的源码",
     fromBeginning: "从头开始",
     fromCurrent: "从当前页开始",
+    usePresenterView: "使用演讲者视图",
     presenterView: "在新窗口中打开演讲者视图",
     phoneRemote: "用手机遥控…",
     openInBrowser: "在浏览器中打开预览",
@@ -1354,6 +1366,16 @@ const zh: Catalog = {
     show: "幻灯片放映",
     couldNotRun: "幻灯片文档无法运行。保存修正后，预览会重新启动。",
     threw: "幻灯片文档在运行时抛出了错误。",
+  },
+
+  show: {
+    screensTitle: "在两块屏幕上放映",
+    screensMessage: "这台电脑连着第二块屏幕。幻灯片可以全屏显示在那块屏幕上，这块屏幕则显示演讲者视图，里面有备注、下一页和计时器。浏览器会询问一次是否允许 Studio 在各块屏幕上放置窗口。用“放映 › 使用演讲者视图”可以关掉它。",
+    bothScreens: "使用两块屏幕",
+    thisScreen: "只用这块屏幕",
+    ready: "幻灯片会全屏显示在另一块屏幕上，演讲者视图显示在这块屏幕上。",
+    start: "开始放映",
+    denied: "浏览器没有允许 Studio 使用另一块屏幕，所以幻灯片在这个窗口里放映。在网站设置里允许“窗口管理”，就能在两块屏幕上放映。",
   },
 
   editor: {

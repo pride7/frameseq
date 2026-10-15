@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "studio",
-  "description": "The Studio, served by FrameSeq on this computer, draws and works the window's frame, asks before the window closes, and opens links in the default browser.",
+  "description": "The Studio, served by FrameSeq on this computer, draws and works the window's frame, asks before the window closes, opens links in the default browser, and presents its slides full screen, beside presenter view on a second screen.",
   "windows": ["main"],
   "local": false,
   "remote": {
@@ -16,6 +16,8 @@
     "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-destroy",
-    "allow-open-external"
+    "allow-open-external",
+    "allow-start-show",
+    "allow-end-show"
   ]
 }

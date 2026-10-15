@@ -58,6 +58,8 @@ Do not assume that the development server is always on port `5173`. If that port
 
 Move the presenter window to the speaker's display and keep the audience window on the projector or shared screen. In a video call with one physical monitor, share only the audience browser window.
 
+[FrameSeq Studio](studio.md#presenting-and-exporting) does this by itself: on a computer with a second screen, its slide show fills the other screen and opens presenter view on the Studio's, where **End show** or `Esc` ends the show.
+
 ## Synchronized navigation
 
 Navigation is synchronized in both directions. The following actions update the other window:

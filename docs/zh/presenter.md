@@ -1,4 +1,4 @@
-<!-- translation-of: docs/presenter.md sha256:25fe62d7809f9b98 -->
+<!-- translation-of: docs/presenter.md sha256:aa7a5685c64e1c81 -->
 
 # 演讲者视图
 
@@ -59,6 +59,8 @@ http://localhost:5174/?presenter=1
 **不要默认开发服务器一定在 `5173` 端口** —— 该端口被占用时 Vite 会另选一个。请使用 `npm run dev` 打印出来的地址,或者在能正常工作的观众页上按 `P`,或者在它的**实际**地址后面加 `?presenter=1`。浏览器显示 `connection refused` 通常意味着端口不对,或者开发服务器已经停了。
 
 把演讲者窗口移到讲者的显示器上,观众窗口留在投影仪或共享屏幕上。只有一块物理显示器的视频会议场景下,只共享观众那个浏览器窗口。
+
+[FrameSeq Studio](studio.md#演示与导出) 会自动做这件事:电脑连着第二块屏幕时,它的放映会占满另一块屏幕,并在 Studio 所在的屏幕上打开演讲者视图,在那里点 **End show** 或按 `Esc` 结束放映。
 
 ## 双向同步导航
 

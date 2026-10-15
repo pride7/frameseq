@@ -50,7 +50,7 @@ Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu'
 
 ### In the FrameSeq app
 
-The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** turns the window itself full screen to show the slides, **Present › Presenter view in a new window** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
+The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** turns the window itself full screen to show the slides, on a second screen when there is one, with presenter view on this one; **Present › Presenter view in a new window** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
 
 ### Language
 
@@ -220,7 +220,13 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 **Present** (`F5`) shows the slides full screen from the current slide, in the Studio's own window, as PowerPoint does; **Present › From the beginning** (`Shift+F5`) starts at the first slide. `F5` works from the preview and the slide rail too. A click, `→`, `↓`, `Space`, `Enter`, or `Page Down` moves on, including through a slide's reveal steps; `←`, `↑`, `Backspace`, or `Page Up` goes back; `Home` and `End` go to the first and last slide. After the last slide the screen goes black, as in PowerPoint, and one more click or key ends the show; `Esc` ends it at any time. The Studio comes back on the slide the show ended on. Where the browser refuses full screen, the show still fills the window.
 
-**Present › Presenter view in a new window** opens [presenter view](presenter.md), with the notes, the next slide, and a timer, for a second screen; it follows the show and the preview, and they follow it.
+On a computer with a second screen, such as a laptop with a projector, the show works as PowerPoint's does with presenter view: the slides fill the other screen, and [presenter view](presenter.md), with the notes, the next slide, and a timer, opens on the screen the Studio is on. With more than two screens, the slides go to an external one first. Presenter view moves the show on with the same keys and the same remote, and `Esc` or **End show** there ends the show, as `Esc` on the slides does; presenter view closes with it.
+
+- In the [FrameSeq app](app.md), the window takes the slides to the other screen by itself and comes back when the show ends.
+- In Chrome or Edge, the first show on two screens says what it will do, and the browser then asks once whether the Studio may place windows on your screens. **This screen only** presents in the window instead. If the browser is not allowed to, the slides fill the window as on one screen. Other browsers present on one screen.
+- **Present › Use presenter view**, on at first, turns this off: the slides then fill the Studio's own screen even when there is another.
+
+**Present › Presenter view in a new window** opens presenter view by itself, for rehearsing or to place where you like; it follows the show and the preview, and they follow it.
 
 **Present › Phone remote…** lets a phone on the same Wi-Fi step through the show, as [`npm run present`](presenter.md#pair-a-phone-remote) does in a browser. The first time, the Studio asks, starts again on the local network, and then shows a QR code for the phone to scan. The phone moves through the slides and their reveal steps, its laser shows on the screen, and its **Presenter view** shows the notes. While the remote is on, other devices on the network can open the slides and the files they import, and nothing else: only this computer can change the slides, open files, or use the terminal and the assistant. The remote stays on until the Studio stops; `frameseq studio --remote` starts with it on. The operating system may ask whether Node.js may accept connections on private networks.
 

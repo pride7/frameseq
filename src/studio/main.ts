@@ -1818,10 +1818,16 @@ async function start(): Promise<void> {
     link.remove();
   }
 
-  // The show fills this window, and the Studio comes back on the slide it ended on.
+  // The show fills this window, or with a second screen, that one, while presenter view takes
+  // this one; the Studio comes back on the slide it ended on.
+  let usePresenterView = readPreference("presenter-view", true);
   const show = new SlideShow((index) => {
     if (index !== previewSlide) goToSlide(index, { focusEditor: false });
-  }, { language, remote: session.phoneRemote ? remoteSession() : undefined });
+  }, {
+    language,
+    remote: session.phoneRemote ? remoteSession() : undefined,
+    presenterView: () => usePresenterView,
+  });
   resumePairing(session);
 
   function present(index = previewSlide): void {
@@ -2203,6 +2209,15 @@ async function start(): Promise<void> {
         { command: "present-beginning", label: t.menu.fromBeginning, shortcut: "⇧F5", run: () => present(0) },
         { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
         "separator",
+        {
+          command: "use-presenter-view",
+          label: t.menu.usePresenterView,
+          checked: () => usePresenterView,
+          run: () => {
+            usePresenterView = !usePresenterView;
+            storePreference("presenter-view", usePresenterView);
+          },
+        },
         { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
         { command: "phone-remote", label: t.menu.phoneRemote, run: () => void pairPhone(session, flushSave) },
         { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },

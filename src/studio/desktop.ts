@@ -21,6 +21,14 @@ export interface DesktopShell {
   /** The window closes only once `decide` resolves to true. */
   onCloseRequested(decide: () => Promise<boolean>): Promise<unknown>;
   openExternal(url: string): Promise<void>;
+  /**
+   * Take the window full screen for a slide show. Given presenter view's address, on a computer
+   * with a second screen, the window takes the slides there and presenter view opens on this
+   * screen; it answers whether they did. An app older than the Studio's page has neither.
+   */
+  startShow?(presenter: string | null): Promise<boolean>;
+  /** Close presenter view and bring the window back from full screen, to where it was. */
+  endShow?(): Promise<void>;
 }
 
 declare global {

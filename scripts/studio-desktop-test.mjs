@@ -2,7 +2,8 @@
 
 // The Studio in the FrameSeq app's own window, with that window stood in for by a fake
 // `window.frameseqShell`: the top bar as title bar, the window's buttons, moving the window,
-// links for the default browser, asking before closing, and `frameseq studio --desktop`.
+// links for the default browser, the window's own full screen for a slide show, asking before
+// closing, and `frameseq studio --desktop`.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -49,7 +50,11 @@ function fakeShell(chrome) {
       onResized: async (callback) => { resized = callback; },
       onCloseRequested: async (decide) => { window.__guard = decide; },
       openExternal: async (url) => { calls.push("open " + url); },
+      startShow: async (presenter) => { calls.push("startShow " + presenter); return presenter !== null; },
+      endShow: async () => { calls.push("endShow"); },
     };
+    // The window goes full screen for a show, so the page never asks for it.
+    Element.prototype.requestFullscreen = async function () { calls.push("requestFullscreen"); };
   })();`;
 }
 
@@ -145,6 +150,32 @@ try {
   assert.equal(opened[0], "open https://pride7.github.io/frameseq/docs/");
   assert.match(opened[1], /^open http:\/\/localhost:\d+\/#1$/);
 
+  // A slide show takes the window full screen, onto a second screen with presenter view on this
+  // one when there is one; ending it brings the window back. Without presenter view the window
+  // stays on its screen.
+  const showCalls = async () => (await calls()).filter((call) => /^(startShow|endShow|requestFullscreen)/.test(call));
+  const showing = () => page.evaluate(() => Boolean(document.querySelector(".studio-show")));
+  const shown = () => page.frames().find((frame) => /[?&]show=1/.test(frame.url()))
+    ?.evaluate(() => document.documentElement.dataset.ready === "true").catch(() => false);
+  await page.focus(".cm-content");
+  await page.keyboard.press("F5");
+  await waitFor(() => shown(), "F5 to start the show");
+  await waitFor(async () => (await showCalls()).length === 1, "the show to ask the window for full screen");
+  assert.deepEqual(await showCalls(), ["startShow /?presenter=1&show=1#1"]);
+  await page.keyboard.press("Escape");
+  await waitFor(async () => !(await showing()), "Escape to end the show");
+  await waitFor(async () => (await showCalls()).length === 2, "the show to give the window back");
+  await page.click("[data-menu='present']");
+  await page.click("[data-command='use-presenter-view']");
+  await page.focus(".cm-content");
+  await page.keyboard.press("F5");
+  await waitFor(async () => (await showCalls()).length === 3 && (await shown()), "F5 to start a show without presenter view");
+  await page.keyboard.press("Escape");
+  await waitFor(async () => (await showCalls()).length === 4, "Escape to end it");
+  assert.deepEqual(await showCalls(), ["startShow /?presenter=1&show=1#1", "endShow", "startShow null", "endShow"]);
+  await page.click("[data-menu='present']");
+  await page.click("[data-command='use-presenter-view']");
+
   // Closing settles unsaved edits first: Cancel keeps the window, Don't save lets it close.
   await page.click("[data-menu='file']");
   await page.waitForSelector("[data-command='autosave'][aria-checked='true']");
@@ -199,4 +230,4 @@ child.stdin.end();
 const code = await Promise.race([exited, delay(20_000).then(() => "still running")]);
 assert.equal(code, 0, `the server must stop when its input closes:\n${output}`);
 
-console.log("Studio desktop test passed: the top bar as title bar, the window's buttons, moving and maximising, links for the default browser, asking before closing, the macOS traffic lights, and studio --desktop.");
+console.log("Studio desktop test passed: the top bar as title bar, the window's buttons, moving and maximising, links for the default browser, the window's own full screen for a show, asking before closing, the macOS traffic lights, and studio --desktop.");

@@ -19,5 +19,7 @@
       if (!(await decide())) event.preventDefault();
     }),
     openExternal: (url) => tauri().core.invoke("open_external", { url }),
+    startShow: (presenter) => tauri().core.invoke("start_show", { presenter }),
+    endShow: () => tauri().core.invoke("end_show"),
   });
 })();

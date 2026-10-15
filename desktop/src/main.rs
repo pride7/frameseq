@@ -27,11 +27,13 @@ use std::{
 use tauri::{
   webview::{NewWindowFeatures, NewWindowResponse, PageLoadEvent},
   window::Color,
-  AppHandle, Manager, RunEvent, Theme, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-  WindowEvent, Wry,
+  AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, RunEvent, Theme, Url, WebviewUrl,
+  WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry,
 };
 
 const MAIN: &str = "main";
+/// Presenter view beside a slide show on two screens.
+const PRESENTER: &str = "presenter";
 
 /// How the window's frame is drawn, as the Studio's page learns it from `frameseqShell.chrome`.
 #[cfg(windows)]
@@ -61,6 +63,19 @@ struct SplashState {
   loaded: bool,
   address: Option<Url>,
   failure: Option<String>,
+}
+
+/// A slide show on two screens: where the window was before it took the slides to the other
+/// screen. One show starts or ends at a time.
+#[derive(Default)]
+struct Show {
+  before: Mutex<Option<Placement>>,
+}
+
+struct Placement {
+  position: PhysicalPosition<i32>,
+  size: PhysicalSize<u32>,
+  maximized: bool,
 }
 
 /// The Node.js server this program started, and what it said last, for a failure to show.
@@ -100,7 +115,8 @@ fn main() {
   let built = tauri::Builder::default()
     .manage(server.clone())
     .manage(Splash::default())
-    .invoke_handler(tauri::generate_handler![open_external])
+    .manage(Show::default())
+    .invoke_handler(tauri::generate_handler![open_external, start_show, end_show])
     .setup(move |app| {
       open_main_window(app.handle())?;
       match start {
@@ -294,6 +310,120 @@ fn open_external(url: String) -> Result<(), String> {
     return Err(format!("{} is not a web address", url));
   }
   tauri_plugin_opener::open_url(url.as_str(), None::<&str>).map_err(|error| error.to_string())
+}
+
+/// A slide show from the Studio: the window goes full screen. Given presenter view's address, on
+/// a computer with a second screen, the window takes the slides there and presenter view opens
+/// over this screen, as PowerPoint does; the answer says whether they did.
+#[tauri::command]
+async fn start_show(app: AppHandle, presenter: Option<String>) -> Result<bool, String> {
+  let show = app.state::<Show>();
+  let mut before = show.before.lock().unwrap();
+  let window = app.get_webview_window(MAIN).ok_or("The Studio's window is gone")?;
+  let screens = match presenter {
+    Some(address) => other_screen(&window).map_err(text)?.map(|screens| (address, screens)),
+    None => None,
+  };
+  let Some((address, (here, there))) = screens else {
+    window.set_fullscreen(true).map_err(text)?;
+    return Ok(false);
+  };
+  let url = window.url().map_err(text)?.join(&address).map_err(|error| error.to_string())?;
+  if !is_local(&url) {
+    return Err(format!("{url} is not a page of the Studio"));
+  }
+  *before = Some(Placement {
+    position: window.outer_position().map_err(text)?,
+    size: window.inner_size().map_err(text)?,
+    maximized: window.is_maximized().map_err(text)?,
+  });
+  let corner = there.position();
+  window
+    .set_fullscreen_on_monitor(PhysicalPosition::new(corner.x as f64, corner.y as f64))
+    .map_err(text)?;
+  open_presenter(&app, url, &here).map_err(text)?;
+  Ok(true)
+}
+
+/// The show is over: presenter view closes, and the window leaves full screen for where it was.
+#[tauri::command]
+async fn end_show(app: AppHandle) -> Result<(), String> {
+  let show = app.state::<Show>();
+  let mut before = show.before.lock().unwrap();
+  let window = app.get_webview_window(MAIN).ok_or("The Studio's window is gone")?;
+  window.set_fullscreen(false).map_err(text)?;
+  let started = Instant::now();
+  if let Some(presenter) = app.get_webview_window(PRESENTER) {
+    let _ = presenter.destroy();
+    // Gone before this answers, so that a show started at once opens presenter view anew.
+    while app.get_webview_window(PRESENTER).is_some() && started.elapsed() < Duration::from_secs(1) {
+      thread::sleep(Duration::from_millis(20));
+    }
+  }
+  let Some(placement) = before.take() else { return Ok(()) };
+  // Windows puts the window back by itself. macOS leaves full screen with an animation, and the
+  // window can move only after it, onto the screen it came from.
+  while window.is_fullscreen().unwrap_or(false) && started.elapsed() < Duration::from_secs(2) {
+    thread::sleep(Duration::from_millis(50));
+  }
+  if window.outer_position().ok() != Some(placement.position) && !window.is_maximized().unwrap_or(false) {
+    let _ = window.set_position(placement.position);
+    let _ = window.set_size(placement.size);
+    if placement.maximized {
+      let _ = window.maximize();
+    }
+  }
+  let _ = window.set_focus();
+  Ok(())
+}
+
+fn text(error: tauri::Error) -> String {
+  error.to_string()
+}
+
+/// The screen the window is on, and another for the slides: one that is not the main screen
+/// first, since a projector seldom is.
+fn other_screen(window: &WebviewWindow) -> tauri::Result<Option<(Monitor, Monitor)>> {
+  let Some(here) = window.current_monitor()? else { return Ok(None) };
+  let primary = window.primary_monitor()?.map(|monitor| *monitor.position());
+  let others: Vec<Monitor> = window
+    .available_monitors()?
+    .into_iter()
+    .filter(|monitor| monitor.position() != here.position())
+    .collect();
+  let there = others
+    .iter()
+    .find(|monitor| Some(*monitor.position()) != primary)
+    .or(others.first())
+    .cloned();
+  Ok(there.map(|there| (here, there)))
+}
+
+/// Presenter view, maximised on this screen, with the keyboard, as a presentation remote's keys
+/// should reach it.
+fn open_presenter(app: &AppHandle, url: Url, screen: &Monitor) -> tauri::Result<()> {
+  let window = match app.get_webview_window(PRESENTER) {
+    Some(window) => {
+      window.navigate(url)?;
+      window
+    }
+    None => WebviewWindowBuilder::new(app, PRESENTER, WebviewUrl::External(url))
+      .title("FrameSeq")
+      .inner_size(1280.0, 800.0)
+      .visible(false)
+      .on_document_title_changed(|window, title| {
+        let _ = window.set_title(&title);
+      })
+      .on_navigation(allow_navigation)
+      .on_new_window(popup(app.clone()))
+      .build()?,
+  };
+  let _ = window.unmaximize();
+  window.set_position(screen.work_area().position)?;
+  window.maximize()?;
+  window.show()?;
+  window.set_focus()?;
+  Ok(())
 }
 
 // ── The server ─────────────────────────────────────────────────────────────────────────────

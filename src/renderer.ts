@@ -872,6 +872,9 @@ type SyncMessage = {
   x: number;
   y: number;
   visible: boolean;
+} | {
+  /** Presenter view beside a FrameSeq Studio slide show asks the show to end. */
+  type: "end-show";
 };
 
 interface RemoteEnvelope {
@@ -887,6 +890,8 @@ function createPresenterView(
 ): PresenterElements {
   const pairedRemote = localRemoteAvailable
     && Boolean(new URLSearchParams(location.search).get("session"));
+  // Beside FrameSeq Studio's slide show there is no audience view to open, only a show to end.
+  const besideShow = new URLSearchParams(location.search).has("show");
   const shell = document.createElement("main");
   shell.className = "frameseq-presenter";
   shell.dataset.mobilePanel = "notes";
@@ -939,7 +944,9 @@ function createPresenterView(
       ${localRemoteAvailable
         ? `<button type="button" data-action="${pairedRemote ? "remote-here" : "remote-pair"}">${pairedRemote ? "Simple remote" : "Phone remote"}</button>`
         : ""}
-      <button type="button" data-action="audience">Open audience view</button>
+      ${besideShow
+        ? '<button type="button" data-action="end-show" title="End the slide show (Esc)">End show</button>'
+        : '<button type="button" data-action="audience">Open audience view</button>'}
     </nav>
   `;
 
@@ -2467,6 +2474,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   // The slides alone, edge to edge, as FrameSeq Studio shows them full screen: no controls, no
   // editing, and a click moves on.
   const showMode = !printMode && !remoteMode && !presenterMode && !thumbnailMode && searchParams.has("show");
+  // Presenter view beside that show, on another screen: it ends the show as the show itself does.
+  const besideShow = presenterMode && searchParams.has("show");
   const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode && !showMode;
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
@@ -2984,6 +2993,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (button?.dataset.action === "previous") previous();
     if (button?.dataset.action === "presenter") openMode("presenter");
     if (button?.dataset.action === "audience") openMode("audience");
+    if (button?.dataset.action === "end-show") postSyncMessage({ type: "end-show" });
     if (button?.dataset.action === "remote-pair") void openRemotePairing();
     if (button?.dataset.action === "remote-here") switchMode("remote");
     if (button?.dataset.action === "edit-toggle") updateLayoutEditing(!layoutEditing);
@@ -3139,6 +3149,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       y?: unknown;
       visible?: unknown;
     };
+    if (data.type === "end-show") {
+      if (showMode) endShow();
+      return;
+    }
     if (data.type === "request-state") {
       if (!remote) {
         broadcastNavigation();
@@ -3234,6 +3248,14 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         event.preventDefault();
         action();
       }
+      return;
+    }
+    // Presenter view beside the show ends it with Escape too, and F5 starts nothing new there
+    // either, rather than reloading the page.
+    if (besideShow && !modified && (event.key === "Escape" || event.key === "F5")
+      && !document.querySelector("dialog[open]")) {
+      event.preventDefault();
+      if (event.key === "Escape") postSyncMessage({ type: "end-show" });
       return;
     }
     // In FrameSeq Studio, F5 in the preview presents, as it does anywhere else in the window,

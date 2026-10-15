@@ -1,11 +1,56 @@
+import { desktop } from "./desktop";
 import { t } from "./i18n";
-import { element } from "./ui";
+import { askChoice, element, toast } from "./ui";
+
+/** A screen as the Window Management API describes it, which Chromium has. */
+interface PlacedScreen extends Screen {
+  readonly availLeft: number;
+  readonly availTop: number;
+  readonly isInternal: boolean;
+}
+
+interface ScreenDetails {
+  readonly screens: readonly PlacedScreen[];
+  readonly currentScreen: PlacedScreen;
+}
+
+/** A show on two screens: the slides on one, and presenter view on the other. */
+interface Screens {
+  show: PlacedScreen;
+  presenter: PlacedScreen;
+}
+
+const placing = window as Window & { getScreenDetails?: () => Promise<ScreenDetails> };
+
+/** Whether this computer has more than one screen and the browser can place windows on them. */
+function hasScreens(): boolean {
+  return Boolean((screen as Screen & { isExtended?: boolean }).isExtended) && typeof placing.getScreenDetails === "function";
+}
+
+async function windowManagement(): Promise<PermissionState | undefined> {
+  try {
+    return (await navigator.permissions.query({ name: "window-management" as PermissionName })).state;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Presenter view stays on the Studio's screen, and the slides go to another, an external one first. */
+function place(details: ScreenDetails): Screens | undefined {
+  const here = details.currentScreen;
+  const others = details.screens.filter((other) => other !== here);
+  const there = others.find((other) => !other.isInternal) ?? others[0];
+  return there ? { show: there, presenter: here } : undefined;
+}
 
 /**
  * The slide show, in the Studio's own window: the slides fill the screen from a slide on, as
  * PowerPoint shows them, and `Esc` brings the Studio back. The FrameSeq app's window goes full
- * screen with them, since its web view hands the page's full screen to the window. Where full
- * screen is refused, the show still covers the whole window.
+ * screen with them. Where full screen is refused, the show still covers the whole window.
+ *
+ * On a computer with a second screen, as PowerPoint does with presenter view, the window takes
+ * the slides to the other screen and presenter view opens on this one; `Esc` in either ends the
+ * show. A browser asks once whether the Studio may place windows on the screens.
  */
 export class SlideShow {
   private layer: HTMLElement | undefined;
@@ -16,13 +61,25 @@ export class SlideShow {
   private returnFocus: HTMLElement | undefined;
   /** Whether this show went full screen, so that leaving it ends the show. */
   private fullScreen = false;
+  /** Whether the FrameSeq app's window, rather than the page, took this show full screen. */
+  private appWindow = false;
+  /** Presenter view, as a browser opened it beside this show on the other screen. */
+  private presenter: Window | null = null;
+  /** A show waiting on a question about the screens, which another F5 must not start again. */
+  private asking = false;
   /** The last show's way out of full screen, while it is still on its way. */
   private leaving: Promise<unknown> | undefined;
 
   constructor(
     private readonly ended: (index: number) => void,
-    /** The language the end of the show is announced in, and the phone remote's pairing, if any. */
-    private readonly options: { language: string; remote?: string },
+    private readonly options: {
+      /** The language the end of the show is announced in. */
+      language: string;
+      /** The phone remote's pairing, if any. */
+      remote?: string;
+      /** Whether a second screen gets the slides while presenter view takes this one. */
+      presenterView: () => boolean;
+    },
   ) {
     addEventListener("message", (event: MessageEvent<unknown>) => this.receive(event));
     // Leaving full screen, by the browser's own Escape or otherwise, ends the show as well. The
@@ -50,6 +107,54 @@ export class SlideShow {
       this.focus();
       return;
     }
+    if (this.asking) return;
+    const presenterView = this.options.presenterView();
+    const startShow = desktop?.startShow?.bind(desktop);
+    if (startShow) {
+      // The app's window goes full screen itself, onto the other screen when there is one.
+      const layer = this.open(index);
+      this.appWindow = true;
+      const begin = () => {
+        if (this.layer === layer) void startShow(presenterView ? this.presenterAddress(index) : null).catch(() => false);
+      };
+      if (this.leaving) void this.leaving.then(begin);
+      else begin();
+    } else if (!desktop && presenterView && hasScreens()) {
+      void this.startOnScreens(index);
+    } else {
+      this.fill(this.open(index));
+    }
+  }
+
+  /** End the show and hand the Studio back, on the slide shown last. */
+  stop(): void {
+    const { layer } = this;
+    if (!layer) return;
+    this.layer = undefined;
+    this.frame = undefined;
+    let leaving: Promise<unknown> | undefined;
+    if (this.appWindow) {
+      this.appWindow = false;
+      leaving = desktop?.endShow?.().catch(() => undefined);
+    } else if (document.fullscreenElement === layer) {
+      leaving = document.exitFullscreen().catch(() => undefined);
+    }
+    if (leaving) {
+      this.leaving = leaving;
+      void leaving.then(() => {
+        if (this.leaving === leaving) this.leaving = undefined;
+      });
+    }
+    if (this.presenter && !this.presenter.closed) this.presenter.close();
+    this.presenter = null;
+    layer.remove();
+    this.ended(this.shown);
+    if (this.returnFocus?.isConnected) this.returnFocus.focus();
+    this.returnFocus = undefined;
+  }
+
+  /** The slides, over the whole window, from this slide on. */
+  private open(index: number): HTMLElement {
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     const layer = element("div", "studio-show");
     const frame = element("iframe", "studio-show-frame");
@@ -71,31 +176,94 @@ export class SlideShow {
     this.frame = frame;
     this.shown = index;
     this.fullScreen = false;
+    this.focus();
+    return layer;
+  }
+
+  /** Take the slides full screen, once the last show has left it. */
+  private fill(layer: HTMLElement): void {
     const enter = () => {
       if (this.layer === layer) void layer.requestFullscreen?.().catch(() => undefined);
     };
     if (this.leaving) void this.leaving.then(enter);
     else enter();
-    this.focus();
   }
 
-  /** End the show and hand the Studio back, on the slide shown last. */
-  stop(): void {
-    const { layer } = this;
-    if (!layer) return;
-    this.layer = undefined;
-    this.frame = undefined;
-    if (document.fullscreenElement === layer) {
-      const leaving = document.exitFullscreen().catch(() => undefined);
-      this.leaving = leaving;
-      void leaving.then(() => {
-        if (this.leaving === leaving) this.leaving = undefined;
-      });
+  /**
+   * A show on two screens, from a browser that can place windows on them. The first time, the
+   * Studio says what it is about to do and the browser asks whether it may; the answer can take
+   * longer than the key press lets the page go full screen, and a click starts the show then.
+   */
+  private async startOnScreens(index: number): Promise<void> {
+    this.asking = true;
+    try {
+      const permission = await windowManagement();
+      if (permission === "prompt") {
+        const choice = await askChoice({
+          title: t.show.screensTitle,
+          message: t.show.screensMessage,
+          choices: [
+            { label: t.show.thisScreen, value: "one" },
+            { label: t.show.bothScreens, value: "both", primary: true },
+          ],
+        });
+        if (!choice) return;
+        if (choice === "one") {
+          this.fill(this.open(index));
+          return;
+        }
+      }
+      let screens: Screens | undefined;
+      if (permission !== "denied") {
+        try {
+          screens = place(await placing.getScreenDetails!());
+        } catch {
+          toast(t.show.denied, { tone: "warning" });
+        }
+      }
+      if (!screens) {
+        this.fill(this.open(index));
+        return;
+      }
+      if (navigator.userActivation?.isActive === false) {
+        const choice = await askChoice({
+          title: t.show.screensTitle,
+          message: t.show.ready,
+          choices: [{ label: t.show.start, value: "start", primary: true }],
+        });
+        if (!choice) return;
+      }
+      await this.leaving;
+      await this.presentOn(index, screens);
+    } finally {
+      this.asking = false;
     }
-    layer.remove();
-    this.ended(this.shown);
-    if (this.returnFocus?.isConnected) this.returnFocus.focus();
-    this.returnFocus = undefined;
+  }
+
+  /**
+   * The slides full screen on one screen, and then presenter view over the other, from one key
+   * press. A window opened on the screen the slides are on would take them out of full screen,
+   * so presenter view waits until they have left this one.
+   */
+  private async presentOn(index: number, screens: Screens): Promise<void> {
+    const layer = this.open(index);
+    try {
+      await layer.requestFullscreen({ screen: screens.show } as FullscreenOptions);
+    } catch {
+      return;
+    }
+    if (this.layer !== layer) return;
+    const { availLeft, availTop, availWidth, availHeight } = screens.presenter;
+    this.presenter = window.open(
+      this.presenterAddress(index),
+      "frameseq-presenter",
+      `popup,left=${availLeft},top=${availTop},width=${availWidth},height=${availHeight}`,
+    );
+  }
+
+  /** Presenter view beside the show, which ends the show when it is done with. */
+  private presenterAddress(index: number): string {
+    return `/?presenter=1&show=1#${index + 1}`;
   }
 
   private focus(): void {
