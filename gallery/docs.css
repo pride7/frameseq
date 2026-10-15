@@ -69,22 +69,9 @@ pre {
 }
 
 .docs-brand-mark {
-  position: relative;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--ink);
-  border-radius: 3px;
-  transform: rotate(45deg);
-}
-
-.docs-brand-mark::after {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 1px;
-  background: var(--orange);
-  content: "";
-  inset: 4px;
+  width: 24px;
+  height: 24px;
+  background: url("../favicon.svg") center / contain no-repeat;
 }
 
 .docs-header nav {
@@ -459,14 +446,8 @@ pre {
   }
 
   .docs-brand-mark {
-    width: 18px;
-    height: 18px;
-  }
-
-  .docs-brand-mark::after {
-    width: 6px;
-    height: 6px;
-    inset: 4px;
+    width: 22px;
+    height: 22px;
   }
 
   .docs-sidebar {

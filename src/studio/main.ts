@@ -124,7 +124,7 @@ const trash = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6
 /** Ctrl+` on every system: ⌘` switches windows on macOS. */
 const terminalKey = isMac ? "⌃`" : "Ctrl+`";
 
-const logo = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#020617"/><path d="M15 15h35v9H25v8h21v9H25v17H15V15Z" fill="#22d3ee"/></svg>`;
+const logo = `<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="frameseq-mark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#frameseq-mark)"/><g fill="#fff"><rect x="13" y="13" width="9" height="30" rx="2.5"/><rect x="13" y="13" width="30" height="9" rx="2.5"/><rect x="13" y="28" width="22" height="8" rx="2.5"/></g><g fill="#ffe27a"><rect x="42" y="30" width="9" height="21" rx="2.5"/><rect x="30" y="42" width="21" height="9" rx="2.5"/></g></svg>`;
 
 const shell = `
   <header class="studio-topbar" data-window-drag>

@@ -2,26 +2,31 @@ import { deflateSync } from "node:zlib";
 
 /**
  * The FrameSeq mark as the icon files a shortcut needs, drawn here rather than shipped as
- * binaries. The mark is a rounded square with an F made of three rectangles, on a 64-unit grid,
+ * binaries. The mark is a rounded square shaded from teal to blue, holding a white F that is a
+ * frame's top-left corner and a yellow bracket that is its bottom-right one, on a 64-unit grid,
  * the same shapes as public/favicon.svg.
  */
 
-const corner = 14;
-const background = [0x02, 0x06, 0x17];
-const foreground = [0x22, 0xd3, 0xee];
-const letter = [
-  [15, 15, 50, 24],
-  [15, 15, 25, 58],
-  [25, 32, 46, 41],
+const square = [0, 0, 64, 64, 14];
+const shade = [[0x2d, 0xd4, 0xbf], [0x3b, 0x82, 0xf6]];
+const parts = [
+  { color: [0xff, 0xff, 0xff], boxes: [[13, 13, 22, 43, 2.5], [13, 13, 43, 22, 2.5], [13, 28, 35, 36, 2.5]] },
+  { color: [0xff, 0xe2, 0x7a], boxes: [[42, 30, 51, 51, 2.5], [30, 42, 51, 51, 2.5]] },
 ];
 
-function insideSquare(x, y) {
-  const cx = Math.min(Math.max(x, corner), 64 - corner);
-  const cy = Math.min(Math.max(y, corner), 64 - corner);
-  return (x - cx) ** 2 + (y - cy) ** 2 <= corner ** 2 && x >= 0 && x <= 64 && y >= 0 && y <= 64;
+function insideBox(x, y, [left, top, right, bottom, radius]) {
+  const cx = Math.min(Math.max(x, left + radius), right - radius);
+  const cy = Math.min(Math.max(y, top + radius), bottom - radius);
+  return (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2 && x >= left && x <= right && y >= top && y <= bottom;
 }
 
-const insideLetter = (x, y) => letter.some(([left, top, right, bottom]) => x >= left && x < right && y >= top && y < bottom);
+/** The colour at a point inside the square: a part's, or the shade along the diagonal. */
+function paintAt(x, y) {
+  const part = parts.find(({ boxes }) => boxes.some((box) => insideBox(x, y, box)));
+  if (part) return part.color;
+  const along = (x + y) / 128;
+  return shade[0].map((start, channel) => start + (shade[1][channel] - start) * along);
+}
 
 /** The mark as straight RGBA pixels, each averaged over a grid of samples for smooth edges. */
 function pixels(size) {
@@ -35,8 +40,8 @@ function pixels(size) {
         for (let sx = 0; sx < samples; sx += 1) {
           const x = ((px + (sx + 0.5) / samples) / size) * 64;
           const y = ((py + (sy + 0.5) / samples) / size) * 64;
-          if (!insideSquare(x, y)) continue;
-          const paint = insideLetter(x, y) ? foreground : background;
+          if (!insideBox(x, y, square)) continue;
+          const paint = paintAt(x, y);
           alpha += 1;
           for (let channel = 0; channel < 3; channel += 1) color[channel] += paint[channel];
         }
