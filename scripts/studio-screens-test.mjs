@@ -190,7 +190,10 @@ try {
   assert.ok(await view.$("[data-action='end-show']"), "presenter view can end the show");
   await view.keyboard.press("ArrowRight");
   await waitFor(async () => (await shownSlide()) === 1, "presenter view to move the show on");
-  await view.keyboard.press("Escape");
+  // Escape ends the show as it goes down, and presenter view may close before it comes up.
+  await view.keyboard.press("Escape").catch((error) => {
+    if (error.name !== "TargetCloseError") throw error;
+  });
   await waitFor(async () => !(await showing()), "Escape in presenter view to end the show");
   await waitFor(() => view.isClosed(), "presenter view to close with the show");
   await waitFor(async () => (await previewSlide()) === 1, "the Studio to come back on the slide the show ended on");
