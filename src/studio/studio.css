@@ -35,6 +35,8 @@
   --studio-error-strong: #dc2626;
   --studio-shadow: rgb(0 0 0 / 0.5);
   --studio-backdrop: rgb(2 6 23 / 0.55);
+  /* One chevron, pointing down, for everything that folds; it takes the colour of its text. */
+  --studio-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* The editor and its syntax colours. */
   --studio-selection: rgb(34 211 238 / 0.22);
   --studio-selection-match: rgb(148 163 184 / 0.16);
@@ -998,6 +1000,18 @@ body:has(.studio-topbar) .studio-window-drag {
   background: var(--studio-surface-hover);
 }
 
+/* Everything that folds draws the same chevron, so it stays sharp at any size and zoom. */
+.studio-inspector-toggle::before,
+.studio-tree-toggle::before,
+[data-action="toggle-panel"]::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--studio-chevron) center / 16px no-repeat;
+  mask: var(--studio-chevron) center / 16px no-repeat;
+}
+
 .studio-rail-body,
 .studio-editor,
 .studio-preview-body {
@@ -1133,10 +1147,6 @@ body:has(.studio-topbar) .studio-window-drag {
   display: none;
 }
 
-.studio-inspector-toggle {
-  font-size: 13px;
-}
-
 .studio.is-inspector-collapsed .studio-inspector-toggle {
   transform: rotate(-90deg);
 }
@@ -1199,16 +1209,23 @@ body:has(.studio-topbar) .studio-window-drag {
   border: 0;
   color: var(--studio-faint);
   background: none;
-  font-size: 10px;
+}
+
+.studio-tree-row:hover .studio-tree-toggle {
+  color: var(--studio-muted);
+}
+
+.studio-tree-toggle:hover {
+  color: var(--studio-text);
 }
 
 .studio-tree-toggle::before {
-  content: "▸";
+  transform: rotate(-90deg);
   transition: transform 0.12s ease;
 }
 
 .studio-tree-row[aria-expanded="true"] .studio-tree-toggle::before {
-  transform: rotate(90deg);
+  transform: none;
 }
 
 .studio-tree-toggle:disabled {
@@ -1216,7 +1233,7 @@ body:has(.studio-topbar) .studio-window-drag {
 }
 
 .studio-tree-toggle:disabled::before {
-  content: "";
+  content: none;
 }
 
 .studio-tree-glyph {

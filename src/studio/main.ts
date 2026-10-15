@@ -121,7 +121,7 @@ const shell = `
       <div class="studio-splitter is-horizontal" data-splitter="inspector"></div>
       <section class="studio-inspector" aria-label="${t.shell.currentSlide}">
         <header class="studio-pane-header">
-          <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="${t.shell.toggleInspector}">⌄</button>
+          <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="${t.shell.toggleInspector}"></button>
           <span class="studio-pane-title">${t.shell.currentSlide}</span>
           <span class="studio-pane-meta" data-slot="inspector-meta"></span>
         </header>
@@ -160,7 +160,7 @@ const shell = `
       <span class="studio-pane-spacer"></span>
       <span class="studio-check-state" data-slot="check-state"></span>
       <button type="button" class="studio-icon-button studio-terminal-kill" data-action="kill-terminal" title="${t.shell.killTerminal}" hidden>${trash}</button>
-      <button type="button" class="studio-icon-button" data-action="toggle-panel" title="${t.shell.togglePanel(mod)}">⌄</button>
+      <button type="button" class="studio-icon-button" data-action="toggle-panel" title="${t.shell.togglePanel(mod)}"></button>
     </header>
     <div class="studio-panel-body">
       <div class="studio-problems" data-panel="problems"></div>
