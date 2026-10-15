@@ -10,6 +10,7 @@ import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
 import { bundledStudioWindow, installedChromium } from "./browsers.mjs";
 import { inspectSlides } from "./frameseq-inspect.mjs";
+import { startMcpServer } from "./frameseq-mcp.mjs";
 import { DocumentRunError, deckReady, displayPath, documentErrorReport, watchDeck } from "./document-errors.mjs";
 import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
@@ -44,6 +45,8 @@ Usage:
   frameseq check [file] [--json] [--strict]
                                       Check the rendered layout
   frameseq inspect [file] [--json]     Inspect slides and source locations
+  frameseq mcp [file]                 Serve the slides to a coding agent over MCP:
+                                      outline, check, screenshots, and the guide
   frameseq new [file]                 Create a starter .slides.ts file
 
 Examples:
@@ -61,6 +64,7 @@ Examples:
   frameseq typst talk.slides.ts
   frameseq check talk.slides.ts
   frameseq inspect talk.slides.ts --json
+  claude mcp add frameseq -- frameseq mcp talk.slides.ts
   frameseq new quarterly.slides.ts`);
 }
 
@@ -70,7 +74,7 @@ function option(name) {
 }
 
 function positionalFile(args) {
-  const optionsWithValues = new Set(["--output"]);
+  const optionsWithValues = new Set(["--output", "--preview"]);
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (optionsWithValues.has(argument)) {
@@ -592,6 +596,9 @@ try {
     help();
   } else if (command === "new") {
     await createSlidesFile(resolve(process.cwd(), file));
+  } else if (command === "mcp") {
+    // `--preview` names a running server to render in, as the Studio's assistant passes its own.
+    await startMcpServer({ entry: resolve(process.cwd(), file), packageRoot, configFile, preview: option("--preview") });
   } else if (command === "shortcut") {
     const remove = process.argv.includes("--remove");
     const cli = fileURLToPath(import.meta.url);

@@ -170,6 +170,7 @@ vite-error-overlay {
 .studio {
   --studio-rail-width: 210px;
   --studio-preview-width: 46vw;
+  --studio-assistant-width: 380px;
   --studio-panel-height: 190px;
   display: grid;
   grid-template-rows: 40px auto minmax(0, 1fr) 5px var(--studio-panel-height) 26px;
@@ -501,6 +502,261 @@ body:has(.studio-topbar) .studio-window-drag {
   opacity: 0.7;
 }
 
+/* ── Assistant ───────────────────────────────────────────────────────────────────────── */
+
+/* A page served to another computer has no assistant, so no button for it either. */
+.studio-actions [data-action="toggle-assistant"][hidden] {
+  display: none;
+}
+
+.studio-actions [data-action="toggle-assistant"] span {
+  color: var(--studio-accent);
+}
+
+.studio.is-assistant-open [data-action="toggle-assistant"] {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+.studio-assistant {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--studio-surface);
+}
+
+.studio-assistant-agent {
+  max-width: 170px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 6px;
+  color: var(--studio-text);
+  background: var(--studio-surface-raised);
+  font: 12px var(--studio-font);
+}
+
+.studio-assistant-log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 14px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.studio-assistant-user {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 11px;
+  border-radius: 10px 10px 3px 10px;
+  background: var(--studio-accent-soft);
+}
+
+.studio-assistant-user p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studio-assistant-user small {
+  display: block;
+  margin-top: 3px;
+  color: var(--studio-muted);
+  font-size: 11px;
+}
+
+.studio-assistant-message {
+  overflow-wrap: anywhere;
+}
+
+.studio-assistant-message p,
+.studio-assistant-message ul,
+.studio-assistant-message ol {
+  margin: 0 0 6px;
+}
+
+.studio-assistant-message ul,
+.studio-assistant-message ol {
+  padding-left: 20px;
+}
+
+.studio-assistant-message > :last-child {
+  margin-bottom: 0;
+}
+
+.studio-assistant-message code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--studio-surface-raised);
+  font: 12px var(--studio-mono);
+}
+
+.studio-assistant-message pre {
+  margin: 0 0 6px;
+  overflow-x: auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--studio-editor);
+  font: 12px/1.5 var(--studio-mono);
+}
+
+.studio-assistant-message pre code {
+  padding: 0;
+  background: none;
+}
+
+.studio-assistant-tool {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--studio-muted);
+  font-size: 12px;
+}
+
+.studio-assistant-tool-state {
+  flex: none;
+  width: 12px;
+  text-align: center;
+}
+
+.studio-assistant-tool[data-status="done"] .studio-assistant-tool-state {
+  color: var(--studio-success);
+}
+
+.studio-assistant-tool[data-status="failed"] .studio-assistant-tool-state {
+  color: var(--studio-error);
+}
+
+.studio-assistant-tool[data-status="running"] .studio-assistant-tool-state {
+  color: var(--studio-accent);
+  animation: studio-assistant-pulse 1s ease-in-out infinite;
+}
+
+@keyframes studio-assistant-pulse {
+  50% { opacity: 0.3; }
+}
+
+.studio-assistant-notice,
+.studio-assistant-done {
+  margin: 0;
+  color: var(--studio-faint);
+  font-size: 11.5px;
+}
+
+.studio-assistant-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--studio-error-border);
+  border-radius: 6px;
+  color: var(--studio-error);
+  font: 12px/1.5 var(--studio-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studio-assistant-welcome {
+  display: grid;
+  gap: 10px;
+  color: var(--studio-muted);
+}
+
+.studio-assistant-welcome p,
+.studio-assistant-welcome ul {
+  margin: 0;
+}
+
+.studio-assistant-welcome ul {
+  padding-left: 18px;
+}
+
+.studio-assistant-examples {
+  display: grid;
+  gap: 6px;
+}
+
+.studio-assistant-example {
+  padding: 7px 10px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 8px;
+  color: var(--studio-text);
+  background: transparent;
+  font: 12.5px/1.45 var(--studio-font);
+  text-align: left;
+}
+
+.studio-assistant-example:hover {
+  border-color: var(--studio-accent);
+  background: var(--studio-surface-hover);
+}
+
+.studio-assistant-composer {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.studio-assistant-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--studio-muted);
+  font-size: 11.5px;
+}
+
+.studio-assistant-context span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-assistant-composer textarea {
+  min-height: 66px;
+  max-height: 40vh;
+  padding: 8px 10px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 8px;
+  color: var(--studio-text);
+  background: var(--studio-surface-raised);
+  font: 13px/1.5 var(--studio-font);
+  resize: vertical;
+}
+
+.studio-assistant-composer textarea:focus {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: -1px;
+}
+
+.studio-assistant-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.studio-assistant-hint {
+  color: var(--studio-faint);
+  font-size: 11px;
+}
+
+.studio-assistant.is-busy .studio-assistant-composer textarea {
+  opacity: 0.6;
+}
+
+/* While the assistant edits the file, the editor says why it does not take typing. */
+.studio-assistant-working {
+  margin-left: auto;
+  color: var(--studio-accent);
+  font-size: 11.5px;
+  animation: studio-assistant-pulse 1.6s ease-in-out infinite;
+}
+
 .studio-toggle {
   display: inline-flex;
   align-items: center;
@@ -567,14 +823,31 @@ body:has(.studio-topbar) .studio-window-drag {
 
 /* ── Workspace ─────────────────────────────────────────────────────────────────────────── */
 
+/* Slides, editor, preview, and the assistant, each column folding on its own. The preview and
+   the assistant keep the widths they were dragged to while the window has room, and share what
+   is left when it has not, so the window never scrolls sideways. */
 .studio-workspace {
   display: grid;
-  grid-template-columns: var(--studio-rail-width) 5px minmax(320px, 1fr) 5px var(--studio-preview-width);
+  grid-template-columns:
+    var(--studio-rail-column, var(--studio-rail-width)) var(--studio-rail-gap, 5px)
+    minmax(320px, 1fr) 5px minmax(280px, var(--studio-preview-width))
+    var(--studio-assistant-gap, 0) var(--studio-assistant-column, 0);
   min-height: 0;
 }
 
-.studio.is-rail-collapsed .studio-workspace {
-  grid-template-columns: 0 0 minmax(320px, 1fr) 5px var(--studio-preview-width);
+.studio.is-rail-collapsed {
+  --studio-rail-column: 0;
+  --studio-rail-gap: 0;
+}
+
+.studio.is-assistant-open {
+  --studio-assistant-gap: 5px;
+  --studio-assistant-column: minmax(280px, var(--studio-assistant-width));
+}
+
+.studio:not(.is-assistant-open) .studio-assistant,
+.studio:not(.is-assistant-open) [data-splitter="assistant"] {
+  display: none;
 }
 
 .studio.is-rail-collapsed .studio-rail,

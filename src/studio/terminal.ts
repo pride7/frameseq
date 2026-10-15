@@ -191,14 +191,15 @@ export class StudioTerminal {
 
   /**
    * The keys the Studio keeps from the shell, which return false so xterm.js lets them through to
-   * the page: Ctrl+` and the bottom panel's shortcut, and copy and paste outside macOS, where Ctrl+C
-   * copies a selection and interrupts the program only when nothing is selected.
+   * the page: Ctrl+`, the shortcuts of the bottom panel and the assistant, and copy and paste outside
+   * macOS, where Ctrl+C copies a selection and interrupts the program only when nothing is selected.
    */
   private keepKey(event: KeyboardEvent): boolean {
     if (event.type !== "keydown") return true;
     const primary = isMac ? event.metaKey : event.ctrlKey;
     if (event.ctrlKey && !event.altKey && !event.metaKey && event.code === "Backquote") return false;
     if (primary && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "j") return false;
+    if (primary && event.altKey && !event.shiftKey && event.code === "KeyI") return false;
     if (isMac || !event.ctrlKey || event.altKey) return true;
     const key = event.key.toLowerCase();
     if (key === "c" && event.shiftKey) {

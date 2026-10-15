@@ -673,6 +673,7 @@ It opens as an app window of its own (or in the default browser when no Chromium
 - **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
 - A menu bar holds every command, as in any desktop program: **File** starts a new presentation, opens another, or returns to a recent one, in the same window.
 - The Studio speaks English and Chinese, TypeScript's own messages included; **View › Language** switches between them.
+- An assistant beside the preview runs Claude Code or Codex on the presentation: ask for a change in your own words, and the agent edits the file, then checks the slides and looks at them through `frameseq mcp`, a Model Context Protocol server any coding agent can use.
 
 Run `frameseq studio` without a file to start from its start page, and `frameseq shortcut` to add FrameSeq Studio to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux, so it opens like any other program and stops when its window closes.
 

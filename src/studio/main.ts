@@ -32,6 +32,7 @@ import {
   createEditor,
   refreshDocumentDiagnostics,
   setEditorDarkness,
+  setEditorLocked,
   showPreviewSlide,
   showSlideMarks,
   type SlideMark,
@@ -44,6 +45,7 @@ import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./out
 import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
 import { nameDiagnostics } from "../source-names";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
+import { AssistantPanel, type AssistantContext } from "./assistant";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -99,6 +101,7 @@ const shell = `
       <span class="studio-save-state" data-slot="save-state" data-state="saved"><i></i><span>${t.save.saved}</span></span>
     </div>
     <div class="studio-actions">
+      <button type="button" class="studio-button" data-action="toggle-assistant" title="${t.assistant.buttonTitle(mod)}"><span aria-hidden="true">✦</span> ${t.assistant.button}</button>
       <button type="button" class="studio-button is-primary" data-action="present" title="${t.shell.presentTitle}"><span aria-hidden="true">▶</span> ${t.shell.present}</button>
     </div>
   </header>
@@ -130,6 +133,7 @@ const shell = `
       <header class="studio-pane-header">
         <span class="studio-pane-title" data-slot="editor-title"></span>
         <span class="studio-breadcrumb" data-slot="breadcrumb"></span>
+        <span class="studio-assistant-working" data-slot="assistant-working" hidden>${t.assistant.working}</span>
       </header>
       <div class="studio-editor" data-slot="editor"></div>
     </section>
@@ -144,6 +148,8 @@ const shell = `
       </header>
       <div class="studio-preview-body" data-slot="preview"></div>
     </section>
+    <div class="studio-splitter" data-splitter="assistant"></div>
+    <section class="studio-assistant" data-slot="assistant" aria-label="${t.assistant.title}"></section>
   </main>
   <div class="studio-splitter is-horizontal" data-splitter="panel"></div>
   <section class="studio-panel" aria-label="${t.shell.panel}">
@@ -245,6 +251,8 @@ async function start(): Promise<void> {
   /** Why the last run of the document failed, until a run succeeds again. */
   let runtimeFailures: PreviewFailure[] = [];
   let exporting = false;
+  /** The assistant's panel, made the first time it is opened. */
+  let assistant: AssistantPanel | undefined;
 
   // ── Theme ───────────────────────────────────────────────────────────────────────────────
   let themeChoice = readThemeChoice();
@@ -318,6 +326,7 @@ async function start(): Promise<void> {
       slide: (index, count, label) => {
         previewSlide = index;
         previewLabel = label;
+        assistant?.refreshContext();
         renderedCount = count;
         showPreviewPosition();
         frames.markThumbnail(index);
@@ -915,6 +924,7 @@ async function start(): Promise<void> {
       scheduleInspect();
     }
     if (update.selectionSet || update.docChanged) {
+      assistant?.refreshContext();
       showCursor();
       if (suppressFollow) {
         suppressFollow = false;
@@ -1376,6 +1386,15 @@ async function start(): Promise<void> {
     maximum: () => Math.max(300, workspace.clientWidth - 420),
     invert: true,
   });
+  splitter(required(root, "[data-splitter='assistant']"), {
+    host: root,
+    variable: "--studio-assistant-width",
+    axis: "x",
+    fallback: 380,
+    minimum: 300,
+    maximum: () => Math.max(320, workspace.clientWidth * 0.45),
+    invert: true,
+  });
   splitter(required(root, "[data-splitter='panel']"), {
     host: root,
     variable: "--studio-panel-height",
@@ -1511,6 +1530,7 @@ async function start(): Promise<void> {
         { command: "toggle-rail", label: t.menu.slidesPanel, shortcut: `${mod}+B`, checked: () => !root.classList.contains("is-rail-collapsed"), run: toggleRail },
         { command: "toggle-inspector", label: t.menu.inspectorPanel, checked: () => !root.classList.contains("is-inspector-collapsed"), run: toggleInspector },
         { command: "toggle-panel", label: t.menu.bottomPanel, shortcut: `${mod}+J`, checked: () => !root.classList.contains("is-panel-collapsed"), run: togglePanel },
+        { command: "toggle-assistant", label: t.menu.assistant, shortcut: `${mod}+Alt+I`, checked: () => root.classList.contains("is-assistant-open"), run: () => toggleAssistant(), disabled: () => !session.assistant },
         { command: "show-problems", label: t.menu.showProblems, run: () => showPanel("problems") },
         { command: "show-output", label: t.menu.showOutput, run: () => showPanel("output") },
         { command: "toggle-terminal", label: t.menu.terminal, shortcut: terminalKey, checked: () => !root.classList.contains("is-panel-collapsed") && panelTab === "terminal", run: toggleTerminal },
@@ -1628,6 +1648,9 @@ async function start(): Promise<void> {
       case "toggle-panel":
         togglePanel();
         break;
+      case "toggle-assistant":
+        toggleAssistant();
+        break;
       case "toggle-inspector":
         toggleInspector();
         break;
@@ -1657,6 +1680,10 @@ async function start(): Promise<void> {
     } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
       toggleRail();
+    } else if (primary && event.altKey && !event.shiftKey && event.code === "KeyI" && session.assistant) {
+      // By the key's place, since Alt changes the letter it types on some layouts and on macOS.
+      event.preventDefault();
+      toggleAssistant();
     } else if (primary && !event.altKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       void save({ auto: false });
@@ -1668,6 +1695,68 @@ async function start(): Promise<void> {
       stepSlide(event.key === "PageDown" ? 1 : -1);
     }
   });
+
+  // ── The assistant ───────────────────────────────────────────────────────────────────────
+  const assistantWorking = slot("assistant-working");
+  required<HTMLElement>(root, "[data-action='toggle-assistant']").hidden = !session.assistant;
+
+  /** Where the person is: the slide in the preview, the lines they selected, and what is wrong. */
+  function assistantContext(): AssistantContext {
+    const context: AssistantContext = { summary: "" };
+    const parts: string[] = [];
+    if (renderedCount > 0) {
+      // Line numbers when the source writes the slides one by one, as they render.
+      const written = report && report.slides.length === renderedCount ? report.slides[previewSlide] : undefined;
+      context.slide = {
+        index: previewSlide + 1,
+        label: previewLabel || written?.label || undefined,
+        lines: written ? [written.source.line, written.source.endLine] : undefined,
+      };
+      parts.push(t.assistant.summary.slide(context.slide.index, context.slide.label));
+    }
+    const selection = view.state.selection.main;
+    if (!selection.empty) {
+      const from = view.state.doc.lineAt(selection.from).number;
+      const to = view.state.doc.lineAt(selection.to).number;
+      context.selection = { from, to, text: view.state.sliceDoc(selection.from, selection.to).slice(0, 4000) };
+      parts.push(t.assistant.summary.selection(to - from + 1));
+    }
+    const found = (["build", "runtime", "typescript", "names", "layout"] as const)
+      .flatMap((source) => problems.get(source))
+      .filter((problem) => problem.severity !== "info");
+    if (found.length > 0) {
+      context.problems = found.slice(0, 20).map((problem) => `${problem.line ? `line ${problem.line}: ` : ""}${problem.message}`);
+      parts.push(t.assistant.summary.problems(found.length));
+    }
+    context.summary = parts.length > 0 ? parts.join(" · ") : t.assistant.summary.nothing;
+    return context;
+  }
+
+  function toggleAssistant(force?: boolean): void {
+    if (!session.assistant) return;
+    const open = force ?? !root.classList.contains("is-assistant-open");
+    root.classList.toggle("is-assistant-open", open);
+    storePreference("assistant-open", open);
+    if (!open) return;
+    assistant ??= new AssistantPanel(slot("assistant"), {
+      context: assistantContext,
+      beforeSend: async () => {
+        if (saveState === "conflict") {
+          toast(t.assistant.resolveFirst, { tone: "warning" });
+          return false;
+        }
+        return flushSave();
+      },
+      // The file is the agent's while it works: typing waits, and its edits arrive as reloads.
+      onBusy: (busy) => {
+        setEditorLocked(view, busy);
+        assistantWorking.hidden = !busy;
+      },
+      onClose: () => toggleAssistant(false),
+    });
+    void assistant.show();
+  }
+  if (readPreference("assistant-open", false)) toggleAssistant(true);
 
   // ── The development server ──────────────────────────────────────────────────────────────
   function writeStash(): void {
