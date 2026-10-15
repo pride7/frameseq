@@ -740,6 +740,45 @@ try {
   await page.click("[data-command='theme-light']");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light", "View › Theme › Light");
 
+  // Present shows the slides full screen in the Studio's own window and opens no other: a key or
+  // a click moves on, and Escape brings the Studio back on the slide the show ended on. F5 in the
+  // preview presents too, from the slide it shows.
+  const popups = [];
+  const countPopup = (popup) => popups.push(popup?.url());
+  page.on("popup", countPopup);
+  const showFrame = () => page.frames().find((frame) => /[?&]show=1/.test(frame.url()));
+  const shownSlide = () => showFrame()?.evaluate(() => (document.documentElement.dataset.ready === "true"
+    ? Number(document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index)
+    : undefined)).catch(() => undefined);
+  const showing = () => page.$eval("body", (body) => Boolean(body.querySelector(".studio-show")));
+  const previewFrame = () => page.frames().find((frame) => /frameseq-preview=studio(#|$)/.test(frame.url()));
+  const previewSlide = () => previewFrame()
+    ?.evaluate(() => Number(document.querySelector(".frameseq-slide-frame.is-active")?.dataset.index))
+    .catch(() => undefined);
+  await page.focus(".cm-content");
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("F5");
+  await page.keyboard.up("Shift");
+  await waitFor(async () => (await shownSlide()) === 0, "Shift+F5 to show the first slide");
+  assert.equal(await showFrame().$(".frameseq-controls"), null, "the show has no controls of its own");
+  await page.keyboard.press("ArrowRight");
+  await waitFor(async () => (await shownSlide()) === 1, "the right arrow to move the show on");
+  await page.mouse.click(600, 400);
+  await waitFor(async () => (await shownSlide()) === 2, "a click to move the show on");
+  await page.keyboard.press("Escape");
+  await waitFor(async () => !(await showing()), "Escape to end the show");
+  await waitFor(async () => (await previewSlide()) === 2, "the preview to be on the slide the show ended on");
+  await page.focus(".studio-preview-frame");
+  await page.keyboard.press("F5");
+  await waitFor(async () => (await shownSlide()) === 2, "F5 in the preview to show its slide");
+  await page.keyboard.press("End");
+  await waitFor(async () => (await shownSlide()) === healthySlides - 1, "End to show the last slide");
+  await page.keyboard.press("Escape");
+  await waitFor(async () => !(await showing()), "Escape to end the second show");
+  await waitFor(async () => (await previewSlide()) === healthySlides - 1, "the preview to follow the show to the last slide");
+  page.off("popup", countPopup);
+  assert.deepEqual(popups, [], "presenting must not open another window");
+
   // Chinese: the menus, the panels, and TypeScript's messages, after a reload that keeps the text.
   await page.click("[data-menu='view']");
   await page.hover("[data-command='language']");
@@ -794,4 +833,4 @@ try {
   plain.child.kill();
 }
 
-console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, speaker notes, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, the menu bar, Chinese, and API isolation.");
+console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, speaker notes, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, the menu bar, presenting in the window, Chinese, and API isolation.");

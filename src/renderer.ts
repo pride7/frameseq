@@ -807,10 +807,12 @@ function fitAudienceFrame(
   host: HTMLElement,
   slides: SlidesRootDefinition,
   requestedScale?: number,
+  edgeToEdge = false,
 ): number {
-  const horizontalMargin = 18;
-  const topMargin = 18;
-  const controlsSpace = 58;
+  // A slide show has no controls to leave room for, and fills the screen.
+  const horizontalMargin = edgeToEdge ? 0 : 18;
+  const topMargin = edgeToEdge ? 0 : 18;
+  const controlsSpace = edgeToEdge ? 0 : 58;
   const availableWidth = Math.max(host.clientWidth - horizontalMargin * 2, 1);
   const availableHeight = Math.max(host.clientHeight - topMargin - controlsSpace, 1);
   const scale = Math.min(
@@ -2443,10 +2445,14 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   const thumbnailMode = localEditingAvailable && !printMode && !remoteMode && !presenterMode
     && searchParams.has("thumbnails");
   document.documentElement.classList.toggle("frameseq-thumbnail-mode", thumbnailMode);
-  const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode;
+  // The slides alone, edge to edge, as FrameSeq Studio shows them full screen: no controls, no
+  // editing, and a click moves on.
+  const showMode = !printMode && !remoteMode && !presenterMode && !thumbnailMode && searchParams.has("show");
+  const interactivePreview = localEditingAvailable && !presenterMode && !remoteMode && !showMode;
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
   document.documentElement.classList.toggle("frameseq-remote-mode", remoteMode);
+  document.documentElement.classList.toggle("frameseq-show-mode", showMode);
   document.documentElement.style.setProperty("--slide-width", `${slidesDocument.canvasWidth}px`);
   document.documentElement.style.setProperty("--slide-height", `${slidesDocument.canvasHeight}px`);
   document.documentElement.style.setProperty("--slide-ratio", `${slidesDocument.canvasWidth} / ${slidesDocument.canvasHeight}`);
@@ -2532,7 +2538,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
 
   // Asked to show an object, the preview stays where it is when that object is already on
   // screen, so following the editor never resets the reveal steps of the current slide.
-  if (import.meta.hot) {
+  if (import.meta.hot && !showMode) {
     enableSourceReveal(root, (index) => {
       if (index !== currentSlide) goTo(index);
     }, signal);
@@ -2574,10 +2580,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       ${localEditingAvailable ? '<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="Toggle layout editing" title="Drag objects to rewrite their coordinates (Escape to leave)">E</button>' : ""}
       <button type="button" data-action="presenter" aria-label="Open presenter view" title="Open presenter view">P</button>
     `;
-    target.append(controls);
+    if (!showMode) target.append(controls);
   }
 
-  const setLayoutEditing = localEditingAvailable && !presenter && !remote
+  const setLayoutEditing = localEditingAvailable && !presenter && !remote && !showMode
     ? createLayoutEditor(root, slidesDocument.canvasWidth, signal)
     : undefined;
   // Editing mode survives both a hot canvas swap and a fallback page reload.
@@ -2627,7 +2633,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   function updateScale(): void {
     const { frame, canvas } = slides[currentSlide];
     if (!presenter && !remote) {
-      currentAudienceScale = fitAudienceFrame(frame, root, slidesDocument, audienceZoom);
+      currentAudienceScale = fitAudienceFrame(frame, root, slidesDocument, audienceZoom, showMode);
       const value = controls.querySelector<HTMLElement>(".frameseq-zoom-value");
       if (value) value.textContent = `${Math.round(currentAudienceScale * 100)}%`;
     }
@@ -3169,6 +3175,32 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   addEventListener("keydown", (event) => {
+    const modified = event.ctrlKey || event.altKey || event.metaKey;
+    // A slide show answers the keys a presentation remote sends, as PowerPoint does, and Escape
+    // ends it. F5, which some remotes send to start a show, starts nothing new.
+    if (showMode && !modified) {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      const action = key === "Escape" ? endShow
+        : key === "F5" ? () => undefined
+        : ["ArrowRight", "ArrowDown", "PageDown", " ", "Enter", "n"].includes(key) ? next
+        : ["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "p"].includes(key) ? previous
+        : key === "Home" ? () => goTo(0)
+        : key === "End" ? () => goTo(slides.length - 1)
+        : undefined;
+      if (action) {
+        event.preventDefault();
+        action();
+      }
+      return;
+    }
+    // In FrameSeq Studio, F5 in the preview presents, as it does anywhere else in the window,
+    // rather than reloading the preview.
+    if (import.meta.hot && window.parent !== window && searchParams.get("frameseq-preview") === "studio"
+      && event.key === "F5" && !modified) {
+      event.preventDefault();
+      window.parent.postMessage({ type: "frameseq.command", command: event.shiftKey ? "present-beginning" : "present" }, "*");
+      return;
+    }
     // An embedded preview has no document of its own to save or undo, so it hands those
     // shortcuts to the editor around it instead of letting the browser act on the page.
     if (import.meta.hot && window.parent !== window && !presenter && !remote
@@ -3183,7 +3215,6 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         return;
       }
     }
-    const modified = event.ctrlKey || event.altKey || event.metaKey;
     if (interactivePreview
       && event.code === "Digit0"
       && (event.ctrlKey || event.metaKey)
@@ -3239,6 +3270,31 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     }, { passive: false, signal });
   }
 
+  /** End a slide show: FrameSeq Studio closes the one it shows, and a page of its own leaves full screen. */
+  function endShow(): void {
+    if (window.parent !== window) window.parent.postMessage({ type: "frameseq.show-end" }, "*");
+    else if (document.fullscreenElement) void document.exitFullscreen();
+  }
+
+  if (showMode) {
+    // A click moves on, except on a link or a control of the slide's own.
+    root.addEventListener("click", (event) => {
+      if (event.button !== 0) return;
+      if ((event.target as Element | null)?.closest("a[href], button, input, select, textarea, audio, video")) return;
+      next();
+    }, { signal });
+    // The pointer hides while it rests, so it never sits over the slides on screen.
+    let restTimer = 0;
+    const wake = () => {
+      root.classList.remove("is-pointer-resting");
+      window.clearTimeout(restTimer);
+      restTimer = window.setTimeout(() => root.classList.add("is-pointer-resting"), 2000);
+    };
+    addEventListener("pointermove", wake, { signal });
+    signal.addEventListener("abort", () => window.clearTimeout(restTimer), { once: true });
+    wake();
+  }
+
   const initialSlide = Math.min(
     Math.max(Number(location.hash.slice(1) || 1) - 1, 0),
     Math.max(slides.length - 1, 0),
@@ -3261,6 +3317,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     }
     if (nextCanvas?.isConnected) settleCanvas(nextCanvas);
   });
-  postSyncMessage({ type: "request-state" });
+  // A slide show starts where it was asked to, and the other pages open on the presentation, such
+  // as presenter view, follow it there; any other page asks them where they are instead.
+  if (showMode) broadcastNavigation();
+  else postSyncMessage({ type: "request-state" });
   document.documentElement.dataset.ready = "true";
 }

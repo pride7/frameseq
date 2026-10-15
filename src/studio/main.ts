@@ -52,6 +52,7 @@ import { nameDiagnostics } from "../source-names";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { SlideInspector } from "./inspector";
+import { SlideShow } from "./show";
 import { ProblemsPanel, type Problem } from "./problems";
 import { showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -423,6 +424,7 @@ async function start(): Promise<void> {
         if (command === "save") void save({ auto: false });
         if (command === "undo") undo(view);
         if (command === "redo") redo(view);
+        if (command === "present" || command === "present-beginning") present(command === "present" ? previewSlide : 0);
       },
       railRendered: () => frames.markThumbnail(previewSlide),
       outline: (slides) => {
@@ -1605,9 +1607,20 @@ async function start(): Promise<void> {
     link.remove();
   }
 
+  // The show fills this window, and the Studio comes back on the slide it ended on.
+  const show = new SlideShow((index) => {
+    if (index !== previewSlide) goToSlide(index, { focusEditor: false });
+  });
+
   function present(index = previewSlide): void {
     void flushSave();
-    window.open(`/?presenter=1#${index + 1}`, "frameseq-presenter");
+    show.start(index);
+  }
+
+  /** Presenter view, with the notes, the next slide, and a timer, for a second screen. */
+  function openPresenterView(): void {
+    void flushSave();
+    window.open(`/?presenter=1#${previewSlide + 1}`, "frameseq-presenter");
   }
 
   // ── Panel, output, and layout ───────────────────────────────────────────────────────────
@@ -1968,6 +1981,7 @@ async function start(): Promise<void> {
         { command: "present-beginning", label: t.menu.fromBeginning, shortcut: "⇧F5", run: () => present(0) },
         { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
         "separator",
+        { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
         { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
       ],
     },

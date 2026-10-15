@@ -236,6 +236,12 @@ Made by one statement together with ${size - 1} other slide${size === 2 ? "" : "
   });
 
   addEventListener("keydown", (event) => {
+    // F5 presents, as it does anywhere else in the Studio's window, rather than reloading the rail.
+    if (event.key === "F5" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      post({ type: "frameseq.command", command: event.shiftKey ? "present-beginning" : "present" });
+      return;
+    }
     // The rail has no document of its own; saving and undoing belong to the editor beside it.
     if ((event.ctrlKey || event.metaKey) && !event.altKey) {
       const key = event.key.toLowerCase();

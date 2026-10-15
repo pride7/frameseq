@@ -43,14 +43,14 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
 | **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
-| **Present** | From the beginning, From the current slide, Open the preview in a browser |
+| **Present** | From the beginning, From the current slide, Presenter view in a new window, Open the preview in a browser |
 | **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
 
 Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu's underlined letter, such as `Alt+F` for **File**; the arrow keys move between menus and commands, and `Esc` closes them. **View › Theme** follows the system, or stays light or dark. The slides themselves keep the presentation's own theme.
 
 ### In the FrameSeq app
 
-The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
+The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** turns the window itself full screen to show the slides, **Present › Presenter view in a new window** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
 
 ### Language
 
@@ -196,7 +196,11 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 ## Presenting and exporting
 
-**Present** (`F5`) opens [presenter view](presenter.md) on the current slide in a window of its own; **Present › From the beginning** (`Shift+F5`) starts at the first slide. **File › Export** runs the same exports as the CLI and writes to the same places:
+**Present** (`F5`) shows the slides full screen from the current slide, in the Studio's own window, as PowerPoint does; **Present › From the beginning** (`Shift+F5`) starts at the first slide. `F5` works from the preview and the slide rail too. A click, `→`, `↓`, `Space`, `Enter`, or `Page Down` moves on, including through a slide's reveal steps; `←`, `↑`, `Backspace`, or `Page Up` goes back; `Home` and `End` go to the first and last slide. `Esc` ends the show, and the Studio comes back on the slide it ended on. Where the browser refuses full screen, the show still fills the window.
+
+**Present › Presenter view in a new window** opens [presenter view](presenter.md), with the notes, the next slide, and a timer, for a second screen; it follows the show and the preview, and they follow it.
+
+**File › Export** runs the same exports as the CLI and writes to the same places:
 
 | Export | Writes |
 | --- | --- |
@@ -249,6 +253,7 @@ The assistant uses the agent installed on this computer, on its own sign-in and 
 | `Ctrl+PageDown`, `Ctrl+PageUp` | Next and previous slide |
 | `F5` | Present from the current slide |
 | `Shift+F5` | Present from the beginning |
+| `Esc` | End the slide show |
 | `Ctrl+B` | Show or hide the slide rail |
 | `Ctrl+E` | Show or hide the code |
 | `Ctrl+J` | Show or hide the bottom panel |

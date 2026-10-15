@@ -95,6 +95,22 @@ button {
   outline: none;
 }
 
+/* A slide show: the slides alone, edge to edge on black, as a projector shows them. */
+.frameseq-show-mode body {
+  background: #000;
+}
+
+.frameseq-show-mode .frameseq-slide-frame {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.frameseq-show-mode .frameseq-slides.is-pointer-resting,
+.frameseq-show-mode .frameseq-slides.is-pointer-resting * {
+  cursor: none;
+}
+
 /* Drawing a new object from the Studio: a crosshair, and the outline the object will have. */
 .frameseq-placing .frameseq-slides,
 .frameseq-placing .frameseq-slides * {

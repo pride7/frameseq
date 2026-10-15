@@ -29,6 +29,11 @@ function readFailures(value: unknown): PreviewFailure[] {
   });
 }
 
+/** What a key pressed in the preview or the rail asks of the Studio around it. */
+export type FrameCommand = "save" | "undo" | "redo" | "present" | "present-beginning";
+
+const frameCommands: ReadonlySet<unknown> = new Set<FrameCommand>(["save", "undo", "redo", "present", "present-beginning"]);
+
 export interface FrameEvents {
   previewRendered: () => void;
   /** The slide document threw while it was being run, so the preview still shows the last deck. */
@@ -43,7 +48,7 @@ export interface FrameEvents {
   placed: (placement: Record<string, unknown>) => void;
   /** Drawing was abandoned in the preview. */
   placeCancelled: () => void;
-  command: (command: "save" | "undo" | "redo") => void;
+  command: (command: FrameCommand) => void;
   railRendered: () => void;
   /** The slides the rail rendered, with the statement and the call each one came from. */
   outline: (slides: RenderedSlide[]) => void;
@@ -215,9 +220,7 @@ export class StudioFrames {
           });
           return;
         case "frameseq.command":
-          if (message.command === "save" || message.command === "undo" || message.command === "redo") {
-            events.command(message.command);
-          }
+          if (frameCommands.has(message.command)) events.command(message.command as FrameCommand);
           return;
         default:
           return;
@@ -251,9 +254,7 @@ export class StudioFrames {
           if (index >= 0) events.thumbnailDelete(index);
           return;
         case "frameseq.command":
-          if (message.command === "save" || message.command === "undo" || message.command === "redo") {
-            events.command(message.command);
-          }
+          if (frameCommands.has(message.command)) events.command(message.command as FrameCommand);
           return;
         default:
           return;

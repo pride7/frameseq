@@ -3144,3 +3144,20 @@ textarea.studio-text-input {
   fill: currentColor;
   stroke: none;
 }
+
+/* ── Slide show ────────────────────────────────────────────────────────────────────────── */
+
+/* The slides on black over the whole window, and the screen when the window may go full screen. */
+.studio-show {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: #000;
+}
+
+.studio-show-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
