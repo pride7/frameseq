@@ -116,6 +116,31 @@ export interface InspectProperty {
   expected: string;
 }
 
+/** A string a command was given, such as a text object's words; `raw` for a tagged template. */
+export interface InspectText extends InspectProperty {
+  raw?: boolean;
+  /** Which of the command's arguments it is. */
+  argument: number;
+}
+
+/** One method called on an object, with the range that removes it and where its name is. */
+export interface InspectMethod {
+  name: string;
+  start: number;
+  end: number;
+  nameStart: number;
+  nameEnd: number;
+  arguments: number;
+  removeFrom: number;
+}
+
+/** A value the code computes, which the inspector shows but does not overwrite. */
+export interface InspectComputed {
+  name: string;
+  text: string;
+  source: { start: number; end: number };
+}
+
 /** A named at() region of a slide, with the literal properties of its container. */
 export interface InspectRegion {
   id: string;
@@ -131,9 +156,18 @@ export interface InspectObject {
   type: string;
   label?: string;
   name?: string;
+  /** The names it is placed against or connects, with rightOf() or from() and the like. */
+  refers?: string[];
   region: string;
   parentId?: string;
   properties: InspectProperty[];
+  texts?: InspectText[];
+  computed?: InspectComputed[];
+  methods?: InspectMethod[];
+  /** Where a new method call goes: after the last one, on a line of its own when that has one. */
+  append?: { at: number; indent?: string };
+  /** The statement the object is, when it stands on its own and can be deleted whole. */
+  statement?: { start: number; end: number };
   source: {
     line: number;
     character: number;

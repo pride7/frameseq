@@ -41,7 +41,7 @@ export interface SlideMap {
 }
 
 /** The start of the lines that belong with a statement: its own line and the comments above it. */
-function blockStart(doc: Text, anchor: number): number {
+export function blockStart(doc: Text, anchor: number): number {
   const line = doc.lineAt(anchor);
   // A statement sharing its line with code before it has no line of its own to begin at.
   if (doc.sliceString(line.from, anchor).trim()) return anchor;

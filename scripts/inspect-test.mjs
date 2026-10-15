@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspectSource } from "./frameseq-inspect.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
@@ -89,5 +90,47 @@ assert.deepEqual(
 assert.ok(report.slides[1].objects[0].source.end > report.slides[1].objects[0].source.start);
 assert.ok(report.slides.every((slide) => slide.source.endLine >= slide.source.line));
 
-console.log("Inspect test passed: identity, hierarchy, editable properties, and source ranges are stable JSON.");
+// What the Studio's Current slide panel needs to change an object: the strings its command was
+// given, the methods called on it with the ranges that remove them, where a new call goes, and
+// the statement that deletes it. A value the code computes is reported but not offered as a literal.
+const panelSource = [
+  'presentation("Panel");',
+  'slide("One");',
+  'text("Hello").lead().fontSize(size * 2);',
+  "latex`",
+  "  \\begin{tabular}{lr}",
+  "`",
+  "  .width(640);",
+  'bullets("One", "Two");',
+  'at("side").text("Region words").color("red");',
+  'line().from("start").to("end").below("start");',
+  "",
+].join("\n");
+const [panel] = inspectSource("panel.slides.ts", panelSource).slides;
+const at = (range) => panelSource.slice(range.start, range.end);
+const [hello, formula, list, region, link] = panel.objects;
+assert.deepEqual(hello.texts.map((text) => [text.value, text.expected, text.argument]), [["Hello", '"Hello"', 0]]);
+assert.deepEqual(hello.methods.map((method) => method.name), ["lead", "fontSize"]);
+assert.equal(panelSource.slice(hello.methods[0].removeFrom, hello.methods[0].end), ".lead()");
+assert.equal(panelSource.slice(hello.methods[0].nameStart, hello.methods[0].nameEnd), "lead");
+assert.equal(hello.append.at, hello.source.end);
+assert.equal(hello.append.indent, undefined, "a chain on one line takes the next call on the same line");
+assert.deepEqual(hello.properties, [], "a computed size is not offered as a literal");
+assert.deepEqual(hello.computed.map((value) => [value.name, value.text]), [["fontSize", "size * 2"]]);
+assert.equal(at(hello.statement), 'text("Hello").lead().fontSize(size * 2);');
+// A tagged template is labelled, and edited, as the raw text the command receives.
+assert.equal(formula.label, "\n  \\begin{tabular}{lr}\n");
+assert.deepEqual(formula.texts.map((text) => [text.value, text.raw]), [["\n  \\begin{tabular}{lr}\n", true]]);
+assert.equal(formula.append.indent, "  ", "a chain written one call to a line takes the next call on a line of its own");
+assert.equal(panelSource.slice(formula.methods[0].removeFrom, formula.methods[0].end), "\n  .width(640)");
+assert.deepEqual(list.texts.map((text) => [text.value, text.argument]), [["One", 0], ["Two", 1]]);
+// Methods after at("side").text() style the region, so the panel is not offered them.
+assert.equal(region.type, "text");
+assert.equal(region.append, undefined);
+assert.equal(region.statement, undefined);
+// The names an object connects or is placed against, once each, so deleting one can account for it.
+assert.deepEqual(link.refers, ["start", "end"]);
+assert.equal(hello.refers, undefined);
+
+console.log("Inspect test passed: identity, hierarchy, editable properties, source ranges, and the panel's edit points are stable JSON.");
 

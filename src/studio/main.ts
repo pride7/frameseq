@@ -46,7 +46,7 @@ import { language, switchLanguage, t, type Language } from "./i18n";
 import { goToNameDefinition, renameNameAtCursor } from "./language";
 import { MenuBar, type MenuEntry } from "./menubar";
 import { notesText, readNotes, SpeakerNotes } from "./notes";
-import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
+import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
 import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
 import { nameDiagnostics } from "../source-names";
 import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
@@ -488,13 +488,73 @@ async function start(): Promise<void> {
       });
       frames.focus({ slideIndex: previewSlide, name: region.path });
     },
-    editProperty: (property, literal) => {
-      const { start, end } = property.source;
-      // Only the literal the inspector read may be replaced; anything else has moved on.
-      if (end > view.state.doc.length || view.state.sliceDoc(start, end) !== property.expected) return false;
+    edit: ({ edits, checks }) => {
+      const doc = view.state.doc;
+      // Only text that still reads as the panel saw it may change; anything else has moved on.
+      const current = checks.every((check) => check.to <= doc.length && doc.sliceString(check.from, check.to) === check.text)
+        && edits.every((edit) => edit.from >= 0 && edit.to <= doc.length && edit.from <= edit.to);
+      if (!current) {
+        toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+        return false;
+      }
       suppressFollow = true;
-      view.dispatch({ changes: { from: start, to: end, insert: literal }, userEvent: "input.inspector" });
+      view.dispatch({
+        changes: [...edits].sort((a, b) => a.from - b.from).map(({ from, to, insert }) => ({ from, to, insert })),
+        userEvent: "input.inspector",
+      });
       return true;
+    },
+    reveal: (position) => {
+      if (position > view.state.doc.length) return;
+      showEditor(true);
+      suppressFollow = true;
+      view.dispatch({
+        selection: EditorSelection.cursor(position),
+        effects: EditorView.scrollIntoView(position, { y: "center" }),
+      });
+      view.focus();
+    },
+    deleteObjects: (objects) => {
+      const doc = view.state.doc;
+      const ranges: Array<{ from: number; to: number }> = [];
+      for (const object of objects) {
+        const statement = object.statement;
+        const start = object.source.start;
+        if (!statement || start === undefined) {
+          toast(t.inspector.cannotDelete, { tone: "warning" });
+          return;
+        }
+        if (statement.end > doc.length || doc.sliceString(start, start + object.type.length) !== object.type) {
+          toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+          return;
+        }
+        // A statement on lines of its own takes its lines with it, and the comments above it,
+        // as a deletion in the preview does.
+        const first = doc.lineAt(statement.start);
+        const last = doc.lineAt(statement.end);
+        const alone = !doc.sliceString(first.from, statement.start).trim() && !doc.sliceString(statement.end, last.to).trim();
+        ranges.push(alone
+          ? { from: blockStart(doc, statement.start), to: Math.min(last.to + 1, doc.length) }
+          : { from: statement.start, to: statement.end });
+      }
+      const ordered = ranges.sort((a, b) => a.from - b.from)
+        .reduce<Array<{ from: number; to: number }>>((merged, range) => {
+          const previous = merged[merged.length - 1];
+          if (previous && range.from <= previous.to) previous.to = Math.max(previous.to, range.to);
+          else merged.push({ ...range });
+          return merged;
+        }, []);
+      suppressFollow = true;
+      view.dispatch({
+        changes: ordered.map((range) => ({ ...range, insert: "" })),
+        selection: EditorSelection.cursor(ordered[0].from),
+        userEvent: "delete.inspector",
+      });
+      const name = t.inspector.kinds[objects[0].type] ?? objects[0].type;
+      toast(objects.length > 1 ? t.inspector.deletedWith(name, objects.length - 1) : t.inspector.deleted(name), {
+        tone: "info",
+        actions: [{ label: t.inspector.undo, run: () => { undo(view); } }],
+      });
     },
   });
 
@@ -1610,7 +1670,7 @@ async function start(): Promise<void> {
     host: root,
     variable: "--studio-inspector-height",
     axis: "y",
-    fallback: 260,
+    fallback: 340,
     minimum: 110,
     maximum: () => Math.max(120, rail.clientHeight - 140),
     invert: true,

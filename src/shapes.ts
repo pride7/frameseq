@@ -552,7 +552,7 @@ export const toneNames: readonly ToneName[] = [
   "accent", "blue", "sky", "teal", "green", "lime", "amber", "orange", "red", "pink", "purple", "indigo", "gray",
 ];
 
-const toneHues: Record<Exclude<ToneName, "accent">, string> = {
+export const toneHues: Record<Exclude<ToneName, "accent">, string> = {
   blue: "#2563eb",
   sky: "#0284c7",
   teal: "#0d9488",

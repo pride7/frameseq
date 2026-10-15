@@ -37,12 +37,16 @@ const regionContentCommands = new Set([
 const editableMethods = new Map([
   ["width", ["width"]], ["height", ["height"]],
   ["minWidth", ["minWidth"]], ["minHeight", ["minHeight"]],
+  ["maxWidth", ["maxWidth"]], ["maxHeight", ["maxHeight"]],
   ["gap", ["gap"]], ["padding", ["padding", "paddingHorizontal"]],
   ["margin", ["margin", "marginHorizontal"]],
   ["fontSize", ["fontSize"]], ["size", ["fontSize"]],
+  ["fontWeight", ["fontWeight"]], ["weight", ["fontWeight"]],
+  ["lineHeight", ["lineHeight"]], ["textAlign", ["textAlign"]],
   ["rotate", ["rotation"]], ["strokeWidth", ["strokeWidth"]],
   ["color", ["color"]], ["background", ["background"]],
   ["fill", ["fill"]], ["stroke", ["stroke"]], ["border", ["border"]],
+  ["radius", ["radius"]], ["opacity", ["opacity"]], ["arrow", ["arrow"]],
   ["align", ["align"]], ["justify", ["justify"]],
   ["anchor", ["anchor", "anchorMargin"]], ["grid", ["columns", "gridGap"]],
 ]);
@@ -205,16 +209,24 @@ function contentType(node) {
   return name;
 }
 
-function objectProperties(sourceFile, node, chain) {
+/**
+ * The literal values an object's commands state. A value the code computes is collected in
+ * `computed` instead, so an editor can show it without offering to overwrite it.
+ */
+function objectProperties(sourceFile, node, chain, computed = []) {
   const properties = [];
+  const add = (name, value) => {
+    const editable = editableProperty(sourceFile, name, value);
+    if (editable) properties.push(editable);
+    else computed.push({ name, text: value.getText(sourceFile), source: sourceRange(sourceFile, value) });
+  };
   const addObjectProperties = (object, names) => {
     if (!object || !ts.isObjectLiteralExpression(object)) return;
     for (const property of object.properties) {
       if (!ts.isPropertyAssignment(property)) continue;
       const name = propertyName(property.name);
       if (!name || !names.includes(name)) continue;
-      const editable = editableProperty(sourceFile, name, property.initializer);
-      if (editable) properties.push(editable);
+      add(name, property.initializer);
     }
   };
 
@@ -228,17 +240,93 @@ function objectProperties(sourceFile, node, chain) {
     }
     const names = editableMethods.get(method.name);
     if (!names) continue;
-    method.node.arguments.forEach((argument, index) => {
-      const editable = editableProperty(sourceFile, names[index] ?? `${method.name}${index + 1}`, argument);
-      if (editable) properties.push(editable);
-    });
+    method.node.arguments.forEach((argument, index) => add(names[index] ?? `${method.name}${index + 1}`, argument));
   }
   return properties;
+}
+
+/** The text of a literal as the command receives it: a tagged template keeps its backslashes. */
+function templateText(node) {
+  return node.rawText ?? node.getText().slice(1, -1);
+}
+
+/**
+ * The strings an object's command was given, each a literal that can be rewritten in place: the
+ * text of a text object, an image's path, the items of a list. A tagged template stands for its
+ * raw text, since that is what latex`...` and text`...` receive.
+ */
+function objectTexts(sourceFile, node) {
+  if (ts.isTaggedTemplateExpression(node)) {
+    if (!ts.isNoSubstitutionTemplateLiteral(node.template)) return [];
+    return [{
+      name: "content",
+      kind: "string",
+      value: templateText(node.template),
+      raw: true,
+      argument: 0,
+      source: sourceRange(sourceFile, node.template),
+      expected: node.template.getText(sourceFile),
+    }];
+  }
+  if (!ts.isCallExpression(node)) return [];
+  return node.arguments.flatMap((argument, index) => {
+    if (!ts.isStringLiteral(argument) && !ts.isNoSubstitutionTemplateLiteral(argument)) return [];
+    return [{ ...editableProperty(sourceFile, "content", argument), argument: index }];
+  });
+}
+
+/**
+ * How the chain of methods after an object's command can change: each call with the range that
+ * removes it, the whitespace before its dot included, and where a new call goes, on a line of
+ * its own when the last call has one.
+ */
+function chainEdits(sourceFile, chain) {
+  const text = sourceFile.text;
+  const methods = chain.methods.map((method) => {
+    const access = method.node.expression;
+    const nameStart = access.name.getStart(sourceFile);
+    const dot = text.lastIndexOf(".", nameStart);
+    const before = access.expression.getEnd();
+    return {
+      name: method.name,
+      start: dot,
+      end: method.node.getEnd(),
+      nameStart,
+      nameEnd: access.name.getEnd(),
+      arguments: method.node.arguments.length,
+      removeFrom: text.slice(before, dot).trim() ? dot : before,
+    };
+  });
+  const last = methods[methods.length - 1];
+  let indent;
+  if (last) {
+    const lineStart = text.lastIndexOf("\n", last.start - 1) + 1;
+    const leading = text.slice(lineStart, last.start);
+    if (!leading.trim()) indent = leading;
+  }
+  const statement = chain.root.parent && ts.isExpressionStatement(chain.root.parent)
+    ? { start: chain.root.parent.getStart(sourceFile), end: chain.root.parent.getEnd() }
+    : undefined;
+  return {
+    methods,
+    append: { at: chain.root.getEnd(), ...(indent === undefined ? {} : { indent }) },
+    ...(statement ? { statement } : {}),
+  };
 }
 
 function objectName(node, chain) {
   const named = chain.methods.find((method) => method.name === "as");
   return staticString(named?.node.arguments[0]);
+}
+
+const placementMethods = new Set(["rightOf", "leftOf", "above", "below", "centerOn", "alignTop", "alignLeft", "from", "to"]);
+
+/** The names an object is placed against or connects, so deleting what they name can account for it. */
+function objectRefers(chain) {
+  return [...new Set(chain.methods
+    .filter((method) => placementMethods.has(method.name))
+    .map((method) => staticString(method.node.arguments[0]))
+    .filter(Boolean))];
 }
 
 function contentObjects(sourceFile, root, after = 0) {
@@ -249,12 +337,20 @@ function contentObjects(sourceFile, root, after = 0) {
     seen.add(node.getStart());
     const chain = callChain(node);
     const name = objectName(node, chain);
+    const computed = [];
+    const properties = objectProperties(sourceFile, node, chain, computed);
+    const refers = objectRefers(chain);
     objects.push({
       type,
       ...(label ? { label } : {}),
       ...(name ? { name } : {}),
+      ...(refers.length ? { refers } : {}),
       source: sourceRange(sourceFile, chain.root),
-      properties: objectProperties(sourceFile, node, chain),
+      properties,
+      texts: objectTexts(sourceFile, node),
+      computed,
+      // at("x").text("...") returns the region, so methods after it style the region instead.
+      ...(ts.isTaggedTemplateExpression(node) || ts.isIdentifier(node.expression) ? chainEdits(sourceFile, chain) : {}),
       parentStart,
     });
   };
@@ -270,7 +366,7 @@ function contentObjects(sourceFile, root, after = 0) {
       add(
         node.tag.text,
         node,
-        ts.isNoSubstitutionTemplateLiteral(node.template) ? node.template.text : undefined,
+        ts.isNoSubstitutionTemplateLiteral(node.template) ? templateText(node.template) : undefined,
         parentStart,
       );
       nextParent = node.getStart();

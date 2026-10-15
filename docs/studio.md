@@ -21,7 +21,7 @@ The source stays the only description of the talk. Everything the Studio does, w
 | Area | What it holds |
 | --- | --- |
 | **Slides** (left) | Every slide, rendered by the same runtime as the preview and updated on every save. |
-| **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, with the values their commands state. |
+| **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, and the settings of the one selected. |
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
 | **Notes** (right, below the preview) | The speaker notes of the slide in the preview, typed in place. |
@@ -79,12 +79,19 @@ The shortcut runs the FrameSeq that made it, usually a global install, so run `f
 
 ## Current slide
 
-Below the slides, **Current slide** lists the objects on the slide the preview shows, grouped by the region they were written in, as the VS Code extension's Current Slide view does. Each row shows the kind of object, its text or name, and the line that wrote it; the row of the object under the editor's cursor is highlighted.
+Below the slides, **Current slide** lists the objects on the slide the preview shows, grouped by the region they were written in: the main area, the left and right columns, a grid's cells, or a named region. Each row shows what the object says, or what it is, with a tag for its kind or its text style, such as *Lead* or *Caption*; hover over it for the line that wrote it.
 
-- **Click** an object to put the cursor on its command and outline it in the preview. Click a named region to outline the whole region.
-- **Expand** an object or a named region to see the values its commands state literally: positions, sizes, spacing, colours, and the like. Edit one where it stands and press `Enter`; `Escape` puts it back. In a number, `↑` and `↓` step it by one, with `Shift` by ten and `Alt` by a tenth, and the preview follows each step. A colour written as `#rrggbb` has a colour picker beside it.
+Select an object, by clicking its row, clicking it in the preview, or putting the editor's cursor in its command, and its settings open below its row, as a drawing program's format pane does:
 
-Every change rewrites only that literal, as one step in the editor's history, so `Ctrl+Z` takes it back. A value the code computes, such as `x: left + 40`, is not listed, since no single literal stands for it. For a slide made in a loop or by a helper function, the inspector shows the objects written once in the loop or the helper, and says so.
+- **Content**: the words of a text object, the items of a list, the source of a formula, an image's file, a shape's kind and label. Edit it and press `Enter`, or leave the box; text that runs over lines takes `Enter` as a line break and `Ctrl+Enter` to finish.
+- **Text**: the style (body text, heading, lead, caption, quote, and the others), font size, bold, colour, and alignment.
+- **Appearance**: background, fill, outline, corners, and opacity; a shape's colour scheme is one click on a colour.
+- **Size** and **Position**: width and height, and on a canvas X and Y.
+- **More settings** adds one that is not shown, such as line height or rotation; **Go to code** puts the cursor on the command, and **Delete** (or the `Delete` key on the selected row) removes an object that is a statement of its own as deleting it in the preview does: with the comments above it and any connector that ends at it, and not while another object is placed by its name.
+
+A box shows the value written in the code, or *Auto* or *Default* when none is. Typing a value rewrites the one written, or adds the method after the object's last one, so `text("Hi").lead()` becomes `text("Hi").lead().color("#f97316")`; clearing the box takes the call away again. A number steps with `↑` and `↓`, with `Shift` by ten and `Alt` by a tenth, and its name can be dragged left or right; the preview follows each step. A value the code computes, such as `width(size * 2)`, is shown as code and not overwritten: clicking it goes to it.
+
+Every change is one step in the editor's history, so `Ctrl+Z` takes it back. For a slide made in a loop or by a helper function, the panel shows the objects written once in the loop or the helper, and says so.
 
 Drag the divider above **Current slide** to share the rail between it and the slides, or fold it away with the arrow beside its title.
 

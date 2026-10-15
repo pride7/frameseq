@@ -97,24 +97,16 @@ export async function captureStudio(imagesDirectory) {
       () => page.$eval("[data-slot='inspector-meta']", (element) => element.textContent?.startsWith("3 /")),
       "the inspector to follow the diagram",
     );
-    // Rows read "circle · A 0", the kind followed by the node's label.
+    // A row reads the node's label, "A 0"; choosing it opens the node's settings below it.
     const nodeRow = () => page.evaluateHandle(() => [...document.querySelectorAll(".studio-tree-row[data-kind='circle']")]
-      .find((row) => /·\s*A\b/.test(row.querySelector(".studio-tree-title")?.textContent ?? "")));
+      .find((row) => /^A\s/.test(row.querySelector(".studio-tree-title")?.textContent ?? "")));
     await waitFor(async () => {
       const row = (await nodeRow()).asElement();
       if (!row) return false;
       await row.click();
       return true;
     }, "the source node in the inspector");
-    await waitFor(async () => {
-      const row = (await nodeRow()).asElement();
-      if (!row) return false;
-      if (await row.evaluate((element) => element.getAttribute("aria-expanded") === "true")) return true;
-      await (await row.$(".studio-tree-toggle"))?.click();
-      await delay(300);
-      return false;
-    }, "the source node to show its values");
-    await page.waitForSelector("input.studio-property-input[aria-label='width']");
+    await page.waitForSelector(".studio-object-card input[data-key$=':field:width']");
     // Bring the node's values into view: the connectors above it fill the inspector otherwise.
     await (await nodeRow()).asElement()?.evaluate((row) => row.scrollIntoView({ block: "start" }));
     await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());

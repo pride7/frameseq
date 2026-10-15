@@ -38,6 +38,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Changed
 
+- FrameSeq Studio's **Current slide** panel is a format pane. Selecting an object, in the panel, the preview, or the code, opens its settings below its row: its words, a list's items, or a formula's source; text style, font size, bold, colour, and alignment; background, fill, outline, and a shape's colour scheme; size and position; and **More settings** for the rest. A setting the code does not state yet is added as a method after the object's last one, and clearing it takes the call away, each as one step of the editor's history. Rows show what an object says with a tag for its kind or style, and regions, layouts, and settings are named in the Studio's language. **Delete** removes an object that is a statement of its own, with the comments above it and any connector that ends at it, as deleting it in the preview does.
 - FrameSeq Studio's problems panel starts folded. The status bar counts the problems and the editor underlines them; `Ctrl+J`, **View › Problems panel**, or the counts open it, and a build error opens it by itself.
 - FrameSeq Studio has a menu bar, **File**, **Edit**, **View**, **Slide**, **Present**, and **Help**, in place of the buttons and switches along its top. Every command is there with its shortcut; `Alt` or `F10` reaches the menus from the keyboard, and `Alt` with a menu's letter opens it. New in them are **Present › From the beginning** (`Shift+F5`), **Help › Keyboard shortcuts**, and **Help › About**.
 
@@ -46,6 +47,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- The Studio's **Current slide** panel shows a tagged template such as `` latex`\begin{tabular}…` `` with its backslashes, where it showed `\b` as an unknown character.
 - Spaces at the end of a line no longer make `frameseq check` report text in a clipped box as clipped on the right.
 - A diagram centred with `anchor()` no longer comes apart in PDF export when another slide follows it: each slide is laid out as one page, instead of the diagram being split at the page's edge away from its connectors.
 - Typst export resolves named placements and connectors before writing them, rather than leaving connectors at the page's corner, and draws arrowheads.

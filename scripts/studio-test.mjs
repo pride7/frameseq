@@ -280,7 +280,8 @@ try {
   assert.equal(await page.$eval("[data-slot='status-cursor']", (element) => element.textContent), "Ln 7, Col 1");
 
   // The inspector lists the objects on the slide in the preview, shows where each was written,
-  // and rewrites the literals its commands state, one undoable edit at a time.
+  // rewrites the literals its commands state, and adds the settings they do not, one undoable
+  // edit at a time.
   await waitFor(
     async () => (await page.$eval("[data-slot='inspector-meta']", (element) => element.textContent)).startsWith("2 / 3"),
     "the inspector to follow slide 2",
@@ -291,20 +292,29 @@ try {
     async () => (await page.$eval("[data-slot='status-cursor']", (element) => element.textContent)) === "Ln 8, Col 1",
     "choosing the rect to show its source line",
   );
-  await retrying(() => page.click(".studio-tree-row[data-kind='rect'] .studio-tree-toggle"));
-  const width = await page.waitForSelector("input.studio-property-input[aria-label='width']");
+  // Choosing the object opens its settings below its row.
+  const width = await page.waitForSelector(".studio-object-card input[data-key$=':field:width']");
   await width.click({ clickCount: 3 });
   await page.keyboard.type("260");
   await page.keyboard.press("Enter");
   await waitFor(async () => (await read()).includes(".width(260).height(100);\r\n"), "the inspector to rewrite the width");
   // The inspector redraws after every edit, so find and focus the field in one step, and only
   // press the key once the focus is known to be there.
-  await waitFor(() => page.evaluate(() => {
-    document.querySelector("input.studio-property-input[aria-label='height']")?.focus();
-    return document.activeElement?.getAttribute("aria-label") === "height";
-  }), "the height field to take focus");
+  const focusField = (name) => waitFor(() => page.evaluate((suffix) => {
+    document.querySelector(`.studio-object-card input[data-key$='${suffix}']`)?.focus();
+    return document.activeElement?.getAttribute("data-key")?.endsWith(suffix);
+  }, `:field:${name}`), `the ${name} field to take focus`);
+  await focusField("height");
   await page.keyboard.press("ArrowUp");
   await waitFor(async () => (await read()).includes(".width(260).height(101);\r\n"), "the arrow key to step the height");
+  // A setting the code does not state yet is added after the object's last method.
+  await focusField("fill");
+  await page.keyboard.type("#0ea5e9");
+  await page.keyboard.press("Enter");
+  await waitFor(
+    async () => (await read()).includes('.width(260).height(101).fill("#0ea5e9");\r\n'),
+    "the inspector to add a fill",
+  );
   await waitFor(
     () => preview.evaluate(() => document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-move='true']")?.style.width === "260px").catch(() => false),
     "the preview to draw the new width",
