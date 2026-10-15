@@ -173,10 +173,19 @@ try {
   await waitFor(async () => (await presenterSlide()) === 0, "presenter view to open on the first slide");
   const view = presenter();
   assert.match(view.url(), /[?&]show=1/, "presenter view knows it is beside the show");
-  const bounds = await view.evaluate(() => ({ x: screenX, y: screenY, width: outerWidth, height: outerHeight }));
-  assert.equal(bounds.x, 0, "presenter view opens on the laptop's screen");
-  assert.ok(bounds.x + bounds.width <= 1600, `presenter view stays on the laptop's screen: ${JSON.stringify(bounds)}`);
-  assert.ok(bounds.width >= 1200, `presenter view fills the laptop's screen: ${JSON.stringify(bounds)}`);
+  // It fills the laptop's screen as a maximised window does, its frame and all.
+  const bounds = () => view.evaluate(() => JSON.stringify([screenX, screenY, outerWidth, outerHeight]));
+  await waitFor(async () => (await bounds()) === JSON.stringify([0, 0, 1600, 1000]), "presenter view to fill the laptop's screen")
+    .catch(async (error) => assert.fail(`${error.message}: ${await bounds()}`));
+  // Full screen covers the task bar too, and the same button brings the window back.
+  const fullScreen = () => view.evaluate(() => [Boolean(document.fullscreenElement), document.querySelector("[data-action='presenter-fullscreen']").textContent]);
+  assert.deepEqual(await fullScreen(), [false, "Full screen"]);
+  await view.click("[data-action='presenter-fullscreen']");
+  await waitFor(async () => JSON.stringify(await fullScreen()) === JSON.stringify([true, "Exit full screen"]), "Full screen to fill the screen with presenter view")
+    .catch(async (error) => assert.fail(`${error.message}: ${JSON.stringify(await fullScreen())}`));
+  await view.click("[data-action='presenter-fullscreen']");
+  await waitFor(async () => JSON.stringify(await fullScreen()) === JSON.stringify([false, "Full screen"]), "Exit full screen to bring the window back")
+    .catch(async (error) => assert.fail(`${error.message}: ${JSON.stringify(await fullScreen())}`));
   assert.equal(await view.$("[data-action='audience']"), null, "presenter view beside the show has no audience view to open");
   assert.ok(await view.$("[data-action='end-show']"), "presenter view can end the show");
   await view.keyboard.press("ArrowRight");
@@ -274,7 +283,7 @@ try {
   await waitFor(async () => !(await showing()), "Escape to end the last show");
 
   assert.deepEqual(errors, [], "no page errors");
-  console.log("Studio screens test passed: one screen until the browser may place windows, the slides on another screen with presenter view on this one, ending the show from either, Show screen and its choices, and Use presenter view.");
+  console.log("Studio screens test passed: one screen until the browser may place windows, the slides on another screen with presenter view on this one, presenter view filling its screen and going full screen, ending the show from either, Show screen and its choices, and Use presenter view.");
 } finally {
   await browser.close();
   server.kill();

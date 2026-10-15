@@ -119,6 +119,10 @@ Press `Ctrl+L` in presenter view or select `Laser: Off` to enable the virtual la
 
 Move outside the current-slide preview to hide the dot. Press `Ctrl+L` again to disable it. Mouse, pen, and touch pointer events are supported. The laser pointer is never included in PDF or print output.
 
+## Full screen
+
+Select **Full screen** in presenter view's controls to fill the whole screen with it, taskbar and all, as PowerPoint's presenter view does. Select it again, now **Exit full screen**, to bring the window back. The button appears only where the browser lets a page go full screen, which an iPhone does not.
+
 ## Rehearsal and small screens
 
 Presenter view works without an audience window, which makes it useful for rehearsal. Below 900 pixels wide, the interface changes to a vertical layout containing the current slide, next slide, notes, and controls.

@@ -944,6 +944,9 @@ function createPresenterView(
       ${localRemoteAvailable
         ? `<button type="button" data-action="${pairedRemote ? "remote-here" : "remote-pair"}">${pairedRemote ? "Simple remote" : "Phone remote"}</button>`
         : ""}
+      ${document.fullscreenEnabled
+        ? '<button type="button" data-action="presenter-fullscreen" aria-pressed="false" title="Fill the whole screen with presenter view">Full screen</button>'
+        : ""}
       ${besideShow
         ? '<button type="button" data-action="end-show" title="End the slide show (Esc)">End show</button>'
         : '<button type="button" data-action="audience">Open audience view</button>'}
@@ -2442,6 +2445,8 @@ function createPlacer(
 }
 
 let activeMountController: AbortController | undefined;
+/** Whether this presenter window has been fitted to its screen, which happens once, not on each reload of the slides. */
+let presenterFitted = false;
 
 export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLElement): void {
   activeMountController?.abort();
@@ -2994,6 +2999,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (button?.dataset.action === "presenter") openMode("presenter");
     if (button?.dataset.action === "audience") openMode("audience");
     if (button?.dataset.action === "end-show") postSyncMessage({ type: "end-show" });
+    if (button?.dataset.action === "presenter-fullscreen") {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      else void document.documentElement.requestFullscreen().catch(() => undefined);
+    }
     if (button?.dataset.action === "remote-pair") void openRemotePairing();
     if (button?.dataset.action === "remote-here") switchMode("remote");
     if (button?.dataset.action === "edit-toggle") updateLayoutEditing(!layoutEditing);
@@ -3007,6 +3016,29 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     const action = (event.target as HTMLElement).closest<HTMLButtonElement>("button")?.dataset.action;
     if (action === "presenter-here") switchMode("presenter");
   });
+
+  const fullscreenToggle = presenter?.controls.querySelector<HTMLButtonElement>("[data-action='presenter-fullscreen']");
+  if (fullscreenToggle) {
+    document.addEventListener("fullscreenchange", () => {
+      const full = Boolean(document.fullscreenElement);
+      fullscreenToggle.textContent = full ? "Exit full screen" : "Full screen";
+      fullscreenToggle.setAttribute("aria-pressed", String(full));
+    }, { signal });
+  }
+
+  // Presenter view that FrameSeq Studio's show opened beside it, on another screen, fills that
+  // screen's usable area as a maximised window does: the show could size the window only by its
+  // contents, which leaves the window's frame over the edges.
+  if (besideShow && window.opener && !presenterFitted) {
+    presenterFitted = true;
+    const area = screen as Screen & { availLeft?: number; availTop?: number };
+    try {
+      moveTo(area.availLeft ?? 0, area.availTop ?? 0);
+      resizeTo(screen.availWidth, screen.availHeight);
+    } catch {
+      // A window the page may not move stays as it opened.
+    }
+  }
 
   presenter?.pageSelect.addEventListener("change", () => {
     goTo(Number(presenter.pageSelect.value));
