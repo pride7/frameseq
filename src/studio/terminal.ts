@@ -5,11 +5,14 @@ import { t } from "./i18n";
 type State = "idle" | "connecting" | "open" | "exited" | "closed";
 
 type ServerMessage =
-  | { type: "ready"; id: string; shell: string; replay: string; pty?: { backend: "conpty"; buildNumber: number } }
+  | { type: "ready"; id: string; shell: string; replay: string; cols: number; rows: number; pty?: PtyKind }
   | { type: "output"; data: string }
   | { type: "exit"; code: number }
   | { type: "gone" }
   | { type: "error"; message: string };
+
+type PtyKind = { backend: "conpty"; buildNumber: number };
+type Size = { cols: number; rows: number };
 
 export interface TerminalOptions {
   token: string;
@@ -84,6 +87,11 @@ export class StudioTerminal {
   private id: string | undefined;
   private state: State = "idle";
   private pending = "";
+  /** The size the pending output was printed at, when it is a shell's replay. */
+  private pendingSize?: Size;
+  /** True while a replay is drawn at its own size, which the panel's size must not interrupt. */
+  private replaying = false;
+  private pty?: PtyKind;
   private unacknowledged = 0;
   private dark: boolean;
 
@@ -179,10 +187,14 @@ export class StudioTerminal {
       term.open(this.host);
       this.term = term;
       this.fit = fit;
+      if (this.pty) term.options.windowsPty = this.pty;
       new ResizeObserver(() => this.resize()).observe(this.host);
       if (this.pending) {
-        term.write(this.pending);
+        const [text, size] = [this.pending, this.pendingSize];
         this.pending = "";
+        this.pendingSize = undefined;
+        if (size) this.replay(text, size);
+        else term.write(text);
       }
       if (!this.options.available) this.notice(t.terminal.remote);
     })();
@@ -220,9 +232,26 @@ export class StudioTerminal {
   }
 
   private resize(): void {
-    if (!this.fit || this.host.offsetWidth === 0 || this.host.offsetHeight === 0) return;
+    if (!this.fit || this.replaying || this.host.offsetWidth === 0 || this.host.offsetHeight === 0) return;
     requestAnimationFrame(() => {
-      if (this.host.offsetWidth > 0) this.fit?.fit();
+      if (this.host.offsetWidth > 0 && !this.replaying) this.fit?.fit();
+    });
+  }
+
+  /**
+   * Draw a shell's recent output at the size it was printed at, since its cursor movements, which
+   * PowerShell and ConPTY use throughout, assume that size; then fit the terminal to the panel.
+   */
+  private replay(text: string, size: Size): void {
+    const term = this.term;
+    if (!term) return;
+    term.reset();
+    this.replaying = true;
+    term.resize(size.cols, size.rows);
+    term.write(text, () => {
+      this.replaying = false;
+      this.resize();
+      this.send({ type: "resize", cols: term.cols, rows: term.rows });
     });
   }
 
@@ -265,13 +294,17 @@ export class StudioTerminal {
         this.state = "open";
         this.unacknowledged = 0;
         storeSession(this.options.entry, message.id);
+        this.pty = message.pty;
         if (this.term && message.pty) this.term.options.windowsPty = message.pty;
-        if (message.replay) {
-          // The shell's recent output stands in for whatever this page showed of it before.
-          this.term?.reset();
-          this.write(message.replay, false);
+        // The shell's recent output stands in for whatever this page showed of it before.
+        if (message.replay && this.term) {
+          this.replay(message.replay, message);
+        } else if (message.replay) {
+          this.pending = message.replay;
+          this.pendingSize = { cols: message.cols, rows: message.rows };
+        } else if (this.term) {
+          this.send({ type: "resize", cols: this.term.cols, rows: this.term.rows });
         }
-        if (this.term) this.send({ type: "resize", cols: this.term.cols, rows: this.term.rows });
         break;
       case "output":
         this.write(message.data, true);

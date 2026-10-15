@@ -124,7 +124,16 @@ class TerminalSession {
     clearTimeout(this.timer);
     this.unseen = 0;
     this.resume();
-    send(socket, { type: "ready", id: this.id, shell: basename(this.shell.file), replay: this.replay, pty: ptyKind });
+    // The replay's cursor movements assume the size the shell has now, which the page draws it at.
+    send(socket, {
+      type: "ready",
+      id: this.id,
+      shell: basename(this.shell.file),
+      replay: this.replay,
+      cols: this.process.cols,
+      rows: this.process.rows,
+      pty: ptyKind,
+    });
     socket.on("message", (raw) => this.receive(raw));
     socket.on("close", () => {
       if (this.socket !== socket) return;
