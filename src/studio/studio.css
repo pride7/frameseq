@@ -1653,6 +1653,12 @@ textarea.studio-text-input {
   min-height: 28px;
   max-height: 140px;
   field-sizing: content;
+  resize: vertical;
+}
+
+/* A box dragged by its corner keeps the height it was given, however tall. */
+textarea.studio-text-input[style*="height"] {
+  max-height: none;
 }
 
 .studio-text-input.is-code {

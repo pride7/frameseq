@@ -83,7 +83,7 @@ Below the slides, **Current slide** lists the objects on the slide the preview s
 
 Select an object, by clicking its row, clicking it in the preview, or putting the editor's cursor in its command, and its settings open below its row, as a drawing program's format pane does; click the row again to fold them away, and once more to open them:
 
-- **Content**: the words of a text object, the items of a list, the Typst, LaTeX, or TeX source of a formula, an image's file, a shape's kind and label. Source written over lines in a template is shown without the indent it has in the code, which it keeps when written back. Edit it and press `Enter`, or leave the box; text that runs over lines takes `Enter` as a line break and `Ctrl+Enter` to finish.
+- **Content**: the words of a text object, the items of a list, the Typst, LaTeX, or TeX source of a formula, an image's file, a shape's kind and label. Source written over lines in a template is shown without the indent it has in the code, which it keeps when written back. A long formula or text wraps in its box, and the box can be dragged taller by its corner. Edit it and press `Enter`, or leave the box; text that runs over lines takes `Enter` as a line break and `Ctrl+Enter` to finish.
 - **Text**: the style (body text, heading, lead, caption, quote, and the others), font size, bold, colour, and alignment.
 - **Appearance**: background, fill, outline, corners, and opacity; a shape's colour scheme is one click on a colour.
 - **Size** and **Position**: width and height, and on a canvas X and Y.

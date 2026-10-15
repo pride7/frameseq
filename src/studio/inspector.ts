@@ -153,7 +153,7 @@ function textLabel(type: string, argument: number): string | undefined {
   }
 }
 
-const multiline = new Set(["text", "lead", "caption", "quote", "code", "latex", "typst"]);
+const multiline = new Set(["text", "lead", "caption", "quote", "code", "math", "equation", "latex", "typst"]);
 const monospace = new Set(["code", "math", "equation", "latex", "typst", "latexFile", "typstFile", "image", "icon", "qr"]);
 
 /**
@@ -182,6 +182,8 @@ export class SlideInspector {
   private folded = false;
   /** An object just inserted, whose words take the focus once the panel shows it. */
   private contentFocus: { position: number; until: number } | undefined;
+  /** Text boxes the reader dragged to another height, kept across the redraw. */
+  private readonly heights = new Map<string, string>();
 
   constructor(private readonly body: HTMLElement, private readonly events: InspectorEvents) {
     this.body.addEventListener("keydown", (event) => this.navigate(event));
@@ -284,6 +286,9 @@ export class SlideInspector {
       return;
     }
     this.deferred = false;
+    for (const area of this.body.querySelectorAll<HTMLTextAreaElement>("textarea[data-key]")) {
+      if (area.style.height) this.heights.set(area.dataset.key as string, area.style.height);
+    }
     let selectAll = false;
     if (this.contentFocus) {
       const inserted = this.selectedObject();
@@ -695,9 +700,13 @@ export class SlideInspector {
     if (monospace.has(object.type)) input.classList.add("is-code");
     input.spellcheck = !monospace.has(object.type);
     input.dataset.key = `${key}:text:${text.argument}`;
+    const height = this.heights.get(input.dataset.key);
+    if (height && input instanceof HTMLTextAreaElement) input.style.height = height;
     input.setAttribute("aria-label", label);
     // Text that runs over lines, or a template, takes Enter as a line break; Ctrl+Enter writes it.
-    const breaks = (): boolean => template || input.value.includes("\n");
+    // A formula is one expression, written as a template too, and Enter still writes it.
+    const formula = object.type === "math" || object.type === "equation";
+    const breaks = (): boolean => (template && !formula) || input.value.includes("\n");
     this.editable(input, shown, (value) => (
       this.setText(object, text, template ? reframe(unframe(String(text.value)), value) : value)
     ), {
