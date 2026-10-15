@@ -1767,7 +1767,8 @@ async function start(): Promise<void> {
 
   /**
    * Write lines after the line holding `after`, as one undoable step, with the cursor on the
-   * first that writes something rather than a comment. Returns where the cursor went.
+   * first that writes something rather than a comment, and have Current slide list what they
+   * wrote at once rather than after a pause. Returns where the cursor went.
    */
   function writeLines(after: number, lines: string[], userEvent: string): number {
     const line = view.state.doc.lineAt(after);
@@ -1781,6 +1782,7 @@ async function start(): Promise<void> {
       scrollIntoView: true,
       userEvent,
     });
+    void inspect();
     return at;
   }
 

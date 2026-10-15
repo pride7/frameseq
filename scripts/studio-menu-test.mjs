@@ -317,9 +317,11 @@ try {
   await settled(
     (text) => text.includes('text("Hello");\ncircle("Dot").position({ x: 224, y: 224 }).width(80).height(80).as("dot2");\ntext("World");'),
     "the dot to be pasted after the text on the first slide",
+    { selector: "[data-frameseq-name='dot2']" },
   );
 
   // ── Current slide ────────────────────────────────────────────────────────────────────────
+  await page.waitForFunction(() => [...document.querySelectorAll(".studio-tree-row[role='treeitem']")].some((item) => item.textContent.includes("#dot2")));
   const row = await page.waitForFunction(() => [...document.querySelectorAll(".studio-tree-row[role='treeitem']")].find((item) => item.textContent.includes("World")));
   await row.evaluate((item) => item.scrollIntoView({ block: "center" }));
   const rowBox = await row.boundingBox();

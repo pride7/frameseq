@@ -1413,6 +1413,9 @@ function enableSourceReveal(
       ));
     }
     if (!match) return;
+    // The editor has moved on to another object, so the selection here does not come back to
+    // claim it when the slide is next redrawn.
+    if (selected.size > 0 && !selected.has(match)) clearSelection();
     focused = match;
     focused.classList.add("is-frameseq-source-focus");
     focused.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -1761,7 +1764,9 @@ function enableSourceReveal(
     }
     selectionSlideIndex = stored.slideIndex;
     notifySelection();
-    focusCanvas();
+    // The keys go back to the canvas they were pressed on, but a redraw that lands while the
+    // person has moved on, such as to the code around an embedded preview, leaves them there.
+    if (document.hasFocus()) focusCanvas();
   }, 0);
 }
 
