@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,6 +93,21 @@ const card = await stat(resolve(galleryOutput, "images", "studio-card.jpg"));
 assert.ok(card.size > 20_000, "The link-preview card is too small to be a picture of the Studio");
 assert.match(landing, /<meta property="og:image" content="https:\/\/pride7\.github\.io\/frameseq\/images\/studio-card\.jpg"/);
 
+// Every page asks for its stylesheet by content, so a browser holding the previous release's
+// stylesheet fetches the new one instead of styling new markup with old rules.
+const fingerprint = (text) => createHash("sha256").update(text).digest("hex").slice(0, 10);
+const galleryStyles = await readFile(resolve(galleryOutput, "styles.css"), "utf8");
+assert.ok(
+  landing.includes(`href="./styles.css?v=${fingerprint(galleryStyles)}"`),
+  "The landing page should ask for its stylesheet by content",
+);
+const docsStyles = await readFile(resolve(docsOutput, "styles.css"), "utf8");
+assert.ok(
+  docsSources.get("index.html").includes(`href="./styles.css?v=${fingerprint(docsStyles)}"`),
+  "The documentation should ask for its stylesheet by content",
+);
+assert.ok(chineseHome.includes(`href="../styles.css?v=${fingerprint(docsStyles)}"`));
+
 // The landing page calls them slides throughout.
 assert.doesNotMatch(landing, /\bdecks?\b/i, "The landing page should say slides, not deck");
 
@@ -162,10 +178,18 @@ try {
     await page.$eval(".ai-example-preview iframe", (frame) => frame.getAttribute("src")),
     "./examples/ai-research/#2",
   );
-  const studio = await page.$eval(".studio-window img", async (image) => {
+  const studio = await page.$eval(".studio-window picture img", async (image) => {
     await image.decode();
-    return { width: image.naturalWidth, height: image.naturalHeight, shown: image.getBoundingClientRect().width };
+    return {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      shown: image.getBoundingClientRect().width,
+      source: image.currentSrc,
+      closeUp: getComputedStyle(document.querySelector(".studio-phone-preview")).display,
+    };
   });
+  assert.match(studio.source, /\/images\/studio\.webp$/, "A desktop should show the whole Studio window");
+  assert.equal(studio.closeUp, "none", "A desktop needs no close-up of the preview");
   assert.ok(studio.width >= 2400 && studio.height >= 1400, `The Studio picture should be sharp, found ${studio.width}x${studio.height}`);
   assert.ok(studio.shown > 1000, "The Studio picture should span the page on a desktop");
   assert.equal(await page.$$eval("#studio .studio-feature", (cards) => cards.length), 6);
@@ -200,6 +224,31 @@ try {
   assert.ok(mobile.overflow <= 0);
   assert.ok(!mobile.columns.includes(" "));
   assert.ok(await formulaFits(page), "The formula should fit its card on a phone without a scroll bar");
+
+  // The whole Studio window is unreadable at phone width, so a phone shows two close-ups.
+  const phoneStudio = await page.evaluate(async () => {
+    const window = document.querySelector(".studio-window picture img");
+    const closeUp = document.querySelector(".studio-phone-preview");
+    closeUp.scrollIntoView();
+    await window.decode();
+    await closeUp.decode();
+    return {
+      source: window.currentSrc,
+      width: window.naturalWidth,
+      closeUp: closeUp.naturalWidth,
+      shown: closeUp.getBoundingClientRect().width,
+    };
+  });
+  assert.match(phoneStudio.source, /\/images\/studio-phone-source\.webp$/, "A phone should show the inspector beside the code");
+  assert.equal(phoneStudio.width, 1200);
+  assert.equal(phoneStudio.closeUp, 1280);
+  assert.ok(phoneStudio.shown > 300, "A phone should show the preview close-up across the page");
+
+  // Code on a phone wraps between words or fits; it is never cut off at the card's edge.
+  const clippedCode = await page.$$eval("pre", (blocks) => blocks
+    .filter((block) => block.scrollWidth > block.clientWidth + 1)
+    .map((block) => block.textContent.trim().split(/\r?\n/)[0]));
+  assert.deepEqual(clippedCode, [], "Code blocks should fit a phone");
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto(new URL("docs/function-guide.html", url), { waitUntil: "networkidle0" });

@@ -64,14 +64,25 @@
       </section>
 
       <figure class="studio-window" aria-labelledby="studio-shot-caption">
-        <a href="./images/studio.webp" aria-label="Open the full-size picture of FrameSeq Studio"><img
-          src="./images/studio.webp"
-          width="3360"
-          height="2000"
-          alt="FrameSeq Studio editing a lecture on shortest paths: slide thumbnails and the Current slide inspector on the left, the TypeScript source in the middle, and the live preview of a graph on the right."
-        /></a>
+        <a href="./images/studio.webp" aria-label="Open the full-size picture of FrameSeq Studio"><picture>
+          <source media="(max-width: 720px)" srcset="./images/studio-phone-source.webp" width="1200" height="860" />
+          <img
+            src="./images/studio.webp"
+            width="3360"
+            height="2000"
+            alt="FrameSeq Studio editing a lecture on shortest paths: slide thumbnails and the Current slide inspector on the left, the TypeScript source in the middle, and the live preview of a graph on the right."
+          />
+        </picture></a>
+        <img
+          class="studio-phone-preview"
+          src="./images/studio-phone-preview.webp"
+          width="1280"
+          height="760"
+          loading="lazy"
+          alt="The live preview of the graph, with node A outlined."
+        />
         <figcaption id="studio-shot-caption">
-          FrameSeq Studio, captured on every build: the slides and the current slide's objects, the source, and the live preview.
+          FrameSeq Studio, captured on every build: the current slide's objects beside the code that states them, and the live preview.
         </figcaption>
       </figure>
 
@@ -262,8 +273,7 @@ npm run pptx`</span>);</code></pre>
 <span class="check-error">ERROR</span> Slide 4 "Architecture" [text-clipped]
   Text is clipped by 38px on the bottom.
   Object: text 3.1.2 "FrameSeq owns presentation…"
-  Suggestion: Increase the text box size, reduce the
-  font size, or shorten the content.</code></pre>
+  Suggestion: Increase the text box size, reduce the font size, or shorten the content.</code></pre>
             <div class="ai-links">
               <a class="ai-guide-link" href="./docs/ai-generation.html">Read the AI generation guide <span aria-hidden="true">→</span></a>
               <a class="ai-guide-link" href="./docs/layout-checks.html">See every layout check <span aria-hidden="true">→</span></a>
@@ -329,9 +339,10 @@ npm run pptx`</span>);</code></pre>
             <p class="card-kicker">Web-native styling</p>
             <h3>Tailwind is an escape hatch, not a requirement.</h3>
             <p>Familiar with frontend work? Pass Tailwind utilities directly to any object. Arbitrary values work without a separate setup.</p>
-            <pre class="capability-code"><code><span class="syntax-call">text</span>(<span class="syntax-string">"Signal"</span>)
-  .<span class="syntax-method">style</span>(<span class="syntax-string">"text-4xl font-bold
-          tracking-tight text-blue-600"</span>);</code></pre>
+            <pre class="capability-code"><code><span class="syntax-call">text</span>(<span class="syntax-string">"Signal"</span>).<span class="syntax-method">style</span>(<span class="syntax-string">`
+  text-4xl font-bold
+  tracking-tight text-blue-600
+`</span>);</code></pre>
           </article>
 
           <article class="capability-card presenter-card">

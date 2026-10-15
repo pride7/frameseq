@@ -4,6 +4,7 @@ import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promi
 import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import katex from "katex";
 import { marked } from "marked";
 import puppeteer from "puppeteer";
@@ -16,6 +17,16 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(packageRoot, "dist");
 const galleryOutput = resolve(distRoot, "gallery");
 const cli = resolve(packageRoot, "scripts", "frameseq.mjs");
+
+/**
+ * GitHub Pages lets a browser keep a stylesheet for ten minutes, so a page published with new
+ * markup could arrive styled by the previous release. Each page asks for its stylesheet by the
+ * stylesheet's content, so a changed one is fetched afresh.
+ */
+const fingerprint = (text) => createHash("sha256").update(text).digest("hex").slice(0, 10);
+const galleryStyles = await readFile(resolve(packageRoot, "gallery", "styles.css"), "utf8");
+const docsStyles = await readFile(resolve(packageRoot, "gallery", "docs.css"), "utf8");
+const katexStyles = await readFile(resolve(packageRoot, "node_modules", "katex", "dist", "katex.min.css"), "utf8");
 const examples = [
   { slug: "midnight", entry: resolve(packageRoot, "slides.ts") },
   { slug: "language", entry: resolve(packageRoot, "gallery", "slides", "language.slides.ts") },
@@ -131,7 +142,7 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
     <meta name="theme-color" content="#f5f2ea" />
     <meta name="description" content="${escapeHtml(label)} — FrameSeq documentation." />
     <link rel="icon" href="${locale === "en" ? ".." : "../.."}/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="${locale === "en" ? "." : ".."}/styles.css" />
+    <link rel="stylesheet" href="${locale === "en" ? "." : ".."}/styles.css?v=${fingerprint(docsStyles)}" />
     <title>${escapeHtml(label)} — FrameSeq docs</title>
   </head>
   <body>
@@ -282,10 +293,13 @@ for (const font of (await readdir(resolve(katexDist, "fonts"))).filter((file) =>
 
 await Promise.all([
   readFile(resolve(packageRoot, "gallery", "index.html"), "utf8")
-    .then((html) => writeFile(resolve(galleryOutput, "index.html"), typesetLandingPage(html), "utf8")),
-  copyFile(resolve(katexDist, "katex.min.css"), resolve(galleryOutput, "katex", "katex.min.css")),
-  copyFile(resolve(packageRoot, "gallery", "styles.css"), resolve(galleryOutput, "styles.css")),
-  copyFile(resolve(packageRoot, "gallery", "docs.css"), resolve(galleryOutput, "docs", "styles.css")),
+    .then((html) => typesetLandingPage(html)
+      .replace('href="./styles.css"', `href="./styles.css?v=${fingerprint(galleryStyles)}"`)
+      .replace('href="./katex/katex.min.css"', `href="./katex/katex.min.css?v=${fingerprint(katexStyles)}"`))
+    .then((html) => writeFile(resolve(galleryOutput, "index.html"), html, "utf8")),
+  writeFile(resolve(galleryOutput, "katex", "katex.min.css"), katexStyles, "utf8"),
+  writeFile(resolve(galleryOutput, "styles.css"), galleryStyles, "utf8"),
+  writeFile(resolve(galleryOutput, "docs", "styles.css"), docsStyles, "utf8"),
   copyFile(resolve(packageRoot, "public", "favicon.svg"), resolve(galleryOutput, "favicon.svg")),
   copyFile(resolve(packageRoot, "llms.txt"), resolve(galleryOutput, "llms.txt")),
   writeFile(resolve(galleryOutput, ".nojekyll"), "", "utf8"),

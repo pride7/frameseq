@@ -127,6 +127,26 @@ export async function captureStudio(imagesDirectory) {
       quality: 86,
       clip: { x: 0, y: 0, width, height: Math.round(width * 630 / 1200), scale: 1200 / (width * 2) },
     });
+
+    // A phone shows the whole window too small to read, so it gets two close-ups of the same
+    // moment instead, each a fixed size so the page can reserve its space: the inspector beside
+    // the code it edits, and the preview with the node outlined.
+    const inspector = await page.$eval(".studio-inspector", (element) => element.getBoundingClientRect().toJSON());
+    await page.screenshot({
+      path: resolve(imagesDirectory, "studio-phone-source.webp"),
+      type: "webp",
+      quality: 90,
+      clip: { x: 0, y: Math.round(inspector.top), width: 600, height: 430 },
+    });
+    const frame = await page.$eval(".studio-preview-body iframe", (element) => element.getBoundingClientRect().toJSON());
+    const slide = await preview.$eval(".frameseq-slide-frame.is-active", (element) => element.getBoundingClientRect().toJSON());
+    const centre = { x: frame.left + slide.left + slide.width / 2, y: frame.top + slide.top + slide.height / 2 };
+    await page.screenshot({
+      path: resolve(imagesDirectory, "studio-phone-preview.webp"),
+      type: "webp",
+      quality: 90,
+      clip: { x: Math.round(centre.x - 320), y: Math.round(centre.y - 190), width: 640, height: 380 },
+    });
     console.log("Captured the Studio for the landing page");
   } finally {
     await browser.close();

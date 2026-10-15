@@ -1052,7 +1052,7 @@ h1 {
   box-shadow: 10px 10px 0 rgb(70 26 14 / 0.18);
   font-size: 11px;
   line-height: 1.7;
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .check-prompt {
@@ -1481,6 +1481,16 @@ footer > div a {
 
 .studio-window {
   margin: 0 0 96px;
+}
+
+.studio-window a,
+.studio-window picture {
+  display: block;
+}
+
+/* A phone shows two close-ups in place of the whole window; this is the second. */
+.studio-window .studio-phone-preview {
+  display: none;
 }
 
 .studio-window img {
@@ -1933,6 +1943,11 @@ kbd {
     box-shadow: 8px 10px 0 #d7dfd6;
   }
 
+  .studio-window .studio-phone-preview {
+    display: block;
+    margin-top: 18px;
+  }
+
   .studio-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1960,6 +1975,7 @@ kbd {
   }
 
   .section-heading {
+    gap: 18px;
     align-items: flex-start;
     flex-direction: column;
     margin-bottom: 32px;
