@@ -1659,6 +1659,11 @@ textarea.studio-text-input {
   font: 11.5px/1.5 var(--studio-mono);
 }
 
+/* Typst, LaTeX, and TeX source carry the formula family's tint, as their rows do. */
+.studio-object-card[data-category="formula"] .studio-text-input.is-code {
+  border-left: 3px solid var(--syntax-keyword);
+}
+
 .studio-text-input:hover,
 .studio-prop:hover,
 .studio-select:hover:not(:disabled) {

@@ -315,6 +315,12 @@ try {
     async () => (await read()).includes('.width(260).height(101).fill("#0ea5e9");\r\n'),
     "the inspector to add a fill",
   );
+  // Clicking the selected object's row again folds its settings, and once more opens them.
+  const cardShown = () => page.evaluate(() => Boolean(document.querySelector(".studio-object-card")));
+  for (const shown of [false, true]) {
+    await page.click(".studio-tree-row.is-highlighted[data-kind='rect']");
+    await waitFor(async () => (await cardShown()) === shown, shown ? "the settings to open again" : "the settings to fold");
+  }
   await waitFor(
     () => preview.evaluate(() => document.querySelector(".frameseq-slide-frame.is-active [data-frameseq-move='true']")?.style.width === "260px").catch(() => false),
     "the preview to draw the new width",

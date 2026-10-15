@@ -19,12 +19,14 @@ import {
   methodOf,
   planFor,
   quoteFor,
+  reframe,
   removeCalls,
   replaceLiteral,
   shiftSlide,
   stringLiteral,
   takesRole,
   textRoles,
+  unframe,
   type FieldSpec,
   type SectionId,
   type SourcePlan,
@@ -130,8 +132,10 @@ function textLabel(type: string, argument: number): string | undefined {
     case "text": case "lead": case "caption": case "quote": return first(names.text);
     case "code": return first(names.code);
     case "math": case "equation": return first(names.formula);
-    case "latex": case "typst": return first(names.source);
-    case "latexFile": case "typstFile": return first(names.file);
+    case "latex": return first(names.source("LaTeX"));
+    case "typst": return first(names.source("Typst"));
+    case "latexFile": return first(names.file("LaTeX"));
+    case "typstFile": return first(names.file("Typst"));
     case "image": return argument === 0 ? names.image : (argument === 1 ? names.imageAlt : undefined);
     case "icon": return first(names.icon);
     case "qr": return first(names.qr);
@@ -168,6 +172,8 @@ export class SlideInspector {
   /** A drag on a setting's name is changing it; the redraw waits for the drag to end. */
   private scrubbing = false;
   private deferred = false;
+  /** The selected object's settings were folded by clicking its row again. */
+  private folded = false;
 
   constructor(private readonly body: HTMLElement, private readonly events: InspectorEvents) {
     this.body.addEventListener("keydown", (event) => this.navigate(event));
@@ -186,6 +192,7 @@ export class SlideInspector {
     const key = object ? this.objectKey(object) : undefined;
     if (key === this.highlighted) return;
     this.highlighted = key;
+    this.folded = false;
     this.revealed.clear();
     if (object && this.slide) {
       this.closed.delete(`region:${object.region || "main"}`);
@@ -391,10 +398,19 @@ export class SlideInspector {
       expandable: children.length > 0,
       open,
       onToggle: () => this.toggle(key, true),
-      onSelect: () => this.events.selectObject(object),
+      // Clicking the selected object again folds its settings away, and once more opens them.
+      onSelect: () => {
+        if (!selected) {
+          this.events.selectObject(object);
+          return;
+        }
+        this.folded = !this.folded;
+        this.focusNext = key;
+        this.render();
+      },
       highlighted: selected,
     }));
-    if (selected) rows.push(this.card(object, depth));
+    if (selected && !this.folded) rows.push(this.card(object, depth));
     if (!open) return;
     for (const child of children) this.objectRows(child, depth + 1, rows);
   }
@@ -616,14 +632,20 @@ export class SlideInspector {
   }
 
   private textField(object: InspectObject, key: string, text: InspectText, label: string): HTMLElement {
-    const input = this.textBox(String(text.value), multiline.has(object.type) && text.argument === 0);
+    // A template written over lines, as latex`...` and typst`...` usually are, is shown without
+    // the line break after its backtick and the indent its lines share, which go back on writing.
+    const template = text.raw === true || text.expected.startsWith("`");
+    const shown = (): string => (template ? unframe(String(text.value)).body : String(text.value));
+    const input = this.textBox(shown(), multiline.has(object.type) && text.argument === 0);
     if (monospace.has(object.type)) input.classList.add("is-code");
     input.spellcheck = !monospace.has(object.type);
     input.dataset.key = `${key}:text:${text.argument}`;
     input.setAttribute("aria-label", label);
     // Text that runs over lines, or a template, takes Enter as a line break; Ctrl+Enter writes it.
-    const breaks = (): boolean => text.raw === true || text.expected.startsWith("`") || input.value.includes("\n");
-    this.editable(input, () => String(text.value), (value) => this.setText(object, text, value), {
+    const breaks = (): boolean => template || input.value.includes("\n");
+    this.editable(input, shown, (value) => (
+      this.setText(object, text, template ? reframe(unframe(String(text.value)), value) : value)
+    ), {
       enter: (event) => !(input instanceof HTMLTextAreaElement) || event.ctrlKey || event.metaKey || (!event.shiftKey && !breaks()),
     });
     const field = element("label", "studio-card-text");

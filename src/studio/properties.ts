@@ -217,7 +217,50 @@ export function stringLiteral(value: string, quote: string, raw = false): string
   return JSON.stringify(value);
 }
 
-const cssLength = /^-?(?:\d+\.?\d*|\.\d+)(?:px|%|em|rem|vw|vh|pt|mm|cm|in|fr|ch)$/;
+/** How a template written over lines sits in the code around what it says. */
+export interface TemplateFrame {
+  /** The line break after the opening backtick, with any spaces before it. */
+  lead: string;
+  /** The indent every line of the text shares. */
+  indent: string;
+  /** The line break before the closing backtick, with the indent of that line. */
+  tail: string;
+  /** The text itself, without the frame. */
+  body: string;
+}
+
+/**
+ * Take a template's text out of the line breaks and indent that place it in the code, so
+ * latex`\n  \begin{tabular}…\n` reads as `\begin{tabular}…`. A one-line text has no frame.
+ */
+export function unframe(text: string): TemplateFrame {
+  const lead = /^[ \t]*\n/.exec(text)?.[0] ?? "";
+  const rest = text.slice(lead.length);
+  const tail = lead ? (/\n[ \t]*$/.exec(rest)?.[0] ?? "") : "";
+  const lines = rest.slice(0, rest.length - tail.length).split("\n");
+  let indent: string | undefined;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const own = /^[ \t]*/.exec(line)?.[0] ?? "";
+    if (indent === undefined) indent = own;
+    while (!own.startsWith(indent)) indent = indent.slice(0, -1);
+  }
+  const shared = lead ? (indent ?? "") : "";
+  return {
+    lead,
+    indent: shared,
+    tail,
+    body: lines.map((line) => (line.startsWith(shared) ? line.slice(shared.length) : line.trimStart())).join("\n"),
+  };
+}
+
+/** Put edited text back in the frame it was taken from. */
+export function reframe(frame: TemplateFrame, body: string): string {
+  const lines = body.split("\n").map((line) => (line ? `${frame.indent}${line}` : line));
+  return `${frame.lead}${lines.join("\n")}${frame.tail}`;
+}
+
+const cssLength =/^-?(?:\d+\.?\d*|\.\d+)(?:px|%|em|rem|vw|vh|pt|mm|cm|in|fr|ch)$/;
 const plainNumber = /^-?(?:\d+\.?\d*|\.\d+)$/;
 
 /**
