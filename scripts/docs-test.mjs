@@ -194,7 +194,7 @@ for (const file of [guidePath, docsIndexPath]) {
 
 // The recipes page claims every snippet comes from a deck that the layout checker
 // accepts, so each one must actually appear in that deck.
-const recipes = await readFile(resolve(packageRoot, "docs", "recipes.md"), "utf8");
+const recipes = lf(await readFile(resolve(packageRoot, "docs", "recipes.md"), "utf8"));
 const deck = await readFile(
   resolve(packageRoot, "gallery", "slides", "recipes.slides.ts"),
   "utf8",
@@ -222,7 +222,7 @@ for (const block of recipeBlocks) {
 }
 
 // Code is not translated, so the Chinese recipes must quote the same deck.
-const chineseRecipes = await readFile(resolve(packageRoot, "docs", "zh", "recipes.md"), "utf8");
+const chineseRecipes = lf(await readFile(resolve(packageRoot, "docs", "zh", "recipes.md"), "utf8"));
 const chineseBlocks = [...chineseRecipes.matchAll(/```ts\n([\s\S]*?)```/g)].map((m) => m[1]);
 assert.equal(chineseBlocks.length, recipeBlocks.length);
 for (const block of chineseBlocks) {
