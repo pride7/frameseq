@@ -632,6 +632,31 @@ export default defineConfig({
           });
         }
 
+        // Vite watches files with chokidar, which reports one change of a file in any 50 ms and
+        // drops the rest, with no event once they stop. Written twice in quick succession, as when
+        // the Studio keeps its own version just after another program wrote the file, the slide
+        // document would go on being served as the first write: the preview and the slide rail
+        // would show it, and the Studio would take it for what is on disk. So the document is read
+        // when a change is reported and again once that window has passed, and a change chokidar
+        // swallowed in between is reported after all.
+        let recheck: ReturnType<typeof setTimeout> | undefined;
+        let closed = false;
+        const readEntry = () => readFile(entry, "utf8").catch(() => undefined);
+        server.watcher.on("change", (file: string) => {
+          if (pathKey(file) !== entryPathKey) return;
+          const reported = readEntry();
+          clearTimeout(recheck);
+          recheck = setTimeout(() => {
+            void Promise.all([reported, readEntry()]).then(([before, now]) => {
+              if (!closed && now !== undefined && now !== before) server.watcher.emit("change", entry);
+            });
+          }, 100);
+        });
+        server.httpServer?.once("close", () => {
+          closed = true;
+          clearTimeout(recheck);
+        });
+
         server.middlewares.use("/__frameseq/source-info", (request, response, next) => {
           if (request.method !== "GET") {
             next();
