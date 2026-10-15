@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:807d1b22bb4b054b -->
+<!-- translation-of: docs/cli.md sha256:b435581246a421fd -->
 
 # CLI 参考
 
@@ -7,7 +7,7 @@ npm 包会安装 `frameseq` 可执行文件,不需要 Node.js 的 [FrameSeq 应�
 ## 新建幻灯片文件
 
 ```bash
-frameseq new [file]
+frameseq new [file] [--template name]
 ```
 
 不给文件名时,FrameSeq 在当前目录创建 `slides.ts`。
@@ -17,6 +17,25 @@ frameseq new quarterly.slides.ts
 ```
 
 这条命令**拒绝覆盖已存在的文件**。
+
+不加 `--template` 时，文件里是一页封面和第一页内容。模板让你从更完整的起点开始，带着这类演示通常需要的那些页面：
+
+```bash
+frameseq new poster.slides.ts --template poster
+```
+
+| 模板 | 起始内容 |
+| --- | --- |
+| `blank` | 白色页面上的一张封面和第一页。 |
+| `midnight` | 深色的产品和技术分享：问题、设计、结果。 |
+| `paper` | 温暖的衬线字体，适合讲故事或随笔。 |
+| `minimal-academic` | 学术报告：研究动机、方法、结果、结论。 |
+| `beamer-default` | 朴素的 Beamer 风格讲义，含公式和表格。 |
+| `beamer-madrid` | 同样的讲义，带蓝色标题栏和页脚。 |
+| `beamer-cambridge-us` | 同样的讲义，酒红与米色。 |
+| `poster` | 三栏的 A0 学术会议海报。 |
+
+每个模板都以它使用的[主题](themes.md)命名，原样就能通过 `frameseq check --strict`。名字写错时，命令会列出所有模板。[FrameSeq Studio](studio.md) 新建演示时提供同样的模板，并显示它们的封面。命令行写出的占位文字是英文的；Studio 用中文显示时，占位文字是中文。
 
 ## 启动开发服务器
 

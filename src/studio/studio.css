@@ -2249,6 +2249,229 @@ body:has(.studio-topbar) .studio-window-drag {
   overflow-wrap: anywhere;
 }
 
+/* The new-presentation dialog grows to show the templates as a gallery of their covers. */
+.studio-new-dialog:has(.studio-templates) {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.studio-new-dialog form {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.studio-templates {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.studio-templates legend {
+  margin-bottom: 5px;
+  padding: 0;
+  color: var(--studio-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.studio-template-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.studio-template {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 5px 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.studio-template:hover {
+  background: var(--studio-surface-hover);
+}
+
+.studio-template:has(input:checked) {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+.studio-template:has(input:focus-visible) {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+
+/* The radio stays for the keyboard and screen readers; the cover is what is seen and clicked. */
+.studio-template input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.studio-template-cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-surface-hover);
+}
+
+/* Rendered at four times the cover's size and scaled down, so the slide lays out as it would on a
+   screen rather than squeezed into a thumbnail's width. */
+.studio-template-cover iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400%;
+  height: 400%;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.25);
+  transform-origin: 0 0;
+  transition: opacity 160ms ease;
+}
+
+.studio-template-cover.is-ready iframe {
+  opacity: 1;
+}
+
+.studio-template-name {
+  overflow: hidden;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-dialog .studio-template-summary {
+  min-height: 1.4em;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .studio-template-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The layouts a new slide can start from, under the rail's + button. */
+.studio-layouts {
+  position: fixed;
+  z-index: 1000;
+  width: min(468px, calc(100vw - 12px));
+  padding: 8px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 10px;
+  background: var(--studio-surface-raised);
+  box-shadow: 0 16px 40px var(--studio-shadow);
+}
+
+.studio-layouts .studio-layouts-heading {
+  margin: 2px 4px 8px;
+  color: var(--studio-faint);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-layouts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.studio-layout {
+  display: grid;
+  gap: 5px;
+  padding: 6px 6px 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--studio-text);
+  background: transparent;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.studio-layout:hover,
+.studio-layout:focus-visible {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+  outline: none;
+}
+
+.studio-layout-sketch {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 4px;
+  background: var(--studio-editor);
+}
+
+.studio-layout-sketch .t {
+  fill: var(--studio-text);
+  opacity: 0.8;
+}
+
+.studio-layout-sketch .l {
+  fill: var(--studio-muted);
+  opacity: 0.55;
+}
+
+.studio-layout-sketch .a {
+  fill: var(--studio-accent);
+}
+
+.studio-layout-sketch .b {
+  fill: var(--studio-muted);
+  opacity: 0.18;
+}
+
+.studio-layout-sketch .n {
+  fill: var(--studio-on-accent);
+  font-weight: 700;
+}
+
+.studio-layout-sketch .frame {
+  fill: none;
+  stroke: var(--studio-text);
+  stroke-width: 0.8;
+  opacity: 0.75;
+}
+
+.studio-layout-sketch .arrow {
+  fill: none;
+  stroke: var(--studio-accent);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.studio-layout-name {
+  overflow: hidden;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .studio-layouts-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .studio-link-button {
   padding: 0;
   border: 0;

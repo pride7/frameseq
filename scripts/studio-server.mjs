@@ -4,7 +4,7 @@ import { createReadStream, readFileSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
-import { presentationFileName, starterDeck } from "./presentation-file.mjs";
+import { presentationFileName, presentationTemplate, templateDeck } from "./presentation-file.mjs";
 import { documentStatements } from "./source-marks.mjs";
 import { writeDocument } from "./source-edits.mjs";
 import {
@@ -35,6 +35,20 @@ const contentTypes = {
 };
 
 export const version = (text) => createHash("sha256").update(text).digest("hex").slice(0, 20);
+
+const templatePreviewPage = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrameSeq template</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/studio/template-preview.ts"></script>
+  </body>
+</html>
+`;
 
 const baseName = (entry) => basename(entry, extname(entry)).replace(/\.slides$/, "");
 
@@ -216,6 +230,7 @@ function fileMessages(language) {
   return language === "zh"
     ? {
       noTitle: "请给演示起一个标题。",
+      noTemplate: (name) => `没有叫“${name}”的模板。`,
       fullFolder: "请用完整路径选择文件夹。",
       noFolder: (path) => `${path} 这个文件夹不存在。`,
       exists: (name) => `那个文件夹里已经有 ${name} 了。`,
@@ -225,6 +240,7 @@ function fileMessages(language) {
     }
     : {
       noTitle: "Give the presentation a title.",
+      noTemplate: (name) => `There is no template named “${name}”.`,
       fullFolder: "Choose the folder by its full path.",
       noFolder: (path) => `There is no folder at ${path}.`,
       exists: (name) => `${name} already exists in that folder.`,
@@ -421,17 +437,19 @@ export function studioPlugin({
           return openPresentation(target);
         },
 
-        /** Write a cover and a first slide under a file named after the title, then open it. */
+        /** Write the chosen template under a file named after the title, then open it. */
         "POST /files/create": async (body) => {
           const title = typeof body.title === "string" ? body.title.trim() : "";
           const folder = typeof body.folder === "string" ? body.folder.trim() : "";
+          const template = typeof body.template === "string" ? body.template : "blank";
           const say = fileMessages(body.language);
           if (!title) return [400, { error: say.noTitle }];
+          if (!presentationTemplate(template)) return [400, { error: say.noTemplate(template) }];
           if (!folder || !isAbsolute(folder)) return [400, { error: say.fullFolder }];
           if (!await isDirectory(folder)) return [404, { error: say.noFolder(resolve(folder)) }];
           const target = join(resolve(folder), presentationFileName(title));
           try {
-            await writeFile(target, starterDeck(title, body.language === "zh" ? "zh" : "en"), { encoding: "utf8", flag: "wx" });
+            await writeFile(target, templateDeck(template, title, body.language === "zh" ? "zh" : "en"), { encoding: "utf8", flag: "wx" });
           } catch (error) {
             if (error?.code !== "EEXIST") throw error;
             return [409, { error: say.exists(basename(target)), path: target }];
@@ -584,6 +602,20 @@ export function studioPlugin({
             return;
           }
           const url = new URL(request.url ?? "/", "http://studio.local");
+
+          // A template's cover for the new-presentation dialog: a page in a frame, which cannot
+          // carry a header either, and which shows only what FrameSeq itself ships.
+          if (request.method === "GET" && url.pathname === "/template-preview") {
+            const page = await server.transformIndexHtml(
+              `/__frameseq/studio${url.pathname}${url.search}`,
+              templatePreviewPage,
+            );
+            response.statusCode = 200;
+            response.setHeader("Content-Type", "text/html; charset=utf-8");
+            response.setHeader("Cache-Control", "no-store");
+            response.end(page);
+            return;
+          }
 
           // Downloads are plain links, which cannot carry a header, so they name the token.
           if (request.method === "GET" && url.pathname === "/download") {

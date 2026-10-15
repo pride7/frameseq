@@ -15,7 +15,7 @@ import { DocumentRunError, deckReady, displayPath, documentErrorReport, watchDec
 import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { starterDeck } from "./presentation-file.mjs";
+import { presentationTemplate, presentationTemplates, templateDeck } from "./presentation-file.mjs";
 import { configDirectory } from "./studio-files.mjs";
 import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
@@ -47,7 +47,9 @@ Usage:
   frameseq inspect [file] [--json]     Inspect slides and source locations
   frameseq mcp [file]                 Serve the slides to a coding agent over MCP:
                                       outline, check, screenshots, and the guide
-  frameseq new [file]                 Create a starter .slides.ts file
+  frameseq new [file] [--template name]
+                                      Create a .slides.ts file, blank or from a template:
+                                      ${presentationTemplates.map((template) => template.id).join(", ")}
 
 Examples:
   frameseq dev talk.slides.ts
@@ -65,7 +67,8 @@ Examples:
   frameseq check talk.slides.ts
   frameseq inspect talk.slides.ts --json
   claude mcp add frameseq -- frameseq mcp talk.slides.ts
-  frameseq new quarterly.slides.ts`);
+  frameseq new quarterly.slides.ts
+  frameseq new poster.slides.ts --template poster`);
 }
 
 function option(name) {
@@ -74,7 +77,7 @@ function option(name) {
 }
 
 function positionalFile(args) {
-  const optionsWithValues = new Set(["--output", "--preview"]);
+  const optionsWithValues = new Set(["--output", "--preview", "--template"]);
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (optionsWithValues.has(argument)) {
@@ -99,7 +102,20 @@ function pdfName(entry) {
   return `${file.replace(/\.slides$/, "")}.pdf`;
 }
 
-async function createSlidesFile(target) {
+/** The template `frameseq new` was asked for, blank when none was named. */
+function chosenTemplate() {
+  if (!process.argv.includes("--template")) return "blank";
+  const name = option("--template");
+  if (name && !name.startsWith("-") && presentationTemplate(name)) return name;
+  const width = Math.max(...presentationTemplates.map((template) => template.id.length));
+  const list = presentationTemplates
+    .map((template) => `  ${template.id.padEnd(width)}  ${template.summaries.en}`)
+    .join("\n");
+  const problem = name && !name.startsWith("-") ? `There is no template named "${name}".` : "Name a template after --template.";
+  throw new Error(`${problem} The templates are:\n${list}`);
+}
+
+async function createSlidesFile(target, template) {
   try {
     await access(target, constants.F_OK);
     throw new Error(`Refusing to overwrite existing file: ${target}`);
@@ -108,7 +124,7 @@ async function createSlidesFile(target) {
   }
 
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, starterDeck(), "utf8");
+  await writeFile(target, templateDeck(template), "utf8");
   await writeProjectInstructions(dirname(target));
   console.log(`Created ${target}`);
 }
@@ -595,7 +611,7 @@ try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     help();
   } else if (command === "new") {
-    await createSlidesFile(resolve(process.cwd(), file));
+    await createSlidesFile(resolve(process.cwd(), file), chosenTemplate());
   } else if (command === "mcp") {
     // `--preview` names a running server to render in, as the Studio's assistant passes its own.
     await startMcpServer({ entry: resolve(process.cwd(), file), packageRoot, configFile, preview: option("--preview") });

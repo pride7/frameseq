@@ -5,7 +5,7 @@ The npm package installs the `frameseq` executable, and so does the [FrameSeq ap
 ## Create a slide file
 
 ```bash
-frameseq new [file]
+frameseq new [file] [--template name]
 ```
 
 If no file is provided, FrameSeq creates `slides.ts` in the current directory.
@@ -15,6 +15,25 @@ frameseq new quarterly.slides.ts
 ```
 
 The command refuses to overwrite an existing file.
+
+Without `--template`, the file holds a cover and a first slide. A template starts it further along, with the slides that kind of presentation usually needs:
+
+```bash
+frameseq new poster.slides.ts --template poster
+```
+
+| Template | What it starts with |
+| --- | --- |
+| `blank` | A cover and a first slide on a clean white page. |
+| `midnight` | A dark talk for products and code: the problem, the design, the results. |
+| `paper` | Warm serif pages for a story or an essay. |
+| `minimal-academic` | A research talk: motivation, method, results, conclusion. |
+| `beamer-default` | A plain Beamer-style lecture with a formula and a table. |
+| `beamer-madrid` | The same lecture with a blue title bar and footer. |
+| `beamer-cambridge-us` | The same lecture in burgundy and cream. |
+| `poster` | An A0 conference poster in three columns. |
+
+Each template is named after the [theme](themes.md) it uses, and passes `frameseq check --strict` as written. An unknown name lists the templates. [FrameSeq Studio](studio.md) offers the same templates, with their covers, when it makes a new presentation. The command writes English placeholders; the Studio writes Chinese ones when it is shown in Chinese.
 
 ## Start the development server
 

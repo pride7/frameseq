@@ -57,7 +57,8 @@ The Studio speaks English and Chinese. It starts in the language of the browser,
 
 **File** holds **New presentation…**, **Open…** (`Ctrl+O`), the presentations opened recently, and **Show in folder**; the file name in the middle of the top bar opens the same list. The start page offers them too, and lists the recent presentations with a button that removes one from the list.
 
-- **New presentation** asks for a title and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes a cover and a first slide into it. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
+- **New presentation** asks for a title, a template, and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes the template into it with the title in place. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
+- The templates are shown by their real covers, rendered as the presentation will be. There is one for each built-in theme: **Blank**, a cover and a first slide; **Midnight**, a dark talk for products and code; **Paper**, serif pages for a story; **Academic talk**, a research talk in `minimal-academic`; **Beamer**, **Beamer Madrid**, and **Beamer CambridgeUS**, the same lecture in the three Beamer-inspired themes; and **Poster**, an A0 conference poster in three columns. Each passes the layout check as written. Double-click a template to create the presentation at once; the next dialog starts on the template used last.
 - **Open** shows this computer's own open dialog. Where there is none, as on Linux without `zenity` or `kdialog`, the Studio asks for the file's path instead; `FRAMESEQ_NO_DIALOGS=1` makes it always ask.
 - When the open document has unsaved changes, the Studio asks whether to save them first. **Cancel** keeps the document open.
 
@@ -136,8 +137,10 @@ The slide rail edits the document by the statements that make slides. A slide's 
 
 - **Click** a thumbnail to show the slide and move the editor to the code that made it.
 - **Drag** a thumbnail up or down to move the slide.
-- **Right-click** for **New slide after**, **Duplicate**, **Move up**, **Move down**, **Go to source**, **Present from here**, and **Delete**. `Delete` also works on the selected thumbnail.
-- **+** above the rail adds a slide after the one in the preview, with its title selected for typing.
+- **Right-click** for **New slide after…**, **Duplicate**, **Move up**, **Move down**, **Go to source**, **Present from here**, and **Delete**. `Delete` also works on the selected thumbnail.
+- **+** above the rail adds a slide after the one in the preview, from a layout you pick: title and text, title and points, a section title, two columns, three numbers, code and notes, a formula, a table, a chart, a flow diagram, steps revealed one by one, or a closing line. The slide comes in with its title, or its main line, selected for typing. **Slide › New slide after this one** lists the same layouts.
+
+The layouts are the slides of the [recipes](recipes.md), with placeholders in the Studio's language, and each passes the layout check as it comes in.
 
 Each of these is one step in the editor's history.
 

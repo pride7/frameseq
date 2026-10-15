@@ -22,6 +22,8 @@ import { parseBibtex } from "./scripts/bibtex.mjs";
 import { runsFromBundle } from "./scripts/browsers.mjs";
 // @ts-expect-error -- plain JavaScript, shared with the Studio's server.
 import { configDirectory } from "./scripts/studio-files.mjs";
+// Plain JavaScript, shared with the CLI and the Studio's server.
+import { presentationTemplates, templateDeck } from "./scripts/presentation-file.mjs";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(process.env.FRAMESEQ_ENTRY ?? resolve(process.cwd(), "slides.ts"));
@@ -30,6 +32,8 @@ const virtualEntry = "virtual:frameseq-entry";
 const resolvedVirtualEntry = `\0${virtualEntry}`;
 const virtualIcons = "virtual:frameseq-icons";
 const resolvedVirtualIcons = `\0${virtualIcons}`;
+const virtualTemplates = "virtual:frameseq-templates";
+const resolvedVirtualTemplates = `\0${virtualTemplates}`;
 /** Replaced once every module has been read, with the icons the build turned out to need. */
 const iconSetPlaceholder = "__FRAMESEQ_ICON_SET__";
 const iconsCompletePlaceholder = "__FRAMESEQ_ICONS_COMPLETE__";
@@ -78,6 +82,22 @@ let serving = false;
 /** Icon names a build has found in the project's modules, and whether one is built at runtime. */
 const namedIcons = new Set<string>();
 let iconsAtRuntime = false;
+
+/**
+ * Every template a new presentation can start from, in both languages, each as a function that
+ * runs the template's text as a slide document runs and returns its slides. The Studio shows
+ * their real covers from it before anything is written to disk.
+ */
+function templatesModule(): string {
+  const runs = presentationTemplates.flatMap(({ id }) => (["en", "zh"] as const).map((language) => (
+    `  ${JSON.stringify(`${id}:${language}`)}: () => {\n${templateDeck(id, "", language)}\nreturn __frameSeqSlides();\n},`
+  )));
+  return [
+    `import ${JSON.stringify(virtualIcons)};`,
+    `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqSlides } from "@pride7/frameseq";`,
+    `export const templates = {\n${runs.join("\n")}\n};`,
+  ].join("\n");
+}
 
 /** A module the presentation itself wrote, as opposed to FrameSeq or a dependency. */
 function projectModule(id: string): boolean {
@@ -512,6 +532,7 @@ export default defineConfig({
       async resolveId(id, importer, options) {
         if (id === virtualEntry) return resolvedVirtualEntry;
         if (id === virtualIcons) return resolvedVirtualIcons;
+        if (id === virtualTemplates) return resolvedVirtualTemplates;
         if (id !== frameworkPackage) return undefined;
         // A slide document outside any project has no node_modules of its own, so it uses the
         // FrameSeq that is serving it.
@@ -532,6 +553,7 @@ export default defineConfig({
           this.addWatchFile(path);
           return `export default ${JSON.stringify(parseBibtex(await readFile(path, "utf8")))};`;
         }
+        if (id === resolvedVirtualTemplates) return templatesModule();
         if (id !== resolvedVirtualEntry) return undefined;
         return `export { default } from ${JSON.stringify(normalizedEntry)};`;
       },

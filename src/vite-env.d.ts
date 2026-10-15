@@ -8,3 +8,10 @@ declare module "virtual:frameseq-entry" {
   const slides: SlidesRootDefinition;
   export default slides;
 }
+
+declare module "virtual:frameseq-templates" {
+  import type { SlidesRootDefinition } from "./core";
+
+  /** Each template's slides, keyed by its id and language, such as "poster:zh". */
+  export const templates: Record<string, () => SlidesRootDefinition>;
+}

@@ -1,6 +1,7 @@
 import { EditorSelection, type Text, type TransactionSpec } from "@codemirror/state";
 import type { InspectSlide } from "./api";
 import { t } from "./i18n";
+import { defaultSlideLayout, type SlideLayout } from "./layouts";
 import type { SlideGroup } from "./outline";
 
 /** A group's lines, always ending with a line break. */
@@ -23,17 +24,22 @@ function spaced(doc: Text, position: number, text: string): string {
 
 const leadingBreaks = (text: string): number => text.length - text.replace(/^\n+/, "").length;
 
-const newSlideTitle = t.rail.newSlideTitle;
-const newSlide = `slide(${JSON.stringify(newSlideTitle)});\ntext(${JSON.stringify(t.rail.newSlideText)});\n`;
-
-/** Add a slide after the given group, or before the first when there is none, title selected. */
-export function insertSlide(doc: Text, groups: SlideGroup[], after: number): TransactionSpec {
+/**
+ * Add a slide made from a layout after the given group, or before the first when there is none,
+ * with its main placeholder selected so typing replaces it.
+ */
+export function insertSlide(
+  doc: Text,
+  groups: SlideGroup[],
+  after: number,
+  layout: SlideLayout = defaultSlideLayout(),
+): TransactionSpec {
   const position = groups[after]?.to ?? groups[0]?.from ?? doc.length;
-  const insert = spaced(doc, position, newSlide);
-  const title = position + insert.indexOf(newSlideTitle);
+  const insert = spaced(doc, position, layout.source);
+  const placeholder = position + insert.indexOf(JSON.stringify(layout.select)) + 1;
   return {
     changes: { from: position, insert },
-    selection: EditorSelection.single(title, title + newSlideTitle.length),
+    selection: EditorSelection.single(placeholder, placeholder + layout.select.length),
     scrollIntoView: true,
     userEvent: "input.slide.insert",
   };

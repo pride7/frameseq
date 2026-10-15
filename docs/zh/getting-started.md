@@ -1,4 +1,4 @@
-<!-- translation-of: docs/getting-started.md sha256:f0ebca0e0845214f -->
+<!-- translation-of: docs/getting-started.md sha256:c1069c7a47a86139 -->
 
 # 快速上手
 
@@ -20,7 +20,7 @@ frameseq new talk.slides.ts
 frameseq studio talk.slides.ts
 ```
 
-`frameseq new` 会写好一份起步用的幻灯片,并附上给编程助手看的 `AGENTS.md` 和 `CLAUDE.md`;自己新建的文件也一样能用。从 `dev`、`studio` 到 `check`、`pdf`、`pptx`,每个命令都接受这样的文件,输出写在运行命令的文件夹下。没有项目的文件使用运行它的那份 FrameSeq。等演示需要自己的组件、主题模块,或者要固定 FrameSeq 版本时,再建项目。
+`frameseq new` 会写好一份起步用的幻灯片,并附上给编程助手看的 `AGENTS.md` 和 `CLAUDE.md`;加上 `--template` 则从某个[模板](cli.md#新建幻灯片文件)开始,比如 `--template poster`;自己新建的文件也一样能用。从 `dev`、`studio` 到 `check`、`pdf`、`pptx`,每个命令都接受这样的文件,输出写在运行命令的文件夹下。没有项目的文件使用运行它的那份 FrameSeq。等演示需要自己的组件、主题模块,或者要固定 FrameSeq 版本时,再建项目。
 
 剩下的事 Studio 不用终端也能做。单独运行 `frameseq studio` 会打开一个启动页,可以新建演示、打开最近用过的演示;`frameseq shortcut` 会把它加到 Windows 的开始菜单和桌面、macOS 的“应用程序”,或 Linux 的应用程序菜单里。详见 [FrameSeq Studio](studio.md#演示文稿)。
 

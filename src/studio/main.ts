@@ -52,6 +52,7 @@ import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
+import { showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
 import { StudioTerminal } from "./terminal";
 import {
@@ -1112,9 +1113,15 @@ async function start(): Promise<void> {
    * Rearrange slides by rewriting the lines that make them. A loop or a helper call makes
    * several slides from one statement, and those can only be moved, repeated, or removed
    * together; the Studio says so whenever an action touches more than the slide it was asked
-   * about. `to` is a position among the rendered slides, before which a moved slide lands.
+   * about. `to` is a position among the rendered slides, before which a moved slide lands, and
+   * `layout` is what an inserted slide starts as.
    */
-  async function rearrange(action: "insert" | "duplicate" | "delete" | "move", index: number, to = 0): Promise<void> {
+  async function rearrange(
+    action: "insert" | "duplicate" | "delete" | "move",
+    index: number,
+    to = 0,
+    layout?: SlideLayout,
+  ): Promise<void> {
     const map = await settledSlideMap();
     if (!map) {
       toast(t.rail.catchingUp, { tone: "warning" });
@@ -1136,7 +1143,7 @@ async function start(): Promise<void> {
     let spec: TransactionSpec | undefined;
     let landing = index;
     if (action === "insert") {
-      spec = insertSlide(doc, map.groups, groupIndex ?? -1);
+      spec = insertSlide(doc, map.groups, groupIndex ?? -1, layout);
       landing = group ? last + 1 : 0;
     } else if (action === "duplicate" && group) {
       spec = duplicateSlide(doc, group);
@@ -1295,6 +1302,11 @@ async function start(): Promise<void> {
     toast(t.insert.added(insertName(kind), line), { tone: "success" });
   }
 
+  /** Pick a layout at a point on the page, and add a slide made from it after slide `index`. */
+  function chooseLayout(index: number, x: number, y: number): void {
+    showLayoutPicker(x, y, (layout) => void rearrange("insert", index, 0, layout));
+  }
+
   function showSlideMenu(index: number, x: number, y: number): void {
     const map = slideMap();
     const groupIndex = map?.groupOf[index];
@@ -1322,7 +1334,7 @@ async function start(): Promise<void> {
       items.push({ note: t.rail.outsideNote(session.name) });
     }
     items.push(
-      { label: t.rail.newAfter, run: () => void rearrange("insert", index) },
+      { label: t.rail.newAfter, run: () => chooseLayout(index, x, y) },
       { label: t.rail.duplicate, disabled: !movable, run: () => void rearrange("duplicate", index) },
       "separator",
       { label: t.rail.moveUp, disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
@@ -1695,7 +1707,15 @@ async function start(): Promise<void> {
       label: t.menus.slide,
       accessKey: "s",
       items: () => [
-        { command: "new-slide", label: t.menu.newSlide, run: () => void rearrange("insert", previewSlide) },
+        {
+          command: "new-slide",
+          label: t.menu.newSlide,
+          submenu: () => slideLayouts().map((layout) => ({
+            command: `new-slide-${layout.id}`,
+            label: layout.name,
+            run: () => void rearrange("insert", previewSlide, 0, layout),
+          })),
+        },
         slideCommand("duplicate-slide", t.menu.duplicateSlide, () => void rearrange("duplicate", previewSlide)),
         slideCommand("move-slide-up", t.menu.moveSlideUp, () => void rearrange("move", previewSlide, previewSlide - 1), () => previewSlide === 0),
         slideCommand("move-slide-down", t.menu.moveSlideDown, () => void rearrange("move", previewSlide, previewSlide + 2), () => previewSlide >= renderedCount - 1),
@@ -1790,9 +1810,11 @@ async function start(): Promise<void> {
       case "present":
         present();
         break;
-      case "new-slide":
-        void rearrange("insert", previewSlide);
+      case "new-slide": {
+        const box = target.getBoundingClientRect();
+        chooseLayout(previewSlide, box.left, box.bottom + 6);
         break;
+      }
       case "open-browser":
         openOutside(`/#${previewSlide + 1}`);
         break;

@@ -1,4 +1,4 @@
-import { presentationFileName } from "../../scripts/presentation-file.mjs";
+import { presentationFileName, presentationTemplate, presentationTemplates } from "../../scripts/presentation-file.mjs";
 import {
   call,
   StudioRequestError,
@@ -33,6 +33,69 @@ function folderPrefix(folder: string): string {
   if (!folder) return "";
   const separator = folder.includes("\\") ? "\\" : "/";
   return folder.endsWith(separator) ? folder : `${folder}${separator}`;
+}
+
+const templateKey = "frameseq-studio-template";
+
+/** The template this browser last made a presentation from, or the blank one. */
+function lastTemplate(): string {
+  try {
+    const stored = localStorage.getItem(templateKey);
+    if (stored && presentationTemplate(stored)) return stored;
+  } catch {
+    // Storage may be unavailable; every dialog then starts on the blank template.
+  }
+  return "blank";
+}
+
+function rememberTemplate(id: string): void {
+  try {
+    localStorage.setItem(templateKey, id);
+  } catch {
+    // The next dialog starts on the blank template instead.
+  }
+}
+
+/**
+ * The templates as a choice among their real covers, each drawn in a small frame by the runtime
+ * that shows any presentation, with a line about the chosen one underneath.
+ */
+function templatePicker(): { field: HTMLFieldSetElement; value: () => string } {
+  const field = element("fieldset", "studio-field studio-templates");
+  field.append(element("legend", "", t.files.template));
+  const grid = element("div", "studio-template-grid");
+  const summary = element("p", "studio-template-summary");
+  let chosen = lastTemplate();
+  const describe = (): void => {
+    summary.textContent = presentationTemplate(chosen)?.summaries[language] ?? "";
+  };
+  for (const template of presentationTemplates) {
+    const option = element("label", "studio-template");
+    option.dataset.template = template.id;
+    option.title = template.summaries[language];
+    const radio = element("input");
+    radio.type = "radio";
+    radio.name = "template";
+    radio.value = template.id;
+    radio.checked = template.id === chosen;
+    radio.addEventListener("change", () => {
+      chosen = template.id;
+      describe();
+    });
+    const cover = element("span", "studio-template-cover");
+    const frame = element("iframe");
+    frame.src = `/__frameseq/studio/template-preview?template=${encodeURIComponent(template.id)}&language=${language}`;
+    frame.title = template.names[language];
+    frame.tabIndex = -1;
+    frame.setAttribute("aria-hidden", "true");
+    frame.addEventListener("load", () => cover.classList.add("is-ready"), { once: true });
+    cover.append(frame);
+    option.append(radio, cover, element("span", "studio-template-name", template.names[language]));
+    grid.append(option);
+  }
+  field.append(grid, summary);
+  describe();
+  return { field, value: () => chosen };
 }
 
 /**
@@ -157,6 +220,7 @@ export class Presentations {
     }
     const placeField = element("label", "studio-field");
     placeField.append(element("span", "", t.files.folder), row);
+    const templates = templatePicker();
     const file = element("p", "studio-new-file");
     const problem = element("p", "studio-dialog-problem");
     const actions = element("div", "studio-dialog-actions");
@@ -166,9 +230,13 @@ export class Presentations {
     const accept = element("button", "studio-button is-primary", t.files.create);
     accept.type = "submit";
     actions.append(cancel, accept);
-    form.append(element("h2", "", t.files.newTitle), titleField, placeField, file, problem, actions);
+    form.append(element("h2", "", t.files.newTitle), titleField, templates.field, placeField, file, problem, actions);
     dialog.append(form);
     document.body.append(dialog);
+    // A double click on a template takes it, as in other programs' template galleries.
+    templates.field.addEventListener("dblclick", (event) => {
+      if (event.target instanceof Element && event.target.closest(".studio-template")) form.requestSubmit();
+    });
 
     const describe = (): void => {
       const name = presentationFileName(title.value);
@@ -191,8 +259,10 @@ export class Presentations {
           const opened = await call<OpenResponse>("POST", "files/create", {
             title: title.value.trim(),
             folder: place.value.trim(),
+            template: templates.value(),
             language,
           });
+          rememberTemplate(templates.value());
           dialog.close();
           await reloadInto(opened);
         } catch (error) {
