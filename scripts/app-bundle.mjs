@@ -119,7 +119,9 @@ await moveFolder(join(packDirectory, "package"), app);
 step(`Installing dependencies for ${platform}-${arch}`);
 // npm picks the native packages (esbuild, Rollup, Lightning CSS, Typst) by the target, so an app
 // for another platform can be assembled here. Puppeteer's own browser is not downloaded.
-const npmTarget = ["--os", platform, "--cpu", arch];
+// Install scripts run for this machine rather than the target: esbuild's checks the binary of the
+// machine building the app, and fails when that is another version, so none of them run.
+const npmTarget = ["--os", platform, "--cpu", arch, "--ignore-scripts"];
 // The optional typesetters come along, since nobody using the app can npm install them later:
 // Typst works offline, and Tectonic fetches the TeX files a LaTeX fragment needs on first use.
 const typesetters = ["@myriaddreamin/typst-ts-node-compiler", "node-tectonic"]
