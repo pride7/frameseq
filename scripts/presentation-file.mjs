@@ -17,24 +17,49 @@ export function presentationFileName(title) {
   return `${safe || "presentation"}.slides.ts`;
 }
 
-/** A cover and a first slide. Without a title, the placeholders `frameseq new` has always written. */
-export function starterDeck(title) {
-  const name = title?.trim() || "My Talk";
-  const heading = title?.trim() || "Presentation title";
+const starterWords = {
+  en: {
+    name: "My Talk",
+    heading: "Presentation title",
+    subtitle: "A short description",
+    author: "Your name",
+    slide: "First idea",
+    notes: "Introduce the main idea and pause before the supporting points.",
+    lead: "Explain the idea in one clear sentence.",
+    points: ["First point", "Second point", "Third point"],
+  },
+  zh: {
+    name: "我的演讲",
+    heading: "演示标题",
+    subtitle: "一句简短的介绍",
+    author: "你的名字",
+    slide: "第一个想法",
+    notes: "先讲清主要观点，停顿一下，再讲支持它的要点。",
+    lead: "用一句话把这个想法讲清楚。",
+    points: ["第一点", "第二点", "第三点"],
+  },
+};
+
+/**
+ * A cover and a first slide, with placeholders in English or, for a Studio shown in Chinese, in
+ * Chinese. Without a title, the placeholders `frameseq new` has always written.
+ */
+export function starterDeck(title, language = "en") {
+  const words = starterWords[language] ?? starterWords.en;
+  const name = title?.trim() || words.name;
+  const heading = title?.trim() || words.heading;
   return `presentation(${JSON.stringify(name)});
 
 slide({ name: "Cover" }).cover();
 text(${JSON.stringify(heading)}).hero();
-text("A short description").subtitle();
-text("Your name").author();
+text(${JSON.stringify(words.subtitle)}).subtitle();
+text(${JSON.stringify(words.author)}).author();
 
-slide("First idea")
-  .notes("Introduce the main idea and pause before the supporting points.");
-text("Explain the idea in one clear sentence.");
+slide(${JSON.stringify(words.slide)})
+  .notes(${JSON.stringify(words.notes)});
+text(${JSON.stringify(words.lead)});
 bullets(
-  "First point",
-  "Second point",
-  "Third point",
+${words.points.map((point) => `  ${JSON.stringify(point)},`).join("\n")}
 );
 `;
 }

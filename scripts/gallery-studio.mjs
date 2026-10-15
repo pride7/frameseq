@@ -64,6 +64,9 @@ export async function captureStudio(imagesDirectory) {
     // A dark Studio with room for the inspector, and a short problems panel since it has none.
     await page.evaluateOnNewDocument(() => {
       localStorage.setItem("frameseq-studio-theme", "dark");
+      // The landing page is in English, whatever language the computer building it speaks.
+      localStorage.setItem("frameseq-studio-language", "en");
+      localStorage.setItem("frameseq-studio-panel-collapsed", "0");
       localStorage.setItem("frameseq-studio-layout", JSON.stringify({
         "--studio-rail-width": 250,
         "--studio-inspector-height": 430,

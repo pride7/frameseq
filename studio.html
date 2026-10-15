@@ -15,11 +15,20 @@
           || (choice !== "dark" && matchMedia("(prefers-color-scheme: light)").matches);
         if (light) document.documentElement.dataset.theme = "light";
       } catch (error) {}
+      // The Studio's language, chosen in View › Language or taken from the browser.
+      try {
+        var chosen = localStorage.getItem("frameseq-studio-language");
+        var chinese = chosen ? chosen === "zh" : /^zh\b/i.test(navigator.language);
+        if (chinese) document.documentElement.lang = "zh-CN";
+      } catch (error) {}
     </script>
   </head>
   <body>
     <div id="studio" class="studio is-loading">
       <div class="studio-splash">Starting FrameSeq Studio…</div>
+      <script>
+        if (document.documentElement.lang === "zh-CN") document.querySelector(".studio-splash").textContent = "正在启动 FrameSeq Studio…";
+      </script>
     </div>
     <script type="module" src="/src/studio/main.ts"></script>
   </body>

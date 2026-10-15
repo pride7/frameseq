@@ -76,8 +76,8 @@ The same version tag starts the **Desktop app** workflow (`.github/workflows/app
 | --- | --- |
 | `windows-latest` | `FrameSeq-Setup-<version>-win-x64.exe` with Inno Setup, and the portable `FrameSeq-<version>-win-x64.zip` |
 | `macos-latest` | `FrameSeq-<version>-mac-arm64.dmg` and `FrameSeq-<version>-mac-x64.dmg` |
-| `ubuntu-latest` | `FrameSeq-<version>-linux-x64.tar.gz` and `FrameSeq-<version>-linux-arm64.tar.gz` |
+| `ubuntu-latest`, `ubuntu-24.04-arm` | `FrameSeq-<version>-linux-x64.tar.gz` and `FrameSeq-<version>-linux-arm64.tar.gz` |
 
-Each job runs `node scripts/app-bundle.mjs --platform <platform> --arch <arch>`. The script packs the package as npm would, installs its production dependencies and the optional typesetters for the target with `npm install --os --cpu`, downloads the Node.js release named by `--node` and checks it against the published checksums, adds a headless browser for macOS and Linux, and writes the launchers and the installer. Run it locally to try a build; without Inno Setup, Windows gets only the zip, and away from macOS the Mac app is zipped instead of put in a disk image.
+Each job runs `node scripts/app-bundle.mjs --platform <platform> --arch <arch>`. The script packs the package as npm would, installs its production dependencies and the optional typesetters for the target with `npm install --os --cpu`, downloads the Node.js release named by `--node` and checks it against the published checksums, adds a headless browser for macOS and Linux, builds the Studio's window from `desktop/` with Rust, and writes the launchers and the installer. The window is built on the system it is for, which is why Linux on ARM has a runner of its own; the Intel Mac's is cross-compiled on Apple silicon. Run it locally to try a build; without Inno Setup, Windows gets only the zip, and away from macOS the Mac app is zipped instead of put in a disk image.
 
 Run the workflow by hand from GitHub Actions to build the apps without a release; they are then kept as workflow artifacts. The apps are not signed or notarised yet.

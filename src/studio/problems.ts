@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { element } from "./ui";
 
 export type ProblemSource = "build" | "runtime" | "typescript" | "names" | "layout";
@@ -25,11 +26,11 @@ export interface Problem {
 const sourceOrder: ProblemSource[] = ["build", "runtime", "typescript", "names", "layout"];
 const severityOrder = ["error", "warning", "info"] as const;
 const sourceLabels: Record<ProblemSource, string> = {
-  build: "Build",
-  runtime: "Preview",
-  typescript: "TypeScript",
-  names: "Names",
-  layout: "Layout",
+  build: t.problems.build,
+  runtime: t.problems.runtime,
+  typescript: t.problems.typescript,
+  names: t.problems.names,
+  layout: t.problems.layout,
 };
 
 /**
@@ -72,8 +73,8 @@ export class ProblemsPanel {
     if (problems.length === 0) {
       const empty = element("div", "studio-problems-empty");
       empty.append(
-        element("strong", "", "No problems"),
-        element("span", "", "TypeScript and the layout check are both clean."),
+        element("strong", "", t.problems.none),
+        element("span", "", t.problems.noneDetail),
       );
       this.list.replaceChildren(empty);
       return;
@@ -83,15 +84,15 @@ export class ProblemsPanel {
       const row = element("button", `studio-problem is-${problem.severity}`);
       row.type = "button";
       const icon = element("span", "studio-problem-icon", problem.severity === "error" ? "●" : (problem.severity === "warning" ? "▲" : "ℹ"));
-      icon.setAttribute("aria-label", problem.severity);
+      icon.setAttribute("aria-label", t.problems[problem.severity]);
       const body = element("span", "studio-problem-body");
       body.append(element("span", "studio-problem-message", problem.message));
       if (problem.detail) body.append(element("span", "studio-problem-detail", problem.detail));
       const meta = element("span", "studio-problem-meta");
       const parts = [
         sourceLabels[problem.source] + (problem.code ? ` ${problem.code}` : ""),
-        problem.slideIndex !== undefined ? `Slide ${problem.slideIndex + 1}` : undefined,
-        problem.line !== undefined ? `Ln ${problem.line}` : undefined,
+        problem.slideIndex !== undefined ? t.status.slide(problem.slideIndex + 1) : undefined,
+        problem.line !== undefined ? t.problems.line(problem.line) : undefined,
       ].filter(Boolean);
       meta.textContent = parts.join(" · ");
       row.append(icon, body, meta);

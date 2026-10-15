@@ -8,6 +8,7 @@ import {
   type RecentPresentation,
   type StudioSession,
 } from "./api";
+import { language, switchLanguage, t } from "./i18n";
 import { askText, element, required, showMenu, toast, type MenuItem } from "./ui";
 
 /** What the open document must settle before another presentation replaces it. */
@@ -40,7 +41,7 @@ function folderPrefix(folder: string): string {
  */
 async function reloadInto(opened: OpenResponse): Promise<void> {
   const cover = element("div", "studio-switching");
-  cover.append(element("div", "studio-splash", `Opening ${opened.name}…`));
+  cover.append(element("div", "studio-splash", t.files.opening(opened.name)));
   document.body.append(cover);
   const started = Date.now();
   while (Date.now() - started < 60_000) {
@@ -57,7 +58,7 @@ async function reloadInto(opened: OpenResponse): Promise<void> {
     }
   }
   cover.remove();
-  toast(`${opened.name} did not open. The FrameSeq output may say why.`, { tone: "error" });
+  toast(t.files.didNotOpen(opened.name), { tone: "error" });
 }
 
 /** Opening, creating, and switching presentations, for the start page and the file menu. */
@@ -90,10 +91,10 @@ export class Presentations {
     }
     if (!asked) {
       path = await askText({
-        title: "Open a presentation",
-        message: "The full path of its slide document, such as talk.slides.ts.",
+        title: t.files.openTitle,
+        message: t.files.openMessage,
         value: folderPrefix(folder),
-        confirm: "Open",
+        confirm: t.files.openConfirm,
         validate: (value) => (/\.ts$/i.test(value) ? undefined : "A FrameSeq presentation is a .ts file."),
       });
     }
@@ -103,7 +104,7 @@ export class Presentations {
   async openPath(path: string): Promise<void> {
     if (!await this.guard.leave()) return;
     try {
-      const opened = await call<OpenResponse>("POST", "files/open", { path });
+      const opened = await call<OpenResponse>("POST", "files/open", { path, language });
       if (opened.current) {
         this.guard.stay();
         return;
@@ -124,7 +125,7 @@ export class Presentations {
     const title = element("input");
     title.type = "text";
     title.name = "title";
-    title.placeholder = "Quarterly review";
+    title.placeholder = t.files.titlePlaceholder;
     title.spellcheck = false;
     const place = element("input");
     place.type = "text";
@@ -132,11 +133,11 @@ export class Presentations {
     place.value = folder;
     place.spellcheck = false;
     const titleField = element("label", "studio-field");
-    titleField.append(element("span", "", "Title"), title);
+    titleField.append(element("span", "", t.files.title), title);
     const row = element("span", "studio-field-row");
     row.append(place);
     if (this.session.dialogs) {
-      const browse = element("button", "studio-button", "Browse…");
+      const browse = element("button", "studio-button", t.files.browse);
       browse.type = "button";
       browse.dataset.action = "browse-folder";
       browse.addEventListener("click", () => void (async () => {
@@ -144,7 +145,7 @@ export class Presentations {
         try {
           const chosen = await call<ChooseResponse>("POST", "files/choose", { kind: "folder", folder: place.value.trim() });
           if (chosen.path) place.value = chosen.path;
-          else if (chosen.unavailable) toast("This computer has no folder dialog. Type the folder's path instead.", { tone: "warning" });
+          else if (chosen.unavailable) toast(t.files.noFolderDialog, { tone: "warning" });
         } catch (error) {
           toast(message(error), { tone: "warning" });
         } finally {
@@ -155,23 +156,23 @@ export class Presentations {
       row.append(browse);
     }
     const placeField = element("label", "studio-field");
-    placeField.append(element("span", "", "Folder"), row);
+    placeField.append(element("span", "", t.files.folder), row);
     const file = element("p", "studio-new-file");
     const problem = element("p", "studio-dialog-problem");
     const actions = element("div", "studio-dialog-actions");
-    const cancel = element("button", "studio-button", "Cancel");
+    const cancel = element("button", "studio-button", t.ui.cancel);
     cancel.type = "button";
     cancel.addEventListener("click", () => dialog.close());
-    const accept = element("button", "studio-button is-primary", "Create");
+    const accept = element("button", "studio-button is-primary", t.files.create);
     accept.type = "submit";
     actions.append(cancel, accept);
-    form.append(element("h2", "", "New presentation"), titleField, placeField, file, problem, actions);
+    form.append(element("h2", "", t.files.newTitle), titleField, placeField, file, problem, actions);
     dialog.append(form);
     document.body.append(dialog);
 
     const describe = (): void => {
       const name = presentationFileName(title.value);
-      file.replaceChildren("Saved as ", element("code", "", name));
+      file.replaceChildren(t.files.savedAs, element("code", "", name));
       problem.replaceChildren();
       accept.disabled = !title.value.trim() || !place.value.trim();
     };
@@ -190,6 +191,7 @@ export class Presentations {
           const opened = await call<OpenResponse>("POST", "files/create", {
             title: title.value.trim(),
             folder: place.value.trim(),
+            language,
           });
           dialog.close();
           await reloadInto(opened);
@@ -199,7 +201,7 @@ export class Presentations {
           problem.replaceChildren(message(error));
           const existing = error instanceof StudioRequestError ? error.data.path : undefined;
           if (typeof existing === "string") {
-            const open = element("button", "studio-link-button", "Open it");
+            const open = element("button", "studio-link-button", t.files.openIt);
             open.type = "button";
             open.addEventListener("click", () => {
               dialog.close();
@@ -222,8 +224,8 @@ export class Presentations {
     const others = recent.filter((item) => item.path !== this.session.entry).slice(0, 8);
     const box = anchor.getBoundingClientRect();
     const items: Array<MenuItem | "separator" | { heading: string }> = [
-      { label: "New presentation…", run: () => void this.create() },
-      { label: "Open…", shortcut: /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘O" : "Ctrl+O", run: () => void this.open() },
+      { label: t.files.newMenu, run: () => void this.create() },
+      { label: t.files.openMenu, shortcut: /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘O" : "Ctrl+O", run: () => void this.open() },
     ];
     if (others.length > 0) {
       items.push("separator", { heading: "Recent" }, ...others.map((item) => ({
@@ -233,7 +235,7 @@ export class Presentations {
       })));
     }
     items.push("separator", {
-      label: "Show in folder",
+      label: t.files.showInFolder,
       run: () => void call("POST", "files/reveal").catch((error) => toast(message(error), { tone: "error" })),
     });
     showMenu(box.left, box.bottom + 6, items, "Presentation");
@@ -247,35 +249,40 @@ export class Presentations {
 export async function showStartPage(root: HTMLElement, session: StudioSession, logo: string): Promise<void> {
   const presentations = new Presentations(session);
   root.className = "studio is-start";
-  document.title = "FrameSeq Studio";
+  document.title = t.appName;
   root.innerHTML = `
     <div class="studio-start">
-      <header class="studio-start-header">${logo}<h1>FrameSeq <b>Studio</b></h1></header>
+      <header class="studio-start-header">${logo}<h1>FrameSeq <b>Studio</b></h1>
+        <span class="studio-start-language" role="group" aria-label="${t.menu.language}">
+          <button type="button" data-language="en" aria-pressed="${language === "en"}">${t.languages.en}</button>
+          <button type="button" data-language="zh" aria-pressed="${language === "zh"}">${t.languages.zh}</button>
+        </span>
+      </header>
       <div class="studio-start-actions">
         <button type="button" class="studio-start-action is-primary" data-start="new">
           <span class="studio-start-glyph" aria-hidden="true">+</span>
-          <span><b>New presentation</b><small>A cover and a first slide, ready to write</small></span>
+          <span><b>${t.start.newTitle}</b><small>${t.start.newHint}</small></span>
         </button>
         <button type="button" class="studio-start-action" data-start="open">
           <span class="studio-start-glyph" aria-hidden="true">↗</span>
-          <span><b>Open…</b><small>A .slides.ts file on this computer</small></span>
+          <span><b>${t.start.openTitle}</b><small>${t.start.openHint}</small></span>
         </button>
       </div>
-      <section class="studio-start-recent" aria-label="Recent presentations">
-        <h2>Recent</h2>
+      <section class="studio-start-recent" aria-label="${t.start.recentLabel}">
+        <h2>${t.start.recent}</h2>
         <ul data-slot="recent"></ul>
       </section>
       <p class="studio-start-note"></p>
     </div>
   `;
   required<HTMLElement>(root, ".studio-start-note").textContent = session.quitOnClose
-    ? "Closing this window stops FrameSeq Studio."
-    : "FrameSeq Studio runs until you stop it in its terminal.";
+    ? t.start.quitsOnClose
+    : t.start.runsInTerminal;
   const list = required<HTMLUListElement>(root, "[data-slot='recent']");
 
   const showRecent = (recent: RecentPresentation[]): void => {
     if (recent.length === 0) {
-      list.replaceChildren(element("li", "studio-start-empty", "Presentations you open appear here."));
+      list.replaceChildren(element("li", "studio-start-empty", t.start.noRecent));
       return;
     }
     list.replaceChildren(...recent.map((item) => {
@@ -288,8 +295,8 @@ export async function showStartPage(root: HTMLElement, session: StudioSession, l
       open.addEventListener("click", () => void presentations.openPath(item.path));
       const forget = element("button", "studio-icon-button", "×");
       forget.type = "button";
-      forget.title = "Remove from this list";
-      forget.setAttribute("aria-label", `Remove ${item.name} from this list`);
+      forget.title = t.start.forget;
+      forget.setAttribute("aria-label", t.start.forgetNamed(item.name));
       forget.addEventListener("click", () => void call<{ recent: RecentPresentation[] }>("POST", "files/forget", { path: item.path })
         .then((result) => showRecent(result.recent))
         .catch((error) => toast(message(error), { tone: "error" })));
@@ -300,6 +307,8 @@ export async function showStartPage(root: HTMLElement, session: StudioSession, l
   showRecent((await presentations.files().catch(() => ({ recent: [] as RecentPresentation[] }))).recent);
 
   root.addEventListener("click", (event) => {
+    const chosen = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-language]")?.dataset.language : undefined;
+    if ((chosen === "en" || chosen === "zh") && chosen !== language) switchLanguage(chosen);
     const action = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-start]")?.dataset.start : undefined;
     if (action === "new") void presentations.create();
     if (action === "open") void presentations.open();

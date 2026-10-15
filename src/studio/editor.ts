@@ -37,6 +37,7 @@ import {
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import type { LanguageDiagnostic } from "./api";
+import { t } from "./i18n";
 import {
   completionSource,
   nameCompletionSource,
@@ -77,8 +78,8 @@ class SlideMarker extends GutterMarker {
     marker.className = "cm-slide-marker";
     marker.textContent = first === last ? String(first) : `${first}–${last}`;
     marker.title = first === last
-      ? `Slide ${first}: ${this.label} — click to preview`
-      : `Slides ${first} to ${last}, made by this statement — click to preview`;
+      ? t.editor.marker(first, this.label)
+      : t.editor.markerGroup(first, last);
     return marker;
   }
 }
@@ -332,7 +333,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
         // Slide text is prose, and a narrow editor beside the preview should not scroll sideways.
         EditorView.lineWrapping,
         EditorView.updateListener.of(options.onUpdate),
-        EditorView.contentAttributes.of({ "aria-label": "Slide document" }),
+        EditorView.contentAttributes.of({ "aria-label": t.editor.label }),
       ],
     }),
   });

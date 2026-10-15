@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 /** What the development server says about the Studio it is serving. */
 export interface StudioSession {
   token: string;
@@ -13,6 +15,8 @@ export interface StudioSession {
   name: string;
   directory: string;
   version: string;
+  /** The version of FrameSeq the Studio runs. */
+  frameseq?: string;
 }
 
 export interface RecentPresentation {
@@ -181,7 +185,7 @@ export async function openSession(): Promise<StudioSession> {
   const response = await fetch(`${base}/session`, { cache: "no-store" });
   const data = await response.json().catch(() => ({})) as Partial<StudioSession> & { error?: string };
   if (!response.ok || typeof data.token !== "string") {
-    throw new StudioRequestError(data.error ?? `The Studio could not start (HTTP ${response.status}).`, response.status);
+    throw new StudioRequestError(data.error ?? t.ui.couldNotStart(response.status), response.status);
   }
   token = data.token;
   return data as StudioSession;

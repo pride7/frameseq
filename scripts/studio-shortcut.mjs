@@ -3,6 +3,7 @@ import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { iconIcns, iconIco, iconPng } from "./app-icon.mjs";
+import { bundledStudioWindow } from "./browsers.mjs";
 import { configDirectory } from "./studio-files.mjs";
 
 /**
@@ -44,7 +45,7 @@ async function windowsFolders() {
   return output.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
-async function windowsShortcut({ node, cli, remove }) {
+async function windowsShortcut({ node, cli, window, remove }) {
   const links = (await windowsFolders()).map((folder) => join(folder, `${title}.lnk`));
   const icon = join(configDirectory(), "FrameSeq.ico");
   if (remove) {
@@ -64,14 +65,15 @@ async function windowsShortcut({ node, cli, remove }) {
     "  $link.WorkingDirectory = $env:USERPROFILE",
     "  $link.IconLocation = $env:FRAMESEQ_ICON + ',0'",
     "  $link.Description = $env:FRAMESEQ_DESCRIPTION",
-    // Minimised: the console only starts the Studio in the background, then closes.
-    "  $link.WindowStyle = 7",
+    "  $link.WindowStyle = $env:FRAMESEQ_WINDOW_STYLE",
     "  $link.Save()",
     "}",
   ].join("\n"), {
     FRAMESEQ_LINKS: links.join("\n"),
-    FRAMESEQ_TARGET: node,
-    FRAMESEQ_ARGUMENTS: `"${cli}" studio --background`,
+    FRAMESEQ_TARGET: window ?? node,
+    FRAMESEQ_ARGUMENTS: window ? "" : `"${cli}" studio --background`,
+    // Minimised for Node.js, whose console only starts the Studio in the background, then closes.
+    FRAMESEQ_WINDOW_STYLE: window ? "1" : "7",
     FRAMESEQ_ICON: icon,
     FRAMESEQ_DESCRIPTION: description,
   });
@@ -82,7 +84,7 @@ const shellQuote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
 
 const xmlEscape = (value) => value.replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[character]);
 
-async function macShortcut({ node, cli, remove }) {
+async function macShortcut({ node, cli, window, remove }) {
   const bundle = join(process.env.FRAMESEQ_SHORTCUT_DIR ?? join(homedir(), "Applications"), `${title}.app`);
   await rm(bundle, { recursive: true, force: true });
   if (remove) return [bundle];
@@ -105,7 +107,8 @@ async function macShortcut({ node, cli, remove }) {
 </plist>
 `, "utf8");
   const launcher = join(contents, "MacOS", title);
-  await writeFile(launcher, `#!/bin/sh\ncd "$HOME" || exit 1\nexec ${shellQuote(node)} ${shellQuote(cli)} studio --background\n`, "utf8");
+  const command = window ? shellQuote(window) : `${shellQuote(node)} ${shellQuote(cli)} studio --background`;
+  await writeFile(launcher, `#!/bin/sh\ncd "$HOME" || exit 1\nexec ${command}\n`, "utf8");
   await chmod(launcher, 0o755);
   await writeFile(join(contents, "Resources", "FrameSeq.icns"), iconIcns());
   return [bundle];
@@ -116,7 +119,7 @@ const desktopArgument = (value) => `"${value.replace(/[\\"`$]/g, (character) => 
   .replace(/\\/g, "\\\\")
   .replace(/%/g, "%%");
 
-async function linuxShortcut({ node, cli, remove }) {
+async function linuxShortcut({ node, cli, window, remove }) {
   const folder = process.env.FRAMESEQ_SHORTCUT_DIR
     ?? join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "applications");
   const entry = join(folder, "frameseq-studio.desktop");
@@ -133,7 +136,7 @@ async function linuxShortcut({ node, cli, remove }) {
     "Type=Application",
     `Name=${title}`,
     `Comment=${description}`,
-    `Exec=${[node, cli].map(desktopArgument).join(" ")} studio --background`,
+    window ? `Exec=${desktopArgument(window)}` : `Exec=${[node, cli].map(desktopArgument).join(" ")} studio --background`,
     `Icon=${icon}`,
     "Terminal=false",
     "Categories=Office;Presentation;",
@@ -143,9 +146,15 @@ async function linuxShortcut({ node, cli, remove }) {
   return [entry];
 }
 
-/** Write, or with `remove` delete, the Studio's shortcut; resolves to the paths it touched. */
+/**
+ * Write, or with `remove` delete, the Studio's shortcut; resolves to the paths it touched. In
+ * the FrameSeq app on macOS and Linux it opens the app's own window, which starts the Studio
+ * itself. On Windows it runs Node.js, which is signed, and opens the window from there, since
+ * Smart App Control may refuse the window, which is not.
+ */
 export function studioShortcut({ cli, remove = false }) {
-  const options = { node: process.execPath, cli, remove };
+  const window = process.platform === "win32" ? undefined : bundledStudioWindow();
+  const options = { node: process.execPath, cli, window, remove };
   if (process.platform === "win32") return windowsShortcut(options);
   if (process.platform === "darwin") return macShortcut(options);
   return linuxShortcut(options);

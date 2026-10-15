@@ -2,6 +2,15 @@ import { existsSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
 
+/**
+ * Show TypeScript's own messages in the Studio's language: its Chinese translation for "zh", and
+ * English otherwise. The setting belongs to the whole process, which serves one Studio.
+ */
+export function setDiagnosticLanguage(language) {
+  if (language === "zh") ts.validateLocaleAndSetLanguage("zh-cn", ts.sys);
+  else ts.setLocalizedDiagnosticMessages(undefined);
+}
+
 /** Completions are filtered again in the editor; this only keeps a global list from flooding it. */
 const maximumCompletions = 800;
 

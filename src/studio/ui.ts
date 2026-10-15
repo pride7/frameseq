@@ -1,5 +1,7 @@
 /** Small pieces of interface shared by the Studio's panels. */
 
+import { t } from "./i18n";
+
 export function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -59,7 +61,7 @@ export function toast(
   const buttons = element("div", "studio-toast-actions");
   const dismiss = element("button", "studio-toast-close", "×");
   dismiss.type = "button";
-  dismiss.setAttribute("aria-label", "Dismiss");
+  dismiss.setAttribute("aria-label", t.ui.dismiss);
   item.append(text, buttons, dismiss);
   toastHost.append(item);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -104,6 +106,11 @@ export interface MenuItem {
 }
 
 let openMenu: { close: () => void } | undefined;
+
+/** Close a context menu that is open, as the menu bar does before opening one of its own. */
+export function closeMenus(): void {
+  openMenu?.close();
+}
 
 /**
  * A context or drop-down menu at a point on the page, closed by Escape or a click elsewhere.
@@ -207,7 +214,7 @@ export function askText({
     input.setAttribute("aria-label", title);
     const problem = element("p", "studio-dialog-problem");
     const actions = element("div", "studio-dialog-actions");
-    const cancel = element("button", "studio-button", "Cancel");
+    const cancel = element("button", "studio-button", t.ui.cancel);
     cancel.type = "button";
     const accept = element("button", "studio-button is-primary", confirm);
     accept.type = "submit";
@@ -257,7 +264,7 @@ export function askChoice<T extends string>({
     const form = element("form");
     form.method = "dialog";
     const actions = element("div", "studio-dialog-actions");
-    const cancel = element("button", "studio-button", "Cancel");
+    const cancel = element("button", "studio-button", t.ui.cancel);
     cancel.type = "button";
     cancel.addEventListener("click", () => dialog.close());
     actions.append(cancel, ...choices.map((choice) => {
@@ -276,6 +283,23 @@ export function askChoice<T extends string>({
     dialog.showModal();
     actions.querySelector<HTMLButtonElement>(".is-primary")?.focus();
   });
+}
+
+/** Show something to read, such as the keyboard shortcuts, with one button that closes it. */
+export function showInfo(title: string, body: Node[]): void {
+  const dialog = element("dialog", "studio-dialog studio-info-dialog");
+  const form = element("form");
+  form.method = "dialog";
+  const actions = element("div", "studio-dialog-actions");
+  const close = element("button", "studio-button is-primary", t.ui.close);
+  close.type = "submit";
+  actions.append(close);
+  form.append(element("h2", "", title), ...body, actions);
+  dialog.append(form);
+  document.body.append(dialog);
+  dialog.addEventListener("close", () => dialog.remove(), { once: true });
+  dialog.showModal();
+  close.focus();
 }
 
 const sizesKey = "frameseq-studio-layout";

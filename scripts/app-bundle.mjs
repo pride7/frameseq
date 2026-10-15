@@ -6,13 +6,17 @@
  * the system may lack one, and the launchers and installer each operating system expects.
  *
  *   node scripts/app-bundle.mjs [--platform win32|darwin|linux] [--arch x64|arm64]
- *                               [--node <version>] [--out <dir>] [--with-browser]
+ *                               [--node <version>] [--out <dir>] [--with-browser] [--no-window]
  *
  * Windows gets an installer (when Inno Setup is installed) and a portable zip, macOS an app in a
  * disk image, and Linux an archive with an install script. Each runs `frameseq shortcut` with
  * its own runtime, so the Studio opens from the Start menu, Applications, or the app menu.
- * Another platform or processor than this computer's can be targeted: npm and the downloads
- * choose their binaries by the target, but the installer and disk image need their own OS.
+ *
+ * The Studio opens in the app's own window, built from desktop/ with Rust, whose top bar is the
+ * title bar. Without Rust, or with --no-window, the app opens it in a browser's app window as
+ * `frameseq studio` does. Another platform or processor than this computer's can be targeted:
+ * npm and the downloads choose their binaries by the target, but the window, the installer, and
+ * the disk image need their own OS.
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -22,6 +26,7 @@ import { delimiter, dirname, join, relative, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { iconIcns, iconIco, iconPng } from "./app-icon.mjs";
+import { buildDesktopWindow, canBuildDesktopWindow } from "./desktop-build.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
@@ -36,6 +41,7 @@ const arch = option("--arch", process.arch);
 // The runtime the app ships: an LTS release, the same line the CLI is tested on.
 const nodeVersion = option("--node", "24.14.0").replace(/^v/, "");
 const withBrowser = process.argv.includes("--with-browser") || platform !== "win32";
+const withWindow = !process.argv.includes("--no-window");
 const outRoot = resolve(option("--out", resolve(packageRoot, "output", "app")));
 const target = `${platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux"}-${arch}`;
 const work = resolve(outRoot, target);
@@ -84,6 +90,19 @@ async function folderSize(path) {
 
 const megabytes = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
+/**
+ * Move a folder just unpacked. Windows refuses to rename one that a virus scanner or a file
+ * watcher holds, such as a development server's, so it is copied instead.
+ */
+async function moveFolder(from, to) {
+  try {
+    await rename(from, to);
+  } catch (error) {
+    if (!["EPERM", "EBUSY", "EACCES"].includes(error?.code)) throw error;
+    await cp(from, to, { recursive: true, verbatimSymlinks: true });
+  }
+}
+
 await rm(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 await mkdir(stage, { recursive: true });
 
@@ -95,7 +114,7 @@ run("npm", ["pack", "--pack-destination", packDirectory], { cwd: packageRoot });
 const tarball = (await readdir(packDirectory)).find((name) => name.endsWith(".tgz"));
 run(tar, ["-xzf", join(packDirectory, tarball), "-C", packDirectory]);
 const app = resolve(stage, "app");
-await rename(join(packDirectory, "package"), app);
+await moveFolder(join(packDirectory, "package"), app);
 
 step(`Installing dependencies for ${platform}-${arch}`);
 // npm picks the native packages (esbuild, Rollup, Lightning CSS, Typst) by the target, so an app
@@ -141,8 +160,27 @@ if (platform === "win32") {
 }
 await cp(join(nodeFolder, "LICENSE"), join(runtime, "LICENSE"));
 
-// ── A browser for exports and checks ─────────────────────────────────────────────────────
+// ── The Studio's window ──────────────────────────────────────────────────────────────────
 const bundle = { version, node: nodeVersion, platform, arch };
+// Where the window goes: beside the app's folders, or as the macOS app's executable.
+const windowName = platform === "win32" ? "FrameSeq Studio.exe" : platform === "darwin" ? "FrameSeq Studio" : "frameseq-studio";
+let windowBinary;
+if (withWindow && platform === process.platform && canBuildDesktopWindow()) {
+  step("Building the Studio's window");
+  windowBinary = await buildDesktopWindow({ arch });
+  // frameseq-bundle.json names it from app/, so `frameseq studio` opens it too.
+  bundle.window = platform === "darwin" ? `../../../MacOS/${windowName}` : `../${windowName}`;
+  if (platform !== "darwin") {
+    await cp(windowBinary, join(stage, windowName));
+    if (platform === "linux") await chmod(join(stage, windowName), 0o755);
+  }
+} else if (withWindow) {
+  console.log(platform === process.platform
+    ? "\nRust was not found, so the Studio will open in a browser's app window."
+    : `\nThe Studio's window is built on ${platform} itself; this app opens the Studio in a browser's app window.`);
+}
+
+// ── A browser for exports and checks ─────────────────────────────────────────────────────
 if (withBrowser) {
   step("Adding a headless browser for exports");
   const browsers = await import(pathToFileURL(join(app, "node_modules", "@puppeteer", "browsers", "lib", "esm", "main.js")).href);
@@ -191,6 +229,7 @@ await writeFile(join(stage, "README.txt"), [
   `FrameSeq ${version}`,
   "",
   "FrameSeq Studio: open it from the Start menu, Applications, or the applications menu.",
+  ...(windowBinary ? [`It opens in a window of its own, ${windowName}, or in a browser's app window where the system refuses that.`] : []),
   "The frameseq command: bin/frameseq, the same command an npm install provides.",
   "",
   "Exports render with the browser in browser/ when there is one, and otherwise with Chrome or",
@@ -243,13 +282,18 @@ if (platform === "darwin") {
   await writeFile(join(bundleRoot, "Resources", "FrameSeq.icns"), iconIcns());
   await writeFile(join(bundleRoot, "Info.plist"), macInfoPlist());
   const executable = join(bundleRoot, "MacOS", "FrameSeq Studio");
-  await writeFile(executable, [
-    "#!/bin/sh",
-    "ROOT=\"$(cd \"$(dirname \"$0\")/../Resources/frameseq\" && pwd)\"",
-    "cd \"$HOME\"",
-    "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/frameseq.mjs\" studio --background",
-    "",
-  ].join("\n"));
+  if (windowBinary) {
+    // The window finds Node.js and FrameSeq in ../Resources/frameseq by itself.
+    await cp(windowBinary, executable);
+  } else {
+    await writeFile(executable, [
+      "#!/bin/sh",
+      "ROOT=\"$(cd \"$(dirname \"$0\")/../Resources/frameseq\" && pwd)\"",
+      "cd \"$HOME\"",
+      "exec \"$ROOT/node/bin/node\" \"$ROOT/app/scripts/frameseq.mjs\" studio --background",
+      "",
+    ].join("\n"));
+  }
   await chmod(executable, 0o755);
   await symlink("/Applications", join(dmgRoot, "Applications")).catch(() => undefined);
   if (process.platform === "darwin") {
@@ -338,12 +382,7 @@ Name: "addtopath"; Description: "Add the frameseq command to PATH"
 [Files]
 Source: "${source}\\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
-[Icons]
-Name: "{autoprograms}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized
-Name: "{autodesktop}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized; Tasks: desktopicon
-
-[Run]
-Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
+${nodeShortcuts()}
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -411,6 +450,21 @@ begin
   if Current = '' then RegDeleteValue(HKEY_CURRENT_USER, UserPathKey, 'Path')
   else WriteUserPath(Current, UserPathIsExpandable);
 end;
+`;
+}
+
+/**
+ * Shortcuts that start the Studio with Node.js in the background, which opens it in the app's
+ * window. Node.js is signed and the window is not, so where Smart App Control refuses the
+ * window, the Studio still opens, in a browser's app window.
+ */
+function nodeShortcuts() {
+  return `[Icons]
+Name: "{autoprograms}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized
+Name: "{autodesktop}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\frameseq.mjs"" studio --background"; WorkingDir: "{userdocs}"; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
 `;
 }
 

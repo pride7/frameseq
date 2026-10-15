@@ -1,5 +1,6 @@
 import "./studio.css";
-import { redo, undo } from "@codemirror/commands";
+import { redo, selectAll, undo } from "@codemirror/commands";
+import { openSearchPanel } from "@codemirror/search";
 import { ChangeSet, EditorSelection, Text, type ChangeSpec, type TransactionSpec } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { collectLayoutIssues } from "../../scripts/layout-rules.mjs";
@@ -36,9 +37,13 @@ import {
   type SlideMark,
 } from "./editor";
 import { Presentations, showStartPage } from "./files";
+import { language, switchLanguage, t, type Language } from "./i18n";
+import { goToNameDefinition, renameNameAtCursor } from "./language";
+import { MenuBar, type MenuEntry } from "./menubar";
 import { buildSlideMap, slideAt, type RenderedSlide, type SlideMap } from "./outline";
 import { StudioFrames, type PreviewFailure, type SourceTarget } from "./frames";
 import { nameDiagnostics } from "../source-names";
+import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { SlideInspector } from "./inspector";
 import { ProblemsPanel, type Problem } from "./problems";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -49,6 +54,7 @@ import {
   formatDuration,
   readPreference,
   required,
+  showInfo,
   showMenu,
   splitter,
   storePreference,
@@ -60,11 +66,6 @@ type SaveState = "saved" | "dirty" | "saving" | "blocked" | "conflict" | "error"
 type ThemeChoice = "system" | "light" | "dark";
 
 const themeKey = "frameseq-studio-theme";
-const themeLabels: Record<ThemeChoice, { glyph: string; title: string }> = {
-  system: { glyph: "◐", title: "Theme: follow the system (click for light)" },
-  light: { glyph: "☀", title: "Theme: light (click for dark)" },
-  dark: { glyph: "☾", title: "Theme: dark (click to follow the system)" },
-};
 
 /** The palette chosen in this browser; the page applies it before anything is drawn. */
 function readThemeChoice(): ThemeChoice {
@@ -84,19 +85,15 @@ const mod = isMac ? "⌘" : "Ctrl";
 const logo = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#020617"/><path d="M15 15h35v9H25v8h21v9H25v17H15V15Z" fill="#22d3ee"/></svg>`;
 
 const shell = `
-  <header class="studio-topbar">
-    <div class="studio-brand">${logo}<span>FrameSeq <b>Studio</b></span></div>
+  <header class="studio-topbar" data-window-drag>
+    <div class="studio-brand" title="${t.appName}">${logo}</div>
+    <nav class="studio-menubar" data-slot="menubar" aria-label="${t.shell.menuBar}"></nav>
     <div class="studio-file">
-      <button type="button" class="studio-file-button" data-action="file-menu" aria-haspopup="menu" title="New, open, or recent presentations (${mod}+O opens one)"><span class="studio-file-name" data-slot="file"></span><span class="studio-caret" aria-hidden="true"></span></button>
-      <span class="studio-save-state" data-slot="save-state" data-state="saved"><i></i><span>Saved</span></span>
+      <button type="button" class="studio-file-button" data-action="file-menu" aria-haspopup="menu" title="${t.shell.fileButton(mod)}"><span class="studio-file-name" data-slot="file"></span><span class="studio-caret" aria-hidden="true"></span></button>
+      <span class="studio-save-state" data-slot="save-state" data-state="saved"><i></i><span>${t.save.saved}</span></span>
     </div>
     <div class="studio-actions">
-      <button type="button" class="studio-icon-button studio-theme-button" data-action="theme"></button>
-      <label class="studio-switch" title="Save as you type, so the preview follows every change">
-        <input type="checkbox" data-control="autosave"><span class="studio-switch-track" aria-hidden="true"></span><span>Auto-save</span>
-      </label>
-      <button type="button" class="studio-button" data-action="export" aria-haspopup="menu">Export<span class="studio-caret" aria-hidden="true"></span></button>
-      <button type="button" class="studio-button is-primary" data-action="present" title="Present from the current slide (F5)"><span aria-hidden="true">▶</span> Present</button>
+      <button type="button" class="studio-button is-primary" data-action="present" title="${t.shell.presentTitle}"><span aria-hidden="true">▶</span> ${t.shell.present}</button>
     </div>
   </header>
   <div class="studio-banner" data-slot="banner" hidden>
@@ -104,26 +101,26 @@ const shell = `
     <span class="studio-banner-actions" data-slot="banner-actions"></span>
   </div>
   <main class="studio-workspace">
-    <section class="studio-rail" aria-label="Slides">
+    <section class="studio-rail" aria-label="${t.shell.slides}">
       <header class="studio-pane-header">
-        <span class="studio-pane-title">Slides</span>
+        <span class="studio-pane-title">${t.shell.slides}</span>
         <span class="studio-pane-meta" data-slot="slide-count"></span>
         <span class="studio-pane-spacer"></span>
-        <button type="button" class="studio-icon-button" data-action="new-slide" title="New slide after the current one">+</button>
+        <button type="button" class="studio-icon-button" data-action="new-slide" title="${t.shell.newSlideTitle}">+</button>
       </header>
       <div class="studio-rail-body" data-slot="rail"></div>
       <div class="studio-splitter is-horizontal" data-splitter="inspector"></div>
-      <section class="studio-inspector" aria-label="Current slide">
+      <section class="studio-inspector" aria-label="${t.shell.currentSlide}">
         <header class="studio-pane-header">
-          <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="Show or hide the objects of the current slide">⌄</button>
-          <span class="studio-pane-title">Current slide</span>
+          <button type="button" class="studio-icon-button studio-inspector-toggle" data-action="toggle-inspector" aria-expanded="true" title="${t.shell.toggleInspector}">⌄</button>
+          <span class="studio-pane-title">${t.shell.currentSlide}</span>
           <span class="studio-pane-meta" data-slot="inspector-meta"></span>
         </header>
-        <div class="studio-inspector-body" data-slot="inspector" role="tree" aria-label="Objects on the current slide"></div>
+        <div class="studio-inspector-body" data-slot="inspector" role="tree" aria-label="${t.shell.inspectorLabel}"></div>
       </section>
     </section>
     <div class="studio-splitter" data-splitter="rail"></div>
-    <section class="studio-editor-pane" aria-label="Editor">
+    <section class="studio-editor-pane" aria-label="${t.shell.editor}">
       <header class="studio-pane-header">
         <span class="studio-pane-title" data-slot="editor-title"></span>
         <span class="studio-breadcrumb" data-slot="breadcrumb"></span>
@@ -131,25 +128,25 @@ const shell = `
       <div class="studio-editor" data-slot="editor"></div>
     </section>
     <div class="studio-splitter" data-splitter="preview"></div>
-    <section class="studio-preview-pane" aria-label="Preview">
+    <section class="studio-preview-pane" aria-label="${t.shell.preview}">
       <header class="studio-pane-header">
-        <span class="studio-pane-title">Preview</span>
+        <span class="studio-pane-title">${t.shell.preview}</span>
         <span class="studio-pane-meta" data-slot="preview-slide"></span>
         <span class="studio-pane-spacer"></span>
-        <label class="studio-toggle" title="Show the slide that holds the cursor"><input type="checkbox" data-control="follow"><span>Follow cursor</span></label>
-        <button type="button" class="studio-icon-button" data-action="open-browser" title="Open the preview in a browser tab">↗</button>
+        <label class="studio-toggle" title="${t.shell.followTitle}"><input type="checkbox" data-control="follow"><span>${t.shell.followCursor}</span></label>
+        <button type="button" class="studio-icon-button" data-action="open-browser" title="${t.shell.openBrowserTitle}">↗</button>
       </header>
       <div class="studio-preview-body" data-slot="preview"></div>
     </section>
   </main>
   <div class="studio-splitter is-horizontal" data-splitter="panel"></div>
-  <section class="studio-panel" aria-label="Problems and output">
+  <section class="studio-panel" aria-label="${t.shell.panel}">
     <header class="studio-panel-tabs" role="tablist">
-      <button type="button" role="tab" data-tab="problems" aria-selected="true">Problems<span class="studio-badge" data-slot="problem-badge">0</span></button>
-      <button type="button" role="tab" data-tab="output" aria-selected="false">Output</button>
+      <button type="button" role="tab" data-tab="problems" aria-selected="true">${t.shell.problems}<span class="studio-badge" data-slot="problem-badge">0</span></button>
+      <button type="button" role="tab" data-tab="output" aria-selected="false">${t.shell.output}</button>
       <span class="studio-pane-spacer"></span>
       <span class="studio-check-state" data-slot="check-state"></span>
-      <button type="button" class="studio-icon-button" data-action="toggle-panel" title="Hide or show the panel (${mod}+J)">⌄</button>
+      <button type="button" class="studio-icon-button" data-action="toggle-panel" title="${t.shell.togglePanel(mod)}">⌄</button>
     </header>
     <div class="studio-panel-body">
       <div class="studio-problems" data-panel="problems"></div>
@@ -185,6 +182,7 @@ function showFatal(title: string, detail: string): void {
 }
 
 async function start(): Promise<void> {
+  installWindowFrame();
   let session: StudioSession;
   let source: SourceResponse;
   try {
@@ -198,10 +196,8 @@ async function start(): Promise<void> {
     // A plain `frameseq dev` server serves this page but not the Studio behind it.
     const notStudio = error instanceof StudioRequestError && error.status === 404;
     showFatal(
-      notStudio ? "This server is a preview, not the Studio" : "FrameSeq Studio could not start",
-      notStudio
-        ? "It was started with frameseq dev, which never lets a page rewrite the slide document. Stop it and start the Studio instead:"
-        : `${error instanceof Error ? error.message : String(error)} Start the Studio with:`,
+      notStudio ? t.fatal.notStudio : t.fatal.failed,
+      notStudio ? t.fatal.notStudioDetail : t.fatal.failedDetail(error instanceof Error ? error.message : String(error)),
     );
     return;
   }
@@ -209,7 +205,7 @@ async function start(): Promise<void> {
   root.innerHTML = shell;
   document.title = `${session.name} · FrameSeq Studio`;
   slot("file").textContent = session.file;
-  required<HTMLElement>(root, "[data-action='file-menu']").title = `${session.entry}\nNew, open, or recent presentations (${mod}+O opens one)`;
+  required<HTMLElement>(root, "[data-action='file-menu']").title = `${session.entry}\n${t.shell.fileButton(mod)}`;
   slot("editor-title").textContent = session.name;
 
   // ── Document state ──────────────────────────────────────────────────────────────────────
@@ -297,7 +293,7 @@ async function start(): Promise<void> {
             source: "runtime",
             severity: "error",
             message: failure.message,
-            detail: "The preview still shows the last version that ran. Fix the error and save to update it.",
+            detail: t.check.runtimeDetail,
             ...(location ?? {}),
           };
         }));
@@ -363,10 +359,16 @@ async function start(): Promise<void> {
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f6f8fb" : "#0a0e17");
     setEditorDarkness(view, theme === "dark");
     frames.setTheme(theme);
-    const button = required<HTMLButtonElement>(root, "[data-action='theme']");
-    button.textContent = themeLabels[themeChoice].glyph;
-    button.title = themeLabels[themeChoice].title;
-    button.setAttribute("aria-label", themeLabels[themeChoice].title);
+  }
+
+  function chooseTheme(choice: ThemeChoice): void {
+    themeChoice = choice;
+    try {
+      localStorage.setItem(themeKey, themeChoice);
+    } catch {
+      // The choice simply lasts until the page closes.
+    }
+    applyTheme();
   }
   applyTheme();
   systemLight.addEventListener("change", () => {
@@ -419,7 +421,7 @@ async function start(): Promise<void> {
     }
     const groupIndex = map.groupOf[previewSlide];
     const group = groupIndex === undefined ? undefined : map.groups[groupIndex];
-    if (!group) return { note: `Slide ${previewSlide + 1} is made outside ${session.name}.` };
+    if (!group) return { note: t.inspector.madeOutside(previewSlide + 1, session.name) };
     const call = map.calls[previewSlide];
     const callLine = call === undefined ? undefined : doc.lineAt(call).number;
     const slide = (callLine === undefined ? undefined : report.slides.find((candidate) => (
@@ -431,11 +433,9 @@ async function start(): Promise<void> {
     const anchorLine = doc.lineAt(group.anchor).number;
     const inGroup = call !== undefined && call >= group.from && call < group.to;
     const note = !inGroup && slide
-      ? `Made by the helper call on line ${anchorLine}; these objects are written in the helper.`
-      : (group.slides.length > 1
-        ? `Made by a statement on line ${anchorLine} with ${group.slides.length - 1} other slide${group.slides.length === 2 ? "" : "s"}; its objects are written once for all of them.`
-        : "");
-    return slide ? { slide, note } : { note: `Slide ${previewSlide + 1} is made by the statement on line ${anchorLine}.` };
+      ? t.inspector.madeByHelper(anchorLine)
+      : (group.slides.length > 1 ? t.inspector.madeWithOthers(anchorLine, group.slides.length - 1) : "");
+    return slide ? { slide, note } : { note: t.inspector.madeByStatement(previewSlide + 1, anchorLine) };
   }
 
   function refreshInspector(): void {
@@ -461,20 +461,18 @@ async function start(): Promise<void> {
   function setSaveState(state: SaveState, detail?: string): void {
     saveState = state;
     const labels: Record<SaveState, string> = {
-      saved: "Saved",
-      dirty: autosave ? "Editing…" : "Unsaved",
-      saving: "Saving…",
-      blocked: "Not saved: syntax error",
-      conflict: "Changed on disk",
-      error: "Save failed",
-      offline: "Server offline",
+      saved: t.save.saved,
+      dirty: autosave ? t.save.editing : t.save.unsaved,
+      saving: t.save.saving,
+      blocked: t.save.blocked,
+      conflict: t.save.conflict,
+      error: t.save.error,
+      offline: t.save.offline,
     };
     const pill = slot("save-state");
     pill.dataset.state = state;
     required<HTMLElement>(pill, "span").textContent = labels[state];
-    pill.title = detail ?? (state === "blocked"
-      ? "Auto-save waits until the document parses, so the preview never runs broken code. Press Ctrl+S to save anyway."
-      : labels[state]);
+    pill.title = detail ?? (state === "blocked" ? t.save.blockedDetail : labels[state]);
     const unsaved = state !== "saved" && state !== "saving";
     document.title = `${unsaved ? "● " : ""}${session.name} · FrameSeq Studio`;
   }
@@ -561,7 +559,7 @@ async function start(): Promise<void> {
   // ── The file changing underneath the editor ─────────────────────────────────────────────
   async function onDiskChange(payload: { version?: string; missing?: boolean }): Promise<void> {
     if (payload.missing) {
-      showBanner(`${session.name} was removed or renamed on disk.`, []);
+      showBanner(t.save.removed(session.name), []);
       return;
     }
     if (!payload.version || payload.version === baseVersion) return;
@@ -587,7 +585,7 @@ async function start(): Promise<void> {
       return;
     }
     replaceFromDisk(latest);
-    toast(`${session.name} changed on disk and was reloaded.`, { tone: "info", timeout: 2600, key: "disk-reload" });
+    toast(t.save.reloaded(session.name), { tone: "info", timeout: 2600, key: "disk-reload" });
   }
 
   function replaceFromDisk(latest: SourceResponse): void {
@@ -604,16 +602,16 @@ async function start(): Promise<void> {
   }
 
   function showConflict(): void {
-    showBanner(`${session.name} changed on disk while you had unsaved edits.`, [
+    showBanner(t.save.conflictBanner(session.name), [
       {
-        label: "Use the file on disk",
+        label: t.save.useDisk,
         run: async () => {
           const latest = await call<SourceResponse>("GET", "source");
           replaceFromDisk(latest);
         },
       },
       {
-        label: "Keep my version",
+        label: t.save.keepMine,
         primary: true,
         run: async () => {
           setSaveState("dirty");
@@ -914,7 +912,7 @@ async function start(): Promise<void> {
     const selection = view.state.selection.main;
     const line = view.state.doc.lineAt(selection.head);
     const selected = selection.to - selection.from;
-    slot("status-cursor").textContent = `Ln ${line.number}, Col ${selection.head - line.from + 1}${selected ? ` (${selected} selected)` : ""}`;
+    slot("status-cursor").textContent = t.status.cursor(line.number, selection.head - line.from + 1) + (selected ? t.status.selected(selected) : "");
     const index = slideIndexAt(selection.head, previewSlide);
     const crumb = slot("breadcrumb");
     if (index === undefined) {
@@ -923,14 +921,14 @@ async function start(): Promise<void> {
     }
     const label = outline?.[index]?.label ?? report?.slides[index]?.label ?? "";
     const object = objectAt(selection.head);
-    crumb.textContent = `Slide ${index + 1}${label ? ` · ${label}` : ""}${object ? ` › ${object.type}` : ""}`;
+    crumb.textContent = `${t.status.slide(index + 1)}${label ? ` · ${label}` : ""}${object ? ` › ${object.type}` : ""}`;
     inspector.highlight(object);
   }
 
   function showPreviewPosition(): void {
     const text = renderedCount > 0 ? `${previewSlide + 1} / ${renderedCount}${previewLabel ? ` · ${previewLabel}` : ""}` : "";
     slot("preview-slide").textContent = text;
-    slot("status-slide").textContent = renderedCount > 0 ? `Slide ${previewSlide + 1} of ${renderedCount}` : "";
+    slot("status-slide").textContent = renderedCount > 0 ? t.status.slideOf(previewSlide + 1, renderedCount) : "";
     slot("slide-count").textContent = renderedCount > 0 ? String(renderedCount) : "";
   }
 
@@ -961,7 +959,7 @@ async function start(): Promise<void> {
     const status = slot("status-problems");
     status.textContent = `● ${errors}  ▲ ${warnings}`;
     status.dataset.tone = badge.dataset.tone;
-    status.title = `${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}`;
+    status.title = t.status.problemCounts(errors, warnings);
   }
 
   function selectProblem(problem: Problem): void {
@@ -1002,7 +1000,7 @@ async function start(): Promise<void> {
     const doc = frame.contentDocument;
     if (!target || !doc || doc.documentElement.dataset.ready !== "true") return;
     const state = slot("check-state");
-    state.textContent = "Checking layout…";
+    state.textContent = t.check.checking;
     try {
       await doc.fonts.ready;
       await Promise.race([
@@ -1025,10 +1023,10 @@ async function start(): Promise<void> {
         column: issue.element.source?.column,
         path: issue.element.path,
       })));
-      state.textContent = `Layout checked · ${result.slides} slide${result.slides === 1 ? "" : "s"}`;
+      state.textContent = t.check.checked(result.slides);
     } catch (error) {
-      state.textContent = "Layout check failed";
-      appendOutput(`Layout check failed: ${error instanceof Error ? error.message : String(error)}\n`);
+      state.textContent = t.check.failed;
+      appendOutput(`${t.check.failedOutput(error instanceof Error ? error.message : String(error))}\n`);
     }
   }
 
@@ -1058,22 +1056,22 @@ async function start(): Promise<void> {
   async function rearrange(action: "insert" | "duplicate" | "delete" | "move", index: number, to = 0): Promise<void> {
     const map = await settledSlideMap();
     if (!map) {
-      toast("The slide rail is still catching up with the editor. Try again in a moment.", { tone: "warning" });
+      toast(t.rail.catchingUp, { tone: "warning" });
       return;
     }
     const doc = view.state.doc;
     const groupIndex = map.groupOf[index];
     const group = groupIndex === undefined ? undefined : map.groups[groupIndex];
     if (!group && action !== "insert") {
-      toast(`Slide ${index + 1} is not made by a statement in ${session.name}, so it cannot be changed from the rail.`, { tone: "warning" });
+      toast(t.rail.notHere(index + 1, session.name), { tone: "warning" });
       return;
     }
     const size = group?.slides.length ?? 0;
     const first = group?.slides[0] ?? 0;
     const last = group?.slides[size - 1] ?? -1;
     const together = group && size > 1
-      ? `the ${size} slides made by line ${doc.lineAt(group.anchor).number}`
-      : `slide ${index + 1}`;
+      ? t.rail.groupFromLine(size, doc.lineAt(group.anchor).number)
+      : t.rail.single(index + 1);
     let spec: TransactionSpec | undefined;
     let landing = index;
     if (action === "insert") {
@@ -1088,7 +1086,7 @@ async function start(): Promise<void> {
     } else if (action === "move" && group && groupIndex !== undefined) {
       const target = to >= renderedCount ? map.groups.length : map.groupOf[to];
       if (target === undefined) {
-        toast("A slide can only be moved next to slides made by this document.", { tone: "warning" });
+        toast(t.rail.moveOutside, { tone: "warning" });
         return;
       }
       spec = moveSlide(doc, map.groups, groupIndex, target);
@@ -1102,12 +1100,12 @@ async function start(): Promise<void> {
     await save({ auto: false });
     frames.focus({ slideIndex: landing });
     if (action === "delete") {
-      toast(`Deleted ${together}.`, {
+      toast(t.rail.deleted(together), {
         tone: "info",
-        actions: [{ label: "Undo", run: () => { undo(view); } }],
+        actions: [{ label: t.rail.undo, run: () => { undo(view); } }],
       });
     } else if (size > 1 && action !== "insert") {
-      toast(`${action === "move" ? "Moved" : "Duplicated"} ${together}, which move as one.`, { tone: "info" });
+      toast(action === "move" ? t.rail.moved(together) : t.rail.duplicated(together), { tone: "info" });
     }
   }
 
@@ -1128,15 +1126,15 @@ async function start(): Promise<void> {
       return;
     }
     const path = await askText({
-      title: "Bind to a named region",
-      message: "The selected objects will move together when this region is positioned or anchored.",
+      title: t.bind.title,
+      message: t.bind.message,
       value: plan.suggestion,
-      confirm: "Bind",
+      confirm: t.bind.confirm,
       validate: (value) => {
         if (!/^[A-Za-z_][A-Za-z0-9_-]*(?:\/[A-Za-z_][A-Za-z0-9_-]*)*$/.test(value)) {
-          return "Use path segments of letters, digits, _ or -, each starting with a letter.";
+          return t.bind.badPath;
         }
-        return plan.taken.has(value) ? `The region “${value}” already exists on this slide.` : undefined;
+        return plan.taken.has(value) ? t.bind.taken(value) : undefined;
       },
     });
     if (!path || editorText() !== reportText) return;
@@ -1167,24 +1165,24 @@ async function start(): Promise<void> {
     if (group && group.slides.length > 1) {
       const others = group.slides.length - 1;
       items.push({
-        note: `Made by line ${view.state.doc.lineAt(group.anchor).number} with ${others} other slide${others === 1 ? "" : "s"}; these act on all of them.`,
+        note: t.rail.groupNote(view.state.doc.lineAt(group.anchor).number, others),
       });
     } else if (map && !group) {
-      items.push({ note: `Made outside ${session.name}, so it can only be shown here.` });
+      items.push({ note: t.rail.outsideNote(session.name) });
     }
     items.push(
-      { label: "New slide after", run: () => void rearrange("insert", index) },
-      { label: "Duplicate", disabled: !movable, run: () => void rearrange("duplicate", index) },
+      { label: t.rail.newAfter, run: () => void rearrange("insert", index) },
+      { label: t.rail.duplicate, disabled: !movable, run: () => void rearrange("duplicate", index) },
       "separator",
-      { label: "Move up", disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
-      { label: "Move down", disabled: downTo === undefined, run: () => void rearrange("move", index, downTo ?? 0) },
+      { label: t.rail.moveUp, disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
+      { label: t.rail.moveDown, disabled: downTo === undefined, run: () => void rearrange("move", index, downTo ?? 0) },
       "separator",
-      { label: "Go to source", run: () => goToSlide(index, { focusEditor: true }) },
-      { label: "Present from here", shortcut: "F5", run: () => present(index) },
+      { label: t.rail.goToSource, run: () => goToSlide(index, { focusEditor: true }) },
+      { label: t.rail.presentFromHere, shortcut: "F5", run: () => present(index) },
       "separator",
-      { label: "Delete", shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
+      { label: t.rail.delete, shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
     );
-    showMenu(x, y, items, `Slide ${index + 1}`);
+    showMenu(x, y, items, t.rail.menuLabel(index + 1));
   }
 
   // ── Other presentations ─────────────────────────────────────────────────────────────────
@@ -1196,21 +1194,28 @@ async function start(): Promise<void> {
     if (saving) await saving;
     if (!isDirty()) return true;
     if (saveState === "conflict") {
-      toast(`${session.name} changed on disk. Choose which version to keep first.`, { tone: "warning" });
+      toast(t.save.resolveFirst(session.name), { tone: "warning" });
       return false;
     }
     const choice = await askChoice({
-      title: "Save changes?",
-      message: `${session.name} has changes that are not saved.`,
+      title: t.save.askTitle,
+      message: t.save.askMessage(session.name),
       choices: [
-        { label: "Don't save", value: "discard" },
-        { label: "Save", value: "save", primary: true },
+        { label: t.save.dontSave, value: "discard" },
+        { label: t.save.saveButton, value: "save", primary: true },
       ],
     });
     if (choice === "save") return save({ auto: false });
     leaving = choice === "discard";
     return leaving;
   }
+
+  // In the app's own window, closing it settles unsaved edits as opening another presentation
+  // does; with auto-save on, the edits of the last moment are saved first, as they would be.
+  guardWindowClose(async () => {
+    if (autosave && saveState === "dirty") await save({ auto: true });
+    return confirmLeave();
+  });
 
   const presentations = new Presentations(session, {
     leave: confirmLeave,
@@ -1221,60 +1226,46 @@ async function start(): Promise<void> {
 
   // ── Exports and presenting ──────────────────────────────────────────────────────────────
   const exportFormats: Array<{ format: ExportFormat; label: string; hint: string }> = [
-    { format: "pdf", label: "PDF", hint: "output/pdf" },
-    { format: "pptx", label: "PowerPoint, editable", hint: "output/pptx" },
-    { format: "pptx-flat", label: "PowerPoint, one image per slide", hint: "output/pptx" },
-    { format: "html-single", label: "Single HTML file", hint: "dist/index.html" },
-    { format: "html", label: "HTML site", hint: "dist/" },
-    { format: "typst", label: "Typst source", hint: "output/typst" },
+    { format: "pdf", label: t.exports.pdf, hint: "output/pdf" },
+    { format: "pptx", label: t.exports.pptx, hint: "output/pptx" },
+    { format: "pptx-flat", label: t.exports.pptxFlat, hint: "output/pptx" },
+    { format: "html-single", label: t.exports.htmlSingle, hint: "dist/index.html" },
+    { format: "html", label: t.exports.html, hint: "dist/" },
+    { format: "typst", label: t.exports.typst, hint: "output/typst" },
   ];
-
-  function showExportMenu(): void {
-    const button = required<HTMLButtonElement>(root, "[data-action='export']");
-    const box = button.getBoundingClientRect();
-    showMenu(box.left, box.bottom + 6, exportFormats.map((item) => ({
-      label: item.label,
-      shortcut: item.hint,
-      disabled: exporting,
-      run: () => void exportDeck(item.format, item.label),
-    })), "Export");
-  }
 
   async function exportDeck(format: ExportFormat, label: string): Promise<void> {
     if (exporting) return;
     exporting = true;
-    const button = required<HTMLButtonElement>(root, "[data-action='export']");
-    button.disabled = true;
-    const progress = toast(`Exporting ${label}…`, { tone: "busy" });
+    const progress = toast(t.exports.exporting(label), { tone: "busy" });
     try {
       if (!await flushSave()) {
-        progress.update("Save the document before exporting it.", { tone: "warning" });
+        progress.update(t.exports.saveFirst, { tone: "warning" });
         return;
       }
-      appendOutput(`\n▶ Export ${label}\n`);
+      appendOutput(`\n${t.exports.output(label)}\n`);
       const result = await call<ExportResult>("POST", "export", { format });
       appendOutput(result.log.endsWith("\n") ? result.log : `${result.log}\n`);
       if (result.ok && result.job) {
         const job = result.job;
-        progress.update(`${result.label} saved to ${result.display} in ${formatDuration(result.duration)}.`, {
+        progress.update(t.exports.saved(label, result.display, formatDuration(result.duration)), {
           tone: "success",
           timeout: 15000,
           actions: [
-            ...(result.directory ? [] : [{ label: "Download", run: () => download(job) }]),
-            { label: "Show in folder", run: () => void call("POST", "reveal", { job }) },
+            ...(result.directory ? [] : [{ label: t.exports.download, run: () => download(job) }]),
+            { label: t.exports.showInFolder, run: () => void call("POST", "reveal", { job }) },
           ],
         });
       } else {
-        progress.update(`${result.label} export failed.`, {
+        progress.update(t.exports.failed(label), {
           tone: "error",
-          actions: [{ label: "Show output", run: () => showPanel("output") }],
+          actions: [{ label: t.exports.showOutput, run: () => showPanel("output") }],
         });
       }
     } catch (error) {
-      progress.update(`Export failed: ${error instanceof Error ? error.message : String(error)}`, { tone: "error" });
+      progress.update(t.exports.error(error instanceof Error ? error.message : String(error)), { tone: "error" });
     } finally {
       exporting = false;
-      button.disabled = false;
     }
   }
 
@@ -1352,25 +1343,225 @@ async function start(): Promise<void> {
     maximum: () => Math.max(120, innerHeight * 0.6),
     invert: true,
   });
-  if (readPreference("panel-collapsed", false)) root.classList.add("is-panel-collapsed");
+  // The problems panel starts folded: the status bar counts problems, the editor underlines
+  // them, and a build error opens the panel by itself.
+  if (readPreference("panel-collapsed", true)) root.classList.add("is-panel-collapsed");
   if (readPreference("rail-collapsed", false)) root.classList.add("is-rail-collapsed");
 
   // ── Controls ────────────────────────────────────────────────────────────────────────────
-  const autosaveControl = required<HTMLInputElement>(root, "[data-control='autosave']");
-  autosaveControl.checked = autosave;
-  autosaveControl.addEventListener("change", () => {
-    autosave = autosaveControl.checked;
+  function setAutosave(enabled: boolean): void {
+    autosave = enabled;
     storePreference("autosave", autosave);
     if (autosave && isDirty()) scheduleSave();
     setSaveState(isDirty() ? "dirty" : saveState === "dirty" ? "saved" : saveState);
-  });
+  }
   const followControl = required<HTMLInputElement>(root, "[data-control='follow']");
   followControl.checked = follow;
-  followControl.addEventListener("change", () => {
-    follow = followControl.checked;
+  function setFollow(enabled: boolean): void {
+    follow = enabled;
+    followControl.checked = enabled;
     storePreference("follow", follow);
     if (follow) followCursor();
-  });
+  }
+  followControl.addEventListener("change", () => setFollow(followControl.checked));
+
+  function toggleRail(): void {
+    root.classList.toggle("is-rail-collapsed");
+    storePreference("rail-collapsed", root.classList.contains("is-rail-collapsed"));
+  }
+
+  function toggleInspector(): void {
+    const collapsed = root.classList.toggle("is-inspector-collapsed");
+    required<HTMLElement>(root, "[data-action='toggle-inspector']").setAttribute("aria-expanded", String(!collapsed));
+    storePreference("inspector-collapsed", collapsed);
+  }
+
+  function stepSlide(step: number): void {
+    const count = renderedCount || (report?.slides.length ?? 0);
+    goToSlide(Math.min(Math.max(previewSlide + step, 0), Math.max(count - 1, 0)), { focusEditor: true });
+  }
+
+  /** Run an editor command from a menu, with the editor focused as its keyboard shortcut would have it. */
+  function inEditor(command: (target: EditorView) => boolean): () => void {
+    return () => {
+      view.focus();
+      command(view);
+    };
+  }
+
+  const docsBase = `https://pride7.github.io/frameseq/${t.help.docsPath}`;
+
+  function showShortcuts(): void {
+    const table = element("table", "studio-shortcuts");
+    for (const [keys, action] of t.help.shortcuts) {
+      const row = element("tr");
+      const keyCell = element("td");
+      keyCell.append(element("kbd", "", isMac ? keys.replaceAll("Ctrl", "⌘") : keys));
+      row.append(keyCell, element("td", "", action));
+      table.append(row);
+    }
+    showInfo(t.help.shortcutsTitle, [table]);
+  }
+
+  function showAbout(): void {
+    const about = element("div", "studio-about");
+    about.innerHTML = logo;
+    about.append(
+      element("strong", "", t.help.aboutVersion(session.frameseq ?? "")),
+      element("p", "", t.help.aboutText),
+    );
+    showInfo(t.help.aboutTitle, [about]);
+  }
+
+  // ── The menu bar ──────────────────────────────────────────────────────────────────────────
+  const slideCommand = (command: string, label: string, run: () => void, disabled?: () => boolean, shortcut?: string): MenuEntry => (
+    { command, label, run, shortcut, disabled: () => renderedCount === 0 || Boolean(disabled?.()) }
+  );
+  const menuBar = new MenuBar(slot("menubar"), [
+    {
+      id: "file",
+      label: t.menus.file,
+      accessKey: "f",
+      items: () => [
+        { command: "new-presentation", label: t.menu.newPresentation, run: () => void presentations.create() },
+        { command: "open", label: t.menu.open, shortcut: `${mod}+O`, run: () => void presentations.open() },
+        { command: "open-recent", label: t.menu.openRecent, submenu: () => recentEntries() },
+        { command: "show-in-folder", label: t.menu.showInFolder, run: () => void call("POST", "files/reveal").catch((error) => toast(String(error instanceof Error ? error.message : error), { tone: "error" })) },
+        "separator",
+        { command: "save", label: t.menu.save, shortcut: `${mod}+S`, run: () => void save({ auto: false }) },
+        { command: "autosave", label: t.menu.autoSave, checked: () => autosave, run: () => setAutosave(!autosave) },
+        "separator",
+        {
+          command: "export",
+          label: t.menu.export,
+          submenu: () => exportFormats.map((item) => ({
+            command: `export-${item.format}`,
+            label: item.label,
+            shortcut: item.hint,
+            disabled: () => exporting,
+            run: () => void exportDeck(item.format, item.label),
+          })),
+        },
+      ],
+    },
+    {
+      id: "edit",
+      label: t.menus.edit,
+      accessKey: "e",
+      items: () => [
+        { command: "undo", label: t.menu.undo, shortcut: `${mod}+Z`, run: inEditor(undo) },
+        { command: "redo", label: t.menu.redo, shortcut: isMac ? "⇧⌘Z" : "Ctrl+Y", run: inEditor(redo) },
+        "separator",
+        { command: "find", label: t.menu.find, shortcut: `${mod}+F`, run: inEditor(openSearchPanel) },
+        { command: "select-all", label: t.menu.selectAll, shortcut: `${mod}+A`, run: inEditor(selectAll) },
+        "separator",
+        { command: "go-to-definition", label: t.menu.goToDefinition, shortcut: "F12", run: inEditor(goToNameDefinition) },
+        { command: "rename-name", label: t.menu.renameName, shortcut: "F2", run: inEditor(renameNameAtCursor) },
+      ],
+    },
+    {
+      id: "view",
+      label: t.menus.view,
+      accessKey: "v",
+      items: () => [
+        { command: "toggle-rail", label: t.menu.slidesPanel, shortcut: `${mod}+B`, checked: () => !root.classList.contains("is-rail-collapsed"), run: toggleRail },
+        { command: "toggle-inspector", label: t.menu.inspectorPanel, checked: () => !root.classList.contains("is-inspector-collapsed"), run: toggleInspector },
+        { command: "toggle-panel", label: t.menu.bottomPanel, shortcut: `${mod}+J`, checked: () => !root.classList.contains("is-panel-collapsed"), run: togglePanel },
+        { command: "show-problems", label: t.menu.showProblems, run: () => showPanel("problems") },
+        { command: "show-output", label: t.menu.showOutput, run: () => showPanel("output") },
+        "separator",
+        { command: "follow", label: t.menu.followCursor, checked: () => follow, run: () => setFollow(!follow) },
+        "separator",
+        {
+          command: "theme",
+          label: t.menu.theme,
+          submenu: () => ([
+            ["system", t.menu.themeSystem],
+            ["light", t.menu.themeLight],
+            ["dark", t.menu.themeDark],
+          ] as Array<[ThemeChoice, string]>).map(([choice, label]) => ({
+            command: `theme-${choice}`,
+            label,
+            checked: () => themeChoice === choice,
+            run: () => chooseTheme(choice),
+          })),
+        },
+        {
+          command: "language",
+          label: t.menu.language,
+          submenu: () => (["en", "zh"] as Language[]).map((choice) => ({
+            command: `language-${choice}`,
+            label: t.languages[choice],
+            checked: () => language === choice,
+            run: () => {
+              if (choice === language) return;
+              writeStash();
+              switchLanguage(choice);
+            },
+          })),
+        },
+      ],
+    },
+    {
+      id: "slide",
+      label: t.menus.slide,
+      accessKey: "s",
+      items: () => [
+        { command: "new-slide", label: t.menu.newSlide, run: () => void rearrange("insert", previewSlide) },
+        slideCommand("duplicate-slide", t.menu.duplicateSlide, () => void rearrange("duplicate", previewSlide)),
+        slideCommand("move-slide-up", t.menu.moveSlideUp, () => void rearrange("move", previewSlide, previewSlide - 1), () => previewSlide === 0),
+        slideCommand("move-slide-down", t.menu.moveSlideDown, () => void rearrange("move", previewSlide, previewSlide + 2), () => previewSlide >= renderedCount - 1),
+        slideCommand("delete-slide", t.menu.deleteSlide, () => void rearrange("delete", previewSlide)),
+        "separator",
+        slideCommand("previous-slide", t.menu.previousSlide, () => stepSlide(-1), () => previewSlide === 0, `${mod}+PgUp`),
+        slideCommand("next-slide", t.menu.nextSlide, () => stepSlide(1), () => previewSlide >= renderedCount - 1, `${mod}+PgDn`),
+        slideCommand("go-to-source", t.menu.goToSource, () => goToSlide(previewSlide, { focusEditor: true })),
+      ],
+    },
+    {
+      id: "present",
+      label: t.menus.present,
+      accessKey: "p",
+      items: () => [
+        { command: "present-beginning", label: t.menu.fromBeginning, shortcut: "⇧F5", run: () => present(0) },
+        { command: "present-current", label: t.menu.fromCurrent, shortcut: "F5", run: () => present() },
+        "separator",
+        { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
+      ],
+    },
+    {
+      id: "help",
+      label: t.menus.help,
+      accessKey: "h",
+      items: () => [
+        { command: "documentation", label: t.menu.documentation, run: () => openOutside(docsBase) },
+        { command: "language-tour", label: t.menu.languageTour, run: () => openOutside(`${docsBase}language.html`) },
+        { command: "shortcuts", label: t.menu.shortcuts, run: showShortcuts },
+        "separator",
+        { command: "report-issue", label: t.menu.reportIssue, run: () => openOutside("https://github.com/pride7/frameseq/issues") },
+        { command: "about", label: t.menu.about, run: showAbout },
+      ],
+    },
+  ], { showAccessKeys: language === "zh" });
+  void menuBar;
+
+  /** The recent presentations, refreshed each time the submenu opens. */
+  let recent: Array<{ path: string; name: string; folder: string }> = [];
+  const refreshRecent = (): void => {
+    void presentations.files().then((files) => {
+      recent = files.recent.filter((item) => item.path !== session.entry);
+    }).catch(() => undefined);
+  };
+  refreshRecent();
+  function recentEntries(): MenuEntry[] {
+    refreshRecent();
+    if (recent.length === 0) return [{ command: "no-recent", label: t.menu.noRecent, disabled: () => true }];
+    return recent.slice(0, 10).map((item) => ({
+      command: `recent:${item.name}`,
+      label: `${item.name}  —  ${item.folder}`,
+      run: () => void presentations.openPath(item.path),
+    }));
+  }
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-action], [data-tab]") : null;
@@ -1380,36 +1571,21 @@ async function start(): Promise<void> {
       case "file-menu":
         void presentations.showMenu(target);
         break;
-      case "export":
-        showExportMenu();
-        break;
       case "present":
         present();
-        break;
-      case "theme":
-        themeChoice = themeChoice === "system" ? "light" : (themeChoice === "light" ? "dark" : "system");
-        try {
-          localStorage.setItem(themeKey, themeChoice);
-        } catch {
-          // The choice simply lasts until the page closes.
-        }
-        applyTheme();
         break;
       case "new-slide":
         void rearrange("insert", previewSlide);
         break;
       case "open-browser":
-        window.open(`/#${previewSlide + 1}`, "_blank");
+        openOutside(`/#${previewSlide + 1}`);
         break;
       case "toggle-panel":
         togglePanel();
         break;
-      case "toggle-inspector": {
-        const collapsed = root.classList.toggle("is-inspector-collapsed");
-        target.setAttribute("aria-expanded", String(!collapsed));
-        storePreference("inspector-collapsed", collapsed);
+      case "toggle-inspector":
+        toggleInspector();
         break;
-      }
       case "show-problems":
         showPanel("problems");
         break;
@@ -1422,14 +1598,13 @@ async function start(): Promise<void> {
     const primary = isMac ? event.metaKey : event.ctrlKey;
     if (event.key === "F5") {
       event.preventDefault();
-      present();
+      present(event.shiftKey ? 0 : previewSlide);
     } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "j") {
       event.preventDefault();
       togglePanel();
     } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
-      root.classList.toggle("is-rail-collapsed");
-      storePreference("rail-collapsed", root.classList.contains("is-rail-collapsed"));
+      toggleRail();
     } else if (primary && !event.altKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       void save({ auto: false });
@@ -1438,9 +1613,7 @@ async function start(): Promise<void> {
       void presentations.open();
     } else if (primary && (event.key === "PageDown" || event.key === "PageUp")) {
       event.preventDefault();
-      const count = renderedCount || (report?.slides.length ?? 0);
-      const next = Math.min(Math.max(previewSlide + (event.key === "PageDown" ? 1 : -1), 0), Math.max(count - 1, 0));
-      goToSlide(next, { focusEditor: true });
+      stepSlide(event.key === "PageDown" ? 1 : -1);
     }
   });
 
@@ -1473,8 +1646,8 @@ async function start(): Promise<void> {
     import.meta.hot.on("vite:error", onBuildError);
     import.meta.hot.on("vite:beforeFullReload", writeStash);
     import.meta.hot.on("vite:ws:disconnect", () => {
-      setSaveState("offline", "The FrameSeq server stopped. Start it again with frameseq studio; your edits are kept.");
-      slot("status-connection").textContent = "● Disconnected";
+      setSaveState("offline", t.save.offlineDetail);
+      slot("status-connection").textContent = t.shell.disconnected;
       slot("status-connection").dataset.tone = "error";
     });
     import.meta.hot.on("vite:ws:connect", () => {

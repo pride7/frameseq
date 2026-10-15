@@ -19,6 +19,7 @@ import {
   type SignatureHelp,
 } from "./api";
 import { nameCompletions, nameDefinition, nameHover, prepareNameRename, renameName } from "../source-names";
+import { language, t } from "./i18n";
 import { askText, element, toast } from "./ui";
 
 /** TypeScript's element kinds, in the vocabulary CodeMirror's completion icons understand. */
@@ -185,12 +186,12 @@ export function renameNameAtCursor(view: EditorView): boolean {
     return onName;
   }
   void askText({
-    title: "Rename",
-    message: `Rename "${prepared.name}" and every use of it on this slide.`,
+    title: t.editor.rename,
+    message: t.editor.renameMessage(prepared.name),
     value: prepared.name,
-    confirm: "Rename",
+    confirm: t.editor.rename,
     validate: (value) => {
-      if (value === prepared.name) return "Type a new name.";
+      if (value === prepared.name) return t.editor.renameEmpty;
       const edits = renameName(text, head, value);
       return "error" in edits ? edits.error : undefined;
     },
@@ -221,7 +222,7 @@ export function typescriptLinter(onDiagnostics: (diagnostics: LanguageDiagnostic
   return linter(async (view) => {
     const text = view.state.doc.toString();
     try {
-      const { diagnostics } = await call<{ diagnostics: LanguageDiagnostic[] }>("POST", "language/diagnostics", { text });
+      const { diagnostics } = await call<{ diagnostics: LanguageDiagnostic[] }>("POST", "language/diagnostics", { text, language });
       onDiagnostics(diagnostics, text);
       const length = view.state.doc.length;
       return diagnostics.map((item): Diagnostic => ({

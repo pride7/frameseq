@@ -1,4 +1,5 @@
 import type { InspectObject, InspectProperty, InspectRegion, InspectSlide } from "./api";
+import { t } from "./i18n";
 import { element } from "./ui";
 
 export interface InspectorEvents {
@@ -142,16 +143,16 @@ export class SlideInspector {
 
     const slide = this.slide;
     if (!slide) {
-      this.body.replaceChildren(element("p", "studio-inspector-empty", this.note || "Show a slide to inspect its objects."));
+      this.body.replaceChildren(element("p", "studio-inspector-empty", this.note || t.inspector.empty));
       return;
     }
 
     const rows: HTMLElement[] = [];
     const summary = element("p", "studio-inspector-summary");
     summary.textContent = [
-      slide.layout === "default" ? "flow layout" : `${slide.layout} layout`,
-      `${slide.objects.length} object${slide.objects.length === 1 ? "" : "s"}`,
-      slide.notes ? "speaker notes" : undefined,
+      slide.layout === "default" ? t.inspector.flowLayout : t.inspector.layout(slide.layout),
+      t.inspector.objects(slide.objects.length),
+      slide.notes ? t.inspector.notes : undefined,
     ].filter(Boolean).join(" · ");
     rows.push(summary);
     if (this.note) rows.push(element("p", "studio-inspector-note", this.note));
@@ -171,7 +172,7 @@ export class SlideInspector {
         glyph: "◫",
         kind: "region",
         title: path,
-        detail: region ? "named region" : undefined,
+        detail: region ? t.inspector.namedRegion : undefined,
         meta: String(members.length),
         expandable: members.length > 0 || Boolean(region?.properties?.length),
         open,
@@ -182,7 +183,7 @@ export class SlideInspector {
       for (const property of region?.properties ?? []) rows.push(this.propertyRow(property, `${key}:${property.name}`, 1));
       for (const object of members) this.objectRows(object, 1, rows);
     }
-    if (slide.objects.length === 0) rows.push(element("p", "studio-inspector-empty", "This slide has no objects yet."));
+    if (slide.objects.length === 0) rows.push(element("p", "studio-inspector-empty", t.inspector.noObjects));
 
     this.body.replaceChildren(...rows);
 
@@ -245,7 +246,7 @@ export class SlideInspector {
     const toggle = element("button", "studio-tree-toggle", options.expandable ? "" : " ");
     toggle.type = "button";
     toggle.tabIndex = -1;
-    toggle.setAttribute("aria-label", options.open ? "Collapse" : "Expand");
+    toggle.setAttribute("aria-label", options.open ? t.inspector.collapse : t.inspector.expand);
     if (!options.expandable) toggle.disabled = true;
     toggle.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -363,7 +364,7 @@ export class SlideInspector {
       const swatch = element("input", "studio-property-swatch");
       swatch.type = "color";
       swatch.value = shortHex(value);
-      swatch.setAttribute("aria-label", `${property.name} colour`);
+      swatch.setAttribute("aria-label", t.inspector.colour(property.name));
       swatch.addEventListener("input", () => {
         input.value = swatch.value;
         commit(swatch.value);

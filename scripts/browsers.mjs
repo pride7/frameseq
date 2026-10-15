@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -39,6 +40,25 @@ export function bundledBrowser(root = packageRoot) {
     if (typeof bundle.browser !== "string") return undefined;
     const path = resolve(root, bundle.browser);
     return existsSync(path) ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The FrameSeq app's own window for the Studio, where the app was built with one, as
+ * frameseq-bundle.json records. On Linux it needs WebKitGTK, so it is tried before it is used.
+ * FRAMESEQ_NO_STUDIO_WINDOW=1 opens the Studio in a browser instead.
+ */
+export function bundledStudioWindow(root = packageRoot) {
+  if (process.env.FRAMESEQ_NO_STUDIO_WINDOW === "1") return undefined;
+  try {
+    const bundle = JSON.parse(readFileSync(join(root, "frameseq-bundle.json"), "utf8"));
+    if (typeof bundle.window !== "string") return undefined;
+    const path = resolve(root, bundle.window);
+    if (!existsSync(path)) return undefined;
+    if (process.platform === "linux" && spawnSync(path, ["--check"], { timeout: 10_000 }).status !== 0) return undefined;
+    return path;
   } catch {
     return undefined;
   }

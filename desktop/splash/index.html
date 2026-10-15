@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrameSeq Studio</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --background: #0a0e17;
+        --text: #e6edf6;
+        --muted: #8b98ab;
+        --hover: rgba(255, 255, 255, 0.08);
+        --error: #f87171;
+        --panel: #111827;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --background: #f6f8fb;
+          --text: #142033;
+          --muted: #5b6b82;
+          --hover: rgba(15, 23, 42, 0.07);
+          --error: #b91c1c;
+          --panel: #ffffff;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        grid-template-rows: 40px 1fr;
+        color: var(--text);
+        background: var(--background);
+        font: 14px/1.5 "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+        user-select: none;
+      }
+
+      .bar {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .close {
+        width: 46px;
+        border: 0;
+        color: var(--text);
+        background: transparent;
+      }
+
+      .close:hover {
+        color: #fff;
+        background: #c42b1c;
+      }
+
+      .close svg {
+        width: 10px;
+        height: 10px;
+      }
+
+      main {
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 14px;
+        padding: 0 24px 40px;
+        text-align: center;
+      }
+
+      main svg {
+        width: 44px;
+        height: 44px;
+      }
+
+      .status {
+        color: var(--muted);
+      }
+
+      .failure {
+        width: min(760px, calc(100vw - 48px));
+        text-align: left;
+      }
+
+      .failure h1 {
+        margin: 0 0 8px;
+        color: var(--error);
+        font-size: 16px;
+      }
+
+      .failure pre {
+        max-height: 50vh;
+        margin: 0;
+        overflow: auto;
+        padding: 12px 14px;
+        border-radius: 8px;
+        background: var(--panel);
+        font: 12px/1.5 Consolas, "SF Mono", monospace;
+        white-space: pre-wrap;
+        user-select: text;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar" data-tauri-drag-region></div>
+    <main>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#020617" />
+        <path d="M15 15h35v9H25v8h21v9H25v17H15V15Z" fill="#22d3ee" />
+      </svg>
+      <div class="status">Starting FrameSeq Studio…</div>
+    </main>
+    <script>
+      const chinese = /^zh\b/i.test(navigator.language);
+      const words = chinese
+        ? { starting: "正在启动 FrameSeq Studio…", failed: "FrameSeq Studio 无法启动", close: "关闭" }
+        : { starting: "Starting FrameSeq Studio…", failed: "FrameSeq Studio could not start", close: "Close" };
+      document.documentElement.lang = chinese ? "zh-CN" : "en";
+      document.querySelector(".status").textContent = words.starting;
+
+      // Windows draws no title bar for this window, so the page offers the way to close it.
+      if (window.frameseqShell?.chrome === "custom") {
+        const close = document.createElement("button");
+        close.className = "close";
+        close.type = "button";
+        close.title = words.close;
+        close.setAttribute("aria-label", words.close);
+        close.innerHTML = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1" /></svg>';
+        close.addEventListener("click", () => window.frameseqShell.close());
+        document.querySelector(".bar").append(close);
+      }
+
+      window.showStartupError = (message) => {
+        const main = document.querySelector("main");
+        const failure = document.createElement("section");
+        failure.className = "failure";
+        const heading = document.createElement("h1");
+        heading.textContent = words.failed;
+        const detail = document.createElement("pre");
+        detail.textContent = message;
+        failure.append(heading, detail);
+        main.replaceChildren(failure);
+      };
+    </script>
+  </body>
+</html>

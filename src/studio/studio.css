@@ -172,13 +172,13 @@ vite-error-overlay {
   --studio-preview-width: 46vw;
   --studio-panel-height: 190px;
   display: grid;
-  grid-template-rows: 46px auto minmax(0, 1fr) 5px var(--studio-panel-height) 26px;
+  grid-template-rows: 40px auto minmax(0, 1fr) 5px var(--studio-panel-height) 26px;
   height: 100vh;
   min-width: 720px;
 }
 
 .studio.is-panel-collapsed {
-  grid-template-rows: 46px auto minmax(0, 1fr) 0 34px 26px;
+  grid-template-rows: 40px auto minmax(0, 1fr) 0 34px 26px;
 }
 
 /* Each part keeps its row even while the banner above the workspace is hidden. */
@@ -256,9 +256,9 @@ vite-error-overlay {
 .studio-topbar {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 10px;
   min-width: 0;
-  padding: 0 12px 0 14px;
+  padding: 0 10px 0 12px;
   border-bottom: 1px solid var(--studio-border);
   background: var(--studio-surface);
 }
@@ -266,26 +266,133 @@ vite-error-overlay {
 .studio-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
-  color: var(--studio-muted);
-  font-size: 13px;
-  white-space: nowrap;
 }
 
 .studio-brand svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
-.studio-brand b {
+/* The menu bar: File, Edit, View, and the rest, as a desktop program has them. */
+.studio-menubar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.studio-menubar-item {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
   color: var(--studio-text);
-  font-weight: 650;
+  background: transparent;
+  font-size: 13px;
+}
+
+.studio-menubar-item:hover,
+.studio-menubar-item:focus-visible,
+.studio-menubar-item.is-open {
+  background: var(--studio-surface-hover);
+  outline: none;
+}
+
+.studio-menubar-item.is-open {
+  color: var(--studio-accent);
+}
+
+/* The Alt letter is underlined while Alt is held, as in Windows programs. */
+.studio-menubar.show-access .studio-access {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.studio-access-paren {
+  margin-left: 1px;
+  color: var(--studio-faint);
+  font-size: 12px;
+}
+
+/* The FrameSeq app's own window. Without a title bar of the system's, on Windows, the top bar
+   is the title bar: it moves the window, and the window's buttons sit at its right end. On macOS
+   the traffic lights sit over its left end. */
+.studio-window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 70;
+  display: flex;
+  height: 40px;
+}
+
+.studio-window-control {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  color: var(--studio-text);
+  background: transparent;
+}
+
+.studio-window-control svg {
+  width: 10px;
+  height: 10px;
+  shape-rendering: crispEdges;
+}
+
+.studio-window-control:hover {
+  background: var(--studio-surface-hover);
+}
+
+.studio-window-control.is-close:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+.studio-window-control.is-close:active {
+  color: #fff;
+  background: #b0281a;
+}
+
+/* Pages without a top bar, the start page and errors, are moved by a strip along the top. */
+.studio-window-drag {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  height: 40px;
+}
+
+:root.is-desktop-custom .studio-window-drag {
+  right: 138px;
+}
+
+body:has(.studio-topbar) .studio-window-drag {
+  display: none;
+}
+
+:root.is-desktop-custom .studio-topbar {
+  padding-right: 146px;
+}
+
+:root.is-desktop-overlay .studio-topbar {
+  padding-left: 84px;
+}
+
+:root.is-desktop-custom .studio-start,
+:root.is-desktop-overlay .studio-start {
+  padding-top: clamp(64px, 12vh, 120px);
 }
 
 .studio-file {
   display: flex;
   flex: 1;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   min-width: 0;
 }
@@ -394,7 +501,6 @@ vite-error-overlay {
   opacity: 0.7;
 }
 
-.studio-switch,
 .studio-toggle {
   display: inline-flex;
   align-items: center;
@@ -406,53 +512,12 @@ vite-error-overlay {
   user-select: none;
 }
 
-.studio-switch {
-  margin-right: 4px;
-}
-
-.studio-theme-button {
-  width: 28px;
-  height: 28px;
-  font-size: 15px;
-}
-
-.studio-switch input,
 .studio-toggle input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.studio-switch-track {
-  position: relative;
-  width: 28px;
-  height: 16px;
-  border-radius: 999px;
-  background: var(--studio-track);
-  transition: background 0.15s ease;
-}
-
-.studio-switch-track::after {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #f8fafc;
-  content: "";
-  transition: transform 0.15s ease;
-}
-
-.studio-switch input:checked + .studio-switch-track {
-  background: var(--studio-accent-strong);
-}
-
-.studio-switch input:checked + .studio-switch-track::after {
-  transform: translateX(12px);
-}
-
-.studio-switch input:focus-visible + .studio-switch-track,
 .studio-toggle input:focus-visible + span {
   outline: 2px solid var(--studio-accent);
   outline-offset: 2px;
@@ -1230,6 +1295,75 @@ vite-error-overlay {
   font: 11px var(--studio-mono);
 }
 
+.studio-menubar-menu {
+  min-width: 250px;
+}
+
+.studio-menu-check {
+  width: 12px;
+  margin-right: -10px;
+  color: var(--studio-accent);
+  text-align: center;
+}
+
+.studio-menu-arrow {
+  margin-left: -8px;
+  color: var(--studio-faint);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.studio-menu-item[aria-expanded="true"] {
+  background: var(--studio-accent-soft);
+}
+
+/* Help › Keyboard shortcuts and Help › About. */
+.studio-info-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.studio-shortcuts {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.studio-shortcuts td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.studio-shortcuts td:first-child {
+  width: 42%;
+  white-space: nowrap;
+}
+
+.studio-shortcuts kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 5px;
+  background: var(--studio-surface-raised);
+  font: 11.5px var(--studio-mono);
+}
+
+.studio-about {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.studio-about svg {
+  width: 48px;
+  height: 48px;
+}
+
+.studio-about p {
+  margin: 0;
+  color: var(--studio-muted);
+  line-height: 1.5;
+}
+
 .studio-menu-note {
   max-width: 280px;
   margin: 2px 4px 6px;
@@ -1475,6 +1609,29 @@ vite-error-overlay {
 .studio-start-header b {
   color: var(--studio-text);
   font-weight: 650;
+}
+
+/* The start page's language switch, so a first run can choose before anything else. */
+.studio-start-language {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 8px;
+}
+
+.studio-start-language button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--studio-muted);
+  background: transparent;
+  font-size: 12.5px;
+}
+
+.studio-start-language button[aria-pressed="true"] {
+  color: var(--studio-text);
+  background: var(--studio-surface-hover);
 }
 
 .studio-start-actions {

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, readFileSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
@@ -17,7 +17,7 @@ import {
   recentPresentations,
   rememberPresentation,
 } from "./studio-files.mjs";
-import { createStudioLanguage } from "./studio-language.mjs";
+import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
 export const studioSourceEvent = "frameseq:studio-source";
@@ -209,6 +209,29 @@ function revealInFolder(path, directory) {
  * only this machine unless that command was given --host, and refuses any request that another
  * page could have sent on the Studio's behalf.
  */
+/** What the presentation routes say, in the language of the page that asked. */
+function fileMessages(language) {
+  return language === "zh"
+    ? {
+      noTitle: "请给演示起一个标题。",
+      fullFolder: "请用完整路径选择文件夹。",
+      noFolder: (path) => `${path} 这个文件夹不存在。`,
+      exists: (name) => `那个文件夹里已经有 ${name} 了。`,
+      fullPath: "请给出幻灯片文档的完整路径。",
+      notTs: "FrameSeq 演示是一个 .ts 文件，比如 talk.slides.ts。",
+      noFile: (path) => `${path} 这个文件不存在。`,
+    }
+    : {
+      noTitle: "Give the presentation a title.",
+      fullFolder: "Choose the folder by its full path.",
+      noFolder: (path) => `There is no folder at ${path}.`,
+      exists: (name) => `${name} already exists in that folder.`,
+      fullPath: "Give the full path of the slide document.",
+      notTs: "A FrameSeq presentation is a .ts file, such as talk.slides.ts.",
+      noFile: (path) => `There is no file at ${path}.`,
+    };
+}
+
 export function studioPlugin({
   entry,
   packageRoot,
@@ -252,10 +275,23 @@ export function studioPlugin({
       const jobs = new Map();
       let exporting = false;
       let language;
+      let diagnosticLanguage = "en";
       const languageService = () => {
         language ??= createStudioLanguage({ entry, packageRoot });
         return language;
       };
+      /**
+       * TypeScript keeps the messages of a file it has checked, so a change of language starts
+       * the service again rather than repeating messages in the language it had before.
+       */
+      const speak = (requested) => {
+        const wanted = requested === "zh" ? "zh" : "en";
+        if (wanted === diagnosticLanguage) return;
+        diagnosticLanguage = wanted;
+        setDiagnosticLanguage(wanted);
+        language = undefined;
+      };
+      const frameseqVersion = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version;
 
       if (quitOnClose) quitWhenClosed(server);
 
@@ -312,6 +348,7 @@ export function studioPlugin({
             token,
             start,
             quitOnClose,
+            frameseq: frameseqVersion,
             dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
           };
           if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
@@ -354,12 +391,11 @@ export function studioPlugin({
 
         "POST /files/open": async (body) => {
           const path = typeof body.path === "string" ? body.path.trim() : "";
-          if (!path || !isAbsolute(path)) return [400, { error: "Give the full path of the slide document." }];
+          const say = fileMessages(body.language);
+          if (!path || !isAbsolute(path)) return [400, { error: say.fullPath }];
           const target = resolve(path);
-          if (extname(target).toLowerCase() !== ".ts") {
-            return [400, { error: "A FrameSeq presentation is a .ts file, such as talk.slides.ts." }];
-          }
-          if (!await isFile(target)) return [404, { error: `There is no file at ${target}.` }];
+          if (extname(target).toLowerCase() !== ".ts") return [400, { error: say.notTs }];
+          if (!await isFile(target)) return [404, { error: say.noFile(target) }];
           if (!start && deckKey(target) === deckKey(entry)) return { ok: true, path: target, name: basename(target), current: true };
           return openPresentation(target);
         },
@@ -368,15 +404,16 @@ export function studioPlugin({
         "POST /files/create": async (body) => {
           const title = typeof body.title === "string" ? body.title.trim() : "";
           const folder = typeof body.folder === "string" ? body.folder.trim() : "";
-          if (!title) return [400, { error: "Give the presentation a title." }];
-          if (!folder || !isAbsolute(folder)) return [400, { error: "Choose the folder by its full path." }];
-          if (!await isDirectory(folder)) return [404, { error: `There is no folder at ${resolve(folder)}.` }];
+          const say = fileMessages(body.language);
+          if (!title) return [400, { error: say.noTitle }];
+          if (!folder || !isAbsolute(folder)) return [400, { error: say.fullFolder }];
+          if (!await isDirectory(folder)) return [404, { error: say.noFolder(resolve(folder)) }];
           const target = join(resolve(folder), presentationFileName(title));
           try {
-            await writeFile(target, starterDeck(title), { encoding: "utf8", flag: "wx" });
+            await writeFile(target, starterDeck(title, body.language === "zh" ? "zh" : "en"), { encoding: "utf8", flag: "wx" });
           } catch (error) {
             if (error?.code !== "EEXIST") throw error;
-            return [409, { error: `${basename(target)} already exists in that folder.`, path: target }];
+            return [409, { error: say.exists(basename(target)), path: target }];
           }
           return openPresentation(target);
         },
@@ -426,9 +463,10 @@ export function studioPlugin({
           };
         },
 
-        "POST /language/diagnostics": (body) => ({
-          diagnostics: languageService().diagnostics(body.text),
-        }),
+        "POST /language/diagnostics": (body) => {
+          speak(body.language);
+          return { diagnostics: languageService().diagnostics(body.text) };
+        },
 
         "POST /language/completions": (body) => (
           languageService().completions(body.text, Number(body.offset) || 0, String(body.prefix ?? ""))

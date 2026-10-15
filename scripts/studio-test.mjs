@@ -129,6 +129,12 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
+  // The Studio follows the browser's language; the assertions read English. The problems panel,
+  // folded at first, stays open, since the steps click its rows.
+  await page.evaluateOnNewDocument(() => {
+    if (!localStorage.getItem("frameseq-studio-language")) localStorage.setItem("frameseq-studio-language", "en");
+    if (!localStorage.getItem("frameseq-studio-panel-collapsed")) localStorage.setItem("frameseq-studio-panel-collapsed", "0");
+  });
   // Notices vanish after a few seconds, so keep every one for the report if a step fails.
   await page.evaluateOnNewDocument(() => {
     if (window.top !== window) return;
@@ -386,7 +392,12 @@ try {
   await waitFor(async () => (await problems()).length === 0, "the layout problem to clear");
 
   // With unsaved edits, a change on disk is a conflict the Studio asks about.
-  await page.click(".studio-switch");
+  const autosave = async () => {
+    await page.click("[data-menu='file']");
+    await page.waitForSelector("[data-command='autosave']");
+    await page.click("[data-command='autosave']");
+  };
+  await autosave();
   await placeCursor('"Third"', 6);
   await page.keyboard.type(" slide", { delay: 10 });
   await writeFile(deck, beforeDrag.replace('text("Last slide");', 'text("Changed elsewhere");'), "utf8");
@@ -396,10 +407,12 @@ try {
   await keep.click();
   await waitFor(async () => (await read()).includes('slide("Third slide");'), "keeping the editor's version");
   assert.ok(!(await read()).includes("Changed elsewhere"), "keeping my version must overwrite the other change");
-  await page.click(".studio-switch");
+  await autosave();
 
-  // Slides can be duplicated and moved from the rail, and the editor's history undoes both.
+  // Slides can be duplicated and moved from the rail, and the editor's history undoes both,
+  // once the rail has caught up with the version just kept.
   const beforeRail = await read();
+  await waitFor(() => page.evaluate(() => window.frameseqStudio.slides.groups !== null), "the rail to catch up with the editor");
   await openSlideMenu(0);
   const menu = await page.$$eval(".studio-menu-item", (items) => items.map((item) => item.textContent));
   await (await page.$$(".studio-menu-item"))[menu.findIndex((label) => label.startsWith("Duplicate"))].click();
@@ -479,11 +492,12 @@ try {
   await waitFor(async () => (await editorText()) === lf(beforeRail), "the name edits to be undone");
   await waitFor(async () => (await problems()).length === 0, "the names problem to clear");
 
-  // Exports run the CLI with its usual output locations.
-  await page.click("[data-action='export']");
-  await page.waitForSelector(".studio-menu");
-  const formats = await page.$$eval(".studio-menu-item", (items) => items.map((item) => item.textContent));
-  await (await page.$$(".studio-menu-item"))[formats.findIndex((label) => label.startsWith("Single HTML file"))].click();
+  // Exports run the CLI with its usual output locations, from File › Export.
+  await page.click("[data-menu='file']");
+  await page.waitForSelector("[data-command='export']");
+  await page.click("[data-command='export']");
+  await page.waitForSelector("[data-command='export-html-single']");
+  await page.click("[data-command='export-html-single']");
   await page.waitForFunction(
     () => [...document.querySelectorAll(".studio-toast")].some((toast) => toast.dataset.tone === "success" || toast.dataset.tone === "error"),
     { timeout: 180_000 },
@@ -630,6 +644,61 @@ try {
     })).catch((reason) => ({ url: frame.url(), unreachable: String(reason) }))));
     throw new Error(`${error.message}\n${JSON.stringify(frames, null, 2)}`);
   }
+
+  // The menu bar: click across the menus, step through them with the keyboard, and change a
+  // setting, which the menu shows checked.
+  const menuOpen = () => page.$eval("[data-menu='view']", (button) => button.getAttribute("aria-expanded"));
+  await page.click("[data-menu='file']");
+  await page.waitForSelector(".studio-menubar-menu");
+  await page.hover("[data-menu='view']");
+  await waitFor(async () => (await menuOpen()) === "true", "hovering to move to the View menu");
+  assert.equal(await page.$eval("[data-command='toggle-rail']", (item) => item.getAttribute("aria-checked")), "true");
+  await page.click("[data-command='toggle-rail']");
+  assert.ok(await page.$eval("#studio", (studio) => studio.classList.contains("is-rail-collapsed")), "View › Slides must hide the rail");
+  assert.equal(await page.$(".studio-menubar-menu"), null, "a command closes its menu");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("b");
+  await page.keyboard.up("Control");
+  assert.ok(!(await page.$eval("#studio", (studio) => studio.classList.contains("is-rail-collapsed"))), "Ctrl+B brings the rail back");
+  await page.focus(".cm-content");
+  await page.keyboard.down("Alt");
+  await page.keyboard.press("h");
+  await page.keyboard.up("Alt");
+  await page.waitForSelector("[data-command='shortcuts']");
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.command), "documentation", "Alt+H opens Help on its first item");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("dialog.studio-info-dialog[open] .studio-shortcuts");
+  await page.keyboard.press("Escape");
+  await page.keyboard.down("Alt");
+  await page.keyboard.press("v");
+  await page.keyboard.up("Alt");
+  await page.waitForSelector("[data-command='theme']");
+  await page.hover("[data-command='theme']");
+  await page.waitForSelector("[data-command='theme-light']");
+  await page.click("[data-command='theme-light']");
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light", "View › Theme › Light");
+
+  // Chinese: the menus, the panels, and TypeScript's messages, after a reload that keeps the text.
+  await page.click("[data-menu='view']");
+  await page.hover("[data-command='language']");
+  await page.waitForSelector("[data-command='language-zh']");
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle2" }),
+    page.click("[data-command='language-zh']"),
+  ]);
+  await page.waitForFunction(() => document.querySelector("[data-menu='file']")?.textContent.startsWith("文件"), { timeout: 60_000 });
+  assert.equal(await page.evaluate(() => document.documentElement.lang), "zh-CN");
+  assert.deepEqual(
+    await page.$$eval(".studio-menubar-item", (items) => items.map((item) => item.textContent)),
+    ["文件(F)", "编辑(E)", "视图(V)", "幻灯片(S)", "放映(P)", "帮助(H)"],
+  );
+  assert.equal(await page.$eval("[data-tab='output']", (tab) => tab.textContent), "输出");
+  await placeCursor('slide("End");', 'slide("End");'.length);
+  await page.keyboard.type("\nconst count: number = \"one\";", { delay: 5 });
+  await waitFor(async () => (await problems()).some((row) => row.includes("不能将类型")), "TypeScript to report in Chinese");
+  await page.evaluate(() => localStorage.setItem("frameseq-studio-language", "en"));
 } catch (error) {
   console.error(`Studio server output:\n${server.log()}`);
   const notices = await page?.$$eval(".studio-toast-text", (items) => items.map((item) => item.textContent)).catch(() => []);
@@ -665,4 +734,4 @@ try {
   plain.child.kill();
 }
 
-console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, and API isolation.");
+console.log("Studio test passed: CRLF-safe auto-save, syntax gating, TypeScript diagnostics and completions, rail navigation, the slide inspector, preview drags, region binding, and undo, external reloads, conflicts, live layout checks, slide duplication and reordering, slides made by loops and helpers, located runtime and startup errors, name completion, definition, rename, and diagnostics, exports, the menu bar, Chinese, and API isolation.");

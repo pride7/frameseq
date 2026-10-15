@@ -21,8 +21,13 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - Give every `frameseq check` finding the line of the command that made the object, as `element.source`, and place the VS Code extension's layout diagnostics on that line.
 - Add the FrameSeq app: an installer for Windows, disk images for macOS, and archives for Linux that bring their own Node.js, the Typst compiler, Tectonic, and on macOS and Linux a browser for exports, so FrameSeq Studio and the `frameseq` command need nothing installed first. `scripts/app-bundle.mjs` builds it, and version tags attach it to the GitHub release.
 - Add a language tour to the documentation, and pages on posters, citations, and the app, in English and Chinese.
+- Give FrameSeq Studio a window of its own in the FrameSeq app, a small Tauri program in the system's web view. On Windows the menu bar is the title bar, which moves and maximizes the window, with minimize, maximize, and close at its right end; on macOS the traffic lights sit over its left end. The window starts the Studio with the app's Node.js, opens presenter view in a window of its own and links in the default browser, asks about unsaved edits before it closes, and stops the Studio when it does. `frameseq studio` run from the app opens it too. Where it cannot open, as without WebView2 or WebKitGTK, or where Smart App Control refuses it, unsigned as it is, the Studio opens in a browser's app window as before; the Windows shortcut runs the signed Node.js, which opens the window, for that reason.
+- Show FrameSeq Studio in Chinese as well as English. It starts in the browser's language, and **View › Language** or the switch on the start page changes it, keeping any unsaved text. In Chinese, TypeScript's error messages are in Chinese too, and a new presentation starts with Chinese placeholders.
 
 ### Changed
+
+- FrameSeq Studio's problems panel starts folded. The status bar counts the problems and the editor underlines them; `Ctrl+J`, **View › Problems panel**, or the counts open it, and a build error opens it by itself.
+- FrameSeq Studio has a menu bar, **File**, **Edit**, **View**, **Slide**, **Present**, and **Help**, in place of the buttons and switches along its top. Every command is there with its shortcut; `Alt` or `F10` reaches the menus from the keyboard, and `Alt` with a menu's letter opens it. New in them are **Present › From the beginning** (`Shift+F5`), **Help › Keyboard shortcuts**, and **Help › About**.
 
 - The smallest readable type that `frameseq check` accepts now grows with the canvas: 14px on a 1280-wide slide, as before, and proportionally more on a wider one. On paper it is judged by printed size, and the finding gives both.
 - Exports and checks render with an installed Chrome or Edge when Puppeteer has no browser of its own; `FRAMESEQ_BROWSER` names another.
@@ -30,6 +35,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Fixed
 
 - Spaces at the end of a line no longer make `frameseq check` report text in a clipped box as clipped on the right.
+- Building the app on Windows no longer fails while a Studio or `frameseq dev` runs from the same checkout, whose server no longer watches `output/` and `desktop/target/`.
 
 ## [0.38.0] - 2026-10-09
 

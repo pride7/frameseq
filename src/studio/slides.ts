@@ -1,5 +1,6 @@
 import { EditorSelection, type Text, type TransactionSpec } from "@codemirror/state";
 import type { InspectSlide } from "./api";
+import { t } from "./i18n";
 import type { SlideGroup } from "./outline";
 
 /** A group's lines, always ending with a line break. */
@@ -22,8 +23,8 @@ function spaced(doc: Text, position: number, text: string): string {
 
 const leadingBreaks = (text: string): number => text.length - text.replace(/^\n+/, "").length;
 
-const newSlideTitle = "New slide";
-const newSlide = `slide(${JSON.stringify(newSlideTitle)});\ntext("Your point here.");\n`;
+const newSlideTitle = t.rail.newSlideTitle;
+const newSlide = `slide(${JSON.stringify(newSlideTitle)});\ntext(${JSON.stringify(t.rail.newSlideText)});\n`;
 
 /** Add a slide after the given group, or before the first when there is none, title selected. */
 export function insertSlide(doc: Text, groups: SlideGroup[], after: number): TransactionSpec {
@@ -103,18 +104,18 @@ export function planBinding(doc: Text, slides: InspectSlide[], starts: number[])
   const selected = slides.flatMap((slide) => slide.objects.map((object) => ({ slide, object })))
     .filter(({ object }) => object.source.start !== undefined && wanted.has(object.source.start));
   if (selected.length < 2 || selected.length !== wanted.size || selected.some(({ object }) => object.parentId)) {
-    return "Select at least two top-level objects from one region; nested objects cannot be bound.";
+    return t.bind.tooFew;
   }
   const [{ slide, object: first }] = selected;
   if (selected.some(({ slide: other, object }) => other !== slide || object.region !== first.region)) {
-    return "The selected objects must belong to one slide and one region.";
+    return t.bind.mixed;
   }
   const siblings = slide.objects
     .filter((object) => !object.parentId && object.region === first.region)
     .sort((a, b) => (a.source.start ?? 0) - (b.source.start ?? 0));
   const positions = selected.map(({ object }) => siblings.indexOf(object)).sort((a, b) => a - b);
   if (positions.some((position) => position < 0) || positions[positions.length - 1] - positions[0] + 1 !== positions.length) {
-    return "The selected objects must be written one after another; select the ones between them too.";
+    return t.bind.gap;
   }
   const start = siblings[positions[0]].source.start ?? 0;
   const end = siblings[positions[positions.length - 1]].source.end ?? start;

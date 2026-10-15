@@ -26,13 +26,34 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the deck ran. |
 
-Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail and `Ctrl+J` hides the bottom panel. The sizes are remembered by the browser.
+Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail and `Ctrl+J` shows or hides the bottom panel. The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
 
-The theme button beside **Auto-save** switches between following the system (◐), light (☀), and dark (☾). The slides themselves keep the presentation's own theme.
+### The menu bar
+
+Every command is in the menu bar along the top, beside each one's shortcut:
+
+| Menu | Commands |
+| --- | --- |
+| **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Export |
+| **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
+| **View** | The slide rail, the current slide, and the problems panel; Problems and Output; Follow cursor; Theme; Language |
+| **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
+| **Present** | From the beginning, From the current slide, Open the preview in a browser |
+| **Help** | Documentation, Language tour, Keyboard shortcuts, Report an issue, About |
+
+Press `Alt` or `F10` to reach the menus from the keyboard, or `Alt` with a menu's underlined letter, such as `Alt+F` for **File**; the arrow keys move between menus and commands, and `Esc` closes them. **View › Theme** follows the system, or stays light or dark. The slides themselves keep the presentation's own theme.
+
+### In the FrameSeq app
+
+The [FrameSeq app](app.md) gives the Studio a window of its own, whose menu bar is the title bar on Windows: drag its empty part to move the window, double-click it to maximize, and use the minimize, maximize, and close buttons at its right end. On macOS the traffic lights sit at the menu bar's left end. **Present** opens presenter view in a window of its own, and links such as **Help › Documentation** open in the default browser. Closing the window asks about unsaved edits, as opening another presentation does, and then stops the Studio.
+
+### Language
+
+The Studio speaks English and Chinese. It starts in the language of the browser, and **View › Language**, or the switch on the start page, changes it. The window reloads in the new language and keeps any unsaved text. In Chinese, TypeScript's own error messages are in Chinese too, and a new presentation starts with Chinese placeholders. The choice is remembered by the browser.
 
 ## Presentations
 
-The file name in the top bar opens a menu: **New presentation…**, **Open…** (`Ctrl+O`), the presentations opened recently, and **Show in folder**. The start page offers the same, and lists the recent presentations with a button that removes one from the list.
+**File** holds **New presentation…**, **Open…** (`Ctrl+O`), the presentations opened recently, and **Show in folder**; the file name in the middle of the top bar opens the same list. The start page offers them too, and lists the recent presentations with a button that removes one from the list.
 
 - **New presentation** asks for a title and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes a cover and a first slide into it. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
 - **Open** shows this computer's own open dialog. Where there is none, as on Linux without `zenity` or `kdialog`, the Studio asks for the file's path instead; `FRAMESEQ_NO_DIALOGS=1` makes it always ask.
@@ -63,7 +84,7 @@ Drag the divider above **Current slide** to share the rail between it and the sl
 
 ## Editing and saving
 
-**Auto-save** in the top bar is on by default: the Studio saves shortly after you stop typing, and the preview redraws from the saved file. Auto-save only writes text that parses. While a line is half-typed, or a bracket is unbalanced, the save indicator reads **Not saved: syntax error** and the preview keeps showing the last version that worked, instead of flashing a build error between keystrokes. `Ctrl+S` always saves, whatever the text holds.
+**File › Auto-save** is on by default: the Studio saves shortly after you stop typing, and the preview redraws from the saved file. Auto-save only writes text that parses. While a line is half-typed, or a bracket is unbalanced, the save indicator reads **Not saved: syntax error** and the preview keeps showing the last version that worked, instead of flashing a build error between keystrokes. `Ctrl+S` always saves, whatever the text holds.
 
 Turn auto-save off to save only with `Ctrl+S`; the preview then shows the file as last saved.
 
@@ -140,7 +161,7 @@ The Studio watches the slide document. When it changes on disk, for example beca
 
 ## Presenting and exporting
 
-**Present** (`F5`) opens [presenter view](presenter.md) on the current slide in a window of its own. **Export** runs the same exports as the CLI and writes to the same places:
+**Present** (`F5`) opens [presenter view](presenter.md) on the current slide in a window of its own; **Present › From the beginning** (`Shift+F5`) starts at the first slide. **File › Export** runs the same exports as the CLI and writes to the same places:
 
 | Export | Writes |
 | --- | --- |
@@ -166,10 +187,13 @@ The paths are relative to the directory the Studio was started from, or to the f
 | `Ctrl+F` | Find and replace in the editor |
 | `Ctrl+PageDown`, `Ctrl+PageUp` | Next and previous slide |
 | `F5` | Present from the current slide |
+| `Shift+F5` | Present from the beginning |
 | `Ctrl+B` | Show or hide the slide rail |
 | `Ctrl+J` | Show or hide the bottom panel |
+| `Alt`, `F10` | Move to the menu bar |
+| `Alt+F`, `Alt+E`, `Alt+V`, `Alt+S`, `Alt+P`, `Alt+H` | Open a menu |
 
-On macOS, use `⌘` in place of `Ctrl`.
+On macOS, use `⌘` in place of `Ctrl`. **Help › Keyboard shortcuts** lists them in the Studio.
 
 ## Network access
 

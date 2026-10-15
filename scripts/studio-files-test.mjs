@@ -100,6 +100,11 @@ try {
   browser = await puppeteer.launch(puppeteerLaunchOptions());
   const page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 950 });
+  // The Studio follows the browser's language; the assertions read English.
+  await page.evaluateOnNewDocument(() => {
+    if (!localStorage.getItem("frameseq-studio-language")) localStorage.setItem("frameseq-studio-language", "en");
+  });
+
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(await studio.address, { waitUntil: "networkidle2" });
@@ -160,10 +165,10 @@ try {
   assert.equal(await readFile(quarterly, "utf8"), starterDeck("Quarterly review"));
 
   // Unsaved edits are not dropped silently: cancelling keeps the document, saving writes it.
-  await page.evaluate(() => {
-    const control = document.querySelector("[data-control='autosave']");
-    if (control.checked) control.click();
-  });
+  // File › Auto-save, which the menu shows checked while it is on.
+  await page.click("[data-menu='file']");
+  await page.waitForSelector("[data-command='autosave'][aria-checked='true']");
+  await page.click("[data-command='autosave']");
   await page.evaluate(() => {
     const { view } = window.frameseqStudio;
     view.dispatch({ changes: { from: view.state.doc.length, insert: '\nslide("Added");\n' } });
@@ -179,10 +184,9 @@ try {
   await page.click("dialog.studio-dialog[open] button[value='save']");
   await opened("existing.slides.ts", 'text("Already here")');
   assert.match(await readFile(quarterly, "utf8"), /slide\("Added"\);/, "Save writes the edits before switching");
-  await page.evaluate(() => {
-    const control = document.querySelector("[data-control='autosave']");
-    if (!control.checked) control.click();
-  });
+  await page.click("[data-menu='file']");
+  await page.waitForSelector("[data-command='autosave'][aria-checked='false']");
+  await page.click("[data-command='autosave']");
 
   // A presentation opened from the Studio works from its own folder, so exports land beside it.
   const current = (await api(origin, "session")).data;
@@ -226,6 +230,18 @@ try {
   assert.deepEqual(settings.recent.map((item) => item.path), [resolve(decks, "quarterly-review.slides.ts")]);
   assert.equal(settings.folder, decks);
   assert.equal((await api(origin, "files", { token: (await api(origin, "session")).data.token })).data.folder, decks);
+  // The start page chooses the language too, before any presentation is open.
+  await page.evaluate(() => localStorage.setItem("frameseq-studio-language", "en"));
+  await page.reload({ waitUntil: "networkidle2" });
+  await page.waitForSelector(".studio-start-recent h2");
+  assert.equal(await page.$eval(".studio-start-recent h2", (heading) => heading.textContent), "Recent");
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle2" }),
+    page.click("[data-language='zh']"),
+  ]);
+  await page.waitForSelector(".studio-start-recent h2");
+  assert.equal(await page.$eval(".studio-start-recent h2", (heading) => heading.textContent), "最近");
+  assert.equal(await page.$eval("[data-language='zh']", (button) => button.getAttribute("aria-pressed")), "true");
   await browser.close();
   browser = undefined;
 } finally {
@@ -288,4 +304,4 @@ const removed = spawnSync(process.execPath, [cli, "shortcut", "--remove"], { cwd
 assert.equal(removed.status, 0, removed.stderr);
 assert.deepEqual(await readdir(shortcuts), [], "--remove takes the shortcut away");
 
-console.log("Studio files test passed: the start page, new and existing presentations, unsaved edits, recent presentations, exports beside the deck, quitting on close, and shortcuts.");
+console.log("Studio files test passed: the start page, new and existing presentations, unsaved edits, recent presentations, the start page in Chinese, exports beside the deck, quitting on close, and shortcuts.");

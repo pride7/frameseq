@@ -752,6 +752,11 @@ export default defineConfig({
     fs: {
       allow: [packageRoot, dirname(entry)],
     },
+    // In a checkout, the app's builds and the Rust window's target folder are no source; on
+    // Windows a watched folder cannot even be renamed, as the app's build does with its own.
+    watch: {
+      ignored: ["**/output/**", "**/desktop/target/**"],
+    },
   },
   preview: {
     open: false,

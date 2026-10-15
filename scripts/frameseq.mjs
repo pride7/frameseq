@@ -2,13 +2,13 @@
 
 import { spawn } from "node:child_process";
 import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { constants, existsSync, openSync } from "node:fs";
+import { constants, existsSync, openSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import puppeteer from "puppeteer";
 import { build as viteBuild, createServer, preview } from "vite";
-import { installedChromium } from "./browsers.mjs";
+import { bundledStudioWindow, installedChromium } from "./browsers.mjs";
 import { inspectSlides } from "./frameseq-inspect.mjs";
 import { DocumentRunError, deckReady, displayPath, documentErrorReport, watchDeck } from "./document-errors.mjs";
 import { collectLayoutIssues } from "./layout-rules.mjs";
@@ -129,7 +129,14 @@ async function writeProjectInstructions(directory) {
 
 function detachedSpawn(command, args, options = {}) {
   return new Promise((resolveSpawn) => {
-    const child = spawn(command, args, { detached: true, stdio: "ignore", ...options });
+    let child;
+    try {
+      child = spawn(command, args, { detached: true, stdio: "ignore", ...options });
+    } catch {
+      // Windows refuses some programs outright, as Smart App Control does an unsigned one.
+      resolveSpawn(false);
+      return;
+    }
     child.once("error", () => resolveSpawn(false));
     child.once("spawn", () => {
       child.unref();
@@ -139,11 +146,46 @@ function detachedSpawn(command, args, options = {}) {
 }
 
 /**
- * Open the Studio in a window of its own: a Chromium app window when one is installed, which has
- * no tabs or address bar, and otherwise a tab in the default browser.
+ * The app's window that Windows refused to start, as Smart App Control may an unsigned one, is
+ * not tried again, so Windows does not warn each time, until the window itself changes, as it
+ * does with an update or a signature.
+ */
+const blockedWindowRecord = () => join(configDirectory(), "studio-window-blocked.json");
+
+function windowIdentity(path) {
+  const { size, mtimeMs } = statSync(path);
+  return { path, size, modified: Math.round(mtimeMs) };
+}
+
+function windowBlocked(path) {
+  try {
+    return JSON.stringify(JSON.parse(readFileSync(blockedWindowRecord(), "utf8"))) === JSON.stringify(windowIdentity(path));
+  } catch {
+    return false;
+  }
+}
+
+async function rememberBlockedWindow(path) {
+  try {
+    await mkdir(configDirectory(), { recursive: true });
+    await writeFile(blockedWindowRecord(), JSON.stringify(windowIdentity(path)), "utf8");
+  } catch {
+    // Only spares a warning next time.
+  }
+}
+
+/**
+ * Open the Studio in a window of its own: the FrameSeq app's own window when FrameSeq runs from
+ * the app, a Chromium app window when one is installed, which has no tabs or address bar, and
+ * otherwise a tab in the default browser.
  */
 async function openStudioWindow(url, { appWindow = true } = {}) {
   if (appWindow) {
+    const window = bundledStudioWindow();
+    if (window && !windowBlocked(window)) {
+      if (await detachedSpawn(window, ["--url", url])) return;
+      await rememberBlockedWindow(window);
+    }
     const browser = installedChromium();
     if (browser && await detachedSpawn(browser, [`--app=${url}`, "--window-size=1600,1000"])) return;
   }
@@ -157,14 +199,16 @@ async function openStudioWindow(url, { appWindow = true } = {}) {
 
 async function startDevelopmentServer(
   entry,
-  { hostEnabled = false, remoteEnabled = false, openBrowser = true, studio = false, appWindow = true, start = false } = {},
+  { hostEnabled = false, remoteEnabled = false, openBrowser = true, studio = false, appWindow = true, start = false, desktop = false } = {},
 ) {
   process.env.FRAMESEQ_ENTRY = entry;
   if (start) process.env.FRAMESEQ_STUDIO_START = "1";
   else delete process.env.FRAMESEQ_STUDIO_START;
   // A Studio with no window of its own is run by a script or a test, not by the person whose
   // recent presentations it would otherwise add to.
-  process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser ? "1" : "0";
+  process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser || desktop ? "1" : "0";
+  // The FrameSeq app's window started this server and shows it, so the server stops with it.
+  if (desktop) process.env.FRAMESEQ_STUDIO_QUIT_ON_CLOSE = "1";
   // The Studio opens its own window once the server is listening, so Vite opens nothing.
   process.env.FRAMESEQ_OPEN_BROWSER = openBrowser && !studio ? "1" : "0";
   if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
@@ -193,6 +237,12 @@ async function startDevelopmentServer(
   };
   process.once("SIGINT", close);
   process.once("SIGTERM", close);
+  // The app's window keeps this pipe open while it runs, and closes it when it stops, even
+  // when it stops without warning.
+  if (desktop) {
+    process.stdin.once("end", close);
+    process.stdin.resume();
+  }
 }
 
 function assetMimeType(path) {
@@ -534,6 +584,8 @@ async function startInBackground() {
 const [, , command] = process.argv;
 const named = positionalFile(process.argv.slice(3));
 const file = named ?? "slides.ts";
+// `studio --desktop` is how the FrameSeq app's window starts the server it then shows.
+const desktop = process.argv.includes("--desktop");
 
 try {
   if (!command || command === "help" || command === "--help" || command === "-h") {
@@ -556,10 +608,11 @@ try {
     // No document to open: the start page offers a new presentation, an existing one, or a recent one.
     await startDevelopmentServer(resolve(process.cwd(), "slides.ts"), {
       hostEnabled: process.argv.includes("--host"),
-      openBrowser: !process.argv.includes("--no-open"),
+      openBrowser: !process.argv.includes("--no-open") && !desktop,
       appWindow: !process.argv.includes("--tab"),
       studio: true,
       start: true,
+      desktop,
     });
   } else if (command === "dev" || command === "studio" || command === "build" || command === "pdf" || command === "pptx" || command === "typst" || command === "check" || command === "inspect") {
     const entry = resolve(process.cwd(), file);
@@ -573,9 +626,10 @@ try {
     if (command === "studio") {
       await startDevelopmentServer(entry, {
         hostEnabled: process.argv.includes("--host"),
-        openBrowser: !process.argv.includes("--no-open"),
+        openBrowser: !process.argv.includes("--no-open") && !desktop,
         appWindow: !process.argv.includes("--tab"),
         studio: true,
+        desktop,
       });
     }
     if (command === "build") {

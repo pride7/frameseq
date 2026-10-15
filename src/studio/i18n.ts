@@ -1,0 +1,635 @@
+/**
+ * The words the Studio shows, in English and Chinese. The English catalogue defines every
+ * message; the Chinese one must provide each of them with the same shape, so a message added in
+ * one language and forgotten in the other is a type error. Messages that take numbers or names
+ * are functions, which lets each language order the sentence its own way.
+ *
+ * The language is chosen once per page load: switching it stores the choice and reloads the
+ * Studio, which keeps unsaved edits in its reload stash.
+ */
+
+export type Language = "en" | "zh";
+
+const languageKey = "frameseq-studio-language";
+
+/** The language chosen in this browser, or the browser's own when nothing was chosen yet. */
+export function readLanguage(): Language {
+  try {
+    const stored = localStorage.getItem(languageKey);
+    if (stored === "en" || stored === "zh") return stored;
+  } catch {
+    // Storage may be unavailable; the browser's language decides.
+  }
+  return /^zh\b/i.test(navigator.language) ? "zh" : "en";
+}
+
+/** Keep the choice and reload into it. */
+export function switchLanguage(next: Language): void {
+  try {
+    localStorage.setItem(languageKey, next);
+  } catch {
+    // Without storage the choice cannot outlive the reload, so there is nothing to switch to.
+    return;
+  }
+  location.reload();
+}
+
+export const language: Language = readLanguage();
+document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+
+const plural = (count: number, one: string, other: string): string => (count === 1 ? one : other);
+
+const en = {
+  appName: "FrameSeq Studio",
+  starting: "Starting FrameSeq Studio…",
+  languages: { en: "English", zh: "中文" },
+
+  menus: { file: "File", edit: "Edit", view: "View", slide: "Slide", present: "Present", help: "Help" },
+  menu: {
+    newPresentation: "New presentation…",
+    open: "Open…",
+    openRecent: "Open recent",
+    noRecent: "No recent presentations",
+    showInFolder: "Show in folder",
+    save: "Save",
+    autoSave: "Auto-save",
+    export: "Export",
+    undo: "Undo",
+    redo: "Redo",
+    find: "Find and replace",
+    selectAll: "Select all",
+    goToDefinition: "Go to definition",
+    renameName: "Rename…",
+    slidesPanel: "Slides",
+    inspectorPanel: "Current slide",
+    bottomPanel: "Problems panel",
+    showProblems: "Show problems",
+    showOutput: "Show output",
+    followCursor: "Follow cursor",
+    theme: "Theme",
+    themeSystem: "Follow the system",
+    themeLight: "Light",
+    themeDark: "Dark",
+    language: "Language",
+    newSlide: "New slide after this one",
+    duplicateSlide: "Duplicate slide",
+    deleteSlide: "Delete slide",
+    moveSlideUp: "Move slide up",
+    moveSlideDown: "Move slide down",
+    previousSlide: "Previous slide",
+    nextSlide: "Next slide",
+    goToSource: "Go to the slide's source",
+    fromBeginning: "From the beginning",
+    fromCurrent: "From the current slide",
+    openInBrowser: "Open the preview in a browser",
+    documentation: "Documentation",
+    languageTour: "Language tour",
+    shortcuts: "Keyboard shortcuts",
+    reportIssue: "Report an issue",
+    about: "About FrameSeq Studio",
+  },
+
+  shell: {
+    fileButton: (mod: string) => `New, open, or recent presentations (${mod}+O opens one)`,
+    present: "Present",
+    presentTitle: "Present from the current slide (F5)",
+    slides: "Slides",
+    newSlideTitle: "New slide after the current one",
+    currentSlide: "Current slide",
+    toggleInspector: "Show or hide the objects of the current slide",
+    inspectorLabel: "Objects on the current slide",
+    editor: "Editor",
+    preview: "Preview",
+    followCursor: "Follow cursor",
+    followTitle: "Show the slide that holds the cursor",
+    openBrowserTitle: "Open the preview in a browser tab",
+    panel: "Problems and output",
+    problems: "Problems",
+    output: "Output",
+    togglePanel: (mod: string) => `Hide or show the panel (${mod}+J)`,
+    menuBar: "Menu bar",
+    disconnected: "● Disconnected",
+  },
+
+  fatal: {
+    notStudio: "This server is a preview, not the Studio",
+    notStudioDetail: "It was started with frameseq dev, which never lets a page rewrite the slide document. Stop it and start the Studio instead:",
+    failed: "FrameSeq Studio could not start",
+    failedDetail: (reason: string) => `${reason} Start the Studio with:`,
+  },
+
+  save: {
+    saved: "Saved",
+    editing: "Editing…",
+    unsaved: "Unsaved",
+    saving: "Saving…",
+    blocked: "Not saved: syntax error",
+    conflict: "Changed on disk",
+    error: "Save failed",
+    offline: "Server offline",
+    blockedDetail: "Auto-save waits until the document parses, so the preview never runs broken code. Press Ctrl+S to save anyway.",
+    offlineDetail: "The FrameSeq server stopped. Start it again with frameseq studio; your edits are kept.",
+    reloaded: (name: string) => `${name} changed on disk and was reloaded.`,
+    removed: (name: string) => `${name} was removed or renamed on disk.`,
+    conflictBanner: (name: string) => `${name} changed on disk while you had unsaved edits.`,
+    useDisk: "Use the file on disk",
+    keepMine: "Keep my version",
+    resolveFirst: (name: string) => `${name} changed on disk. Choose which version to keep first.`,
+    askTitle: "Save changes?",
+    askMessage: (name: string) => `${name} has changes that are not saved.`,
+    dontSave: "Don't save",
+    saveButton: "Save",
+  },
+
+  status: {
+    cursor: (line: number, column: number) => `Ln ${line}, Col ${column}`,
+    selected: (count: number) => ` (${count} selected)`,
+    slideOf: (index: number, count: number) => `Slide ${index} of ${count}`,
+    slide: (index: number) => `Slide ${index}`,
+    problemCounts: (errors: number, warnings: number) => `${errors} ${plural(errors, "error", "errors")}, ${warnings} ${plural(warnings, "warning", "warnings")}`,
+  },
+
+  check: {
+    checking: "Checking layout…",
+    checked: (slides: number) => `Layout checked · ${slides} ${plural(slides, "slide", "slides")}`,
+    failed: "Layout check failed",
+    failedOutput: (reason: string) => `Layout check failed: ${reason}`,
+    runtimeDetail: "The preview still shows the last version that ran. Fix the error and save to update it.",
+  },
+
+  inspector: {
+    madeOutside: (index: number, name: string) => `Slide ${index} is made outside ${name}.`,
+    madeByHelper: (line: number) => `Made by the helper call on line ${line}; these objects are written in the helper.`,
+    madeWithOthers: (line: number, others: number) => `Made by a statement on line ${line} with ${others} other ${plural(others, "slide", "slides")}; its objects are written once for all of them.`,
+    madeByStatement: (index: number, line: number) => `Slide ${index} is made by the statement on line ${line}.`,
+    empty: "Show a slide to inspect its objects.",
+    flowLayout: "flow layout",
+    layout: (name: string) => `${name} layout`,
+    objects: (count: number) => `${count} ${plural(count, "object", "objects")}`,
+    notes: "speaker notes",
+    namedRegion: "named region",
+    noObjects: "This slide has no objects yet.",
+    collapse: "Collapse",
+    expand: "Expand",
+    colour: (name: string) => `${name} colour`,
+  },
+
+  rail: {
+    catchingUp: "The slide rail is still catching up with the editor. Try again in a moment.",
+    notHere: (index: number, name: string) => `Slide ${index} is not made by a statement in ${name}, so it cannot be changed from the rail.`,
+    moveOutside: "A slide can only be moved next to slides made by this document.",
+    groupFromLine: (size: number, line: number) => `the ${size} slides made by line ${line}`,
+    single: (index: number) => `slide ${index}`,
+    deleted: (what: string) => `Deleted ${what}.`,
+    moved: (what: string) => `Moved ${what}, which move as one.`,
+    duplicated: (what: string) => `Duplicated ${what}, which move as one.`,
+    undo: "Undo",
+    menuLabel: (index: number) => `Slide ${index}`,
+    groupNote: (line: number, others: number) => `Made by line ${line} with ${others} other ${plural(others, "slide", "slides")}; these act on all of them.`,
+    outsideNote: (name: string) => `Made outside ${name}, so it can only be shown here.`,
+    newAfter: "New slide after",
+    duplicate: "Duplicate",
+    moveUp: "Move up",
+    moveDown: "Move down",
+    goToSource: "Go to source",
+    presentFromHere: "Present from here",
+    delete: "Delete",
+    newSlideTitle: "New slide",
+    newSlideText: "Your point here.",
+  },
+
+  bind: {
+    title: "Bind to a named region",
+    message: "The selected objects will move together when this region is positioned or anchored.",
+    confirm: "Bind",
+    badPath: "Use path segments of letters, digits, _ or -, each starting with a letter.",
+    taken: (path: string) => `The region “${path}” already exists on this slide.`,
+    tooFew: "Select at least two top-level objects from one region; nested objects cannot be bound.",
+    mixed: "The selected objects must belong to one slide and one region.",
+    gap: "The selected objects must be written one after another; select the ones between them too.",
+  },
+
+  exports: {
+    menuLabel: "Export",
+    pdf: "PDF",
+    pptx: "PowerPoint, editable",
+    pptxFlat: "PowerPoint, one image per slide",
+    htmlSingle: "Single HTML file",
+    html: "HTML site",
+    typst: "Typst source",
+    exporting: (label: string) => `Exporting ${label}…`,
+    saveFirst: "Save the document before exporting it.",
+    output: (label: string) => `▶ Export ${label}`,
+    saved: (label: string, where: string, duration: string) => `${label} saved to ${where} in ${duration}.`,
+    download: "Download",
+    showInFolder: "Show in folder",
+    failed: (label: string) => `${label} export failed.`,
+    showOutput: "Show output",
+    error: (reason: string) => `Export failed: ${reason}`,
+  },
+
+  files: {
+    menuLabel: "Presentation",
+    opening: (name: string) => `Opening ${name}…`,
+    didNotOpen: (name: string) => `${name} did not open. The FrameSeq output may say why.`,
+    openTitle: "Open a presentation",
+    openMessage: "The full path of its slide document, such as talk.slides.ts.",
+    openConfirm: "Open",
+    titlePlaceholder: "Quarterly review",
+    title: "Title",
+    browse: "Browse…",
+    noFolderDialog: "This computer has no folder dialog. Type the folder's path instead.",
+    folder: "Folder",
+    create: "Create",
+    newTitle: "New presentation",
+    savedAs: "Saved as ",
+    openIt: "Open it",
+    newMenu: "New presentation…",
+    openMenu: "Open…",
+    showInFolder: "Show in folder",
+    recentHeading: "Recent",
+  },
+
+  start: {
+    newTitle: "New presentation",
+    newHint: "A cover and a first slide, ready to write",
+    openTitle: "Open…",
+    openHint: "A .slides.ts file on this computer",
+    recent: "Recent",
+    recentLabel: "Recent presentations",
+    quitsOnClose: "Closing this window stops FrameSeq Studio.",
+    runsInTerminal: "FrameSeq Studio runs until you stop it in its terminal.",
+    noRecent: "Presentations you open appear here.",
+    forget: "Remove from this list",
+    forgetNamed: (name: string) => `Remove ${name} from this list`,
+  },
+
+  problems: {
+    build: "Build",
+    runtime: "Preview",
+    typescript: "TypeScript",
+    names: "Names",
+    layout: "Layout",
+    none: "No problems",
+    noneDetail: "TypeScript and the layout check are both clean.",
+    error: "error",
+    warning: "warning",
+    info: "information",
+    line: (line: number) => `Ln ${line}`,
+  },
+
+  frames: {
+    preview: "Live preview",
+    rail: "Slides",
+    check: "Layout check",
+    couldNotRun: "The slide document could not be run. Save a fix and the preview restarts.",
+    threw: "The slide document threw an error while it was being run.",
+  },
+
+  editor: {
+    marker: (index: number, label: string) => `Slide ${index}: ${label} — click to preview`,
+    markerGroup: (first: number, last: number) => `Slides ${first} to ${last}, made by this statement — click to preview`,
+    label: "Slide document",
+    rename: "Rename",
+    renameMessage: (name: string) => `Rename "${name}" and every use of it on this slide.`,
+    renameEmpty: "Type a new name.",
+  },
+
+  window: {
+    minimize: "Minimize",
+    maximize: "Maximize",
+    restore: "Restore",
+    close: "Close",
+  },
+
+  ui: {
+    dismiss: "Dismiss",
+    cancel: "Cancel",
+    close: "Close",
+    couldNotStart: (status: number) => `The Studio could not start (HTTP ${status}).`,
+  },
+
+  help: {
+    shortcutsTitle: "Keyboard shortcuts",
+    shortcuts: [
+      ["Ctrl+S", "Save"],
+      ["Ctrl+O", "Open another presentation"],
+      ["Ctrl+Z, Ctrl+Y", "Undo and redo"],
+      ["Ctrl+Space", "Show completions"],
+      ["Ctrl+F", "Find and replace"],
+      ["F12", "Go to where a name was given"],
+      ["F2", "Rename a name on its slide"],
+      ["Ctrl+PageDown, Ctrl+PageUp", "Next and previous slide"],
+      ["F5", "Present from the current slide"],
+      ["Shift+F5", "Present from the beginning"],
+      ["Ctrl+B", "Show or hide the slides"],
+      ["Ctrl+J", "Show or hide the problems panel"],
+      ["Alt, F10", "Open the menu bar"],
+    ] as Array<[string, string]>,
+    aboutTitle: "About FrameSeq Studio",
+    aboutVersion: (version: string) => `FrameSeq ${version}`,
+    aboutText: "Write slides and posters as an editable TypeScript document, preview them as you type, and export HTML, PDF, PowerPoint, and Typst.",
+    docsPath: "docs/",
+  },
+};
+
+export type Catalog = typeof en;
+
+const zh: Catalog = {
+  appName: "FrameSeq Studio",
+  starting: "正在启动 FrameSeq Studio…",
+  languages: { en: "English", zh: "中文" },
+
+  menus: { file: "文件", edit: "编辑", view: "视图", slide: "幻灯片", present: "放映", help: "帮助" },
+  menu: {
+    newPresentation: "新建演示…",
+    open: "打开…",
+    openRecent: "打开最近的演示",
+    noRecent: "没有最近的演示",
+    showInFolder: "在文件夹中显示",
+    save: "保存",
+    autoSave: "自动保存",
+    export: "导出",
+    undo: "撤销",
+    redo: "重做",
+    find: "查找和替换",
+    selectAll: "全选",
+    goToDefinition: "转到定义",
+    renameName: "重命名…",
+    slidesPanel: "幻灯片栏",
+    inspectorPanel: "当前页",
+    bottomPanel: "问题面板",
+    showProblems: "显示问题",
+    showOutput: "显示输出",
+    followCursor: "跟随光标",
+    theme: "主题",
+    themeSystem: "跟随系统",
+    themeLight: "浅色",
+    themeDark: "深色",
+    language: "语言",
+    newSlide: "在这一页之后新建",
+    duplicateSlide: "复制这一页",
+    deleteSlide: "删除这一页",
+    moveSlideUp: "上移这一页",
+    moveSlideDown: "下移这一页",
+    previousSlide: "上一页",
+    nextSlide: "下一页",
+    goToSource: "转到这一页的源码",
+    fromBeginning: "从头开始",
+    fromCurrent: "从当前页开始",
+    openInBrowser: "在浏览器中打开预览",
+    documentation: "文档",
+    languageTour: "语言速览",
+    shortcuts: "键盘快捷键",
+    reportIssue: "报告问题",
+    about: "关于 FrameSeq Studio",
+  },
+
+  shell: {
+    fileButton: (mod) => `新建、打开或最近的演示（${mod}+O 打开）`,
+    present: "放映",
+    presentTitle: "从当前页开始放映（F5）",
+    slides: "幻灯片",
+    newSlideTitle: "在当前页之后新建一页",
+    currentSlide: "当前页",
+    toggleInspector: "显示或隐藏当前页的对象",
+    inspectorLabel: "当前页上的对象",
+    editor: "编辑器",
+    preview: "预览",
+    followCursor: "跟随光标",
+    followTitle: "显示光标所在的那一页",
+    openBrowserTitle: "在浏览器标签页中打开预览",
+    panel: "问题与输出",
+    problems: "问题",
+    output: "输出",
+    togglePanel: (mod) => `隐藏或显示面板（${mod}+J）`,
+    menuBar: "菜单栏",
+    disconnected: "● 已断开",
+  },
+
+  fatal: {
+    notStudio: "这个服务器是预览，不是 Studio",
+    notStudioDetail: "它是用 frameseq dev 启动的，不允许页面改写幻灯片文档。请停止它，改为启动 Studio：",
+    failed: "FrameSeq Studio 无法启动",
+    failedDetail: (reason) => `${reason} 用这条命令启动 Studio：`,
+  },
+
+  save: {
+    saved: "已保存",
+    editing: "编辑中…",
+    unsaved: "未保存",
+    saving: "保存中…",
+    blocked: "未保存：有语法错误",
+    conflict: "磁盘上的文件已改变",
+    error: "保存失败",
+    offline: "服务器已断开",
+    blockedDetail: "自动保存会等文档能够解析时才保存，这样预览不会运行出错的代码。按 Ctrl+S 可以强制保存。",
+    offlineDetail: "FrameSeq 服务器已停止。用 frameseq studio 重新启动它；你的编辑会保留。",
+    reloaded: (name) => `${name} 在磁盘上被修改，已重新载入。`,
+    removed: (name) => `${name} 在磁盘上被删除或改名了。`,
+    conflictBanner: (name) => `${name} 在磁盘上被修改，而你还有未保存的编辑。`,
+    useDisk: "使用磁盘上的文件",
+    keepMine: "保留我的版本",
+    resolveFirst: (name) => `${name} 在磁盘上被修改。请先选择保留哪个版本。`,
+    askTitle: "保存修改吗？",
+    askMessage: (name) => `${name} 有尚未保存的修改。`,
+    dontSave: "不保存",
+    saveButton: "保存",
+  },
+
+  status: {
+    cursor: (line, column) => `第 ${line} 行，第 ${column} 列`,
+    selected: (count) => `（已选 ${count}）`,
+    slideOf: (index, count) => `第 ${index} 页，共 ${count} 页`,
+    slide: (index) => `第 ${index} 页`,
+    problemCounts: (errors, warnings) => `${errors} 个错误，${warnings} 个警告`,
+  },
+
+  check: {
+    checking: "正在检查布局…",
+    checked: (slides) => `布局已检查 · ${slides} 页`,
+    failed: "布局检查失败",
+    failedOutput: (reason) => `布局检查失败：${reason}`,
+    runtimeDetail: "预览仍显示上一次成功运行的版本。修好错误并保存后就会更新。",
+  },
+
+  inspector: {
+    madeOutside: (index, name) => `第 ${index} 页不是在 ${name} 里生成的。`,
+    madeByHelper: (line) => `由第 ${line} 行的辅助函数调用生成；这些对象写在辅助函数里。`,
+    madeWithOthers: (line, others) => `由第 ${line} 行的一条语句生成，同时还生成了另外 ${others} 页；它的对象只写了一次，所有这些页共用。`,
+    madeByStatement: (index, line) => `第 ${index} 页由第 ${line} 行的语句生成。`,
+    empty: "显示一页幻灯片以查看它的对象。",
+    flowLayout: "流式布局",
+    layout: (name) => `${name} 布局`,
+    objects: (count) => `${count} 个对象`,
+    notes: "有演讲者备注",
+    namedRegion: "命名区域",
+    noObjects: "这一页还没有对象。",
+    collapse: "折叠",
+    expand: "展开",
+    colour: (name) => `${name} 颜色`,
+  },
+
+  rail: {
+    catchingUp: "幻灯片栏还没跟上编辑器，请稍后再试。",
+    notHere: (index, name) => `第 ${index} 页不是由 ${name} 里的语句生成的，不能在幻灯片栏里修改。`,
+    moveOutside: "幻灯片只能移到这份文档生成的幻灯片旁边。",
+    groupFromLine: (size, line) => `第 ${line} 行生成的 ${size} 页`,
+    single: (index) => `第 ${index} 页`,
+    deleted: (what) => `已删除${what}。`,
+    moved: (what) => `已移动${what}，它们作为一个整体移动。`,
+    duplicated: (what) => `已复制${what}，它们作为一个整体移动。`,
+    undo: "撤销",
+    menuLabel: (index) => `第 ${index} 页`,
+    groupNote: (line, others) => `由第 ${line} 行生成，同时还有另外 ${others} 页；这些操作会作用于它们全部。`,
+    outsideNote: (name) => `不是在 ${name} 里生成的，只能在这里查看。`,
+    newAfter: "在后面新建一页",
+    duplicate: "复制",
+    moveUp: "上移",
+    moveDown: "下移",
+    goToSource: "转到源码",
+    presentFromHere: "从这里开始放映",
+    delete: "删除",
+    newSlideTitle: "新的一页",
+    newSlideText: "在这里写下要点。",
+  },
+
+  bind: {
+    title: "绑定到命名区域",
+    message: "这个区域被定位或锚定时，选中的对象会一起移动。",
+    confirm: "绑定",
+    badPath: "路径的每一段只能用字母、数字、_ 或 -，并以字母开头。",
+    taken: (path) => `这一页上已经有区域“${path}”。`,
+    tooFew: "请从同一个区域里选择至少两个顶层对象；嵌套的对象不能绑定。",
+    mixed: "选中的对象必须属于同一页、同一个区域。",
+    gap: "选中的对象必须是连续写下的；请把它们中间的对象也选上。",
+  },
+
+  exports: {
+    menuLabel: "导出",
+    pdf: "PDF",
+    pptx: "PowerPoint（可编辑）",
+    pptxFlat: "PowerPoint（每页一张图片）",
+    htmlSingle: "单个 HTML 文件",
+    html: "HTML 网站",
+    typst: "Typst 源码",
+    exporting: (label) => `正在导出 ${label}…`,
+    saveFirst: "请先保存文档再导出。",
+    output: (label) => `▶ 导出 ${label}`,
+    saved: (label, where, duration) => `${label} 已保存到 ${where}，用时 ${duration}。`,
+    download: "下载",
+    showInFolder: "在文件夹中显示",
+    failed: (label) => `${label} 导出失败。`,
+    showOutput: "查看输出",
+    error: (reason) => `导出失败：${reason}`,
+  },
+
+  files: {
+    menuLabel: "演示",
+    opening: (name) => `正在打开 ${name}…`,
+    didNotOpen: (name) => `${name} 没有打开。FrameSeq 的输出可能会说明原因。`,
+    openTitle: "打开演示",
+    openMessage: "幻灯片文档的完整路径，比如 talk.slides.ts。",
+    openConfirm: "打开",
+    titlePlaceholder: "季度回顾",
+    title: "标题",
+    browse: "浏览…",
+    noFolderDialog: "这台电脑没有选择文件夹的对话框，请直接输入文件夹路径。",
+    folder: "文件夹",
+    create: "创建",
+    newTitle: "新建演示",
+    savedAs: "保存为 ",
+    openIt: "打开它",
+    newMenu: "新建演示…",
+    openMenu: "打开…",
+    showInFolder: "在文件夹中显示",
+    recentHeading: "最近",
+  },
+
+  start: {
+    newTitle: "新建演示",
+    newHint: "一页封面和一页内容，可以直接开始写",
+    openTitle: "打开…",
+    openHint: "这台电脑上的 .slides.ts 文件",
+    recent: "最近",
+    recentLabel: "最近的演示",
+    quitsOnClose: "关闭这个窗口就会停止 FrameSeq Studio。",
+    runsInTerminal: "FrameSeq Studio 会一直运行，直到你在它的终端里停止它。",
+    noRecent: "你打开过的演示会出现在这里。",
+    forget: "从列表中移除",
+    forgetNamed: (name) => `把 ${name} 从列表中移除`,
+  },
+
+  problems: {
+    build: "构建",
+    runtime: "预览",
+    typescript: "TypeScript",
+    names: "名字",
+    layout: "布局",
+    none: "没有问题",
+    noneDetail: "TypeScript 和布局检查都没有发现问题。",
+    error: "错误",
+    warning: "警告",
+    info: "提示",
+    line: (line) => `第 ${line} 行`,
+  },
+
+  frames: {
+    preview: "实时预览",
+    rail: "幻灯片",
+    check: "布局检查",
+    couldNotRun: "幻灯片文档无法运行。保存修正后，预览会重新启动。",
+    threw: "幻灯片文档在运行时抛出了错误。",
+  },
+
+  editor: {
+    marker: (index, label) => `第 ${index} 页：${label} —— 点击预览`,
+    markerGroup: (first, last) => `第 ${first} 到 ${last} 页，由这条语句生成 —— 点击预览`,
+    label: "幻灯片文档",
+    rename: "重命名",
+    renameMessage: (name) => `重命名“${name}”，以及这一页上对它的每一处使用。`,
+    renameEmpty: "请输入一个新名字。",
+  },
+
+  window: {
+    minimize: "最小化",
+    maximize: "最大化",
+    restore: "向下还原",
+    close: "关闭",
+  },
+
+  ui: {
+    dismiss: "关闭",
+    cancel: "取消",
+    close: "关闭",
+    couldNotStart: (status) => `Studio 无法启动（HTTP ${status}）。`,
+  },
+
+  help: {
+    shortcutsTitle: "键盘快捷键",
+    shortcuts: [
+      ["Ctrl+S", "保存"],
+      ["Ctrl+O", "打开另一份演示"],
+      ["Ctrl+Z、Ctrl+Y", "撤销与重做"],
+      ["Ctrl+Space", "显示补全"],
+      ["Ctrl+F", "查找和替换"],
+      ["F12", "转到名字的定义"],
+      ["F2", "在本页重命名一个名字"],
+      ["Ctrl+PageDown、Ctrl+PageUp", "下一页与上一页"],
+      ["F5", "从当前页开始放映"],
+      ["Shift+F5", "从头开始放映"],
+      ["Ctrl+B", "显示或隐藏幻灯片栏"],
+      ["Ctrl+J", "显示或隐藏问题面板"],
+      ["Alt、F10", "打开菜单栏"],
+    ],
+    aboutTitle: "关于 FrameSeq Studio",
+    aboutVersion: (version) => `FrameSeq ${version}`,
+    aboutText: "把幻灯片和海报写成一份可编辑的 TypeScript 文档，一边写一边预览，并导出 HTML、PDF、PowerPoint 和 Typst。",
+    docsPath: "docs/zh/",
+  },
+};
+
+const catalogues: Record<Language, Catalog> = { en, zh };
+
+/** The Studio's words in the language of this page load. */
+export const t: Catalog = catalogues[language];

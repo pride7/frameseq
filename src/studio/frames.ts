@@ -6,6 +6,7 @@ export interface SourceTarget {
   end: number;
 }
 
+import { t } from "./i18n";
 import type { RenderedSlide } from "./outline";
 
 /** One reason the slide document could not run, with the offsets of the code that caused it. */
@@ -89,9 +90,9 @@ export class StudioFrames {
     initialSlide: number,
     private theme: "light" | "dark",
   ) {
-    this.preview = frame("Live preview", `/?frameseq-preview=studio#${initialSlide + 1}`, "studio-preview-frame");
+    this.preview = frame(t.frames.preview, `/?frameseq-preview=studio#${initialSlide + 1}`, "studio-preview-frame");
     this.rail = frame("Slides", `/?thumbnails=1&frameseq-preview=studio-rail&studio-theme=${theme}`, "studio-rail-frame");
-    this.check = frame("Layout check", "/?print=1&frameseq-preview=studio-check", "studio-check-frame");
+    this.check = frame(t.frames.check, "/?print=1&frameseq-preview=studio-check", "studio-check-frame");
     this.check.tabIndex = -1;
     this.check.setAttribute("aria-hidden", "true");
     this.check.inert = true;
@@ -111,7 +112,7 @@ export class StudioFrames {
         if (!page || page.document.documentElement.dataset.ready === "true") return;
         const [failure] = readFailures([{
           message: page.__frameseqError || this.lastError
-            || "The slide document could not be run. Save a fix and the preview restarts.",
+            || t.frames.couldNotRun,
           ...(page.__frameseqErrorStatement as object | undefined),
         }]);
         this.events.previewFailed([failure]);
@@ -170,7 +171,7 @@ export class StudioFrames {
           events.previewRendered();
           return;
         case "frameseq.render-failed": {
-          const fallback = this.lastError || "The slide document threw an error while it was being run.";
+          const fallback = this.lastError || t.frames.threw;
           const failures = readFailures(message.problems)
             .map((failure) => ({ ...failure, message: failure.message || fallback }));
           events.previewFailed(failures.length > 0 ? failures : [{ message: fallback }]);

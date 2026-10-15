@@ -658,7 +658,7 @@ FrameSeq Studio puts the whole loop of writing a talk in one window, with nothin
 frameseq studio talk.slides.ts
 ```
 
-It opens as an app window of its own (or in the default browser when no Chromium browser is installed): live slide thumbnails on the left, the `.slides.ts` source in a TypeScript editor in the middle, the interactive preview on the right, and one list of problems beneath them.
+It opens as an app window of its own (or in the default browser when no Chromium browser is installed), and in the FrameSeq app as a desktop program whose menu bar is its title bar: live slide thumbnails on the left, the `.slides.ts` source in a TypeScript editor in the middle, the interactive preview on the right, and one list of problems beneath them.
 
 - The editor completes FrameSeq commands and methods, underlines type errors, and shows each command's documentation and parameters, all read from the project's own `tsconfig.json`.
 - Names given with `.as()` and `at()` are identifiers too: the editor completes them in `ref()`, connectors, and `at()`, `F12` jumps to where a name was given, `F2` renames it everywhere on its slide, and a name that refers to nothing is underlined.
@@ -670,7 +670,8 @@ It opens as an app window of its own (or in the default browser when no Chromium
 - Below them, **Current slide** lists every object on the slide in the preview, and edits the positions, sizes, and colours their commands state; numbers step with the arrow keys while the preview follows.
 - A change made elsewhere, by a coding agent for instance, reloads into the editor; with unsaved edits, the Studio asks which version to keep.
 - **Present** opens presenter view, and **Export** produces PDF, PowerPoint, HTML, and Typst exactly as the CLI does.
-- The file name in the top bar opens a menu that starts a new presentation, opens another, or returns to a recent one, in the same window.
+- A menu bar holds every command, as in any desktop program: **File** starts a new presentation, opens another, or returns to a recent one, in the same window.
+- The Studio speaks English and Chinese, TypeScript's own messages included; **View › Language** switches between them.
 
 Run `frameseq studio` without a file to start from its start page, and `frameseq shortcut` to add FrameSeq Studio to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux, so it opens like any other program and stops when its window closes.
 
