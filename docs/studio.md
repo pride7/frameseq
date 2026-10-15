@@ -29,6 +29,8 @@ The source stays the only description of the talk. Everything the Studio does, w
 
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail, `Ctrl+J` shows or hides the bottom panel, and `` Ctrl+` `` opens the [terminal](#the-terminal). The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
 
+To work on the slides without the code, click **Code** in the top bar or press `Ctrl+E`: the editor folds away and the preview takes its room, where objects are dragged, inserted, and deleted in layout editing, with `Ctrl+Z` still undoing. The cursor keeps following what you pick, so the code comes back at the object you last touched, and the commands that are about the code, such as **Go to the slide's source**, a problem in the list, or `Alt`-clicking an object, bring it back by themselves.
+
 ### The menu bar
 
 Every command is in the menu bar along the top, beside each one's shortcut:
@@ -37,7 +39,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 | --- | --- |
 | **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Export |
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
-| **View** | The slide rail, the current slide, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
+| **View** | The slide rail, the current slide, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source |
 | **Insert** | The shape gallery; Text box, Line, Arrow, and Connector; every shape, by group |
 | **Present** | From the beginning, From the current slide, Open the preview in a browser |
@@ -234,6 +236,7 @@ The assistant uses the agent installed on this computer, on its own sign-in and 
 | `F5` | Present from the current slide |
 | `Shift+F5` | Present from the beginning |
 | `Ctrl+B` | Show or hide the slide rail |
+| `Ctrl+E` | Show or hide the code |
 | `Ctrl+J` | Show or hide the bottom panel |
 | `` Ctrl+` `` | Show the terminal, focus it, or fold it away |
 | `Ctrl+Alt+I` | Show or hide the assistant |

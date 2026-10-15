@@ -660,6 +660,27 @@ try {
   await page.keyboard.press("b");
   await page.keyboard.up("Control");
   assert.ok(!(await page.$eval("#studio", (studio) => studio.classList.contains("is-rail-collapsed"))), "Ctrl+B brings the rail back");
+
+  // The code folds away so the slides are worked on in the preview alone, and comes back.
+  const codeHidden = () => page.$eval("#studio", (studio) => studio.classList.contains("is-editor-collapsed"));
+  const previewWidth = () => page.$eval(".studio-preview-pane", (pane) => pane.getBoundingClientRect().width);
+  const widthWithCode = await previewWidth();
+  await page.click("[data-action='toggle-editor']");
+  assert.ok(await codeHidden(), "Code in the top bar hides the editor");
+  assert.equal(await page.$eval("[data-action='toggle-editor']", (button) => button.getAttribute("aria-pressed")), "false");
+  assert.ok(await previewWidth() > widthWithCode + 300, "the preview takes the editor's room");
+  assert.equal(await page.$eval(".studio-editor", (editor) => getComputedStyle(editor).display), "none");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("e");
+  await page.keyboard.up("Control");
+  assert.ok(!(await codeHidden()), "Ctrl+E brings the code back");
+  assert.ok(await page.evaluate(() => window.frameseqStudio.view.hasFocus), "the code comes back with the focus");
+  assert.ok(Math.abs(await previewWidth() - widthWithCode) < 2, "the preview goes back to its width");
+  await page.click("[data-action='toggle-editor']");
+  assert.ok(await codeHidden());
+  await page.click("[data-menu='slide']");
+  await page.click("[data-command='go-to-source']");
+  assert.ok(!(await codeHidden()), "going to a slide's source brings the code back");
   await page.focus(".cm-content");
   await page.keyboard.down("Alt");
   await page.keyboard.press("h");

@@ -981,7 +981,8 @@ body:has(.studio-topbar) .studio-window-drag {
   display: grid;
   grid-template-columns:
     var(--studio-rail-column, var(--studio-rail-width)) var(--studio-rail-gap, 5px)
-    minmax(320px, 1fr) 5px minmax(280px, var(--studio-preview-width))
+    var(--studio-editor-column, minmax(320px, 1fr)) var(--studio-editor-gap, 5px)
+    var(--studio-preview-column, minmax(280px, var(--studio-preview-width)))
     var(--studio-assistant-gap, 0) var(--studio-assistant-column, 0);
   min-height: 0;
 }
@@ -989,6 +990,39 @@ body:has(.studio-topbar) .studio-window-drag {
 .studio.is-rail-collapsed {
   --studio-rail-column: 0;
   --studio-rail-gap: 0;
+}
+
+/* With the code folded away the preview takes its room, and the slides are edited there. */
+.studio.is-editor-collapsed {
+  --studio-editor-column: 0;
+  --studio-editor-gap: 0;
+  --studio-preview-column: minmax(280px, 1fr);
+}
+
+.studio.is-editor-collapsed .studio-editor-pane,
+.studio.is-editor-collapsed [data-splitter="preview"] {
+  visibility: hidden;
+}
+
+/* Out of the layout, the editor neither wraps its lines to no width nor keeps the focus. */
+.studio.is-editor-collapsed .studio-editor {
+  display: none;
+}
+
+/* Nothing for the preview to follow. */
+.studio.is-editor-collapsed .studio-preview-pane .studio-toggle {
+  display: none;
+}
+
+.studio:not(.is-editor-collapsed) [data-action="toggle-editor"] {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+.studio-actions [data-action="toggle-editor"] span {
+  color: var(--studio-accent);
+  font-family: var(--studio-mono);
+  font-size: 11px;
 }
 
 .studio.is-assistant-open {

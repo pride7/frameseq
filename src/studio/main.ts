@@ -97,6 +97,11 @@ function readThemeChoice(): ThemeChoice {
   }
 }
 
+/** Whether keys pressed in an element type into it, so that its own undo takes them. */
+function typesText(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || target.matches("input, textarea, select"));
+}
+
 const stashKey = "frameseq-studio-stash";
 const autosaveDelay = 450;
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -117,6 +122,7 @@ const shell = `
       <span class="studio-save-state" data-slot="save-state" data-state="saved"><i></i><span>${t.save.saved}</span></span>
     </div>
     <div class="studio-actions">
+      <button type="button" class="studio-button" data-action="toggle-editor" aria-pressed="true" title="${t.shell.toggleEditor(mod)}"><span aria-hidden="true">&lt;/&gt;</span> ${t.shell.code}</button>
       <button type="button" class="studio-button" data-action="toggle-assistant" title="${t.assistant.buttonTitle(mod)}"><span aria-hidden="true">✦</span> ${t.assistant.button}</button>
       <button type="button" class="studio-button is-primary" data-action="present" title="${t.shell.presentTitle}"><span aria-hidden="true">▶</span> ${t.shell.present}</button>
     </div>
@@ -364,6 +370,7 @@ async function start(): Promise<void> {
       reveal: (target) => {
         const range = editorRange(target);
         if (!range) return;
+        showEditor(true);
         view.dispatch({ selection: EditorSelection.cursor(range.from), scrollIntoView: true });
         view.focus();
       },
@@ -959,6 +966,11 @@ async function start(): Promise<void> {
     if (focusEditor) view.focus();
   }
 
+  function goToSource(index: number): void {
+    showEditor(true);
+    goToSlide(index, { focusEditor: true });
+  }
+
   // ── Editor updates ──────────────────────────────────────────────────────────────────────
   function handleUpdate(update: ViewUpdate): void {
     if (update.docChanged) {
@@ -1039,6 +1051,7 @@ async function start(): Promise<void> {
   }
 
   function selectProblem(problem: Problem): void {
+    if (problem.from !== undefined || problem.line !== undefined) showEditor(true);
     if (problem.from !== undefined) {
       view.dispatch({
         selection: EditorSelection.range(problem.from, problem.to ?? problem.from),
@@ -1355,7 +1368,7 @@ async function start(): Promise<void> {
       { label: t.rail.moveUp, disabled: upTo === undefined, run: () => void rearrange("move", index, upTo ?? 0) },
       { label: t.rail.moveDown, disabled: downTo === undefined, run: () => void rearrange("move", index, downTo ?? 0) },
       "separator",
-      { label: t.rail.goToSource, run: () => goToSlide(index, { focusEditor: true }) },
+      { label: t.rail.goToSource, run: () => goToSource(index) },
       { label: t.rail.presentFromHere, shortcut: "F5", run: () => present(index) },
       "separator",
       { label: t.rail.delete, shortcut: "Del", danger: true, disabled: !movable, run: () => void rearrange("delete", index) },
@@ -1558,6 +1571,7 @@ async function start(): Promise<void> {
   // them, and a build error opens the panel by itself.
   if (readPreference("panel-collapsed", true)) root.classList.add("is-panel-collapsed");
   if (readPreference("rail-collapsed", false)) root.classList.add("is-rail-collapsed");
+  if (readPreference("editor-collapsed", false)) showEditor(false);
   // The terminal comes back where it was, with the shell that ran before the page reloaded.
   if (readPreference("terminal-tab", false) && !root.classList.contains("is-panel-collapsed")) selectTab("terminal", false);
 
@@ -1589,14 +1603,36 @@ async function start(): Promise<void> {
     storePreference("inspector-collapsed", collapsed);
   }
 
+  /** Fold the code away to work on the slides alone in the preview, or bring it back. */
+  function showEditor(shown: boolean): void {
+    if (shown !== root.classList.contains("is-editor-collapsed")) return;
+    // A folded editor cannot keep the focus, so it lets it go rather than leave it nowhere.
+    if (!shown && view.hasFocus) view.contentDOM.blur();
+    root.classList.toggle("is-editor-collapsed", !shown);
+    required<HTMLElement>(root, "[data-action='toggle-editor']").setAttribute("aria-pressed", String(shown));
+    storePreference("editor-collapsed", !shown);
+    // The cursor followed what was picked in the preview meanwhile, so the code opens there.
+    if (shown) view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: "center" }) });
+  }
+
+  function toggleEditor(): void {
+    const shown = root.classList.contains("is-editor-collapsed");
+    showEditor(shown);
+    if (shown) view.focus();
+  }
+
   function stepSlide(step: number): void {
     const count = renderedCount || (report?.slides.length ?? 0);
     goToSlide(Math.min(Math.max(previewSlide + step, 0), Math.max(count - 1, 0)), { focusEditor: true });
   }
 
-  /** Run an editor command from a menu, with the editor focused as its keyboard shortcut would have it. */
-  function inEditor(command: (target: EditorView) => boolean): () => void {
+  /**
+   * Run an editor command from a menu, with the editor focused as its keyboard shortcut would have
+   * it. A command about the code itself, unlike undo, first brings a folded editor back.
+   */
+  function inEditor(command: (target: EditorView) => boolean, { reveal = true } = {}): () => void {
     return () => {
+      if (reveal) showEditor(true);
       view.focus();
       command(view);
     };
@@ -1662,8 +1698,8 @@ async function start(): Promise<void> {
       label: t.menus.edit,
       accessKey: "e",
       items: () => [
-        { command: "undo", label: t.menu.undo, shortcut: `${mod}+Z`, run: inEditor(undo) },
-        { command: "redo", label: t.menu.redo, shortcut: isMac ? "⇧⌘Z" : "Ctrl+Y", run: inEditor(redo) },
+        { command: "undo", label: t.menu.undo, shortcut: `${mod}+Z`, run: inEditor(undo, { reveal: false }) },
+        { command: "redo", label: t.menu.redo, shortcut: isMac ? "⇧⌘Z" : "Ctrl+Y", run: inEditor(redo, { reveal: false }) },
         "separator",
         { command: "find", label: t.menu.find, shortcut: `${mod}+F`, run: inEditor(openSearchPanel) },
         { command: "select-all", label: t.menu.selectAll, shortcut: `${mod}+A`, run: inEditor(selectAll) },
@@ -1679,13 +1715,14 @@ async function start(): Promise<void> {
       items: () => [
         { command: "toggle-rail", label: t.menu.slidesPanel, shortcut: `${mod}+B`, checked: () => !root.classList.contains("is-rail-collapsed"), run: toggleRail },
         { command: "toggle-inspector", label: t.menu.inspectorPanel, checked: () => !root.classList.contains("is-inspector-collapsed"), run: toggleInspector },
+        { command: "toggle-editor", label: t.menu.codeEditor, shortcut: `${mod}+E`, checked: () => !root.classList.contains("is-editor-collapsed"), run: toggleEditor },
         { command: "toggle-panel", label: t.menu.bottomPanel, shortcut: `${mod}+J`, checked: () => !root.classList.contains("is-panel-collapsed"), run: togglePanel },
         { command: "toggle-assistant", label: t.menu.assistant, shortcut: `${mod}+Alt+I`, checked: () => root.classList.contains("is-assistant-open"), run: () => toggleAssistant(), disabled: () => !session.assistant },
         { command: "show-problems", label: t.menu.showProblems, run: () => showPanel("problems") },
         { command: "show-output", label: t.menu.showOutput, run: () => showPanel("output") },
         { command: "toggle-terminal", label: t.menu.terminal, shortcut: terminalKey, checked: () => !root.classList.contains("is-panel-collapsed") && panelTab === "terminal", run: toggleTerminal },
         "separator",
-        { command: "follow", label: t.menu.followCursor, checked: () => follow, run: () => setFollow(!follow) },
+        { command: "follow", label: t.menu.followCursor, checked: () => follow, run: () => setFollow(!follow), disabled: () => root.classList.contains("is-editor-collapsed") },
         "separator",
         {
           command: "theme",
@@ -1738,7 +1775,7 @@ async function start(): Promise<void> {
         "separator",
         slideCommand("previous-slide", t.menu.previousSlide, () => stepSlide(-1), () => previewSlide === 0, `${mod}+PgUp`),
         slideCommand("next-slide", t.menu.nextSlide, () => stepSlide(1), () => previewSlide >= renderedCount - 1, `${mod}+PgDn`),
-        slideCommand("go-to-source", t.menu.goToSource, () => goToSlide(previewSlide, { focusEditor: true })),
+        slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)),
       ],
     },
     {
@@ -1842,6 +1879,9 @@ async function start(): Promise<void> {
       case "toggle-assistant":
         toggleAssistant();
         break;
+      case "toggle-editor":
+        toggleEditor();
+        break;
       case "review-accept":
         settleReview(true);
         break;
@@ -1883,6 +1923,15 @@ async function start(): Promise<void> {
     } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
       toggleRail();
+    } else if (primary && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "e") {
+      event.preventDefault();
+      toggleEditor();
+    } else if (primary && !event.altKey && !event.defaultPrevented && !typesText(event.target)
+      && (event.key.toLowerCase() === "z" || (event.key.toLowerCase() === "y" && !event.shiftKey))) {
+      // Outside a text field, as with the code folded away, the keys still undo the slides.
+      event.preventDefault();
+      if (event.key.toLowerCase() === "z" && !event.shiftKey) undo(view);
+      else redo(view);
     } else if (primary && event.altKey && !event.shiftKey && event.code === "KeyI" && session.assistant) {
       // By the key's place, since Alt changes the letter it types on some layouts and on macOS.
       event.preventDefault();
