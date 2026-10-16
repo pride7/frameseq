@@ -67,6 +67,16 @@ import { chooseIcon } from "./icons";
 import { detailNames, SlideInspector, type DetailName, type SlideDetails } from "./inspector";
 import { optionString, planOptions, presentationOption, type OptionPlan } from "./presentation";
 import { stringLiteral } from "./properties";
+import {
+  askFigureSetup,
+  askPageSetup,
+  computedPageOption,
+  figureChanges,
+  pageCanvas,
+  pageChanges,
+  readFigureSetup,
+  readPageSetup,
+} from "./page-setup";
 import { SlideShow } from "./show";
 import { wordsFor, type TextPart } from "./typing";
 import {
@@ -2693,6 +2703,47 @@ async function start(): Promise<void> {
     ];
   }
 
+  // ── Page setup ──────────────────────────────────────────────────────────────────────────
+  /**
+   * Set the size of every slide, as PowerPoint's slide size does: presentation()'s size and
+   * orientation, or its ratio, written as one step, with the canvas kept as wide as it is when
+   * the content scales with the page. A figure sets its canvas and the width it prints at.
+   */
+  async function pageSetup(): Promise<void> {
+    const current = await freshReport();
+    const options = current?.presentation.options;
+    if (!current || !options) {
+      toast(t.rail.catchingUp, { tone: "warning" });
+      return;
+    }
+    const pageOptions = ["size", "orientation", "ratio", "width", "height", "printWidth"];
+    if (options.form === "other" || computedPageOption(options, pageOptions) !== undefined) {
+      toast(t.page.code, { tone: "warning", actions: [{ label: t.objects.goToCode, run: () => revealPosition(options.arguments.start) }] });
+      return;
+    }
+    const geometry = pageGeometry();
+    let changes: Record<string, string | undefined>;
+    let canvas: { width: number; height: number };
+    if (options.command === "figure") {
+      const before = readFigureSetup(options);
+      const after = await askFigureSetup(before);
+      if (!after) return;
+      changes = figureChanges(options, before, after);
+      canvas = after;
+    } else {
+      const setup = await askPageSetup({ setup: readPageSetup(options, geometry), width: geometry.width, poster: options.command === "poster" });
+      if (!setup) return;
+      changes = pageChanges(options, setup, geometry.width);
+      canvas = pageCanvas(setup, geometry.width);
+    }
+    // The code is read again after the dialog, in case it changed meanwhile.
+    const fresh = await freshReport();
+    const plan = fresh ? planOptions(editorText(), fresh.presentation.options, changes) : undefined;
+    if (!plan || !applyOptions(plan, "input.page")) return;
+    await save({ auto: false });
+    toast(t.page.applied(canvas.width, canvas.height), { tone: "success", actions: [{ label: t.inspector.undo, run: () => { undo(view); } }] });
+  }
+
   // ── Templates of one's own ──────────────────────────────────────────────────────────────
   /**
    * Keep this presentation as a template, masters and theme included, so new ones can start
@@ -3193,6 +3244,8 @@ async function start(): Promise<void> {
         "separator",
         { command: "save", label: t.menu.save, shortcut: `${mod}+S`, run: () => void save({ auto: false }) },
         { command: "autosave", label: t.menu.autoSave, checked: () => autosave, run: () => setAutosave(!autosave) },
+        "separator",
+        { command: "page-setup", label: t.page.menu, run: () => void pageSetup() },
         "separator",
         { command: "save-template", label: t.files.saveTemplate, run: () => void saveAsTemplate() },
         { command: "open-templates", label: t.files.openTemplatesFolder, run: () => void call("POST", "templates/reveal", {}).catch((error) => toast(String(error instanceof Error ? error.message : error), { tone: "error" })) },

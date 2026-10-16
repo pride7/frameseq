@@ -42,7 +42,7 @@ Every command is in the menu bar along the top, beside each one's shortcut:
 
 | Menu | Commands |
 | --- | --- |
-| **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Save as template, Open templates folder, Export |
+| **File** | New presentation, Open, Open recent, Show in folder, Save, Auto-save, Page setup, Save as template, Open templates folder, Export |
 | **Edit** | Undo, Redo, Find and replace, Select all, Go to definition, Rename |
 | **View** | The slide rail, the current slide, the speaker notes, the code, the bottom panel, and the assistant; Problems, Output, and Terminal; Follow cursor; Slide master; Theme; Language |
 | **Slide** | New, duplicate, move, and delete the current slide; Previous and Next slide; Go to its source; Master |
@@ -260,6 +260,18 @@ Clicking a slide made in a loop puts the cursor on the `slide()` call inside the
 The rail's **+** adds the cover master, the content master, or a master named as you like, written after `presentation()`. Each starts where the theme already puts things, so the slides look the same until it is changed. **Slide › Delete** and the rail's right-click menu delete a master, and **Present** leaves the view and shows the slides.
 
 With the slides showing, **Slide › Master** picks the master the slide in the preview is drawn on: its usual one, another by name, or none, written as the slide's `.master()`. **Edit the master**, there and in the rail's right-click menu, opens the master view on the slide's master.
+
+## Page setup
+
+**File › Page setup…** sets the size of every slide, as PowerPoint's slide size does, and writes it into `presentation()`:
+
+- **Widescreen 16:9** and **Standard 4:3** are for the screen: nothing for 16:9, and `ratio: "4:3"`.
+- A sheet of paper, from A0 to A5, Letter, Legal, or Tabloid, stands upright or on its side: `size: "A4", orientation: "landscape"`.
+- **Custom size** takes a width and a height: in canvas units for the screen, as `width: 1920, height: 1080`, or in millimetres, centimetres, or inches for paper, as `size: "900x1200mm"`.
+
+The slides are laid out on a canvas of their own units: 1280 across a slide for the screen, and 1600 across a sheet's short side. **Scale the content with the page**, on at first, keeps the canvas as many units across as it is, written as `width: 1280`, so every object and every size of type keeps its size against the new page, as PowerPoint scales a slide's content. Without it, the new page takes its own canvas, and the objects keep their units. The line under the choices gives the canvas, and for paper its printed size, before anything changes; the change is one step that `Ctrl+Z` takes back.
+
+A [poster](posters.md) offers paper only. For a [figure](posters.md#figures-for-a-paper), the dialog sets its canvas in units and the width it prints at: 170 mm across a page, 85 mm in one column, or a width of its own. Every slide of a presentation has the same size, as in PowerPoint, and the exports keep it.
 
 ## Problems
 
