@@ -17,10 +17,19 @@ const workspace = resolve(packageRoot, "tmp", "studio-files-test");
 const home = resolve(workspace, "home");
 const config = resolve(workspace, "config");
 const decks = resolve(workspace, "decks");
+const templates = resolve(workspace, "templates");
 const existing = resolve(decks, "existing.slides.ts");
 const existingSource = 'presentation("Existing");\n\nslide("One");\ntext("Already here");\n';
 // No native dialog may open during a test, so every path is typed, as on a computer without one.
-const environment = { ...process.env, FRAMESEQ_CONFIG_DIR: config, FRAMESEQ_NO_DIALOGS: "1", BROWSER: "none", FORCE_COLOR: "0", NO_COLOR: "1" };
+const environment = {
+  ...process.env,
+  FRAMESEQ_CONFIG_DIR: config,
+  FRAMESEQ_TEMPLATES: templates,
+  FRAMESEQ_NO_DIALOGS: "1",
+  BROWSER: "none",
+  FORCE_COLOR: "0",
+  NO_COLOR: "1",
+};
 
 async function waitFor(check, message, timeout = 30_000) {
   const started = Date.now();
@@ -70,6 +79,10 @@ await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 
 await mkdir(home, { recursive: true });
 await mkdir(decks, { recursive: true });
 await writeFile(existing, existingSource, "utf8");
+// A file where the Studio starts and a template of one's own, each using a utility no other file uses.
+await writeFile(resolve(home, "stray.ts"), 'text("Stray").style("bg-[#123457]");\n', "utf8");
+await mkdir(templates, { recursive: true });
+await writeFile(resolve(templates, "Mine.slides.ts"), 'presentation("Mine");\n\nslide("One");\ntext("Mine").style("bg-[#765432]");\n', "utf8");
 
 // `frameseq new` still writes the starter it always has, now shared with the Studio.
 spawnSync(process.execPath, [cli, "new", "plain.slides.ts"], { cwd: workspace, env: environment });
@@ -96,6 +109,15 @@ try {
   assert.equal((await api(origin, "files/open", { method: "POST", token, body: { path: resolve(decks, "missing.slides.ts") } })).status, 404);
   assert.equal((await api(origin, "files/create", { method: "POST", token, body: { title: "x", folder: resolve(workspace, "nowhere") } })).status, 404);
   assert.equal((await api(origin, "files/create", { method: "POST", token: "wrong", body: { title: "x", folder: decks } })).status, 403);
+  // The new-presentation dialog offers one's own templates on the start page too.
+  const listed = await api(origin, "templates", { token });
+  assert.equal(listed.status, 200, "the start page lists one's own templates");
+  assert.deepEqual(listed.data.templates.map((template) => template.name), ["Mine"]);
+  // Their covers take their utilities from the templates folder alone. The folder the Studio
+  // started in may be a whole Documents folder, and scanning it kept the covers blank.
+  const styles = await (await fetch(`${origin}/src/index.css?direct`)).text();
+  assert.match(styles, /765432/, "the start page has the utilities one's own templates use");
+  assert.doesNotMatch(styles, /123457/, "the start page does not scan the folder it started in");
 
   browser = await puppeteer.launch(puppeteerLaunchOptions());
   const page = await browser.newPage();
@@ -144,6 +166,12 @@ try {
   // A new presentation is named after its title, written into the chosen folder, and opened.
   await openNewDialog(() => page.click("[data-start='new']"));
   assert.equal(await page.$("[data-action='browse-folder']"), null, "Browse… needs a native dialog");
+  // Every cover draws, one's own template among them.
+  await page.waitForSelector(".studio-template[data-template='user:Mine']");
+  await page.waitForFunction(() => {
+    const covers = [...document.querySelectorAll(".studio-new-dialog .studio-template-cover")];
+    return covers.length > 1 && covers.every((cover) => cover.classList.contains("is-ready"));
+  }, { timeout: 30_000 });
   await page.type("dialog.studio-new-dialog input[name='title']", "Quarterly review");
   assert.equal(await page.$eval(".studio-new-file code", (code) => code.textContent), "quarterly-review.slides.ts");
   await fill("dialog.studio-new-dialog input[name='folder']", decks);

@@ -855,7 +855,9 @@ export function studioPlugin({
             send(response, 403, { error: "Updates are checked on the computer running the Studio." });
             return;
           }
-          if (start && !files && url.pathname !== "/session" && url.pathname !== "/update") {
+          // The start page's new-presentation dialog offers the person's own templates too.
+          const templates = url.pathname === "/templates" || url.pathname.startsWith("/templates/");
+          if (start && !files && !templates && url.pathname !== "/session" && url.pathname !== "/update") {
             send(response, 409, { error: "No presentation is open. Open or create one first." });
             return;
           }

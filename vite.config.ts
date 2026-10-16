@@ -50,14 +50,19 @@ const pathKey = (path: string): string => {
 };
 const entryPathKey = pathKey(normalizedEntry);
 const styleEntryPathKey = pathKey(normalizedStyleEntry);
-const tailwindSource = normalizePath(relative(dirname(styleEntry), dirname(entry)));
-const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
-  .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
 const remoteServerEnabled = process.env.FRAMESEQ_REMOTE === "1";
 const openBrowser = process.env.FRAMESEQ_OPEN_BROWSER !== "0";
 // The Studio writes whole documents, so it exists only when `frameseq studio` asked for it.
 const studioEnabled = process.env.FRAMESEQ_STUDIO === "1";
 const studioRemote = process.env.FRAMESEQ_STUDIO_REMOTE === "1";
+const studioStart = studioEnabled && process.env.FRAMESEQ_STUDIO_START === "1";
+// Tailwind finds the utilities a presentation uses in its folder. The start page has no
+// presentation, only the covers of the person's templates, and the folder it started in may be
+// a whole Documents folder, which took half a minute to scan before any cover could show.
+const tailwindFolder = studioStart ? templateDirectory() : dirname(entry);
+const tailwindSource = normalizePath(relative(dirname(styleEntry), tailwindFolder));
+const tailwindExclusions = ["node_modules", "dist", "output", ".git"]
+  .map((directory) => normalizePath(`${tailwindSource}/${directory}`));
 /** Pre-bundled at startup so opening the Studio never triggers a dependency reload. */
 const studioDependencies = [
   "@codemirror/autocomplete",
@@ -866,7 +871,7 @@ export default defineConfig({
       enabled: studioEnabled,
       allowRemote: studioRemote,
       phoneRemote: studioEnabled && remoteServerEnabled,
-      start: studioEnabled && process.env.FRAMESEQ_STUDIO_START === "1",
+      start: studioStart,
       quitOnClose: studioEnabled && process.env.FRAMESEQ_STUDIO_QUIT_ON_CLOSE === "1",
       remember: process.env.FRAMESEQ_STUDIO_WINDOW !== "0",
     }),
