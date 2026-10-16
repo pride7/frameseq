@@ -18,7 +18,7 @@ import {
   type SlideOptions,
   Text,
 } from "./core";
-import { attachNode, takeNodeChildren } from "./node-tree";
+import { attachNode, detachNode, takeNodeChildren } from "./node-tree";
 
 export type SplitRatio = `${number}:${number}` | number | [number, number];
 export type { GridColumns };
@@ -124,6 +124,36 @@ export function GridSection(
 }
 
 export class RegionBuilder extends ContainerBuilder {
+  /**
+   * Frame this region as one panel of a figure: a light outline, rounded corners, and a bold
+   * title in its top-left corner. A leading tag such as "(a)" is set in a quieter colour.
+   * Content laid out in the region starts below the title; on a canvas, coordinates count from
+   * the panel's corner, so keep objects about 70 pixels down.
+   * @example at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(620).height(780);
+   */
+  panel(title: string): this {
+    for (const child of [...this.node.children]) {
+      if (String(child.props.className ?? "").split(/\s+/).includes("frameseq-panel-title")) detachNode(child);
+    }
+    Object.assign(this.node.styles, {
+      borderWidth: "1.5px",
+      borderStyle: "solid",
+      borderColor: "var(--frameseq-border)",
+      borderRadius: "14px",
+      padding: "72px 28px 28px",
+    });
+    if (!this.node.styles.position) this.node.styles.position = "relative";
+    // Each word carries its own type, which every export reads from the text itself.
+    const words = (content: string) => Text(content).style({ fontSize: "26px", fontWeight: "700", lineHeight: "1.2" });
+    const tagged = /^(\([^)\s]{1,4}\))\s+(.+)$/.exec(title.trim());
+    const heading = tagged
+      ? Row(words(tagged[1]).style({ color: "var(--frameseq-muted)" }), words(tagged[2])).style({ gap: "10px", alignItems: "baseline" })
+      : words(title);
+    heading.className("frameseq-panel-title").style({ position: "absolute", left: "26px", top: "18px" });
+    attachNode(this.node, heading.node, 0);
+    return this;
+  }
+
   /** Add a lead statement to this region. */
   lead(content: string): this {
     this.add(Text(content).className("frameseq-slide-lead"));

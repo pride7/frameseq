@@ -107,6 +107,27 @@ line().from("decoder").to("router").arrow("end");
 
 A nested row or column is as large as the layout it produces, and the container around it decides its size on the other axis, exactly as flexbox does.
 
+## Panels split a figure
+
+A figure in a paper is often two or three panels side by side, each with a title such as "(a) Encoder layer". `panel(title)` turns a region into one: a light outline, rounded corners, and the title in its top-left corner, with a leading tag such as `(a)` set in a quieter colour.
+
+```ts
+slide({ name: "Method" }).canvas();
+
+at("tokenizer").panel("(a) Stage 1: Learn a tokenizer").canvas().position({ x: 20, y: 20 }).width(660).height(520);
+shape("rounded", "Input").as("input").position({ x: 40, y: 220 }).width(140).height(60);
+shape("rounded", "Codes").as("codes").position({ x: 410, y: 220 }).width(160).height(60);
+line().from("input").to("codes").arrow();
+
+at("generator").panel("(b) Stage 2: Learn to generate").row().gap(40).align("center").justify("center")
+  .position({ x: 720, y: 20 }).width(660).height(520);
+shape("rounded", "Context").as("context").width(160).height(60);
+shape("rounded", "Transformer").as("transformer").width(180).height(80);
+line().from("context").to("transformer").arrow();
+```
+
+Everything written after `at()` belongs to the panel and moves with it. A panel laid out as a row or a column starts its contents below the title; on a canvas, coordinates count from the panel's own corner, so keep objects about 70 pixels down. An elbow connector inside a panel treats the panel's outline as the frame it runs in, not as something to go around.
+
 ## Names and connectors
 
 Hand-computed coordinates break as soon as a diagram changes. Give an object a name with `as()`, then let other objects refer to it instead of to numbers:

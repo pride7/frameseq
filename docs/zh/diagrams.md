@@ -1,4 +1,4 @@
-<!-- translation-of: docs/diagrams.md sha256:67279922c78f9818 -->
+<!-- translation-of: docs/diagrams.md sha256:01e2f8b50058c0b2 -->
 
 # 画图
 
@@ -108,6 +108,27 @@ line().from("decoder").to("router").arrow("end");
 ```
 
 嵌套的行或列**有多大,取决于它排出来的布局**;而它在另一个轴上的尺寸由外层容器决定 —— 和 flexbox 完全一样。
+
+## 用面板分开一张图
+
+论文里的插图常常是两三个并排的面板,每个都有一个标题,比如“(a) Encoder layer”。`panel(title)` 把一个区域变成这样的面板:浅色边框、圆角,标题放在左上角,开头的 `(a)` 这类标号用更淡的颜色。
+
+```ts
+slide({ name: "Method" }).canvas();
+
+at("tokenizer").panel("(a) Stage 1: Learn a tokenizer").canvas().position({ x: 20, y: 20 }).width(660).height(520);
+shape("rounded", "Input").as("input").position({ x: 40, y: 220 }).width(140).height(60);
+shape("rounded", "Codes").as("codes").position({ x: 410, y: 220 }).width(160).height(60);
+line().from("input").to("codes").arrow();
+
+at("generator").panel("(b) Stage 2: Learn to generate").row().gap(40).align("center").justify("center")
+  .position({ x: 720, y: 20 }).width(660).height(520);
+shape("rounded", "Context").as("context").width(160).height(60);
+shape("rounded", "Transformer").as("transformer").width(180).height(80);
+line().from("context").to("transformer").arrow();
+```
+
+`at()` 之后写的所有东西都属于这个面板,并跟着它移动。按行或列排布的面板,内容从标题下方开始;画布面板里的坐标从面板自己的左上角算起,所以对象要往下留出大约 70 像素。面板里的直角连线把面板边框当作所在的框架,而不是要绕开的障碍。
 
 ## 命名与连线
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  at,
   connectorMidpoint,
   junction,
   line,
@@ -240,6 +241,28 @@ import {
   const before = JSON.stringify(document.node);
   resolveAnchors(document.node);
   assert.equal(JSON.stringify(document.node), before, "resolving stops twice changes nothing");
+}
+
+// A panel frames a region with a light outline and a title; a leading tag is set apart.
+{
+  presentation("Panels");
+  slide("Figure").canvas();
+  const tagged = at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(600).height(400);
+  assert.equal(tagged.node.styles.borderStyle, "solid");
+  assert.equal(tagged.node.styles.borderRadius, "14px");
+  assert.equal(tagged.node.styles.padding, "72px 28px 28px");
+  const heading = tagged.node.children[0];
+  assert.match(heading.props.className, /frameseq-panel-title/);
+  assert.equal(heading.styles.position, "absolute");
+  assert.deepEqual(heading.children.map((child) => child.props.content), ["(a)", "Encoder layer"]);
+  assert.equal(heading.children[0].styles.color, "var(--frameseq-muted)");
+  assert.equal(heading.children[1].styles.fontWeight, "700");
+  // Titling it again replaces the title rather than adding a second.
+  at("encoder").panel("Encoder");
+  const titles = tagged.node.children.filter((child) => /frameseq-panel-title/.test(child.props.className ?? ""));
+  assert.equal(titles.length, 1);
+  assert.equal(titles[0].props.content, "Encoder");
+  assert.equal(tagged.node.styles.position, "absolute", "a panel placed with position() keeps its place");
 }
 
 // Mistakes are reported in words that say what to write instead.

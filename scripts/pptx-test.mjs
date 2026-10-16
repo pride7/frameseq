@@ -129,6 +129,9 @@ assert.ok(stops, "the connector through stops is exported");
 assert.match(stops, /<a:custGeom>/);
 assert.equal(stops.match(/<a:lnTo>/g)?.length, 3);
 assert.match(stops, /<a:tailEnd type="triangle"\/>/);
+// A panel's outline is a shape of its own, and its tag and title stay editable text.
+assert.match(shapesSlide, />\(b\)</);
+assert.match(shapesSlide, />Generator</);
 // A rect() with no label keeps the small size it was given, and its dash beside a stroke().
 const cell = shapeXmlStarting(shapesSlide, "FrameSeq rect");
 assert.match(cell, /<a:ext cx="285750" cy="285750"\/>/);

@@ -55,3 +55,5 @@ polygon([[0, 0], [120, 0], [90, 80], [30, 80]], "Gate").position({ x: 420, y: 52
 rect("Optional").position({ x: 420, y: 330 }).stroke("#d97706").dashed();
 junction().as("split").position({ x: 600, y: 600 });
 line().from("check").via("split", [700, 640]).to("store").stroke("#123456").arrow();
+at("panel").panel("(a) Encoder layer").canvas().position({ x: 960, y: 40 }).width(300).height(240);
+rect("Inside").position({ x: 30, y: 100 }).width(160).height(60);

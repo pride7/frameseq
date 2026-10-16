@@ -23,6 +23,7 @@ import { checkSlides, slidesFileSuffix } from "./slide-selection.mjs";
 const screenWidthPoints = 960;
 const semanticClasses = new Set([
   "frameseq-auto-title-page",
+  "frameseq-panel-title",
   "frameseq-body-copy",
   "frameseq-caption",
   "frameseq-card",
@@ -1190,12 +1191,34 @@ async function serializeList(node, context) {
   return wrapCommon(node, `#stack(dir: ttb, spacing: ${length("14px", context)}, ${rows.join(", ")})`, context);
 }
 
+/** The top and left padding of a container in pixels, from the CSS shorthand. */
+function paddingStart(value) {
+  const sides = String(value ?? "").trim().split(/\s+/).filter(Boolean).map((part) => pixelValue(part) ?? 0);
+  if (sides.length === 0) return { top: 0, left: 0 };
+  return { top: sides[0], left: sides.length === 1 ? sides[0] : sides.length < 4 ? sides[1] : sides[3] };
+}
+
+/** Whether a child is placed by coordinates rather than laid out in its container's flow. */
+function isPlaced(child) {
+  return child.type === "line" || child.styles?.position === "absolute";
+}
+
 async function serializeContainer(node, context) {
   if (hasClass(node, "frameseq-list")) return serializeList(node, context);
-  const children = await Promise.all((node.children ?? []).map((child) => serializeNode(child, context)));
+  const serialized = await Promise.all((node.children ?? []).map((child) => serializeNode(child, context)));
+  // CSS places an absolute child from its container's padding edge, and Typst from inside the
+  // inset, so a placed child moves back by the padding to land where the browser puts it.
+  const padding = paddingStart(node.styles?.padding);
+  const shift = (text) => (padding.top || padding.left
+    ? `#place(top + left, dx: ${length(`${-padding.left}px`, context, "x")}, dy: ${length(`${-padding.top}px`, context, "y")})[${text}]`
+    : text);
   if (node.type === "stack" || hasClass(node, "frameseq-layout-canvas")) {
+    const children = serialized.map((text, index) => (isPlaced(node.children[index]) ? shift(text) : text));
     return wrapCommon(node, `#block(width: 100%, height: 100%)[${children.join("\n")}]`, context);
   }
+  // A placed child takes no room in a row or a column, so it stays out of the stack.
+  const placed = serialized.filter((_, index) => isPlaced(node.children[index])).map(shift);
+  const children = serialized.filter((_, index) => !isPlaced(node.children[index]));
 
   const styles = node.styles ?? {};
   const isGrid = hasClass(node, "frameseq-layout-grid")
@@ -1216,7 +1239,14 @@ async function serializeContainer(node, context) {
   } else {
     const direction = node.type === "row" || styles.flexDirection === "row" ? "ltr" : "ttb";
     content = `#stack(dir: ${direction}, spacing: ${gap}, ${children.map(childArgument).join(", ")})`;
+    // In a box of a given height, the flex alignment across a row, or along a column, places
+    // the contents up and down within it.
+    const vertical = direction === "ltr" ? styles.alignItems : styles.justifyContent;
+    if (styles.height && (vertical === "center" || vertical === "flex-end" || vertical === "end")) {
+      content = `#align(${vertical === "center" ? "horizon" : "bottom"})[${content}]`;
+    }
   }
+  content = `${placed.join("")}${content}`;
 
   const card = hasClass(node, "frameseq-card")
     || hasClass(node, "frameseq-region-card")

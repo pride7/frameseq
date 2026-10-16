@@ -13,6 +13,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 - FrameSeq Studio's assistant takes files with a request: Markdown notes to turn into slides, a PDF to sum up, or a picture to show. Attach them with the paper clip, drop them on the panel, or paste them. The agent reads them outside the presentation's folder for as long as the conversation lasts, and a picture is also copied into `images/` beside the presentation, where a slide can show it. In the app, files dropped on the window now reach the Studio.
 
 - Draw where connectors meet or split with `junction()`, a small dot in the connectors' colour, named and connected like any object, so a skip connection or a three-way split into a block is written by name, without coordinates. `junction("+")` and `junction("×")` are the small round operators where streams are added or multiplied.
+- Split a figure into panels with `at("encoder").panel("(a) Encoder layer")`: the region gets a light outline, rounded corners, and the title in its top-left corner, with the `(a)` set in a quieter colour, and everything written into it moves with it. PDF, PowerPoint, and Typst draw it as on the slide.
 - Run a connector through stops on its way with `.via()`: named objects, passed at their centre or an anchor, or `[x, y]` points. A straight connector runs from each to the next and an elbow turns at right angles between them; HTML, PDF, PowerPoint, and Typst draw it as one path.
 
 ### Changed
@@ -22,6 +23,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- Typst export places what a container positions by coordinates where the browser does: from the container's padding edge, not from inside its padding, and outside the flow of a row or a column. A row of a given height with `align("center")`, or a column with `justify("center")`, centres its contents up and down as on the slide.
 - An elbow connector inside a frame, such as a panel or the dashed outline of a repeated block, routes as it would without the frame. Every route ran through the frame, so the router counted it as an obstacle, and a skip connection hugged the edge of the boxes it passed or ran outside the frame altogether; a box around either end of a connector no longer counts.
 - `rect()` and `circle()` keep a dashed outline beside `stroke()`. `stroke()` set the border solid after `dashed()` had dashed it, so `rect().stroke("#d97706").dashed()` drew a solid line. Typst export now dashes them too.
 - A `rect()` or `circle()` with no label keeps a small size it is given. Its padding, meant to keep a label clear of the border, made `rect().width(30).height(30)` 48 pixels wide.

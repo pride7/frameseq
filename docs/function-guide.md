@@ -843,6 +843,23 @@ text("Merged into main").caption();
 
 Set the layout of a region where it first appears: `at("pipeline").row().gap(24)`.
 
+### `.panel()`
+
+Frames a region as one panel of a figure, such as "(a) Encoder layer": a light outline, rounded corners, and a bold title in its top-left corner, with a leading tag such as `(a)` in a quieter colour.
+
+```ts
+at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(620).height(780);
+shape("rounded", "Attention").as("attention").position({ x: 190, y: 380 }).width(240).height(58);
+```
+
+**Signature** `.panel(title) → RegionBuilder`
+
+**Parameters**
+
+- `title` — `string`, required. The panel's title. A leading tag in parentheses, such as `(a)` or `(b)`, is set apart in the muted colour.
+
+**Returns** the same `RegionBuilder`. Its contents move with it; content in a row or a column starts below the title, and on a canvas, coordinates count from the panel's corner, so keep objects about 70 pixels down.
+
 ### `main()`
 
 Returns content placement to the slide's primary region.

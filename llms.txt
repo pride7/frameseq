@@ -212,7 +212,7 @@ The defaults are louder than this style: a shape is tinted in the accent with a 
 - Connectors recede: `.stroke("var(--frameseq-muted)").strokeWidth(2)`, which keeps the arrowheads small and follows the theme. Dash a feedback, optional, or training-only path, and keep labels to a word.
 - Where connectors meet or split, put a `junction()`, a small dot, and connect to it by name: a skip connection is `line().from("split.right").to("norm.right").route("elbow")`, and one stream feeding three inputs is three connectors from the junction to `.to("block.bottom", { dx: -60 })`, `.to("block.bottom")`, and `.to("block.bottom", { dx: 60 })`. `junction("+")` is the round operator where streams are added. `.via("name", [x, y])` runs a connector through stops when it must go a particular way round.
 - Bold only titles and the key component. Write symbols as math, such as `"Input $x_{1:L}$"`, and put a short `.caption()` under a figure that needs one.
-- Split a large figure into panels titled "(a) …" and "(b) …": a `rect()` with a light `.stroke()`, a `.radius()`, and no fill behind each part, written before it so it sits underneath.
+- Split a large figure into panels with `at("encoder").panel("(a) Encoder layer").canvas().position({ x, y }).width(w).height(h)`: a light outline with the title in its corner. What follows belongs to the panel and moves with it; on a canvas panel keep objects about 70 pixels below its top, under the title.
 
 ```ts
 slide({ name: "Request flow" }).canvas();

@@ -12,3 +12,4 @@ line().from("encoder").via("split", [1150, 600]).to("store").stroke("#123456").a
 line().from("cached").to("store").route("elbow").arrow().label("yes");
 line().from("net").to("store").route("curve").arrow().dashed();
 line().from("cached").to("start").arrow();
+at("panel").panel("(b) Generator").canvas().position({ x: 40, y: 500 }).width(300).height(180);

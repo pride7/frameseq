@@ -569,6 +569,12 @@ at(path: string): RegionBuilder
 
 Selects the region addressed by a `/` separated path and creates the containers it names. The first segment may be `main`, `left`, `right`, or `cell<n>`; every other segment is created on first use. An empty path is the same as `main()`. Revisiting a path selects the same region, paths are scoped to the current slide, and each path is registered as an anchor name.
 
+```ts
+panel(title: string): RegionBuilder
+```
+
+`panel()` frames the region as one panel of a figure: a 1.5-pixel outline in the theme's border colour, 14-pixel corners, padding of 72 pixels at the top and 28 elsewhere, and the title in bold 26-pixel type in the top-left corner. A leading tag of up to four characters in parentheses, such as `(a)`, is set in `var(--frameseq-muted)`. Calling it again replaces the title. Content in flow starts below the title; on a canvas, coordinates count from the panel's corner.
+
 ### `gap(rows, columns?)`
 
 ```ts
