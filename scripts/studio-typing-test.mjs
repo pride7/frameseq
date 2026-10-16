@@ -381,6 +381,28 @@ try {
   await waitFor(async () => (await read()).includes('text("a\\\\*b\\\\*c");'), "typed stars to be written as stars");
   await shows("a*b*c");
 
+  // ── Words being typed carry on when the slide is drawn again meanwhile ──────────────────
+  // The browser blurs the words as the old drawing goes, which must not end the typing.
+  await doubleClickWords("a*b*c");
+  await waitFor(async () => (await typing()) === "a*b*c", "the words to be typed before the slide is drawn again");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" and more");
+  await preview.evaluate(() => {
+    document.querySelector("#app .frameseq-slides").dataset.testDrawing = "old";
+  });
+  await writeFile(deck, `${await read()}// Drawn again while the words are typed.\n`, "utf8");
+  await waitFor(() => preview.evaluate(() => {
+    const slides = document.querySelector("#app .frameseq-slides");
+    return Boolean(slides) && slides.dataset.testDrawing !== "old";
+  }).catch(() => false), "the slide to be drawn again while the words are typed");
+  await waitFor(async () => (await typing()) === "a*b*c and more", "the typing to carry on in the new drawing")
+    .catch(async (error) => {
+      throw new Error(`${error.message}; typing shows ${JSON.stringify(await typing())}`);
+    });
+  await page.keyboard.type("!");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('text("a\\\\*b\\\\*c and more!");'), "the words typed across the redraw to be written");
+
   assert.deepEqual(errors, [], "the Studio must not throw");
   console.log("Studio typing test passed: words typed on the slide are written into their strings, in their own quotes, and the rest says why not.");
 } finally {

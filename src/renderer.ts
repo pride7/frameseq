@@ -2935,9 +2935,13 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     }, { signal: listening });
     host.addEventListener("drop", (event) => event.preventDefault(), { signal: listening });
     if (rich) formatBar(host, colours, format, listening);
-    // A slide drawn again takes the element away, which is no reason to stop typing.
+    // A slide drawn again takes the element away, which is no reason to stop typing. The browser
+    // blurs it as it goes, while it is still on the page, so the words are let go only once the
+    // change is over and they are still there, as after a click elsewhere.
     host.addEventListener("blur", () => {
-      if (host.isConnected) finish(true);
+      queueMicrotask(() => {
+        if (host.isConnected && typingSession?.host === host) finish(true);
+      });
     }, { signal: listening });
     host.focus({ preventScroll: true });
     const range = document.createRange();
