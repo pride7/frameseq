@@ -221,8 +221,12 @@ try {
   await writeFile(notes, "# Quarterly notes\n\n- Revenue grew\n", "utf8");
   await writeFile(logo, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"));
   const attached = () => page.$$eval(".studio-assistant-files .studio-assistant-file:not(.is-sending) .studio-assistant-file-name", (items) => items.map((item) => item.textContent));
+  // The files of a Studio whose process was ended, which had no chance to remove them, go when files are next attached.
+  const leftBehind = join(tmpdir(), "frameseq-attachments-2147483646-test");
+  await mkdir(join(leftBehind, "old"), { recursive: true });
   await (await page.$(".studio-assistant-composer input[type='file']")).uploadFile(notes, logo);
   await waitFor(async () => (await attached()).length === 2, "the chosen files to be attached");
+  assert.equal(existsSync(leftBehind), false, "the files of a Studio that is gone are removed");
   await page.evaluate(() => {
     const data = new DataTransfer();
     data.items.add(new File(["picture"], "image.png", { type: "image/png" }));

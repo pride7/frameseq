@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, delimiter, dirname, extname, join, relative } from "node:path";
 import process from "node:process";
@@ -63,6 +63,28 @@ export function attachmentName(name) {
   if (!clean) return "attachment";
   const extension = extname(clean);
   return `${clean.slice(0, clean.length - extension.length).slice(0, 120)}${extension.slice(0, 16)}`;
+}
+
+/** Attached files are kept in a folder named for the Studio's process, so another Studio can tell when it is gone. */
+const attachmentPrefix = "frameseq-attachments-";
+
+function processRuns(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+
+/** Remove the files of Studios that stopped without the chance to, as one whose process was ended does. */
+async function sweepAttachments() {
+  const names = await readdir(tmpdir()).catch(() => []);
+  await Promise.all(names.map(async (name) => {
+    const pid = Number(name.startsWith(attachmentPrefix) && name.slice(attachmentPrefix.length).match(/^(\d+)-/)?.[1]);
+    if (!pid || pid === process.pid || processRuns(pid)) return;
+    await rm(join(tmpdir(), name), { recursive: true, force: true }).catch(() => undefined);
+  }));
 }
 
 const claudeModels = ["fable", "opus", "sonnet", "haiku"];
@@ -171,7 +193,7 @@ export function createAssistant({ cliPath, send }) {
   const attachments = new Map();
 
   async function attach(name, content) {
-    attachmentFolder ??= mkdtemp(join(tmpdir(), "frameseq-attachments-"));
+    attachmentFolder ??= sweepAttachments().then(() => mkdtemp(join(tmpdir(), `${attachmentPrefix}${process.pid}-`)));
     const id = randomBytes(8).toString("hex");
     const clean = attachmentName(name);
     // Each in a folder of its own, so two files of the same name keep it.
