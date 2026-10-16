@@ -463,14 +463,19 @@ end;
  * Shortcuts that start the Studio with Node.js in the background, which opens it in the app's
  * window. Node.js is signed and the window is not, so where Smart App Control refuses the
  * window, the Studio still opens, in a browser's app window.
+ *
+ * Windows' own console host runs Node.js with --headless, so no console shows. Windows 11 puts a
+ * console program's window in Windows Terminal, which ignores a shortcut's "Run: Minimised", so
+ * a shortcut straight to node.exe opened a black window on every start.
  */
 function nodeShortcuts() {
+  const start = `Filename: "{sys}\\conhost.exe"; Parameters: "--headless ""{app}\\node\\node.exe"" ""{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"`;
   return `[Icons]
-Name: "{autoprograms}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized
-Name: "{autodesktop}\\FrameSeq Studio"; Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Flags: runminimized; Tasks: desktopicon
+Name: "{autoprograms}\\FrameSeq Studio"; ${start}; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"
+Name: "{autodesktop}\\FrameSeq Studio"; ${start}; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\\node\\node.exe"; Parameters: """{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
+${start}; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
 `;
 }
 

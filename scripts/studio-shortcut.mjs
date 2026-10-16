@@ -45,6 +45,8 @@ async function windowsFolders() {
   return output.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
+const consoleHost = () => join(process.env.SystemRoot ?? "C:\\Windows", "System32", "conhost.exe");
+
 async function windowsShortcut({ node, cli, window, remove }) {
   const links = (await windowsFolders()).map((folder) => join(folder, `${title}.lnk`));
   const icon = join(configDirectory(), "FrameSeq.ico");
@@ -65,15 +67,15 @@ async function windowsShortcut({ node, cli, window, remove }) {
     "  $link.WorkingDirectory = $env:USERPROFILE",
     "  $link.IconLocation = $env:FRAMESEQ_ICON + ',0'",
     "  $link.Description = $env:FRAMESEQ_DESCRIPTION",
-    "  $link.WindowStyle = $env:FRAMESEQ_WINDOW_STYLE",
     "  $link.Save()",
     "}",
   ].join("\n"), {
     FRAMESEQ_LINKS: links.join("\n"),
-    FRAMESEQ_TARGET: window ?? node,
-    FRAMESEQ_ARGUMENTS: window ? "" : `"${cli}" studio --background`,
-    // Minimised for Node.js, whose console only starts the Studio in the background, then closes.
-    FRAMESEQ_WINDOW_STYLE: window ? "1" : "7",
+    // Node.js only starts the Studio in the background, so Windows' own console host runs it
+    // with no console. Windows 11 shows a console in Windows Terminal, which ignores a
+    // shortcut's "Run: Minimised", so a shortcut straight to node.exe opened a black window.
+    FRAMESEQ_TARGET: window ?? consoleHost(),
+    FRAMESEQ_ARGUMENTS: window ? "" : `--headless "${node}" "${cli}" studio --background`,
     FRAMESEQ_ICON: icon,
     FRAMESEQ_DESCRIPTION: description,
   });

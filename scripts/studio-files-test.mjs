@@ -312,8 +312,9 @@ if (process.platform === "win32") {
     `$l = (New-Object -ComObject WScript.Shell).CreateShortcut('${link.replaceAll("'", "''")}'); $l.TargetPath; $l.Arguments; $l.IconLocation`,
   ], { encoding: "utf8" });
   const [target, args, icon] = read.stdout.trim().split(/\r?\n/);
-  assert.equal(target.toLowerCase(), process.execPath.toLowerCase());
-  assert.equal(args, `"${cli}" studio --background`);
+  // Through Windows' console host with no console, which Windows Terminal would otherwise show.
+  assert.equal(target.toLowerCase(), join(process.env.SystemRoot ?? "C:\\Windows", "System32", "conhost.exe").toLowerCase());
+  assert.equal(args, `--headless "${process.execPath}" "${cli}" studio --background`);
   assert.equal(icon.toLowerCase(), `${join(config, "FrameSeq.ico")},0`.toLowerCase());
   assert.ok((await stat(join(config, "FrameSeq.ico"))).size > 1000);
 } else if (process.platform === "darwin") {
