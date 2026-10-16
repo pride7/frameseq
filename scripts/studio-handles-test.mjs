@@ -227,6 +227,8 @@ try {
   await preview.evaluate(() => document.querySelector("[data-action='layout-lock']").click());
   await redrawn("C", undefined, 45);
   await redrawn("A");
+  await waitFor(() => preview.evaluate(() => document.documentElement.classList.contains("frameseq-layout-locked"))
+    .catch(() => false), "the layout to be locked");
   const a3 = await centreOf("[data-test='A']");
   await page.mouse.click(a3.x, a3.y);
   assert.equal(await preview.evaluate(() => document.querySelectorAll("#app .frameseq-edit-handle, #app .frameseq-rotate-handle").length), 0,

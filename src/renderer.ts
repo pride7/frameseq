@@ -36,6 +36,8 @@ const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 const layoutEditingKey = "frameseq-layout-editing";
 const layoutLockedKey = "frameseq-layout-locked";
+/** Told to every drawing of the page when FrameSeq Studio's layout is locked or unlocked in one. */
+const layoutLockEvent = "frameseq:layout-lock";
 const previewSelectionKey = "frameseq-preview-selection";
 const notesScaleKey = "frameseq-presenter-notes-scale";
 /**
@@ -4462,11 +4464,13 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   /** Lock FrameSeq Studio's layout, so objects stay where they are while they are selected and typed into. */
-  function updateLayoutLock(locked: boolean): void {
+  function updateLayoutLock(locked: boolean, announce = true): void {
     if (!layoutEditor || !directEditing) return;
     layoutLocked = locked;
     storeLayoutLocked(locked);
     layoutEditor.setLocked(locked);
+    // A drawing laid out out of sight while the lock changed shows it once it is swapped in.
+    if (announce) dispatchEvent(new CustomEvent(layoutLockEvent, { detail: locked }));
     const button = controls.querySelector<HTMLButtonElement>('[data-action="layout-lock"]');
     if (!button) return;
     const w = words();
@@ -4476,7 +4480,11 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   }
 
   updateLayoutEditing(layoutEditing);
-  updateLayoutLock(layoutLocked);
+  updateLayoutLock(layoutLocked, false);
+  addEventListener(layoutLockEvent, (event) => {
+    const locked = (event as CustomEvent<unknown>).detail;
+    if (typeof locked === "boolean" && locked !== layoutLocked) updateLayoutLock(locked, false);
+  }, { signal });
   // FrameSeq Studio's menus lock the layout, and elsewhere turn layout editing on and off.
   addEventListener("message", (event: MessageEvent<unknown>) => {
     const data = event.data as { type?: unknown; active?: unknown; locked?: unknown } | null;
