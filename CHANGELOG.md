@@ -13,6 +13,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- The HarmonyOS host removes Electron's default English menu bar so only Studio's own localized menus appear. Narrow HarmonyOS windows wrap the toolbar, let the editor and preview fit the available width, and stack them in smaller windows; the workspace follows the visible viewport when its height changes, including when the soft keyboard opens.
 - Unsupported desktop window decoration operations no longer abort HarmonyOS host window initialization on tablets. The host handles capability error 801 from both synchronous calls and rejected promises, while preserving supported desktop operations and other errors.
 - Words being typed on the slide in FrameSeq Studio go on being typed when the slide is drawn again meanwhile, as when an earlier change is saved or another program writes the file. The browser lets go of the words as the old drawing goes, which ended the typing.
 - A slide show started with `F5` from FrameSeq Studio's preview takes the keys once it is on screen, so the arrow keys, `End`, and the rest move the show at once. They went on reaching the preview until the show was clicked.

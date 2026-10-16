@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, screen, shell, systemPreferences } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell, systemPreferences } = require("electron");
 const { randomUUID } = require("node:crypto");
 const { mkdir, copyFile } = require("node:fs/promises");
 const { join, resolve } = require("node:path");
@@ -102,6 +102,8 @@ async function startShow(show) {
 }
 
 app.whenReady().then(async () => {
+  // Studio already draws the same localized menu bar as the Windows app.
+  Menu.setApplicationMenu(null);
   process.env.FRAMESEQ_CONFIG_DIR = app.getPath("userData");
   const documents = join(app.getPath("userData"), "Presentations");
   await mkdir(documents, { recursive: true });
@@ -117,7 +119,7 @@ app.whenReady().then(async () => {
     reveal: (path, directory) => directory ? shell.openPath(path) : shell.showItemInFolder(path),
   } });
   studio = new BrowserWindow({
-    title: "FrameSeq Studio", width: 1500, height: 960, minWidth: 900, minHeight: 600, show: false,
+    title: "FrameSeq Studio", width: 1500, height: 960, minWidth: 480, minHeight: 320, show: false,
     icon: join(__dirname, "icon.png"),
     webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

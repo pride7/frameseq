@@ -97,6 +97,16 @@ export function installWindowFrame(): void {
   if (!desktop) return;
   const html = document.documentElement;
   html.classList.add("is-desktop", `is-desktop-${desktop.chrome}`, `is-desktop-${desktop.platform}`);
+  if (desktop.platform === "harmonyos") {
+    // The soft keyboard can resize the visible viewport without changing 100vh.
+    const fitViewport = () => {
+      const height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
+      html.style.setProperty("--studio-viewport-height", `${height}px`);
+    };
+    fitViewport();
+    window.addEventListener("resize", fitViewport);
+    window.visualViewport?.addEventListener("resize", fitViewport);
+  }
   if (desktop.chrome === "native") return;
 
   // A strip to move the window by, for pages without a top bar: the start page and errors.
