@@ -114,13 +114,15 @@ const templateWords = {
       problem: "The problem",
       problemLead: "State the problem in one sentence your audience already feels.",
       problemPoints: ["Who has the problem", "What it costs them today", "Why now is the time to fix it"],
+      problemNumber: "4 h",
+      problemNumberLabel: "lost by each engineer every week",
+      problemNumberNote: "Put the one number that makes the problem real here.",
       design: "How it works",
-      code: "const result = await check(input);\nif (result.ok) publish(result);\nelse report(result.problems);",
       designLead: "One idea carries the design.",
       designPoints: ["Every input is checked once", "Only sound results are published", "Problems stay visible"],
       results: "Results",
-      resultsLead: "Three numbers sum up the first month.",
       metrics: [["3×", "Faster builds"], ["98%", "Checks passing"], ["12", "Teams on board"]],
+      chart: { labels: ["Week 1", "Week 2", "Week 3", "Week 4"], series: { "Build time (min)": [14, 9, 6, 4.5] } },
       resultsNote: "Replace these with your own measurements.",
       close: "End on the one sentence you want remembered.",
       contact: "Your name · you@example.com",
@@ -135,7 +137,9 @@ const templateWords = {
       quote: "Put a line worth quoting here.",
       quoteSource: "Who said it",
       turns: "Three turns",
+      turnsLead: "A good story changes its mind twice.",
       steps: ["What everyone believed", "What changed their mind", "What we know now"],
+      stepNotes: ["The view the room starts with, told fairly.", "The moment, the finding, or the person that unsettled it.", "Where the story leaves us, and what is still open."],
       close: "Leave the room with one thought.",
     },
     academic: {
@@ -179,6 +183,8 @@ const templateWords = {
       idea: "Key idea",
       ideaText: "Write the one idea a passer-by should take away.",
       ideaNote: "Keep it short enough to read from two metres away.",
+      overview: "Overview",
+      overviewSteps: ["Data", "Model", "Findings"],
       contributions: "Contributions",
       contributionPoints: ["A new way to frame the problem", "A method that scales with the data", "Experiments that show where it helps"],
       method: "Method",
@@ -211,13 +217,15 @@ const templateWords = {
       problem: "问题",
       problemLead: "用一句听众感同身受的话说出问题。",
       problemPoints: ["谁遇到了这个问题", "它现在让人付出什么代价", "为什么现在该解决它"],
+      problemNumber: "4 小时",
+      problemNumberLabel: "每位工程师每周因此浪费的时间",
+      problemNumberNote: "在这里放一个让问题变得真实的数字。",
       design: "它如何工作",
-      code: "const result = await check(input);\nif (result.ok) publish(result);\nelse report(result.problems);",
       designLead: "整个设计靠一个想法撑起来。",
       designPoints: ["每个输入只检查一次", "结果可靠才发布", "问题始终看得见"],
       results: "结果",
-      resultsLead: "三个数字概括第一个月。",
       metrics: [["3×", "构建更快"], ["98%", "检查通过"], ["12", "个团队在用"]],
+      chart: { labels: ["第 1 周", "第 2 周", "第 3 周", "第 4 周"], series: { "构建时间（分钟）": [14, 9, 6, 4.5] } },
       resultsNote: "换成你自己的测量结果。",
       close: "用一句你最想让人记住的话收尾。",
       contact: "你的名字 · you@example.com",
@@ -232,7 +240,9 @@ const templateWords = {
       quote: "放一句值得引用的话。",
       quoteSource: "出处",
       turns: "三次转折",
+      turnsLead: "好故事总会改变两次想法。",
       steps: ["大家原本相信什么", "什么让他们改变了想法", "我们现在知道什么"],
+      stepNotes: ["听众一开始的看法，公允地讲出来。", "动摇这个看法的那一刻、那个发现或那个人。", "故事把我们带到了哪里，还有什么悬而未决。"],
       close: "让听众带走一个念头。",
     },
     academic: {
@@ -276,6 +286,8 @@ const templateWords = {
       idea: "核心想法",
       ideaText: "写下路过的人应该记住的那个想法。",
       ideaNote: "短到站在两米外也能读完。",
+      overview: "概览",
+      overviewSteps: ["数据", "模型", "发现"],
       contributions: "贡献",
       contributionPoints: ["看待这个问题的新角度", "随数据规模扩展的方法", "说明它在哪里有效的实验"],
       method: "方法",
@@ -299,11 +311,35 @@ const templateWords = {
   },
 };
 
-/** A product or engineering talk on a dark page: the problem, the design and its code, results. */
+/** The code the midnight template shows, the same in either language. */
+const releaseCode = `export async function release(input: Input) {
+  const result = await check(input);
+  if (!result.ok) {
+    report(result.problems);
+    return;
+  }
+  await publish(result.value);
+  notify(result.value.owners);
+}`;
+
+/**
+ * A product or engineering talk on a dark page: the problem and the number behind it, the design
+ * and its code, results. Its masters draw rings behind the cover and the close, and a mark above
+ * each title with a footer below.
+ */
 function midnightDeck(title, words) {
   const w = words.midnight;
   const heading = title || w.heading;
   return `presentation({ title: ${q(heading)}, theme: "midnight" });
+
+master("cover");
+circle().position({ x: 820, y: 120 }).width(560).height(560).fill("transparent").stroke("rgb(34 211 238 / 0.22)");
+circle().position({ x: 940, y: 240 }).width(320).height(320).fill("transparent").stroke("rgb(34 211 238 / 0.14)");
+
+master("content");
+rect().position({ x: 84, y: 44 }).width(40).height(4).fill("var(--frameseq-accent)").radius(2);
+text("{title}").position({ x: 84, y: 672 }).width(800).size(14).color("var(--frameseq-subtle)");
+text("{page} / {total}").position({ x: 1096, y: 672 }).width(100).size(14).textAlign("right").color("var(--frameseq-subtle)");
 
 slide({ name: "Cover" }).cover();
 text(${q(w.eyebrow)}).eyebrow();
@@ -311,14 +347,19 @@ text(${q(heading)}).hero();
 text(${q(w.subtitle)}).subtitle();
 text(${q(w.author)}).author();
 
-slide(${q(w.problem)});
+slide(${q(w.problem)}).split("58:42");
 text(${q(w.problemLead)}).lead();
 bullets(
 ${lines(w.problemPoints)}
 );
 
-slide(${q(w.design)}).split("52:48");
-code(\`${w.code}\`, "ts");
+right().card().justify("center");
+text(${q(w.problemNumber)}).size(104).weight(800).lineHeight(1).color("var(--frameseq-accent)");
+text(${q(w.problemNumberLabel)}).lead();
+text(${q(w.problemNumberNote)}).caption();
+
+slide(${q(w.design)}).split("54:46");
+code(\`${releaseCode}\`, "ts");
 
 right();
 text(${q(w.designLead)}).lead();
@@ -327,24 +368,40 @@ ${lines(w.designPoints)}
 );
 
 slide(${q(w.results)});
-text(${q(w.resultsLead)});
 gridSection(
   3,
 ${w.metrics.map(([value, label]) => `  metric(${q(value)}, ${q(label)}),`).join("\n")}
 ).gap(20);
+chart("line", {
+  labels: ${literal(w.chart.labels)},
+  series: ${literal(w.chart.series)},
+}).height(300);
 text(${q(w.resultsNote)}).caption();
 
-slide({ name: "Close" }).center();
+slide({ name: "Close" }).center().master("cover");
 text(${q(w.close)}).quote();
 text(${q(w.contact)}).caption();
 `;
 }
 
-/** An essay in warm serif pages: a scene with a quotation, three turns, a closing thought. */
+/**
+ * An essay in warm serif pages: a scene with a quotation, three turns, a closing thought. Its
+ * masters frame the cover and the close like a book's, and give each page a running head and a
+ * page number.
+ */
 function paperDeck(title, words) {
   const w = words.paper;
   const heading = title || w.heading;
   return `presentation({ title: ${q(heading)}, author: ${q(words.name)}, theme: "paper" });
+
+master("cover");
+rect().position({ x: 36, y: 36 }).width(1208).height(648).fill("transparent").stroke("var(--frameseq-border)").radius(0);
+rect().position({ x: 46, y: 46 }).width(1188).height(628).fill("transparent").stroke("var(--frameseq-border)").radius(0);
+
+master("content");
+text("{title}").position({ x: 84, y: 26 }).width(800).size(14).color("var(--frameseq-subtle)");
+rect().position({ x: 84, y: 50 }).width(1112).height(1).fill("var(--frameseq-border)").radius(0);
+text("{page}").position({ x: 590, y: 674 }).width(100).size(15).textAlign("center").color("var(--frameseq-subtle)");
 
 slide({ name: "Cover" }).cover();
 text(${q(w.eyebrow)}).eyebrow();
@@ -358,16 +415,18 @@ bullets(
 ${lines(w.openingPoints)}
 );
 
-right();
+right().justify("center");
 text(${q(w.quote)}).quote();
 text(${q(w.quoteSource)}).caption();
 
 slide(${q(w.turns)});
-steps(
-${lines(w.steps)}
-);
+text(${q(w.turnsLead)}).lead();
+gridSection(
+  3,
+${w.steps.map((step, index) => `  card(${q(`${index + 1}. ${step}`)}, ${q(w.stepNotes[index])}),`).join("\n")}
+).gap(24);
 
-slide({ name: "Close" }).center();
+slide({ name: "Close" }).center().master("cover");
 text(${q(w.close)}).quote();
 text(${q(words.name)}).caption();
 `;
@@ -426,9 +485,11 @@ slide().cover();
 text(${q(heading)}).hero();
 text(${q(w.subtitle)}).subtitle();
 text(${q(words.name)}).author();
+text(${q(words.institute)}).caption();
+text(${q(year())}).caption();
 
 slide(${q(w.outline)});
-bullets(
+steps(
 ${lines(w.outlinePoints)}
 );
 
@@ -480,13 +541,22 @@ text(${q(w.ideaText)}).lead().grow();
 at("cell0/idea");
 text(${q(w.ideaNote)}).caption();
 
+at("cell0/overview").card();
+text(${q(w.overview)}).title();
+at("cell0/overview/flow").column().gap(10).align("center");
+rect(${q(w.overviewSteps[0])}).tone("gray").width("100%").height(56);
+shape("arrow-down").width(32).height(28).tone("gray");
+rect(${q(w.overviewSteps[1])}).tone("accent", "solid").width("100%").height(56);
+shape("arrow-down").width(32).height(28).tone("gray");
+rect(${q(w.overviewSteps[2])}).tone("gray").width("100%").height(56);
+
 at("cell0/contributions").card();
 text(${q(w.contributions)}).title();
 bullets(
 ${lines(w.contributionPoints)}
 );
 
-at("cell0/references").card();
+at("cell0/references").card().grow();
 text(${q(w.references)}).title();
 ${w.referenceList.map((reference) => `text(${q(reference)});`).join("\n")}
 
@@ -500,17 +570,17 @@ at("cell1/setup").card();
 text(${q(w.setup)}).title();
 ${table(w.table)}.striped();
 
-at("cell1/analysis").card();
+at("cell1/analysis").card().grow();
 text(${q(w.analysis)}).title();
 chart("line", {
   labels: ${literal(w.analysisChart.labels)},
   series: ${literal(w.analysisChart.series)},
-}).height(500);
+}).height(960);
 text(${q(w.analysisNote)}).caption();
 
 at("cell2/results").card();
 text(${q(w.results)}).title();
-chart("bar", ${literal(w.chart)}).unit("%").max(100).height(560);
+chart("bar", ${literal(w.chart)}).unit("%").max(100).height(900);
 text(${q(w.resultsNote)}).caption();
 
 at("cell2/conclusion").card();
@@ -519,7 +589,7 @@ bullets(
 ${lines(w.conclusionPoints)}
 );
 
-at("cell2/more").card();
+at("cell2/more").card().grow();
 text(${q(w.more)}).title();
 at("cell2/more/link").row().gap(32).align("center");
 qr("https://example.com/paper").width(190);

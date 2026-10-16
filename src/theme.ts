@@ -10,6 +10,8 @@ export type BuiltInThemeName =
 
 export type ThemeFamily = "frameseq" | "beamer";
 export type ThemeCoverLayout = "default" | "center" | "academic-left";
+/** Where a content slide's body sits in the room below its title: at the top, or in the middle as a Beamer frame's does. */
+export type ThemeContentAlign = "top" | "center";
 export type ThemeTitleBarStyle = "solid" | "underline";
 export type ThemeFooterLayout = "metadata" | "title";
 
@@ -79,12 +81,15 @@ export interface ThemeChrome {
   header: boolean;
   headerBackground: string;
   headerForeground: string;
+  /** Set a cover's title in a rounded box of the footer's accent colours, as Beamer's Madrid does. */
+  coverTitleBox: boolean;
 }
 
 export interface ThemeDefinition {
   name: string;
   family: ThemeFamily;
   coverLayout: ThemeCoverLayout;
+  contentAlign: ThemeContentAlign;
   colors: ThemeColors;
   fonts: ThemeFonts;
   spacing: ThemeSpacing;
@@ -98,6 +103,7 @@ export interface ThemeOptions {
   extends?: BuiltInThemeName | ThemeDefinition;
   family?: ThemeFamily;
   coverLayout?: ThemeCoverLayout;
+  contentAlign?: ThemeContentAlign;
   colors?: Partial<ThemeColors>;
   fonts?: Partial<ThemeFonts>;
   spacing?: Partial<ThemeSpacing>;
@@ -163,12 +169,14 @@ const defaultChrome: ThemeChrome = {
   header: false,
   headerBackground: "#1e3a8a",
   headerForeground: "#ffffff",
+  coverTitleBox: false,
 };
 
 const blank: ThemeDefinition = {
   name: "blank",
   family: "frameseq",
   coverLayout: "default",
+  contentAlign: "top",
   colors: {
     background: "#ffffff",
     foreground: "#111827",
@@ -196,6 +204,7 @@ const midnight: ThemeDefinition = {
   name: "midnight",
   family: "frameseq",
   coverLayout: "default",
+  contentAlign: "top",
   colors: {
     background: "#020617",
     foreground: "#f8fafc",
@@ -224,6 +233,7 @@ const paper: ThemeDefinition = {
   name: "paper",
   family: "frameseq",
   coverLayout: "default",
+  contentAlign: "top",
   colors: {
     background: "#f7f3e8",
     foreground: "#292524",
@@ -286,6 +296,7 @@ const beamerDefault: ThemeDefinition = {
   name: "beamer-default",
   family: "beamer",
   coverLayout: "center",
+  contentAlign: "center",
   colors: {
     background: "#ffffff",
     foreground: "#202020",
@@ -332,6 +343,7 @@ const beamerMadrid: ThemeDefinition = {
     footerForeground: "#17264d",
     footerAccentBackground: "#273c75",
     footerAccentForeground: "#ffffff",
+    coverTitleBox: true,
   },
   coverBackground: "linear-gradient(180deg, #ffffff 0 82%, #dfe5f2 82% 100%)",
 };
@@ -363,6 +375,7 @@ const beamerCambridgeUs: ThemeDefinition = {
     footerForeground: "#4a2732",
     footerAccentBackground: "#8b1e3f",
     footerAccentForeground: "#ffffff",
+    coverTitleBox: true,
   },
   coverBackground: "linear-gradient(180deg, #fffdf7 0 82%, #8b1e3f 82% 100%)",
 };
@@ -371,6 +384,7 @@ const minimalAcademic: ThemeDefinition = {
   ...beamerDefault,
   name: "minimal-academic",
   coverLayout: "academic-left",
+  contentAlign: "top",
   colors: {
     ...beamerDefault.colors,
     background: "#ffffff",
@@ -433,6 +447,7 @@ const poster: ThemeDefinition = {
   name: "poster",
   family: "frameseq",
   coverLayout: "default",
+  contentAlign: "top",
   colors: {
     background: "#f4f6fb",
     foreground: "#0f172a",
@@ -492,6 +507,7 @@ function cloneTheme(theme: ThemeDefinition): ThemeDefinition {
     name: theme.name,
     family: theme.family,
     coverLayout: theme.coverLayout,
+    contentAlign: theme.contentAlign,
     colors: { ...theme.colors },
     fonts: { ...theme.fonts },
     spacing: { ...theme.spacing },
@@ -526,6 +542,7 @@ export function defineTheme(options: ThemeOptions): ThemeDefinition {
     name: options.name,
     family: options.family ?? base.family,
     coverLayout: options.coverLayout ?? base.coverLayout,
+    contentAlign: options.contentAlign ?? base.contentAlign,
     colors: { ...base.colors, ...options.colors },
     fonts: { ...base.fonts, ...options.fonts },
     spacing: { ...base.spacing, ...options.spacing },

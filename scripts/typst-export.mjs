@@ -359,7 +359,9 @@ function semanticTextStyle(node, context) {
   };
 
   if (names.has("frameseq-cover-title")) {
-    style.color = theme.family === "beamer" ? theme.colors.accent : theme.colors.foreground;
+    style.color = theme.chrome.coverTitleBox
+      ? theme.chrome.footerAccentForeground
+      : theme.family === "beamer" ? theme.colors.accent : theme.colors.foreground;
     style.family = context.font?.heading?.family ?? theme.fonts.heading;
     style.size = headingSize ?? (theme.name === "minimal-academic" ? 52 : theme.family === "beamer" ? 54 : 72);
     style.weight = context.font?.heading?.weight ?? (theme.family === "beamer" ? 600 : 820);
@@ -629,6 +631,15 @@ async function serializeText(node, context) {
   if (fontWeight) args.push(`weight: ${fontWeight}`);
   const body = inlineContent(node.props?.content, context);
   const content = `#text(${joinArguments(args)})[${body}]`;
+  // A theme like Beamer's Madrid sets the cover's title in a rounded box of its accent colours.
+  if (hasClass(node, "frameseq-cover-title") && context.theme.chrome.coverTitleBox) {
+    const em = Number.parseFloat(styles.fontSize ?? semantic.size) || 54;
+    return wrapCommon(node, content, context, {
+      background: context.theme.chrome.footerAccentBackground,
+      padding: `${Math.round(em * 0.42)}px ${Math.round(em * 0.9)}px`,
+      radius: "14px",
+    });
+  }
   return wrapCommon(node, content, context);
 }
 
@@ -1581,7 +1592,31 @@ async function serializeSlide(slide, index, presentation, context) {
       `#line(length: 72%, stroke: ${length("1px", context)} + ${cssColor(context.theme.colors.accent, context)})`,
     );
   }
-  let body = `#stack(dir: ttb, spacing: ${gap}, ${children.map(childArgument).join(", ")})`;
+  // Fractions in the stack share the room left over, as the browser's auto margins do: a cover's
+  // words stand in the middle of the page, above an author at its foot, and a theme like Beamer's
+  // sets a content slide's body in the middle of the room below its title.
+  let items = children.map(childArgument);
+  if (cover && context.theme.coverLayout !== "center" && !contentAlign) {
+    const isAuthor = (child) => hasClass(child, "frameseq-cover-author");
+    // The cover's words usually sit in one column of their own, which is opened up for the room.
+    const column = childNodes.length === 1 && (childNodes[0].children ?? []).some(isAuthor)
+      ? childNodes[0].children
+      : undefined;
+    if (column) {
+      context.parents = recordParents(slide);
+      items = (await Promise.all(column.map((child) => serializeNode(child, context)))).map(childArgument);
+    }
+    const author = context.theme.coverLayout === "default" && !automaticTitlePage
+      ? (column ?? childNodes).findIndex(isAuthor)
+      : -1;
+    items = author > 0
+      ? ["1fr", ...items.slice(0, author), "1fr", ...items.slice(author)]
+      : ["1fr", ...items, "1fr"];
+  } else if (!cover && !contentAlign && context.theme.contentAlign === "center") {
+    const titled = childNodes[0] && hasClass(childNodes[0], "frameseq-slide-title") ? 1 : 0;
+    if (items.length > titled) items = [...items.slice(0, titled), "1fr", ...items.slice(titled), "1fr"];
+  }
+  let body = `#stack(dir: ttb, spacing: ${gap}, ${items.join(", ")})`;
   if (cover && context.theme.coverLayout === "center") body = `#align(center + horizon)[${body}]`;
   else if (contentAlign) body = `#align(${contentAlign})[${body}]`;
   const slideLabel = slide.props?.name ?? slide.props?.title ?? `Slide ${index + 1}`;

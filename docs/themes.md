@@ -66,6 +66,8 @@ bullets("Parser", "Renderer", "Exporter");
 
 The title bar uses the visible `title` from `slide("Overview")`. A slide created with only `name` metadata does not gain a visible title. Chrome is hidden on cover slides by default.
 
+As in a Beamer frame, a slide's content sits in the middle of the room below its title rather than at its top, and Madrid and CambridgeUS set the title of the title page in a rounded box of their colour. `contentAlign: "top"` and `chrome: { coverTitleBox: false }` in a theme of your own turn either off.
+
 These themes reproduce the visual language and common frame structure of the Beamer themes in FrameSeq's HTML renderer; they do not execute Beamer or LaTeX theme files.
 
 ### Minimal Academic
@@ -176,9 +178,10 @@ const conferenceTheme = defineTheme({
 - `fonts`: `body`, `heading`, and `mono` CSS font stacks.
 - `spacing`: slide padding, layout gaps, and card padding.
 - `radii`: `small`, `medium`, `large`, and `pill` CSS radii.
-- `chrome`: optional title bar, footer, slide numbering, a poster's title band (`header`), their dimensions, and colors.
+- `chrome`: optional title bar, footer, slide numbering, a poster's title band (`header`), a box around the cover's title (`coverTitleBox`), their dimensions, and colors.
 - `family`: `"frameseq"` or `"beamer"`; extending a theme preserves its family automatically.
-- `coverLayout`: `"default"`, `"center"`, or `"academic-left"`.
+- `coverLayout`: `"default"`, `"center"`, or `"academic-left"`. Each sets the cover's words in the middle of the page; with `"default"`, an author stays at its foot.
+- `contentAlign`: `"top"`, or `"center"` to set a slide's content in the middle of the room below its title, as the Beamer themes do.
 - `coverBackground`: a CSS color, gradient, or image used by `.cover()` slides.
 
 See [API reference](api-reference.md#themes) for all token names.

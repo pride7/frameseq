@@ -128,6 +128,7 @@ interface ThemeOptions {
   extends?: BuiltInThemeName | ThemeDefinition;
   family?: "frameseq" | "beamer";
   coverLayout?: "default" | "center" | "academic-left";
+  contentAlign?: "top" | "center";
   colors?: Partial<ThemeColors>;
   fonts?: Partial<ThemeFonts>;
   spacing?: Partial<ThemeSpacing>;
@@ -212,6 +213,10 @@ interface ThemeChrome {
   footerAccentBackground: string;
   footerAccentForeground: string;
   footerBorderColor: string;
+  header: boolean;
+  headerBackground: string;
+  headerForeground: string;
+  coverTitleBox: boolean;
 }
 ```
 

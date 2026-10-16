@@ -4330,6 +4330,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   document.documentElement.dataset.frameseqTheme = slidesDocument.theme.name;
   document.documentElement.dataset.frameseqThemeFamily = slidesDocument.theme.family;
   document.documentElement.dataset.frameseqCoverLayout = slidesDocument.theme.coverLayout;
+  document.documentElement.dataset.frameseqContentAlign = slidesDocument.theme.contentAlign ?? "top";
+  if (slidesDocument.theme.chrome.coverTitleBox) document.documentElement.dataset.frameseqCoverTitleBox = "true";
+  else delete document.documentElement.dataset.frameseqCoverTitleBox;
   for (const [name, value] of Object.entries(themeCssVariables(slidesDocument.theme))) {
     document.documentElement.style.setProperty(name, value);
   }

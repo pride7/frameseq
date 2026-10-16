@@ -1,4 +1,4 @@
-<!-- translation-of: docs/themes.md sha256:ff20caebdd0f1031 -->
+<!-- translation-of: docs/themes.md sha256:787d7bfee8258b6d -->
 
 # 主题
 
@@ -67,6 +67,8 @@ bullets("Parser", "Renderer", "Exporter");
 ```
 
 标题栏用的是 `slide("Overview")` 里那个可见的 `title`。只给了 `name` 元数据的页面不会得到可见标题。封面页默认隐藏这些装饰。
+
+和 Beamer 的帧一样,页面内容放在标题下方空间的中部,而不是顶部;Madrid 和 CambridgeUS 还把标题页的标题放进一个本色的圆角框里。在自己的主题里写 `contentAlign: "top"` 和 `chrome: { coverTitleBox: false }` 可以分别关掉它们。
 
 这些主题在 FrameSeq 的 HTML 渲染器里**复现** Beamer 主题的视觉语言和常见页面结构;它们不执行 Beamer 或 LaTeX 的主题文件。
 
@@ -178,9 +180,10 @@ const conferenceTheme = defineTheme({
 - `fonts`:`body`、`heading`、`mono` 三条 CSS 字族链。
 - `spacing`:页面内边距、布局间距、卡片内边距。
 - `radii`:`small`、`medium`、`large`、`pill` 四种圆角。
-- `chrome`:可选的标题栏、页脚、页码、海报的标题横幅(`header`),以及它们的尺寸和配色。
+- `chrome`:可选的标题栏、页脚、页码、海报的标题横幅(`header`)、封面标题外的色框(`coverTitleBox`),以及它们的尺寸和配色。
 - `family`:`"frameseq"` 或 `"beamer"`;继承主题时会自动保留原有 family。
-- `coverLayout`:`"default"`、`"center"` 或 `"academic-left"`。
+- `coverLayout`:`"default"`、`"center"` 或 `"academic-left"`。三种都把封面文字放在页面中部;`"default"` 下作者留在页脚。
+- `contentAlign`:`"top"`,或 `"center"`:像 Beamer 主题那样把页面内容放在标题下方空间的中部。
 - `coverBackground`:`.cover()` 页面使用的 CSS 颜色、渐变或图片。
 
 全部 token 名见 [API reference](../api-reference.md#themes)(英文)。

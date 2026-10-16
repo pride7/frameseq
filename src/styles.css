@@ -1042,6 +1042,19 @@ button {
   font-weight: 600;
 }
 
+/*
+ * A cover's words stand in the middle of the page, not in its top third. With an author at the
+ * foot, the title and what goes with it sit in the middle of the room above the author.
+ */
+.frameseq-cover-slide > .frameseq-slide-body {
+  justify-content: center;
+}
+
+[data-frameseq-cover-layout="default"] .frameseq-cover-slide > .frameseq-slide-body:has(> .frameseq-cover-author):not(:has(> .frameseq-cover-eyebrow:not(:first-child))) > :first-child,
+[data-frameseq-cover-layout="default"] .frameseq-cover-slide > .frameseq-slide-body:has(> .frameseq-cover-author) > .frameseq-cover-eyebrow:not(:first-child) {
+  margin-top: auto;
+}
+
 [data-frameseq-cover-layout="center"] .frameseq-cover-slide {
   align-items: center;
   justify-content: center;
@@ -1050,7 +1063,7 @@ button {
 
 [data-frameseq-cover-layout="academic-left"] .frameseq-cover-slide {
   align-items: stretch;
-  justify-content: flex-start;
+  justify-content: center;
   text-align: left;
 }
 
@@ -1062,7 +1075,7 @@ button {
 }
 
 [data-frameseq-cover-layout="academic-left"] .frameseq-auto-title-page {
-  margin-top: 40px;
+  margin: auto 0;
 }
 
 [data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-title {
@@ -1097,6 +1110,14 @@ button {
   font-weight: var(--frameseq-heading-font-weight, 600);
   letter-spacing: -0.015em;
   line-height: var(--frameseq-heading-line-height, 1.12);
+}
+
+/* Beamer's Madrid sets the title of its title page in a rounded box of its structure colour. */
+[data-frameseq-cover-title-box="true"] .frameseq-cover-title {
+  padding: 0.42em 0.9em;
+  border-radius: 14px;
+  color: var(--frameseq-footer-accent-foreground);
+  background: var(--frameseq-footer-accent-background);
 }
 
 [data-frameseq-theme-family="beamer"] .frameseq-cover-eyebrow {
@@ -1134,6 +1155,12 @@ button {
   gap: var(--frameseq-region-gap);
   min-width: 0;
   min-height: 0;
+}
+
+/* A theme like Beamer's sets a frame's body in the middle of the room below its title. */
+[data-frameseq-content-align="center"] .frameseq-content-slide > .frameseq-slide-body:not(.frameseq-layout-split, .frameseq-layout-grid, .frameseq-layout-canvas),
+[data-frameseq-content-align="center"] .frameseq-content-slide > .frameseq-layout-split > .frameseq-region {
+  justify-content: center;
 }
 
 .frameseq-layout-split {
