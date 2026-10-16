@@ -162,7 +162,11 @@ try {
 
   // ── A poster is made for paper ───────────────────────────────────────────────────────────
   await writeFile(deck, 'poster({ title: "Poster" });\ntext("Findings");\n', "utf8");
-  await waitFor(async () => (await canvas()) === "1600 × 2263", "the preview to draw the A0 poster");
+  // The editor says when the poster is in, which the Studio's page setup reads.
+  await waitFor(() => page.$eval(".cm-content", (content) => content.textContent.includes('poster({ title: "Poster" })'))
+    .catch(() => false), "the Studio to load the poster");
+  // A0 is 841 × 1189 mm, a little less tall for its width than A4 upright.
+  await waitFor(async () => (await canvas()) === "1600 × 2262", "the preview to draw the A0 poster");
   await openPageSetup();
   const sizes = await page.$$eval(".studio-page-dialog select[aria-label='Size'] option", (options) => options.map((option) => option.value));
   assert.ok(!sizes.includes("16:9") && !sizes.includes("4:3") && sizes.includes("A0"), "a poster offers only paper");
