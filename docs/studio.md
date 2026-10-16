@@ -58,7 +58,7 @@ Right-click something, or press `Shift+F10` or the menu key, for the commands th
 
 | Where | Commands |
 | --- | --- |
-| **An object in the preview** | Cut, Copy, Paste; Duplicate, Delete; **Order**: Bring to front, Bring forward, Send backward, Send to back, or, for an object in the flow, Move to the start, Move earlier, Move later, Move to the end; Edit text, Format…, Go to code |
+| **An object in the preview** | Cut, Copy, Paste; Duplicate, Delete; **Order**: Bring to front, Bring forward, Send backward, Send to back, or, for an object in the flow, Move to the start, Move earlier, Move later, Move to the end; on a table's cell, **Table**: Insert row above or below, Insert column left or right, Delete row, Delete column; Edit text, Format…, Go to code |
 | **Several selected objects** | Cut, Copy, Paste, Duplicate, Delete; **Align** by their edges or centres, or distribute them evenly; Bind into a region…; Go to code |
 | **The slide itself** | Paste; Insert; New slide after this one; on a cover drawn from the presentation's details, Convert to an editable cover; Lock layout; Go to the slide's source; Present from here |
 | **A detail of the cover** | Edit text, Go to code, Convert to an editable cover |
@@ -182,6 +182,7 @@ Double-click an object's words in the preview to type them where they are, as in
 - `Enter`, `Tab`, or a click elsewhere writes them into the string that holds them, in the quotes it was written with, as one step in the editor's history; `Esc` puts them back as they were.
 - `Shift+Enter` starts a new line. In code, which runs over lines, `Enter` does, and `Ctrl+Enter` finishes.
 - A number in a table's cell stays a number while it reads as one. A shape written without a label, such as `rect()`, takes the words typed on it, as `rect("Cache")`.
+- Right-click a table's cell for **Table**, which inserts a row above or below it or a column left or right of it, with empty cells written as the others are, one row to a line when they are, and takes its row or column away. A new row or column is typed into at once.
 - **Edit text** in the right-click menu types the object's words the same way, all of them selected.
 - Words typed with a formula in them, such as `Area $\frac{1}{2}ab$`, are written as `` text`...` ``, which keeps their backslashes.
 

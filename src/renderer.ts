@@ -2150,7 +2150,12 @@ function enableSourceReveal(
           y = box.top + Math.min(box.height / 2, 24);
         }
       }
-      window.parent.postMessage({ type: "frameseq.context-menu", x, y, keyboard, ...describeSelection() }, "*");
+      // A table's menu adds and takes away rows and columns at the cell it was opened on.
+      const cellElement = object?.dataset.frameseqNode === "table" ? event.target.closest<HTMLTableCellElement>("th, td") : null;
+      const cell = cellElement && object?.contains(cellElement)
+        ? [[...object.querySelectorAll("tr")].indexOf(cellElement.parentElement as HTMLTableRowElement), cellElement.cellIndex]
+        : undefined;
+      window.parent.postMessage({ type: "frameseq.context-menu", x, y, keyboard, ...describeSelection(), ...(cell ? { cell } : {}) }, "*");
     }, { signal });
     // Copied or cut, the selected objects' code goes to the clipboard as text, so it can also be
     // pasted into the code or another program.
@@ -2644,11 +2649,16 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     if (object && host) ask(object, host, undefined, again.select, true);
   }
 
-  /** Type into the object the Studio just wrote, or chose Edit text on, once it is shown. */
-  const typeAt = (line: number, column: number): void => {
+  /**
+   * Type into the object the Studio just wrote, or chose Edit text on, once it is shown: into
+   * the part it names, such as a table's new cell, or else its first words.
+   */
+  const typeAt = (line: number, column: number, part?: Record<string, unknown>): void => {
     if (typingSession) return;
     const object = objectAt(line, column);
-    if (object) ask(object, object.querySelector(wordParts) ?? object, undefined, true);
+    if (!object) return;
+    const named = part && Object.keys(part).length > 0 ? partOf(object, part) : undefined;
+    ask(object, named ?? object.querySelector(wordParts) ?? object, undefined, true);
   };
 
   /** Type one of the presentation's details, as Edit text on it asks. */
@@ -2677,7 +2687,7 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
       // Words the code could not take go back to what the slide said.
       if (typed && data.ok === false && typed.host.isConnected) typed.host.replaceChildren(...typed.original);
     } else if (data.type === "frameseq.type-at" && typeof data.line === "number" && typeof data.column === "number") {
-      typeAt(data.line, data.column);
+      typeAt(data.line, data.column, data.part && typeof data.part === "object" ? data.part as Record<string, unknown> : undefined);
     } else if (data.type === "frameseq.type-detail" && typeof data.field === "string") {
       typeDetail(data.field);
     }

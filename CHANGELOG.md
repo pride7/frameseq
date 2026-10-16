@@ -6,6 +6,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Added
 
+- Add and take away a table's rows and columns in FrameSeq Studio: right-click a cell for **Table**, which inserts a row above or below it or a column left or right of it, or deletes its row or column, written into `table([...])` as the other rows are, and types into the new cell at once.
+
 - **File › Page setup…** in FrameSeq Studio sets the size of every slide, as PowerPoint's slide size does: Widescreen 16:9, Standard 4:3, a sheet from A0 to A5, Letter, Legal, or Tabloid upright or on its side, or a size of one's own in canvas units or on paper, written into `presentation()` as one step. **Scale the content with the page** keeps the canvas as many units across as it is, so every object keeps its size against the new page, and the dialog shows the canvas and the printed size before anything changes. A poster offers paper only, and a figure its canvas and the width it prints at.
 
 - Edit a cover drawn from the presentation's details on the cover itself in FrameSeq Studio. On a cover that `minimal-academic` or a Beamer theme draws from `presentation()`, and on a poster's header, the title, subtitle, author, institute, and date are selected with a click, typed in place with a double-click, and listed under **Cover** in Current slide; each is written into `presentation({ … })`, on a line of its own when the options have lines of their own, and emptying one takes it away. **Convert to an editable cover** writes the cover's words on its slide as `.hero()`, `.subtitle()`, and `.author()` text and captions, to move and style like any other text, laid out by a cover master's placeholders.

@@ -153,6 +153,13 @@ export interface InspectRegion {
   visits: number;
 }
 
+/** A table's array of rows, and each row's array and its cells, by offset. */
+export interface InspectGrid {
+  start: number;
+  end: number;
+  rows: Array<{ start: number; end: number; cells: Array<{ start: number; end: number }> }>;
+}
+
 export interface InspectObject {
   id: string;
   type: string;
@@ -166,6 +173,8 @@ export interface InspectObject {
   texts?: InspectText[];
   /** A table's cells written as literals, by row and column. */
   cells?: Array<InspectText & { row: number; column: number }>;
+  /** Where a table's rows and their cells are written, when every row is an array in place. */
+  grid?: InspectGrid;
   /** Where a shape written without a label takes one, and what goes before the string there. */
   labelAt?: { at: number; prefix: string };
   computed?: InspectComputed[];

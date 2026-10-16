@@ -871,6 +871,19 @@ const en = {
     applied: (width: number, height: number) => `Every slide is now ${width} × ${height} units. Ctrl+Z puts the size back.`,
   },
 
+  tables: {
+    menu: "Table",
+    "row-above": "Insert row above",
+    "row-below": "Insert row below",
+    "column-left": "Insert column left",
+    "column-right": "Insert column right",
+    "delete-row": "Delete row",
+    "delete-column": "Delete column",
+    lastRow: "A table keeps at least one row.",
+    lastColumn: "A table keeps at least one column.",
+    computed: "The code works this table's rows out, so they are changed in the code.",
+  },
+
   window: {
     minimize: "Minimize",
     maximize: "Maximize",
@@ -1850,6 +1863,19 @@ const zh: Catalog = {
     confirm: "应用",
     code: "presentation() 的大小是代码算出来的，请在代码里修改页面。",
     applied: (width, height) => `现在每张幻灯片都是 ${width} × ${height} 个单位，Ctrl+Z 可以恢复原来的大小。`,
+  },
+
+  tables: {
+    menu: "表格",
+    "row-above": "在上方插入行",
+    "row-below": "在下方插入行",
+    "column-left": "在左侧插入列",
+    "column-right": "在右侧插入列",
+    "delete-row": "删除行",
+    "delete-column": "删除列",
+    lastRow: "表格至少保留一行。",
+    lastColumn: "表格至少保留一列。",
+    computed: "这个表格的行是代码算出来的，请在代码里修改。",
   },
 
   window: {

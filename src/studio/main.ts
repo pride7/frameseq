@@ -79,6 +79,7 @@ import {
 } from "./page-setup";
 import { SlideShow } from "./show";
 import { wordsFor, type TextPart } from "./typing";
+import { cellAfter, tableEdit, type TableAction } from "./tables";
 import {
   allowScreens,
   chooseScreen,
@@ -2081,7 +2082,7 @@ async function start(): Promise<void> {
    * An object just written, whose words the preview types into once it shows it: where its
    * command starts in the editor, and until when to wait for the preview to draw it.
    */
-  let typeWhenShown: { position: number; until: number } | undefined;
+  let typeWhenShown: { position: number; until: number; part?: TextPart } | undefined;
 
   /**
    * The object a preview's object stands for, when the code still writes it where the preview
@@ -2094,9 +2095,12 @@ async function start(): Promise<void> {
     return object.source.start === range.from && object.source.end === range.to ? { object, stale: false } : { stale: true };
   }
 
-  /** Have the preview type into the words of the object written at `position`, once it shows it. */
-  function typeOnceShown(position: number): void {
-    typeWhenShown = { position, until: Date.now() + 10_000 };
+  /**
+   * Have the preview type into the words of the object written at `position`, once it shows it:
+   * the `part` named, such as a table's cell, or its first words.
+   */
+  function typeOnceShown(position: number, part?: TextPart): void {
+    typeWhenShown = { position, until: Date.now() + 10_000, part };
     offerTyping();
   }
 
@@ -2108,7 +2112,7 @@ async function start(): Promise<void> {
       return;
     }
     const { line, column } = savedLocation(typeWhenShown.position);
-    frames.typeAt(previewSlide, line, column);
+    frames.typeAt(previewSlide, line, column, typeWhenShown.part);
   }
 
   /**
@@ -2266,14 +2270,14 @@ async function start(): Promise<void> {
       }
       if (now.value === value) return true;
       const plan = planOptions(editorText(), options, { [name]: value === "" && name !== "title" ? undefined : optionString(options, value) });
-      return !plan || applyOptions(plan, "input.details");
+      return !plan || applyPlan(plan, "input.details");
     });
     detailWrites = write.catch(() => false);
     return write;
   }
 
-  /** Apply changes to presentation()'s options as one step, while the code still reads as planned. */
-  function applyOptions(plan: OptionPlan, userEvent: string): boolean {
+  /** Apply planned changes to the code as one step, while the code still reads as they were planned against. */
+  function applyPlan(plan: OptionPlan, userEvent: string): boolean {
     const doc = view.state.doc;
     if (!plan.checks.every((check) => check.to <= doc.length && doc.sliceString(check.from, check.to) === check.text)) {
       toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
@@ -2370,6 +2374,48 @@ async function start(): Promise<void> {
         "separator" as const,
         { command: "convert-cover", label: t.details.convert, icon: "textBox" as const, run: () => void convertCover() },
       ] : []),
+    ];
+  }
+
+  // ── Tables ──────────────────────────────────────────────────────────────────────────────
+  /**
+   * Add a row or a column at a table's cell, or take its row or column away, as one step, and
+   * type into the new row's or column's cell, as a word processor does.
+   */
+  async function editTable(target: SourceTarget, action: TableAction, cell: [number, number]): Promise<void> {
+    const { object } = await typedObject(target);
+    if (!object || object.type !== "table" || object.source.start === undefined) {
+      toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+      return;
+    }
+    if (!object.grid) {
+      toast(t.tables.computed, { tone: "warning", actions: [{ label: t.objects.goToCode, run: () => revealTarget(target) }] });
+      return;
+    }
+    const quote = object.cells?.find((written) => written.kind === "string")?.expected[0] ?? documentQuote();
+    const plan = tableEdit(editorText(), object.grid, action, cell[0], cell[1], quote === "'" || quote === "`" ? quote : '"');
+    if (typeof plan === "string") {
+      toast(plan, { tone: "warning" });
+      return;
+    }
+    if (!applyPlan(plan, "input.table")) return;
+    const start = object.source.start;
+    await save({ auto: false });
+    if (!action.startsWith("delete")) typeOnceShown(start, { cell: cellAfter(action, cell[0], cell[1]) });
+  }
+
+  /** A table's menu at the cell it was opened on: rows and columns to add and take away. */
+  function tableEntries(target: SourceTarget, cell: [number, number]): MenuEntry[] {
+    const entry = (action: TableAction): MenuEntry => ({
+      command: `table-${action}`,
+      label: t.tables[action],
+      danger: action.startsWith("delete"),
+      run: () => void editTable(target, action, cell),
+    });
+    return [
+      entry("row-above"), entry("row-below"), entry("column-left"), entry("column-right"),
+      "separator",
+      entry("delete-row"), entry("delete-column"),
     ];
   }
 
@@ -2470,6 +2516,10 @@ async function start(): Promise<void> {
         { command: "go-to-code", label: t.objects.goToCode, icon: "code", run: () => revealTarget(objects[0].target) },
       );
     } else {
+      const cell = selection.cell;
+      if (object?.type === "table" && cell) {
+        entries.push({ command: "table", label: t.tables.menu, icon: "gallery", submenu: () => tableEntries(objects[0].target, cell) });
+      }
       entries.push(...objectEnds(object, () => revealTarget(objects[0].target)));
     }
     return entries;
@@ -2739,7 +2789,7 @@ async function start(): Promise<void> {
     // The code is read again after the dialog, in case it changed meanwhile.
     const fresh = await freshReport();
     const plan = fresh ? planOptions(editorText(), fresh.presentation.options, changes) : undefined;
-    if (!plan || !applyOptions(plan, "input.page")) return;
+    if (!plan || !applyPlan(plan, "input.page")) return;
     await save({ auto: false });
     toast(t.page.applied(canvas.width, canvas.height), { tone: "success", actions: [{ label: t.inspector.undo, run: () => { undo(view); } }] });
   }

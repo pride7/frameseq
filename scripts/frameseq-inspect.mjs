@@ -314,6 +314,21 @@ function tableCells(sourceFile, node) {
   });
 }
 
+/**
+ * Where a table's rows and their cells are written, so rows and columns can be added and taken
+ * away: the array of rows, and each row's array and its cells, by offset. Undefined unless every
+ * row is an array written in place.
+ */
+function tableShape(sourceFile, node) {
+  const rows = ts.isCallExpression(node) ? node.arguments[0] : undefined;
+  if (!rows || !ts.isArrayLiteralExpression(rows) || !rows.elements.every((row) => ts.isArrayLiteralExpression(row))) return undefined;
+  const range = (item) => ({ start: item.getStart(sourceFile), end: item.getEnd() });
+  return {
+    ...range(rows),
+    rows: rows.elements.map((row) => ({ ...range(row), cells: row.elements.map(range) })),
+  };
+}
+
 /** The argument a shape's label is, by its command: shape() and polygon() take it second. */
 const labelArguments = new Map([["rect", 0], ["circle", 0], ["junction", 0], ["shape", 1], ["polygon", 1]]);
 
@@ -394,6 +409,7 @@ function contentObjects(sourceFile, root, after = 0) {
     const properties = objectProperties(sourceFile, node, chain, computed);
     const refers = objectRefers(chain);
     const cells = type === "table" ? tableCells(sourceFile, node) : [];
+    const grid = type === "table" ? tableShape(sourceFile, node) : undefined;
     const labelAt = labelInsertion(node, type);
     objects.push({
       type,
@@ -404,6 +420,7 @@ function contentObjects(sourceFile, root, after = 0) {
       properties,
       texts: objectTexts(sourceFile, node),
       ...(cells.length ? { cells } : {}),
+      ...(grid ? { grid } : {}),
       ...(labelAt ? { labelAt } : {}),
       computed,
       // at("x").text("...") returns the region, so methods after it style the region instead.

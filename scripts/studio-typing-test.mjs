@@ -218,6 +218,39 @@ try {
   await waitFor(async () => (await read()).includes('["Mine", 95]'), "a number to stay a number");
   await shows("95");
 
+  // ── A table's rows and columns, from the menu of one of its cells ───────────────────────
+  const tableMenu = async (selector, action) => {
+    const point = await centreOf(selector);
+    await page.mouse.click(point.x, point.y, { button: "right" });
+    await page.waitForSelector(".studio-context-menu [data-command='table']");
+    await page.click(".studio-context-menu [data-command='table']");
+    await page.waitForSelector(`.studio-context-menu [data-command='table-${action}']`);
+    await page.click(`.studio-context-menu [data-command='table-${action}']`);
+  };
+  const columns = (count) => waitFor(() => preview.evaluate((wanted) => (
+    document.querySelector("#app .frameseq-slide-frame.is-active thead tr")?.children.length === wanted
+  ), count).catch(() => false), `the table to have ${count} columns`);
+  await tableMenu("tbody tr td:nth-child(1)", "row-below");
+  await waitFor(async () => (await read()).includes('table([["Model", "Score"], ["Mine", 95], ["", ""]]);'), "a row to be added below");
+  // The new row's first cell is typed into at once.
+  await waitFor(async () => (await typing()) === "", "the new row's first cell to be typed into");
+  await page.keyboard.type("Theirs");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('["Theirs", ""]'), "the new row's cell to be written");
+  await shows("Theirs");
+  await tableMenu("thead th:nth-child(2)", "column-left");
+  await waitFor(async () => (await read()).includes('table([["Model", "", "Score"], ["Mine", "", 95], ["Theirs", "", ""]]);'), "a column to be added on the left");
+  await waitFor(async () => (await typing()) === "", "the new column's cell to be typed into");
+  await page.keyboard.press("Escape");
+  await columns(3);
+  await tableMenu("thead th:nth-child(2)", "delete-column");
+  await waitFor(async () => (await read()).includes('table([["Model", "Score"], ["Mine", 95], ["Theirs", ""]]);'), "the column to be taken away");
+  await columns(2);
+  await tableMenu("tbody tr:nth-child(2) td:nth-child(1)", "delete-row");
+  await waitFor(async () => (await read()).includes('table([["Model", "Score"], ["Mine", 95]]);'), "the row to be taken away");
+  await waitFor(() => preview.evaluate(() => document.querySelectorAll("#app .frameseq-slide-frame.is-active tbody tr").length === 1)
+    .catch(() => false), "the table to lose its row");
+
   // ── Words the code works out are changed in the code ────────────────────────────────────
   await doubleClickWords("Hi Ada");
   await toastSays("The code works these words out");

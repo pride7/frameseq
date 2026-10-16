@@ -61,6 +61,8 @@ export interface PreviewSelection {
   stacking?: { layered: boolean; backward: boolean; forward: boolean };
   /** One of the presentation's details selected alone, such as a cover's "title". */
   detail?: string;
+  /** The cell of a table a menu was opened on, by row and column. */
+  cell?: [number, number];
 }
 
 /** What the preview can do to its selection, when the Studio's menu asks. */
@@ -113,6 +115,9 @@ function readSelection(message: Record<string, unknown>): PreviewSelection {
       stacking: { layered: stacking.layered === true, backward: stacking.backward === true, forward: stacking.forward === true },
     } : {}),
     ...(typeof message.detail === "string" ? { detail: message.detail } : {}),
+    ...(Array.isArray(message.cell) && message.cell.length === 2 && message.cell.every(Number.isInteger)
+      ? { cell: [message.cell[0], message.cell[1]] as [number, number] }
+      : {}),
   };
 }
 
@@ -458,9 +463,9 @@ export class StudioFrames {
    * Have the preview start typing into the words of the object written at a line and column of
    * the saved document, once it shows it, as it does right after the object was inserted.
    */
-  typeAt(slideIndex: number, line: number, column: number): void {
+  typeAt(slideIndex: number, line: number, column: number, part?: TextPart): void {
     this.preview.focus();
-    this.preview.contentWindow?.postMessage({ type: "frameseq.type-at", slideIndex, line, column }, "*");
+    this.preview.contentWindow?.postMessage({ type: "frameseq.type-at", slideIndex, line, column, part }, "*");
   }
 
   /** Have the preview type one of the presentation's details where the slide shows it. */
