@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, delimiter, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 
 /**
  * What the Studio remembers between runs, and the operating system's own dialogs for choosing
@@ -144,6 +144,32 @@ const prompts = {
 
 /** The pictures a slide can show, as the dialogs filter them. */
 export const pictureExtensions = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".bmp"];
+
+/**
+ * Put a picture beside the presentation, so the slides carry it wherever the folder goes: one
+ * already inside the folder is used where it is, and any other is copied into images/, under a
+ * name of its own unless the same picture is already there. The path is the one image() takes.
+ */
+export async function importPicture(entry, source) {
+  const folder = dirname(entry);
+  const inside = relative(folder, source);
+  if (inside && !inside.startsWith("..") && !isAbsolute(inside)) {
+    return { path: `./${inside.replaceAll("\\", "/")}`, copied: false };
+  }
+  const extension = extname(source).toLowerCase();
+  const content = await readFile(source);
+  const stem = basename(source, extname(source)).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "") || "picture";
+  await mkdir(join(folder, "images"), { recursive: true });
+  for (let count = 1; ; count += 1) {
+    const name = `${stem}${count === 1 ? "" : `-${count}`}${extension}`;
+    const target = join(folder, "images", name);
+    if (!await isFile(target)) {
+      await writeFile(target, content);
+      return { path: `./images/${name}`, copied: true };
+    }
+    if ((await readFile(target)).equals(content)) return { path: `./images/${name}`, copied: false };
+  }
+}
 
 /**
  * The dialogs as a PowerShell script. The folder and the title arrive through the environment,

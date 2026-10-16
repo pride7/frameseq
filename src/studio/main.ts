@@ -3060,6 +3060,20 @@ async function start(): Promise<void> {
     }
   });
 
+  // A file dropped where nothing takes it is not opened in the Studio's place, as a browser would
+  // show it and the desktop app would hand it to another program. The assistant takes dropped
+  // files, and the editor reads dropped text, each of its own accord.
+  const takesFiles = (event: DragEvent) => event.defaultPrevented || !event.dataTransfer?.types.includes("Files")
+    || (event.target instanceof Element && event.target.closest(".cm-editor") !== null);
+  addEventListener("dragover", (event) => {
+    if (takesFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = "none";
+  });
+  addEventListener("drop", (event) => {
+    if (!takesFiles(event)) event.preventDefault();
+  });
+
   addEventListener("keydown", (event) => {
     const primary = isMac ? event.metaKey : event.ctrlKey;
     if (event.key === "F5") {

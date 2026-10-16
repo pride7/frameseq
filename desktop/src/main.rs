@@ -185,6 +185,8 @@ fn open_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     .center()
     .visible(false)
     .initialization_script(shell_script())
+    // Files dropped on the window reach the page, as in a browser, for the assistant to attach.
+    .disable_drag_drop_handler()
     .on_document_title_changed(|window, title| {
       let _ = window.set_title(&title);
     })

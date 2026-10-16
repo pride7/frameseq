@@ -1,5 +1,6 @@
-import { call } from "./api";
+import { call, upload } from "./api";
 import { t } from "./i18n";
+import { menuIcons } from "./menu-icons";
 import { element, toast } from "./ui";
 
 /**
@@ -27,7 +28,7 @@ export interface AssistantContext {
 }
 
 type AssistantEvent =
-  | { type: "user"; text: string; context?: string }
+  | { type: "user"; text: string; context?: string; files?: string[] }
   | { type: "session"; id: string }
   | { type: "text"; text: string }
   | { type: "break" }
@@ -86,6 +87,25 @@ export interface AssistantOptions {
 const agentKey = "frameseq-studio-assistant-agent";
 const settingsKey = "frameseq-studio-assistant-settings";
 
+/** As much as the server keeps for one request: files of at most 32 MB, ten at a time. */
+const maximumFileSize = 32 * 1024 * 1024;
+const maximumFiles = 10;
+
+/** A file attached to the next request: on its way to the server, then known there by its id. */
+interface PendingFile {
+  node: HTMLElement;
+  id: Promise<string | undefined>;
+  preview?: string;
+}
+
+const hasFiles = (event: DragEvent) => Boolean(event.dataTransfer?.types.includes("Files"));
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 function storedSettings(): Partial<Record<AgentId, AgentSettings>> {
   try {
     return JSON.parse(localStorage.getItem(settingsKey) ?? "{}") as Partial<Record<AgentId, AgentSettings>>;
@@ -115,6 +135,9 @@ export class AssistantPanel {
   private readonly fastToggle: HTMLInputElement;
   private readonly usageButton: HTMLButtonElement;
   private readonly reviewBar: HTMLElement;
+  private readonly fileList: HTMLElement;
+  private readonly fileInput: HTMLInputElement;
+  private files: PendingFile[] = [];
   private readonly choices = new Map<AgentId, AgentChoices>();
   private readonly usage = new Map<AgentId, AgentUsage | null>();
   private agents: AgentInfo[] = [];
@@ -148,12 +171,16 @@ export class AssistantPanel {
           <button type="button" class="studio-button is-primary" data-review="accept">${t.review.acceptAll}</button>
         </div>
         <label class="studio-assistant-context"><input type="checkbox" checked><span></span></label>
+        <div class="studio-assistant-files" data-assistant="files" hidden></div>
         <textarea rows="3" placeholder="${t.assistant.placeholder}"></textarea>
         <div class="studio-assistant-actions">
+          <button type="button" class="studio-icon-button studio-assistant-attach" data-assistant="attach" title="${t.assistant.attachTitle}" aria-label="${t.assistant.attach}">${menuIcons.attach}</button>
           <span class="studio-assistant-hint">${t.assistant.hint}</span>
           <button type="submit" class="studio-button is-primary">${t.assistant.send}</button>
         </div>
-      </form>`;
+        <input type="file" multiple hidden>
+      </form>
+      <div class="studio-assistant-drop" aria-hidden="true"><span>${t.assistant.drop}</span></div>`;
     this.log = host.querySelector<HTMLElement>(".studio-assistant-log")!;
     this.picker = host.querySelector<HTMLSelectElement>(".studio-assistant-agent")!;
     this.input = host.querySelector<HTMLTextAreaElement>("textarea")!;
@@ -165,6 +192,8 @@ export class AssistantPanel {
     this.fastToggle = host.querySelector<HTMLInputElement>("[data-setting='fast']")!;
     this.usageButton = host.querySelector<HTMLButtonElement>("[data-assistant='usage']")!;
     this.reviewBar = host.querySelector<HTMLElement>(".studio-assistant-review")!;
+    this.fileList = host.querySelector<HTMLElement>("[data-assistant='files']")!;
+    this.fileInput = host.querySelector<HTMLInputElement>("input[type='file']")!;
     this.reviewBar.querySelector("[data-review='accept']")!.addEventListener("click", () => this.options.review(true));
     this.reviewBar.querySelector("[data-review='reject']")!.addEventListener("click", () => this.options.review(false));
     this.modelPicker.addEventListener("change", () => {
@@ -199,7 +228,105 @@ export class AssistantPanel {
     });
     this.input.addEventListener("focus", () => this.refreshContext());
 
+    // Files come by the button, by dropping them on the panel, or by pasting them; pasted text stays text.
+    host.querySelector("[data-assistant='attach']")!.addEventListener("click", () => this.fileInput.click());
+    this.fileInput.addEventListener("change", () => {
+      this.attach([...this.fileInput.files ?? []]);
+      this.fileInput.value = "";
+      this.input.focus();
+    });
+    let dropping = 0;
+    host.addEventListener("dragover", (event) => {
+      if (!hasFiles(event) || this.input.disabled) return;
+      event.preventDefault();
+      event.dataTransfer!.dropEffect = "copy";
+      host.classList.add("is-dropping");
+      // Dragging goes on firing while it lasts, so the hint goes once it stops.
+      clearTimeout(dropping);
+      dropping = window.setTimeout(() => host.classList.remove("is-dropping"), 150);
+    });
+    host.addEventListener("drop", (event) => {
+      host.classList.remove("is-dropping");
+      if (!hasFiles(event) || this.input.disabled) return;
+      event.preventDefault();
+      this.attach([...event.dataTransfer!.files]);
+      this.input.focus();
+    });
+    this.input.addEventListener("paste", (event) => {
+      const data = event.clipboardData;
+      if (!data || data.files.length === 0 || data.types.includes("text/plain")) return;
+      event.preventDefault();
+      this.attach([...data.files].map((file) => {
+        // A picture pasted from the clipboard comes as image.png; give it a name of its own.
+        if (!/^image\.\w+$/.test(file.name)) return file;
+        const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+        return new File([file], `pasted-${stamp}${file.name.slice(5)}`, { type: file.type });
+      }));
+    });
+
     import.meta.hot?.on("frameseq:assistant", (event: AssistantEvent) => this.receive(event));
+  }
+
+  /** Send files to the server for the next request, each shown above the box until it goes or is removed. */
+  private attach(files: File[]): void {
+    for (const file of files) {
+      if (this.files.length >= maximumFiles) {
+        toast(t.assistant.tooManyFiles(maximumFiles), { tone: "warning" });
+        break;
+      }
+      if (file.size > maximumFileSize) {
+        toast(t.assistant.fileTooLarge(file.name, maximumFileSize / 1024 / 1024), { tone: "error" });
+        continue;
+      }
+      const node = element("span", "studio-assistant-file is-sending");
+      node.title = `${file.name} · ${fileSize(file.size)}`;
+      const picture = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+      if (picture) {
+        const thumbnail = element("img", "studio-assistant-file-picture");
+        thumbnail.src = picture;
+        thumbnail.alt = "";
+        node.append(thumbnail);
+      }
+      node.append(element("span", "studio-assistant-file-name", file.name));
+      const remove = element("button", "studio-assistant-file-remove", "×");
+      remove.type = "button";
+      remove.title = t.assistant.removeFile;
+      remove.setAttribute("aria-label", `${t.assistant.removeFile} ${file.name}`);
+      node.append(remove);
+      const pending: PendingFile = {
+        node,
+        preview: picture,
+        id: upload<{ id: string }>(`assistant/attach?name=${encodeURIComponent(file.name)}`, file).then(
+          ({ id }) => {
+            node.classList.remove("is-sending");
+            return id;
+          },
+          (error: unknown) => {
+            this.dropFile(pending);
+            toast(`${file.name}: ${error instanceof Error ? error.message : String(error)}`, { tone: "error" });
+            return undefined;
+          },
+        ),
+      };
+      remove.addEventListener("click", () => {
+        this.dropFile(pending);
+        this.input.focus();
+      });
+      this.files.push(pending);
+      this.fileList.append(node);
+    }
+    this.fileList.hidden = this.files.length === 0;
+  }
+
+  private dropFile(file: PendingFile): void {
+    this.files = this.files.filter((candidate) => candidate !== file);
+    file.node.remove();
+    if (file.preview) URL.revokeObjectURL(file.preview);
+    this.fileList.hidden = this.files.length === 0;
+  }
+
+  private clearFiles(): void {
+    for (const file of [...this.files]) this.dropFile(file);
   }
 
   /** Fill the panel the first time it is shown: the agents found, and the conversation so far. */
@@ -400,6 +527,8 @@ export class AssistantPanel {
     await call("POST", "assistant/new");
     this.message = undefined;
     this.tools.clear();
+    // The server lets go of the files a conversation was given, so they are attached again if wanted.
+    this.clearFiles();
     this.setBusy(false);
     this.showWelcome();
     this.input.focus();
@@ -412,9 +541,13 @@ export class AssistantPanel {
     const context = this.contextToggle.checked ? this.options.context() : undefined;
     this.log.querySelector(".studio-assistant-welcome")?.remove();
     this.setBusy(true);
+    const files = [...this.files];
     try {
-      await call("POST", "assistant/send", { agent: this.picker.value, text, context, settings: this.settings() });
+      // A file still on its way is waited for; one that could not be sent has already said so and left.
+      const attachments = (await Promise.all(files.map((file) => file.id))).filter((id): id is string => Boolean(id));
+      await call("POST", "assistant/send", { agent: this.picker.value, text, context, settings: this.settings(), attachments });
       this.input.value = "";
+      for (const file of files) this.dropFile(file);
     } catch (error) {
       this.setBusy(false);
       toast(error instanceof Error ? error.message : String(error), { tone: "error" });
@@ -460,6 +593,16 @@ export class AssistantPanel {
         this.message = undefined;
         const bubble = element("div", "studio-assistant-user");
         bubble.append(element("p", "", event.text));
+        if (event.files?.length) {
+          const files = element("div", "studio-assistant-sent-files");
+          for (const name of event.files) {
+            const file = element("span", "studio-assistant-file");
+            file.innerHTML = menuIcons.attach;
+            file.append(element("span", "studio-assistant-file-name", name));
+            files.append(file);
+          }
+          bubble.append(files);
+        }
         if (event.context) bubble.append(element("small", "", event.context));
         this.log.append(bubble);
         break;

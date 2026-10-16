@@ -1,11 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { basename, delimiter, dirname, join, relative } from "node:path";
+import { basename, delimiter, dirname, extname, join, relative } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline";
-import { configDirectory } from "./studio-files.mjs";
+import { configDirectory, importPicture, pictureExtensions } from "./studio-files.mjs";
 
 /**
  * The Studio's assistant: Claude Code or Codex, whichever this computer has, run without a
@@ -51,6 +52,17 @@ export function findCommand(name) {
     }
   }
   return undefined;
+}
+
+/** The largest file a request may carry. */
+export const maximumAttachment = 32 * 1024 * 1024;
+
+/** A file name the person's system and the agent can both use: no folders, nothing a path cannot hold. */
+export function attachmentName(name) {
+  const clean = `${name}`.split(/[\\/]/).pop().replace(/[\u0000-\u001f<>:"|?*]+/g, "-").replace(/^[\s.]+|[\s.]+$/g, "");
+  if (!clean) return "attachment";
+  const extension = extname(clean);
+  return `${clean.slice(0, clean.length - extension.length).slice(0, 120)}${extension.slice(0, 16)}`;
 }
 
 const claudeModels = ["fable", "opus", "sonnet", "haiku"];
@@ -119,8 +131,8 @@ const guidance = (file) => `You are helping write a FrameSeq presentation in Fra
 - Keep each change to what was asked. Do not create other files unless asked, and do not run shell commands.
 - Answer briefly, in the language the user writes in, saying what you changed.`;
 
-/** The user's request with what the Studio knows about where they are. */
-function composePrompt({ text, context, file, first }) {
+/** The user's request with what the Studio knows about where they are, and the files they attached. */
+function composePrompt({ text, context, file, first, attachments = [] }) {
   const parts = [];
   if (first) parts.push(guidance(file), "");
   if (context?.slide) {
@@ -133,6 +145,14 @@ function composePrompt({ text, context, file, first }) {
   if (context?.problems?.length) {
     parts.push("The Studio currently reports:", ...context.problems.map((problem) => `- ${problem}`));
   }
+  if (attachments.length > 0) {
+    parts.push(
+      "The user attached these files. Read them before answering:",
+      ...attachments.map((attachment) => attachment.use
+        ? `- ${attachment.name}: a picture, copied beside the presentation as ${attachment.use}. To show it on a slide, write image(new URL(${JSON.stringify(attachment.use)}, import.meta.url).href, "what it shows").`
+        : `- ${attachment.name}: ${attachment.path}`),
+    );
+  }
   if (parts.length > 0) parts.push("", "Request:");
   parts.push(text);
   return parts.join("\n");
@@ -144,6 +164,32 @@ export function createAssistant({ cliPath, send }) {
   let running;
   let stopped = false;
   let found;
+
+  // ── Files the person attaches ───────────────────────────────────────────────────────────
+  /** A folder outside the presentation's, made for the first file and kept until the conversation ends. */
+  let attachmentFolder;
+  const attachments = new Map();
+
+  async function attach(name, content) {
+    attachmentFolder ??= mkdtemp(join(tmpdir(), "frameseq-attachments-"));
+    const id = randomBytes(8).toString("hex");
+    const clean = attachmentName(name);
+    // Each in a folder of its own, so two files of the same name keep it.
+    const folder = join(await attachmentFolder, id);
+    await mkdir(folder);
+    const path = join(folder, clean);
+    await writeFile(path, content);
+    const picture = pictureExtensions.includes(extname(clean).toLowerCase());
+    attachments.set(id, { id, name: clean, path, picture });
+    return { id, name: clean, size: content.length, picture };
+  }
+
+  function forgetAttachments() {
+    const folder = attachmentFolder;
+    attachmentFolder = undefined;
+    attachments.clear();
+    void folder?.then((path) => rm(path, { recursive: true, force: true })).catch(() => undefined);
+  }
 
   // ── Models, effort, speed, and how much of the plan is used ─────────────────────────────
   const usageFile = join(configDirectory(), "assistant-usage.json");
@@ -234,7 +280,7 @@ export function createAssistant({ cliPath, send }) {
   /** The MCP server the agent starts: this FrameSeq, rendering in the Studio's own server. */
   const mcpArgs = (entry, preview) => [cliPath, "mcp", entry, ...(preview ? ["--preview", preview] : [])];
 
-  async function claudeCommand({ entry, preview, prompt, session, settings }) {
+  async function claudeCommand({ entry, preview, prompt, session, settings, folders }) {
     const config = join(tmpdir(), `frameseq-assistant-${process.pid}.json`);
     await writeFile(config, JSON.stringify({ mcpServers: { frameseq: { command: process.execPath, args: mcpArgs(entry, preview) } } }), "utf8");
     return {
@@ -243,6 +289,8 @@ export function createAssistant({ cliPath, send }) {
         "--permission-mode", "acceptEdits",
         "--allowedTools", "Read", "Edit", "MultiEdit", "Write", "Glob", "Grep", "mcp__frameseq",
         "--disallowedTools", "Bash",
+        // Attached files are kept outside the presentation's folder, where Claude Code may read them too.
+        ...(folders.length > 0 ? ["--add-dir", ...folders] : []),
         "--strict-mcp-config", "--mcp-config", config,
         ...(safeValue(settings?.model) ? ["--model", settings.model] : []),
         ...(claudeEfforts.includes(settings?.effort) ? ["--effort", settings.effort] : []),
@@ -365,21 +413,27 @@ export function createAssistant({ cliPath, send }) {
     };
   }
 
-  async function sendMessage({ agent, text, context, entry, preview, settings }) {
+  async function sendMessage({ agent, text, context, entry, preview, settings, attachments: chosenFiles = [] }) {
     if (running) throw Object.assign(new Error("The assistant is still working on the last request."), { status: 409 });
     const chosen = agents().find((candidate) => candidate.id === agent && candidate.available);
     if (!chosen) throw Object.assign(new Error(`${agent} was not found on this computer.`), { status: 404 });
     const command = findCommand(agentList.find((candidate) => candidate.id === agent).command);
+    const files = chosenFiles.map((id) => attachments.get(id));
+    if (files.some((attachment) => !attachment)) throw Object.assign(new Error("An attached file is no longer kept. Attach it again."), { status: 404 });
+    // A picture is copied beside the presentation, where a slide can show it; the agent reads any other file where it is kept.
+    const given = [];
+    for (const attachment of files) given.push(attachment.picture ? { ...attachment, use: (await importPicture(entry, attachment.path)).path } : attachment);
     // Another agent, or another presentation, starts a new conversation.
     if (conversation.agent !== agent || conversation.file !== entry) conversation = { agent, session: undefined, events: [], file: entry };
     const folder = dirname(entry);
     const file = relative(folder, entry) || basename(entry);
-    const prompt = composePrompt({ text, context, file, first: !conversation.session });
+    const prompt = composePrompt({ text, context, file, first: !conversation.session, attachments: given });
+    const folders = attachmentFolder ? [await attachmentFolder] : [];
     const plan = agent === "claude"
-      ? await claudeCommand({ entry, preview, prompt, session: conversation.session, settings })
+      ? await claudeCommand({ entry, preview, prompt, session: conversation.session, settings, folders })
       : codexCommand({ entry, preview, prompt, session: conversation.session, settings });
 
-    emit({ type: "user", text, context: context?.summary });
+    emit({ type: "user", text, context: context?.summary, ...(given.length > 0 ? { files: given.map((attachment) => attachment.name) } : {}) });
     const child = spawn(command.command, [...command.prefix, ...plan.args], {
       cwd: folder,
       env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
@@ -431,12 +485,14 @@ export function createAssistant({ cliPath, send }) {
   function reset() {
     stop();
     conversation = { agent: undefined, session: undefined, events: [], file: undefined };
+    forgetAttachments();
   }
 
   return {
     state,
     options,
     usage: readUsage,
+    attach,
     send: sendMessage,
     stop,
     reset,
@@ -445,7 +501,10 @@ export function createAssistant({ cliPath, send }) {
       codexCatalog = undefined;
       return agents();
     },
-    close: stop,
+    close: () => {
+      stop();
+      forgetAttachments();
+    },
   };
 }
 

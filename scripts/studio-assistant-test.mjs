@@ -2,11 +2,12 @@
 
 // FrameSeq Studio's assistant, with a stand-in for Claude Code on the PATH that answers in
 // Claude Code's stream-json, edits the deck, and records what it was given: the panel, the
-// request and its context, the conversation carried on and started over, holding the editor
-// while the agent works, Stop, and the MCP server handed to the agent.
+// request with its context and attached files, the conversation carried on and started over,
+// holding the editor while the agent works, Stop, and the MCP server handed to the agent.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
@@ -212,13 +213,58 @@ try {
   assert.equal(await page.$eval("[data-assistant='usage']", (button) => button.textContent), "5 h 21% · 7 d 6%", "the last usage is remembered");
   await page.click("[data-assistant='new']");
   await page.waitForSelector(".studio-assistant-welcome");
+
+  // Files attach by the button, by pasting, and by dropping them on the panel. Each goes to the
+  // server at once and waits above the box until the request carries it or it is removed.
+  const notes = resolve(scratch, "notes.md");
+  const logo = resolve(scratch, "logo.png");
+  await writeFile(notes, "# Quarterly notes\n\n- Revenue grew\n", "utf8");
+  await writeFile(logo, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"));
+  const attached = () => page.$$eval(".studio-assistant-files .studio-assistant-file:not(.is-sending) .studio-assistant-file-name", (items) => items.map((item) => item.textContent));
+  await (await page.$(".studio-assistant-composer input[type='file']")).uploadFile(notes, logo);
+  await waitFor(async () => (await attached()).length === 2, "the chosen files to be attached");
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(["picture"], "image.png", { type: "image/png" }));
+    document.querySelector(".studio-assistant-composer textarea").dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  });
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(["a,b\n1,2\n"], "figures.csv", { type: "text/csv" }));
+    document.querySelector(".studio-assistant").dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await waitFor(async () => (await attached()).length === 4, "the pasted and dropped files to be attached");
+  const names = await attached();
+  assert.deepEqual([names[0], names[1], names[3]], ["notes.md", "logo.png", "figures.csv"]);
+  assert.match(names[2], /^pasted-\d{14}\.png$/, "a pasted picture gets a name of its own");
+  await page.click(".studio-assistant-files .studio-assistant-file:last-child .studio-assistant-file-remove");
+  assert.deepEqual(await attached(), names.slice(0, 3));
+
   await page.click(".studio-assistant-composer textarea");
   await page.keyboard.type("Start again");
   await page.keyboard.press("Enter");
   await waitFor(async () => (await calls()).length === 3, "the third request");
-  assert.equal((await calls())[2].args.includes("--resume"), false, "a new conversation has no session to resume");
+  const third = (await calls())[2];
+  assert.equal(third.args.includes("--resume"), false, "a new conversation has no session to resume");
   await page.waitForSelector(".studio-assistant-done", { timeout: 30_000 });
   await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the third request's change to be offered");
+  // The request carried the files and left the box empty; the conversation shows their names.
+  assert.equal(await page.$eval(".studio-assistant-files", (list) => list.hidden), true);
+  assert.deepEqual(await page.$$eval(".studio-assistant-user", (bubbles) => [...bubbles.at(-1).querySelectorAll(".studio-assistant-sent-files .studio-assistant-file-name")].map((item) => item.textContent)), names.slice(0, 3));
+  // A file is read where the Studio keeps it, outside the presentation's folder, which Claude Code is let into.
+  assert.match(third.prompt, /The user attached these files/);
+  const kept = third.prompt.match(/^- notes\.md: (.+)$/m)?.[1];
+  assert.ok(kept, "the prompt names where the notes are");
+  assert.equal(await readFile(kept, "utf8"), "# Quarterly notes\n\n- Revenue grew\n");
+  const attachments = flag(third, "--add-dir");
+  assert.equal(resolve(dirname(dirname(kept))), resolve(attachments));
+  assert.ok(!resolve(kept).startsWith(workspace), "attached files stay out of the presentation's folder");
+  // A picture is copied beside the presentation, where a slide can show it.
+  assert.ok(third.prompt.includes('- logo.png: a picture, copied beside the presentation as ./images/logo.png. To show it on a slide, write image(new URL("./images/logo.png", import.meta.url).href, "what it shows").'));
+  assert.ok((await readFile(join(workspace, "images", "logo.png"))).equals(await readFile(logo)));
+  assert.match(third.prompt, new RegExp(`^- ${names[2].replace(".", "\\.")}: a picture, copied beside the presentation as \\./images/${names[2].replace(".", "\\.")}\\.`, "m"));
+  assert.equal(third.prompt.includes("figures.csv"), false, "a removed file is not sent");
+  assert.match(third.prompt, /Request:\nStart again$/);
 
   // Stop ends a request that takes too long, and the editor takes typing again.
   await waitFor(async () => !(await locked()), "the editor to be free before the slow request");
@@ -227,6 +273,7 @@ try {
   await page.keyboard.press("Enter");
   await waitFor(locked, "the slow request to start");
   await waitFor(async () => (await calls()).length === 4, "the slow request to reach the agent");
+  assert.equal(flag((await calls())[3], "--add-dir"), attachments, "files attached earlier in the conversation stay readable");
   await page.click(".studio-assistant-composer button[type='submit']");
   await waitFor(async () => (await page.$$eval(".studio-assistant-notice", (items) => items.map((item) => item.textContent))).includes("Stopped."), "Stop to end the request");
   await waitFor(async () => !(await locked()), "the editor to take typing after Stop");
@@ -237,13 +284,17 @@ try {
   await waitFor(async () => (await reviewText()) === "", "Accept all in the panel to end the review");
   assert.equal(await text(), beforeAccept, "Accept all keeps the text");
 
-  // An empty request is refused; Ctrl+Alt+I folds the panel away.
+  // A new conversation lets go of the files the last one was given.
+  await page.click("[data-assistant='new']");
+  await waitFor(() => !existsSync(attachments), "the attached files to go with their conversation");
+
+  // An empty request is refused, as is one carrying a file the Studio does not keep; Ctrl+Alt+I folds the panel away.
   const refused = await page.evaluate(async () => {
     const session = await fetch("/__frameseq/studio/session").then((response) => response.json());
-    const response = await fetch("/__frameseq/studio/assistant/send", { method: "POST", headers: { "Content-Type": "application/json", "X-FrameSeq-Studio": session.token }, body: JSON.stringify({ agent: "claude", text: " " }) });
-    return response.status;
+    const ask = (body) => fetch("/__frameseq/studio/assistant/send", { method: "POST", headers: { "Content-Type": "application/json", "X-FrameSeq-Studio": session.token }, body: JSON.stringify(body) }).then((response) => response.status);
+    return [await ask({ agent: "claude", text: " " }), await ask({ agent: "claude", text: "Use this", attachments: ["gone"] })];
   });
-  assert.equal(refused, 400);
+  assert.deepEqual(refused, [400, 404]);
   await page.focus(".cm-content");
   await page.keyboard.down("Control");
   await page.keyboard.down("Alt");
@@ -261,4 +312,4 @@ try {
 }
 await rm(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => undefined);
 
-console.log("Studio assistant test passed: the panel and its agents, model, effort, fast mode, and usage, requests with their context, edits reloading while the editor waits, conversations carried on and started over, Stop, and the MCP server handed to the agent.");
+console.log("Studio assistant test passed: the panel and its agents, model, effort, fast mode, and usage, requests with their context and attached files, edits reloading while the editor waits, conversations carried on and started over, Stop, and the MCP server handed to the agent.");

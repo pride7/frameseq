@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:ee5b555d12041822 -->
+<!-- translation-of: docs/studio.md sha256:8a949893878a5d4c -->
 
 # FrameSeq Studio
 
@@ -311,9 +311,11 @@ Shell 会执行输入给它的任何命令，所以终端只会在运行 Studio 
 
 对话会从一次请求延续到下一次,所以*再小一点*这样的追问知道指的是什么;点 **+** 开始新对话,在 Claude Code 和 Codex 之间切换也会开始新对话。
 
+想让代理根据你自己的材料来做,就把文件附到请求上:点输入框下方的回形针,把文件拖到面板上,或者直接粘贴(比如一张截图)。可以附上 Markdown 笔记,让它*根据这些笔记做一份幻灯片*;也可以附上一份 PDF 让它总结,或者一个放在封面上的标志。一次请求最多附带十个文件,每个不超过 32 MB。代理在 Studio 存放它们的地方读取这些文件,这个地方在演示的文件夹之外,文件会一直保留到这次对话结束。图片还会像 **插入 › 图片** 那样复制到演示旁边的 `images` 文件夹里,好让幻灯片用上它。Claude Code 能读文本、图片和 PDF;Codex 能读它自己的工具打得开的文件。
+
 在代理名称下方,可以为下一次请求选择**模型**、**推理强度**和**快速**;它们一开始都是代理自己的默认值,面板会为每个代理分别记住你的选择。Codex 会列出你的账号可用的模型和推理强度。Claude Code 提供 Fable、Opus、Sonnet 和 Haiku,快速模式只在 Opus 上提供;快速输出会消耗更多额度。面板右侧显示额度用了多少,比如 *5 小时 21% · 7 天 6%*,鼠标停在上面能看到重置时间。Codex 随时都能报告额度,Claude Code 只在回答时报告,所以它的数字要在第一次请求之后才出现;点击可以刷新。
 
-AI 助手用的是这台电脑上安装的代理,用它自己的登录和套餐,所以 Studio 不需要自己的密钥。安装 [Claude Code](https://claude.com/claude-code) 或 Codex(`npm install -g @openai/codex`),在终端里登录一次,面板就能找到它。代理只在演示所在的文件夹里工作:Claude Code 可以读写那里的文件、使用 FrameSeq 的工具,但不能运行命令;Codex 在它的 `workspace-write` 沙箱里运行。只有运行 Studio 的那台电脑能用 AI 助手,即使加了 `--host` 也是如此。
+AI 助手用的是这台电脑上安装的代理,用它自己的登录和套餐,所以 Studio 不需要自己的密钥。安装 [Claude Code](https://claude.com/claude-code) 或 Codex(`npm install -g @openai/codex`),在终端里登录一次,面板就能找到它。代理只在演示所在的文件夹里工作:Claude Code 可以读写那里的文件、读取你附上的文件、使用 FrameSeq 的工具,但不能运行命令;Codex 在它的 `workspace-write` 沙箱里运行。只有运行 Studio 的那台电脑能用 AI 助手,即使加了 `--host` 也是如此。
 
 ## 键盘快捷键
 

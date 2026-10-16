@@ -521,6 +521,7 @@ body:has(.studio-topbar) .studio-window-drag {
 }
 
 .studio-assistant {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -798,9 +799,124 @@ body:has(.studio-topbar) .studio-window-drag {
   gap: 8px;
 }
 
+.studio-assistant-attach {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-left: -4px;
+}
+
+.studio-assistant-attach svg {
+  width: 16px;
+  height: 16px;
+}
+
 .studio-assistant-hint {
+  flex: 1;
+  min-width: 0;
   color: var(--studio-faint);
   font-size: 11px;
+}
+
+/* Files attached to the next request, and those a request carried. */
+.studio-assistant-files,
+.studio-assistant-sent-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.studio-assistant-files[hidden] {
+  display: none;
+}
+
+.studio-assistant-sent-files {
+  margin-top: 5px;
+}
+
+.studio-assistant-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 4px 0 7px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 6px;
+  color: var(--studio-text);
+  background: var(--studio-surface-raised);
+  font-size: 12px;
+}
+
+.studio-assistant-file.is-sending {
+  animation: studio-assistant-pulse 1s ease-in-out infinite;
+}
+
+.studio-assistant-sent-files .studio-assistant-file {
+  height: 22px;
+  padding-right: 7px;
+  border-color: transparent;
+  color: var(--studio-muted);
+  font-size: 11.5px;
+}
+
+.studio-assistant-file svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.studio-assistant-file-picture {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.studio-assistant-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-assistant-file-remove {
+  display: grid;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  color: var(--studio-muted);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.studio-assistant-file-remove:hover {
+  color: var(--studio-text);
+  background: var(--studio-surface-hover);
+}
+
+/* Over the whole panel while files are dragged onto it. */
+.studio-assistant-drop {
+  position: absolute;
+  inset: 6px;
+  display: none;
+  place-items: center;
+  border: 2px dashed var(--studio-accent);
+  border-radius: 10px;
+  color: var(--studio-accent);
+  background: color-mix(in srgb, var(--studio-accent) 12%, var(--studio-surface));
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.studio-assistant.is-dropping .studio-assistant-drop {
+  display: grid;
 }
 
 .studio-assistant.is-busy .studio-assistant-composer textarea {

@@ -268,6 +268,24 @@ export async function call<T>(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  return answer<T>(response);
+}
+
+/** Send a file as it is rather than as JSON; the path carries whatever else the server needs. */
+export async function upload<T>(path: string, file: Blob): Promise<T> {
+  const response = await fetch(`${base}/${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-FrameSeq-Studio": token,
+    },
+    body: file,
+  });
+  return answer<T>(response);
+}
+
+async function answer<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => ({})) as { error?: string };
   if (!response.ok) {
     throw new StudioRequestError(data.error ?? `HTTP ${response.status}`, response.status, data);

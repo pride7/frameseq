@@ -14,6 +14,7 @@ import {
   defaultFolder,
   dialogsAvailable,
   forgetPresentation,
+  importPicture,
   isDirectory,
   isFile,
   pictureExtensions,
@@ -31,7 +32,7 @@ import {
   userTemplates,
   writeTemplate,
 } from "./user-templates.mjs";
-import { createAssistant } from "./studio-assistant.mjs";
+import { createAssistant, maximumAttachment } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
 import { createUpdates } from "./studio-updates.mjs";
@@ -105,17 +106,21 @@ function send(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-async function readJson(request) {
+async function readBody(request, limit = maximumBody, tooLarge = "The request is too large.") {
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > maximumBody) {
-      throw Object.assign(new Error("The request is too large."), { status: 413 });
+    if (size > limit) {
+      throw Object.assign(new Error(tooLarge), { status: 413 });
     }
     chunks.push(chunk);
   }
-  const body = Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks);
+}
+
+async function readJson(request) {
+  const body = (await readBody(request)).toString("utf8");
   try {
     return body ? JSON.parse(body) : {};
   } catch {
@@ -538,23 +543,7 @@ export function studioPlugin({
           const extension = extname(source).toLowerCase();
           if (!pictureExtensions.includes(extension)) return [400, { error: say.notPicture(pictureExtensions.join(" ")) }];
           if (!await isFile(source)) return [404, { error: say.noFile(source) }];
-          const folder = dirname(entry);
-          const inside = relative(folder, source);
-          if (inside && !inside.startsWith("..") && !isAbsolute(inside)) {
-            return { path: `./${inside.replaceAll("\\", "/")}`, copied: false };
-          }
-          const content = await readFile(source);
-          const stem = basename(source, extname(source)).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "") || "picture";
-          await mkdir(join(folder, "images"), { recursive: true });
-          for (let count = 1; ; count += 1) {
-            const name = `${stem}${count === 1 ? "" : `-${count}`}${extension}`;
-            const target = join(folder, "images", name);
-            if (!await isFile(target)) {
-              await writeFile(target, content);
-              return { path: `./images/${name}`, copied: true };
-            }
-            if ((await readFile(target)).equals(content)) return { path: `./images/${name}`, copied: false };
-          }
+          return importPicture(entry, source);
         },
 
         "POST /files/open": async (body) => {
@@ -769,7 +758,14 @@ export function studioPlugin({
           if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
           // The agent's FrameSeq tools render the slides in this server, which already has them.
           const preview = (server.resolvedUrls?.local?.[0] ?? "").replace(/\/$/, "") || undefined;
-          return assistant.send({ agent: body.agent, text, context: body.context, settings: body.settings, entry, preview });
+          const attachments = Array.isArray(body.attachments) ? body.attachments.filter((id) => typeof id === "string") : [];
+          return assistant.send({ agent: body.agent, text, context: body.context, settings: body.settings, attachments, entry, preview });
+        },
+        /** A file for the next request, sent as it is with its name in the address; the agent reads it where it is kept. */
+        "POST /assistant/attach": async (body, request) => {
+          const name = new URL(request.url ?? "/", "http://studio.local").searchParams.get("name")?.trim();
+          if (!name) return [400, { error: "The file has no name." }];
+          return assistant.attach(name, body);
         },
         "POST /assistant/options": async (body) => {
           if (body.agent !== "claude" && body.agent !== "codex") return [400, { error: "Choose Claude Code or Codex." }];
@@ -863,7 +859,12 @@ export function studioPlugin({
             send(response, 409, { error: "No presentation is open. Open or create one first." });
             return;
           }
-          const body = request.method === "GET" ? {} : await readJson(request);
+          // A file attached for the assistant arrives as it is, not as JSON.
+          const body = request.method === "GET"
+            ? {}
+            : url.pathname === "/assistant/attach"
+              ? await readBody(request, maximumAttachment, `A file can be at most ${maximumAttachment / 1024 / 1024} MB.`)
+              : await readJson(request);
           const result = await route(body, request);
           if (Array.isArray(result)) send(response, result[0], result[1]);
           else send(response, 200, result ?? {});
