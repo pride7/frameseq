@@ -882,7 +882,13 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
-  optimizeDeps: studioEnabled ? { include: studioDependencies } : undefined,
+  // Dependencies are looked for from FrameSeq's own pages only. Left to itself, Vite reads every
+  // HTML file under the root, and a checkout's tmp and output folders can hold thousands of them,
+  // which kept the first page from loading for minutes.
+  optimizeDeps: {
+    entries: ["index.html", ...(studioEnabled ? ["studio.html"] : [])],
+    ...(studioEnabled ? { include: studioDependencies } : {}),
+  },
   // The standalone app may be installed where its own folder is not for writing, so the
   // dependency cache lives with the rest of FrameSeq's per-user files.
   cacheDir: runsFromBundle() ? resolve(configDirectory(), "vite-cache") : undefined,
