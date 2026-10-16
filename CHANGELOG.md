@@ -19,6 +19,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- An elbow connector inside a frame, such as a panel or the dashed outline of a repeated block, routes as it would without the frame. Every route ran through the frame, so the router counted it as an obstacle, and a skip connection hugged the edge of the boxes it passed or ran outside the frame altogether; a box around either end of a connector no longer counts.
 - `rect()` and `circle()` keep a dashed outline beside `stroke()`. `stroke()` set the border solid after `dashed()` had dashed it, so `rect().stroke("#d97706").dashed()` drew a solid line. Typst export now dashes them too.
 - A `rect()` or `circle()` with no label keeps a small size it is given. Its padding, meant to keep a label clear of the border, made `rect().width(30).height(30)` 48 pixels wide.
 

@@ -144,7 +144,7 @@ line().from("service").to("database").route("curve").arrow();
 ```
 
 - `"straight"`, the default, is the shortest line between the two ends.
-- `"elbow"` turns at right angles. It leaves and enters its objects square to their sides, and runs around the other objects on its canvas rather than through them, the way a flowchart's connectors do.
+- `"elbow"` turns at right angles. It leaves and enters its objects square to their sides, and runs around the other objects on its canvas rather than through them, the way a flowchart's connectors do. A box drawn around either end, such as a panel or the outline of a repeated block, is a frame it runs inside, not something in its way, so a skip connection inside one still goes out to the side and back in.
 - `"curve"` is a smooth curve that also leaves and enters square.
 
 ### Labels and dashes

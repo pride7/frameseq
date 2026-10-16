@@ -808,10 +808,15 @@ function elbowRoute(start: RouteEnd, end: RouteEnd, obstacles: RouteBox[]): Poin
   const s = start.point;
   const e = end.point;
   const own = [start.box, end.box].filter((box): box is RouteBox => Boolean(box));
+  // A box around either end is a frame the connector runs inside, such as a panel or the
+  // outline of a repeated block, not something in its way.
+  const holds = (box: RouteBox, point: Point): boolean => (
+    point.x > box.x && point.x < box.x + box.width && point.y > box.y && point.y < box.y + box.height
+  );
   const others = obstacles.filter((box) => !own.some((mine) => (
     Math.abs(mine.x - box.x) < 0.5 && Math.abs(mine.y - box.y) < 0.5
     && Math.abs(mine.width - box.width) < 0.5 && Math.abs(mine.height - box.height) < 0.5
-  )));
+  )) && !holds(box, s) && !holds(box, e));
   // Ends that face each other almost level would only jog by a few pixels: run straight across
   // at the start's level instead, provided that still meets the far object's side.
   const facing = out.x * into.x + out.y * into.y < -0.99

@@ -139,6 +139,21 @@ import {
     assert.ok(!crosses, `the route goes around the wall, not through it: ${JSON.stringify(around)}`);
   }
 
+  // A frame around both ends, such as the outline of a repeated block, is not in the way: a skip
+  // connection still runs out to a lane and enters its box from the side it names.
+  const junction = { point: { x: 365, y: 537 }, side: "right", box: { x: 355, y: 532, width: 10, height: 10 } };
+  const norm = { point: { x: 480, y: 414 }, side: "right", box: { x: 240, y: 398, width: 240, height: 32 } };
+  const attention = { x: 240, y: 446, width: 240, height: 58 };
+  const skip = routeConnector("elbow", junction, norm, [attention]);
+  assert.deepEqual(skip, [[365, 537], [516, 537], [516, 414], [480, 414]]);
+  const framed = routeConnector("elbow", junction, norm, [
+    attention,
+    { x: 200, y: 168, width: 370, height: 398 }, // the repeated block's outline
+    { x: 20, y: 20, width: 620, height: 780 }, // its panel
+    { x: 660, y: 20, width: 920, height: 780 }, // the panel beside it
+  ]);
+  assert.deepEqual(framed, skip, "frames around the ends leave the skip where it was");
+
   // Facing sides almost level run straight across.
   const level = routeConnector(
     "elbow",
