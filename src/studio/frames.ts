@@ -8,6 +8,18 @@ export interface SourceTarget {
 
 import { language, t } from "./i18n";
 import type { RenderedSlide } from "./outline";
+import type { TextPart } from "./typing";
+
+function readPart(value: unknown): TextPart {
+  if (!value || typeof value !== "object") return {};
+  const { argument, item, cell, label } = value as Record<string, unknown>;
+  return {
+    ...(Number.isInteger(argument) ? { argument: argument as number } : {}),
+    ...(Number.isInteger(item) ? { item: item as number } : {}),
+    ...(Array.isArray(cell) && cell.length === 2 && cell.every(Number.isInteger) ? { cell: [cell[0], cell[1]] as [number, number] } : {}),
+    ...(label === true ? { label: true } : {}),
+  };
+}
 
 /** One reason the slide document could not run, with the offsets of the code that caused it. */
 export interface PreviewFailure {
@@ -138,6 +150,14 @@ export interface FrameEvents {
    * works out its place or size, written as `code`, or a loop or a helper drew it.
    */
   dragBlocked: (target: SourceTarget, reason: BlockedDrag, code: string) => void;
+  /**
+   * A double-click on an object's words in the preview, asking to type them in place: the
+   * object, the part of it, whether a loop or a helper drew it, and whether the Studio asked
+   * for it with typeAt(). The Studio answers with beginTyping() or refuseTyping().
+   */
+  typeRequest: (request: number, target: SourceTarget, part: TextPart, shared: boolean, asked: boolean) => void;
+  /** Words typed in place, to be written into the code; resolves whether they were. */
+  typed: (request: number, value: string) => Promise<boolean>;
 }
 
 function readTargets(value: unknown): SourceTarget[] {
@@ -319,6 +339,21 @@ export class StudioFrames {
           }
           return;
         }
+        case "frameseq.type-request": {
+          const [target] = readTargets([message.target]);
+          if (target && Number.isInteger(message.request)) {
+            events.typeRequest(message.request as number, target, readPart(message.part), message.shared === true, message.asked === true);
+          }
+          return;
+        }
+        case "frameseq.typed":
+          if (Number.isInteger(message.request) && typeof message.value === "string") {
+            const request = message.request as number;
+            void events.typed(request, message.value).then((ok) => {
+              this.preview.contentWindow?.postMessage({ type: "frameseq.typed-result", request, ok }, "*");
+            });
+          }
+          return;
         default:
           return;
       }
@@ -385,6 +420,29 @@ export class StudioFrames {
   /** Have the preview act on the objects selected in it, as its menu or keys would. */
   selectionAction(action: SelectionAction): void {
     this.preview.contentWindow?.postMessage({ type: "frameseq.selection-action", action }, "*");
+  }
+
+  /** Let the preview type an object's words in place, starting from `value`, selected or not. */
+  beginTyping(request: number, value: string, multiline: boolean, selectAll: boolean): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.type-begin", request, value, multiline, selectAll }, "*");
+  }
+
+  /**
+   * Tell the preview its words cannot be typed in place; the Studio says why, or opens them
+   * elsewhere. `retry` asks it to ask again of the drawing it shows next, as one older than the
+   * code needs.
+   */
+  refuseTyping(request: number, retry = false): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.type-refused", request, retry }, "*");
+  }
+
+  /**
+   * Have the preview start typing into the words of the object written at a line and column of
+   * the saved document, once it shows it, as it does right after the object was inserted.
+   */
+  typeAt(slideIndex: number, line: number, column: number): void {
+    this.preview.focus();
+    this.preview.contentWindow?.postMessage({ type: "frameseq.type-at", slideIndex, line, column }, "*");
   }
 
   /** Lock the preview's layout, so objects stay put while they are selected and typed into, or unlock it. */

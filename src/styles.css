@@ -368,6 +368,18 @@ button {
   outline: 2px solid var(--frameseq-accent);
 }
 
+/* Words typed on the slide itself, as the code writes them, with the caret in the accent colour. */
+.frameseq-slides .is-frameseq-typing {
+  min-width: 1ch;
+  outline: 2px solid var(--frameseq-accent) !important;
+  outline-offset: 3px;
+  white-space: pre-wrap;
+  cursor: text;
+  caret-color: var(--frameseq-accent);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* A locked layout keeps every object where it is, so none of them offers to move. */
 .frameseq-layout-locked .frameseq-slides :is([data-frameseq-move], [data-frameseq-statement]) {
   cursor: default;

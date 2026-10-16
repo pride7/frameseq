@@ -366,10 +366,14 @@ try {
     ["cut", "copy", "paste", "duplicate", "delete", "edit-text", "format", "go-to-code"],
     "an object listed in Current slide has the same menu, without what only the preview can do",
   );
+  // Edit text types the words on the slide itself, selected, as a double-click on them does.
   await choose("edit-text");
-  await waitFor(() => page.evaluate(() => (
-    Boolean(document.activeElement?.closest(".studio-object-card")) && document.activeElement.value === "World"
-  )), "Edit text to put the focus in the object's words");
+  await waitFor(() => preview.evaluate(() => {
+    const typing = document.querySelector("#app .is-frameseq-typing");
+    return typing?.textContent === "World" && getSelection()?.toString() === "World";
+  }).catch(() => false), "Edit text to type the object's words on the slide");
+  await page.keyboard.press("Escape");
+  await preview.waitForFunction(() => !document.querySelector(".is-frameseq-typing"));
 
   // ── The code ─────────────────────────────────────────────────────────────────────────────
   const nameAt = await page.evaluate(() => {

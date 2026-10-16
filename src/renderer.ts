@@ -1913,6 +1913,8 @@ function enableSourceReveal(
 
   root.addEventListener("click", (event) => {
     if (event.button !== 0) return;
+    // A click in words being typed places the caret there.
+    if (event.target instanceof Element && event.target.closest(".is-frameseq-typing")) return;
     const element = event.target instanceof Element
       ? event.target.closest<HTMLElement>("[data-frameseq-source]")
       : undefined;
@@ -2064,7 +2066,8 @@ function enableSourceReveal(
      * Shift keeps the browser's own menu.
      */
     addEventListener("contextmenu", (event) => {
-      if (event.shiftKey) return;
+      // Words being typed keep the browser's own menu, with its spelling suggestions.
+      if (event.shiftKey || (event.target instanceof Element && event.target.closest(".is-frameseq-typing"))) return;
       event.preventDefault();
       if (!(event.target instanceof Element) || !root.contains(event.target)) return;
       const active = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
@@ -2282,6 +2285,317 @@ function enableSourceReveal(
 }
 
 type SourceFields = Record<string, SourceField>;
+
+/** Requests to type an object's words, numbered across the redraws of one page. */
+let typingSequence = 0;
+
+/** Where an object's words are: the object, by where its command was written, and the part of it. */
+interface WordsPlace {
+  source: SourceTarget;
+  part: Record<string, unknown>;
+}
+
+/**
+ * The requests to type that wait for FrameSeq Studio's answer, with the element drawing the
+ * words, to find them again in a slide drawn since. They outlive a redraw, which the answer may
+ * come after.
+ */
+const typingAsked = new Map<number, WordsPlace & {
+  host: HTMLElement;
+  point?: { x: number; y: number };
+  select: boolean;
+  /** Asked again of a newer drawing, which is done once. */
+  again: boolean;
+}>();
+
+/**
+ * A double-click on a drawing older than the code, which the Studio could not place: it is asked
+ * again of the drawing shown next, at the same line and column.
+ */
+let typingRetry: (WordsPlace & { select: boolean }) | undefined;
+
+/** Words being typed on the slide, which go on being typed when the slide is drawn again. */
+interface TypingSession extends WordsPlace {
+  request: number;
+  host: HTMLElement;
+  /** What the element held before, which Escape puts back. */
+  original: Node[];
+  /** The words as the code writes them, which typing started from. */
+  value: string;
+  multiline: boolean;
+  stop: AbortController;
+}
+
+let typingSession: TypingSession | undefined;
+
+/** Words handed to the Studio, shown as typed until the slide is drawn again, or put back if refused. */
+const typingWritten = new Map<number, { host: HTMLElement; original: Node[] }>();
+
+/** What a double-click on the slide does, as the latest drawing of it set up, and whether the page listens. */
+let typingDoubleClick: ((event: MouseEvent) => void) | undefined;
+let typingListening = false;
+
+/** Where a list's items, a table's cells, a card's title, or a metric's value are drawn. */
+const wordParts =".frameseq-list-item, th, td, .frameseq-card-title, .frameseq-metric-value";
+
+/**
+ * Type an object's words on the slide itself, as in PowerPoint, in FrameSeq Studio's preview. A
+ * double-click on them asks the Studio, which holds the code, whether and what to type: the words
+ * then show as the code writes them, inline math as `$...$`, and Enter, Tab, or a click elsewhere
+ * hands them back to be written. Escape puts the slide back as it was. A save draws the slide
+ * again, and words being typed then carry on in the new drawing.
+ */
+function enableTyping(root: HTMLElement, signal: AbortSignal): void {
+  // The slide on screen may be the last drawing while the next is laid out, so any slide counts.
+  const objectOf = (target: Element): HTMLElement | undefined => {
+    const object = target.closest<HTMLElement>("[data-frameseq-source]");
+    return object && !object.classList.contains("frameseq-slide") && object.closest(".frameseq-slides") ? object : undefined;
+  };
+
+  /** The part of an object a point is in, as the Studio names it, and the element drawing its words. */
+  const partAt = (object: HTMLElement, target: Element): { part: Record<string, unknown>; host: HTMLElement } => {
+    const item = target.closest<HTMLElement>(".frameseq-list-item");
+    if (item && object.contains(item)) {
+      const items = [...object.querySelectorAll<HTMLElement>(".frameseq-list-item")];
+      return { part: { item: items.indexOf(item) }, host: item.querySelector<HTMLElement>(".frameseq-list-copy") ?? item };
+    }
+    const cell = target.closest<HTMLTableCellElement>("th, td");
+    if (cell && object.contains(cell)) {
+      const rows = [...object.querySelectorAll("tr")];
+      return { part: { cell: [rows.indexOf(cell.parentElement as HTMLTableRowElement), cell.cellIndex] }, host: cell };
+    }
+    const named: Array<[string, number]> = [
+      [".frameseq-card-title", 0], [".frameseq-card-copy", 1], [".frameseq-metric-value", 0], [".frameseq-metric-label", 1],
+    ];
+    for (const [selector, argument] of named) {
+      const part = target.closest<HTMLElement>(selector);
+      if (part && object.contains(part)) return { part: { argument }, host: part };
+    }
+    const label = object.querySelector<HTMLElement>(":scope > .frameseq-shape-label");
+    if (label) return { part: { label: true }, host: label };
+    if (["rect", "circle"].includes(object.dataset.frameseqNode ?? "")) return { part: { label: true }, host: object };
+    return { part: {}, host: object.querySelector<HTMLElement>(":scope > code") ?? object };
+  };
+
+  /** The object written at a line and column on the slide shown. */
+  const objectAt = (line: number, column: number): HTMLElement | undefined => {
+    const frame = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
+    return [...frame?.querySelectorAll<HTMLElement>("[data-frameseq-source]") ?? []].find((candidate) => {
+      if (candidate.classList.contains("frameseq-slide")) return false;
+      const target = parseSourceTarget(candidate.dataset.frameseqSource ?? "");
+      return target?.line === line && target.column === column;
+    });
+  };
+
+  /** The element drawing a part of an object, in a slide drawn since the part was named. */
+  const partOf = (object: HTMLElement, part: Record<string, unknown>): HTMLElement | undefined => {
+    if (typeof part.item === "number") {
+      const item = object.querySelectorAll<HTMLElement>(".frameseq-list-item")[part.item];
+      return item?.querySelector<HTMLElement>(".frameseq-list-copy") ?? item;
+    }
+    if (Array.isArray(part.cell)) {
+      const row = object.querySelectorAll("tr")[part.cell[0] as number];
+      return row?.cells[part.cell[1] as number];
+    }
+    if (typeof part.argument === "number") {
+      const [card, metric] = part.argument === 0
+        ? [".frameseq-card-title", ".frameseq-metric-value"]
+        : [".frameseq-card-copy", ".frameseq-metric-label"];
+      return object.querySelector<HTMLElement>(card) ?? object.querySelector<HTMLElement>(metric) ?? undefined;
+    }
+    return partAt(object, object).host;
+  };
+
+  const ask = (
+    object: HTMLElement,
+    target: Element,
+    point: { x: number; y: number } | undefined,
+    select: boolean,
+    again = false,
+  ): void => {
+    const source = parseSourceTarget(object.dataset.frameseqSource ?? "");
+    if (!source) return;
+    const { part, host } = partAt(object, target);
+    typingSequence += 1;
+    typingAsked.set(typingSequence, { host, source, part, point, select, again });
+    window.parent.postMessage({
+      type: "frameseq.type-request",
+      request: typingSequence,
+      target: source,
+      part,
+      shared: object.dataset.frameseqShared === "true",
+      asked: select,
+    }, "*");
+  };
+
+  /** Stop typing, and hand the words to the Studio when `commit` asks and they changed. */
+  const finish = (commit: boolean): void => {
+    const session = typingSession;
+    if (!session) return;
+    typingSession = undefined;
+    session.stop.abort();
+    const { host } = session;
+    host.removeAttribute("contenteditable");
+    host.classList.remove("is-frameseq-typing");
+    getSelection()?.removeAllRanges();
+    const typed = host.innerText.replace(/\r\n?/g, "\n");
+    // A line break at the very end is the browser's, holding the caret on an empty last line.
+    const value = typed.endsWith("\n") && !session.value.endsWith("\n") ? typed.slice(0, -1) : typed;
+    if (!commit || value === session.value) {
+      host.replaceChildren(...session.original);
+      return;
+    }
+    typingWritten.set(session.request, { host, original: session.original });
+    window.parent.postMessage({ type: "frameseq.typed", request: session.request, value }, "*");
+  };
+
+  /** Make the element drawing an object's words editable, holding `typed`, with the caret or a selection in it. */
+  const start = (
+    host: HTMLElement,
+    session: WordsPlace & { request: number; value: string; multiline: boolean },
+    typed: string,
+    caret: { selectAll?: boolean; point?: { x: number; y: number } },
+  ): void => {
+    const original = [...host.childNodes];
+    // A node of its own: setting textContent would type into the text that Escape puts back.
+    host.replaceChildren(document.createTextNode(typed));
+    host.classList.add("is-frameseq-typing");
+    host.contentEditable = "plaintext-only";
+    if (host.contentEditable !== "plaintext-only") host.contentEditable = "true";
+    host.spellcheck = true;
+    const stop = new AbortController();
+    typingSession = { ...session, host, original, stop };
+    const { signal: listening } = stop;
+    // The keys belong to the words being typed, not to the slide around them.
+    host.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (event.ctrlKey || event.metaKey || (!session.multiline && !event.shiftKey)) finish(true);
+        else document.execCommand("insertText", false, "\n");
+      } else if (event.key === "Tab" || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s")) {
+        event.preventDefault();
+        finish(true);
+      }
+    }, { signal: listening });
+    for (const type of ["keyup", "copy", "cut"]) host.addEventListener(type, (event) => event.stopPropagation(), { signal: listening });
+    host.addEventListener("paste", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      document.execCommand("insertText", false, event.clipboardData?.getData("text/plain") ?? "");
+    }, { signal: listening });
+    // A slide drawn again takes the element away, which is no reason to stop typing.
+    host.addEventListener("blur", () => {
+      if (host.isConnected) finish(true);
+    }, { signal: listening });
+    host.focus({ preventScroll: true });
+    const range = document.createRange();
+    const point = caret.selectAll ? undefined : caret.point;
+    const at = point ? document.caretRangeFromPoint?.(point.x, point.y) : null;
+    if (at && host.contains(at.startContainer)) {
+      range.setStart(at.startContainer, at.startOffset);
+      range.collapse(true);
+    } else {
+      range.selectNodeContents(host);
+      if (!caret.selectAll) range.collapse(false);
+    }
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  };
+
+  const begin = (request: number, value: string, multiline: boolean, selectAll: boolean): void => {
+    const waiting = typingAsked.get(request);
+    typingAsked.delete(request);
+    if (!waiting || typingSession) return;
+    // The slide may have been drawn again while the Studio answered.
+    const relocated = waiting.host.isConnected ? undefined : objectAt(waiting.source.line, waiting.source.column);
+    const host = relocated ? partOf(relocated, waiting.part) : waiting.host;
+    if (!host?.isConnected) return;
+    const session = { request, value, multiline, source: waiting.source, part: waiting.part };
+    start(host, session, value, { selectAll, point: relocated ? undefined : waiting.point });
+  };
+
+  /**
+   * Carry words being typed into this drawing of the slide once it is shown, with what was typed
+   * so far. A redraw is laid out out of sight first, and typing goes on in the old one until then.
+   */
+  const resume = (): void => {
+    if (signal.aborted || !root.isConnected) return;
+    if (root.closest('[aria-hidden="true"]')) {
+      requestAnimationFrame(resume);
+      return;
+    }
+    askAgain();
+    const session = typingSession;
+    if (!session || root.contains(session.host)) return;
+    const object = objectAt(session.source.line, session.source.column);
+    const host = object && partOf(object, session.part);
+    const typed = session.host.textContent ?? session.value;
+    session.stop.abort();
+    typingSession = undefined;
+    if (host) start(host, session, typed, {});
+  };
+  requestAnimationFrame(resume);
+
+  // The last drawing answers double-clicks until the next one is laid out, so they are heard
+  // on the page, by whichever drawing came last, rather than by each drawing's own slides.
+  typingDoubleClick = (event) => {
+    // A polygon being drawn ends with a double-click, which is not a request to type.
+    if (typingSession || placingKind || event.altKey || !(event.target instanceof Element)) return;
+    const object = objectOf(event.target);
+    if (!object) return;
+    event.preventDefault();
+    ask(object, event.target, { x: event.clientX, y: event.clientY }, false);
+  };
+  if (!typingListening) {
+    typingListening = true;
+    document.addEventListener("dblclick", (event) => typingDoubleClick?.(event));
+  }
+
+  /** Ask again, of this drawing, about a double-click the Studio could not place on an older one. */
+  function askAgain(): void {
+    const again = typingRetry;
+    if (!again || typingSession || signal.aborted) return;
+    typingRetry = undefined;
+    const object = objectAt(again.source.line, again.source.column);
+    const host = object && partOf(object, again.part);
+    if (object && host) ask(object, host, undefined, again.select, true);
+  }
+
+  /** Type into the object the Studio just wrote, or chose Edit text on, once it is shown. */
+  const typeAt = (line: number, column: number): void => {
+    if (typingSession) return;
+    const object = objectAt(line, column);
+    if (object) ask(object, object.querySelector(wordParts) ?? object, undefined, true);
+  };
+
+  addEventListener("message", (event: MessageEvent<unknown>) => {
+    const data = event.data as Record<string, unknown> | null;
+    if (!data || typeof data.type !== "string") return;
+    const request = typeof data.request === "number" ? data.request : -1;
+    if (data.type === "frameseq.type-begin") {
+      begin(request, String(data.value ?? ""), data.multiline === true, data.selectAll === true);
+    } else if (data.type === "frameseq.type-refused") {
+      const waiting = typingAsked.get(request);
+      typingAsked.delete(request);
+      if (data.retry === true && waiting && !waiting.again) {
+        typingRetry = { source: waiting.source, part: waiting.part, select: waiting.select };
+        // Shown already, the newer drawing is asked at once; otherwise once it is shown.
+        if (!waiting.host.isConnected && !root.closest('[aria-hidden="true"]')) askAgain();
+      }
+    } else if (data.type === "frameseq.typed-result") {
+      const typed = typingWritten.get(request);
+      typingWritten.delete(request);
+      // Words the code could not take go back to what the slide said.
+      if (typed && data.ok === false && typed.host.isConnected) typed.host.replaceChildren(...typed.original);
+    } else if (data.type === "frameseq.type-at" && typeof data.line === "number" && typeof data.column === "number") {
+      typeAt(data.line, data.column);
+    }
+  }, { signal });
+}
 
 /**
  * A preview embedded in another page may be refused access to storage entirely, so neither
@@ -3495,6 +3809,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     enableSourceReveal(root, (index) => {
       if (index !== currentSlide) goTo(index);
     }, signal, () => updateLayoutEditing(true));
+    if (directEditing) enableTyping(root, signal);
   }
 
   const laserPointers = slides.map(({ canvas }) => {

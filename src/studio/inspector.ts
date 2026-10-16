@@ -11,6 +11,7 @@ import type {
 import { t } from "./i18n";
 import {
   appendCall,
+  commandCheck,
   fieldLiteral,
   fieldSpecs,
   hasMethod,
@@ -234,6 +235,39 @@ export class SlideInspector {
   hasWords(object: InspectObject): boolean {
     const key = this.objectKey(object);
     return Boolean(key && this.contentKey(object, key));
+  }
+
+  /**
+   * Write words typed on the slide into the literal that holds them, as Content writes them: in
+   * the quotes they were written with, a template keeping its frame, and a number in a table's
+   * cell staying a number while it reads as one. False when the code has moved on.
+   */
+  writeWords(object: InspectObject, text: InspectText, value: string): boolean {
+    let ok: boolean;
+    if (object.type === "table") {
+      const number = text.kind === "number" && /^-?(?:\d+\.?\d*|\.\d+)$/.test(value.trim());
+      const literal = number
+        ? value.trim()
+        : stringLiteral(value, text.kind === "string" ? text.expected[0] : quoteFor(object), text.raw);
+      if (literal === undefined) return false;
+      ok = literal === text.expected || this.apply(replaceLiteral(text, literal));
+    } else {
+      const template = text.raw === true || text.expected.startsWith("`");
+      ok = this.setText(object, text, template ? reframe(unframe(String(text.value)), value) : value);
+    }
+    if (ok) this.render();
+    return ok;
+  }
+
+  /** Give a shape written without a label, such as rect(), the words typed on it. */
+  writeLabel(object: InspectObject, value: string): boolean {
+    const place = object.labelAt;
+    const check = commandCheck(object);
+    const literal = stringLiteral(value, quoteFor(object));
+    if (!place || !check || literal === undefined) return false;
+    const ok = this.apply({ edits: [{ from: place.at, to: place.at, insert: `${place.prefix}${literal}` }], checks: [check] });
+    if (ok) this.render();
+    return ok;
   }
 
   /** Show a slide's objects; with no slide, say why there is nothing to show. */

@@ -174,6 +174,15 @@ try {
   }, `the diamond to appear where it was drawn, not at ${JSON.stringify(landed)}`);
   assert.equal(landed.editing, true, "layout editing turns on after drawing");
 
+  // Its placeholder is typed over on the slide itself, selected as it arrives.
+  await waitFor(() => preview.evaluate(() => {
+    const typing = document.querySelector("#app .is-frameseq-typing");
+    return Boolean(typing?.closest("[data-frameseq-shape='diamond']")) && getSelection()?.toString() === "Text";
+  }).catch(() => false), "the diamond's placeholder to be selected on the slide, ready to be typed over");
+  await page.keyboard.type("Valid?");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('shape("diamond", "Valid?")'), "the words typed on the slide to be written");
+
   // Connect the diamond to the box: both get names, and the connector refers to them.
   await page.evaluate(() => {
     document.querySelector("[data-action='insert']").click();
@@ -201,7 +210,7 @@ try {
     const text = await read();
     return text.includes('line().from("shape1").to("box1").arrow();') && text;
   }, "the connector to be written");
-  assert.match(connected, /shape\("diamond", "Text"\)[^\n]*\.as\("shape1"\);/);
+  assert.match(connected, /shape\("diamond", "Valid\?"\)[^\n]*\.as\("shape1"\);/);
   assert.match(connected, /rect\("Box"\)[^\n]*\.as\("box1"\);/);
   // A redraw is laid out out of sight first, then swapped into #app, which is what is seen and
   // clicked; until then the old slide, without the diamond's new name, is still there.
@@ -354,12 +363,14 @@ try {
   await page.keyboard.press("Enter");
   await waitFor(async () => (await read()).includes('.href, "Picture");\nicon("rocket");\n'), "the chosen icon to be written after the picture");
 
-  // Words typed with a formula in them are written as text`...`, which keeps the backslashes as
-  // typed, where "..." would need each one doubled.
+  // New text is typed on the slide, its sample words selected. Words typed with a formula in them
+  // are written as text`...`, which keeps the backslashes as typed, where "..." would need each
+  // one doubled.
   await insert("paragraph");
-  await waitFor(() => page.evaluate(() => (
-    document.activeElement?.closest(".studio-object-card") && document.activeElement.value === "Type your text here"
-  )), "the new text's words to take the focus");
+  await waitFor(() => preview.evaluate(() => {
+    const typing = document.querySelector("#app .is-frameseq-typing");
+    return typing?.textContent === "Type your text here" && getSelection()?.toString() === "Type your text here";
+  }).catch(() => false), "the new text's words to be selected on the slide");
   await page.keyboard.type(String.raw`Area $\frac{1}{2}ab$`);
   await page.keyboard.press("Enter");
   await waitFor(async () => (await read()).includes('icon("rocket");\ntext`Area $\\frac{1}{2}ab$`;\n'), "the words to be written as a template");

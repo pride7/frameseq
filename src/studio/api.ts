@@ -164,6 +164,10 @@ export interface InspectObject {
   parentId?: string;
   properties: InspectProperty[];
   texts?: InspectText[];
+  /** A table's cells written as literals, by row and column. */
+  cells?: Array<InspectText & { row: number; column: number }>;
+  /** Where a shape written without a label takes one, and what goes before the string there. */
+  labelAt?: { at: number; prefix: string };
   computed?: InspectComputed[];
   methods?: InspectMethod[];
   /** Where a new method call goes: after the last one, on a line of its own when that has one. */

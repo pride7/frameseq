@@ -422,6 +422,15 @@ export function shiftSlide(slide: InspectSlide, edits: SourceEdit[]): void {
         .map((text) => ({ ...text, source: range(text.source) }))
         .filter((text) => valid(text.source)) as InspectText[];
     }
+    if (object.cells) {
+      object.cells = object.cells
+        .map((cell) => ({ ...cell, source: range(cell.source) }))
+        .filter((cell) => valid(cell.source));
+    }
+    if (object.labelAt) {
+      const at = map(object.labelAt.at);
+      object.labelAt = Number.isNaN(at) ? undefined : { ...object.labelAt, at };
+    }
     if (object.computed) {
       object.computed = object.computed
         .map((value) => ({ ...value, source: range(value.source) }))

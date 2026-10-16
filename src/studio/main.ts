@@ -66,6 +66,7 @@ import { askExportSlides } from "./export-slides";
 import { chooseIcon } from "./icons";
 import { SlideInspector } from "./inspector";
 import { SlideShow } from "./show";
+import { wordsFor, type TextPart } from "./typing";
 import {
   allowScreens,
   chooseScreen,
@@ -415,6 +416,7 @@ async function start(): Promise<void> {
           runtimeFailures = [];
           refreshDocumentDiagnostics(view);
         }
+        offerTyping();
       },
       previewFailed: (failures) => {
         runtimeFailures = failures;
@@ -481,6 +483,8 @@ async function start(): Promise<void> {
       contextMenu: (x, y, selection, keyboard) => showPreviewMenu(x, y, selection, keyboard),
       objectCommand: (command, selection) => runObjectCommand(command, selection),
       dragBlocked: (target, reason, code) => void explainBlockedDrag(target, reason, code),
+      typeRequest: (request, target, part, shared, asked) => void answerTyping(request, target, part, shared, asked),
+      typed: (request, value) => writeTyped(request, value),
     },
     previewSlide,
     resolvedTheme(),
@@ -1522,6 +1526,9 @@ async function start(): Promise<void> {
   /** The content object a drag on a canvas will place, with its picture already chosen. */
   let placingContent: ContentCode | undefined;
 
+  /** Content whose sample words are typed over on the slide; formulas and pictures are set in Current slide. */
+  const typedContent: ReadonlySet<ContentKind> = new Set<ContentKind>(["paragraph", "bullets", "steps", "quote", "code", "table"]);
+
   /** The quote the document writes its strings with, so inserted code reads like the rest. */
   function documentQuote(): string {
     const text = editorText();
@@ -1644,6 +1651,20 @@ async function start(): Promise<void> {
     const { at, ...transaction } = spec;
     suppressFollow = true;
     view.dispatch(transaction);
+    if (typedContent.has(kind)) {
+      // Drawn back into the slide's first region, the object follows the line that says so.
+      let start = at;
+      const doc = view.state.doc;
+      if (doc.sliceString(at, at + "main();".length) === "main();") {
+        const next = doc.line(doc.lineAt(at).number + 1);
+        start = next.from + (/^[ \t]*/.exec(next.text)?.[0].length ?? 0);
+      }
+      // Its sample words are typed over on the slide itself, as a word processor's are.
+      typeOnceShown(start);
+      await save({ auto: false });
+      toast(t.typing.added(insertName(kind), doc.lineAt(start).number), { tone: "success" });
+      return;
+    }
     const panel = !root.classList.contains("is-inspector-collapsed");
     if (panel) {
       inspector.focusContentAt(at);
@@ -1720,9 +1741,11 @@ async function start(): Promise<void> {
     suppressFollow = true;
     view.dispatch(appendToSlide(view.state.doc, target.group, code, elsewhere, select));
     view.focus();
-    const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+    const written = view.state.doc.lineAt(view.state.selection.main.head);
+    // A shape or a text box is typed into on the slide, its placeholder selected to be typed over.
+    if (select) typeOnceShown(written.from + (/^[ \t]*/.exec(written.text)?.[0].length ?? 0));
     await save({ auto: false });
-    toast(t.insert.added(insertName(kind), line), { tone: "success" });
+    toast(select ? t.typing.added(insertName(kind), written.number) : t.insert.added(insertName(kind), written.number), { tone: "success" });
   }
 
   /** Pick a layout at a point on the page, and add a slide made from it after slide `index`. */
@@ -2024,6 +2047,130 @@ async function start(): Promise<void> {
     inspector.openSettings(object, words);
   }
 
+  // ── Typing on the slide ─────────────────────────────────────────────────────────────────
+  /** Words the preview is typing in place, by its request: the object and the part of it. */
+  const typingRequests = new Map<number, { target: SourceTarget; part: TextPart; words: string }>();
+  /**
+   * An object just written, whose words the preview types into once it shows it: where its
+   * command starts in the editor, and until when to wait for the preview to draw it.
+   */
+  let typeWhenShown: { position: number; until: number } | undefined;
+
+  /**
+   * The object a preview's object stands for, when the code still writes it where the preview
+   * says. A drawing made from an earlier save names places that have moved since: `stale` then.
+   */
+  async function typedObject(target: SourceTarget): Promise<{ object?: InspectObject; stale: boolean }> {
+    const object = await inspectedObject(target);
+    const range = editorRange(target);
+    if (!object || !range) return { stale: false };
+    return object.source.start === range.from && object.source.end === range.to ? { object, stale: false } : { stale: true };
+  }
+
+  /** Have the preview type into the words of the object written at `position`, once it shows it. */
+  function typeOnceShown(position: number): void {
+    typeWhenShown = { position, until: Date.now() + 10_000 };
+    offerTyping();
+  }
+
+  /** Ask the preview to type into the object waiting for it, at the place the saved document has it. */
+  function offerTyping(): void {
+    if (!typeWhenShown) return;
+    if (Date.now() > typeWhenShown.until) {
+      typeWhenShown = undefined;
+      return;
+    }
+    const { line, column } = savedLocation(typeWhenShown.position);
+    frames.typeAt(previewSlide, line, column);
+  }
+
+  /**
+   * Edit an object's words from a menu: on the slide, as a double-click on them does, or, for a
+   * formula, a picture, or words the code works out, in Current slide.
+   */
+  function editWords(object: InspectObject): void {
+    const kind = wordsFor(object, {}).kind;
+    if ((kind === "text" || kind === "label") && object.source.start !== undefined) typeOnceShown(object.source.start);
+    else openSettings(object, true);
+  }
+
+  /**
+   * Answer the preview's request to type an object's words in place: with the words to start
+   * from, or, when they cannot be typed there, with why, and the way to their code. A formula or
+   * a picture opens its settings in Current slide instead, where it is set.
+   */
+  async function answerTyping(request: number, target: SourceTarget, part: TextPart, shared: boolean, asked: boolean): Promise<void> {
+    const refuse = (message?: string, reveal?: () => void): void => {
+      frames.refuseTyping(request);
+      if (message) toast(message, { tone: "warning", key: "typing", actions: reveal ? [{ label: t.objects.goToCode, run: reveal }] : [] });
+    };
+    if (shared) {
+      refuse(t.typing.shared, () => revealTarget(target));
+      return;
+    }
+    const { object, stale } = await typedObject(target);
+    const waiting = asked ? typeWhenShown : undefined;
+    if (asked) {
+      // A preview not yet redrawn may still show another object where the new one will be; the
+      // next drawing is asked again.
+      if (!waiting || object?.source.start !== waiting.position) {
+        refuse();
+        return;
+      }
+      typeWhenShown = undefined;
+    }
+    // A double-click on a drawing older than the code is asked again of the drawing shown next.
+    if (stale) {
+      frames.refuseTyping(request, true);
+      return;
+    }
+    if (!object) {
+      refuse(report && reportText === editorText() ? t.typing.outside : t.inspector.catchingUp, () => revealTarget(target));
+      return;
+    }
+    const choice = wordsFor(object, part);
+    if (choice.kind === "elsewhere") {
+      refuse();
+      openSettings(object, inspector.hasWords(object));
+      return;
+    }
+    if (choice.kind === "computed") {
+      refuse(t.typing.computed, () => {
+        if (object.source.start !== undefined) revealPosition(object.source.start);
+      });
+      return;
+    }
+    const words = choice.kind === "text" ? choice.value : "";
+    typingRequests.set(request, { target, part, words });
+    inspector.highlight(object);
+    frames.beginTyping(request, words, choice.kind === "text" && choice.multiline, Boolean(waiting));
+  }
+
+  /**
+   * Write words typed in place into the literal that holds them, and save, as a drag does. Only
+   * words the code still writes as they were when typing began are replaced: anything else has
+   * moved on meanwhile, such as by an edit made in another program.
+   */
+  async function writeTyped(request: number, value: string): Promise<boolean> {
+    const pending = typingRequests.get(request);
+    typingRequests.delete(request);
+    if (!pending) return false;
+    const { object } = await typedObject(pending.target);
+    const choice = object ? wordsFor(object, pending.part) : undefined;
+    let ok = false;
+    suppressFollow = true;
+    if (object && choice?.kind === "text" && choice.value === pending.words) {
+      ok = choice.value === value || inspector.writeWords(object, choice.text, value);
+    } else if (object && choice?.kind === "label" && !pending.words) {
+      ok = !value || inspector.writeLabel(object, value);
+    }
+    if (!ok) {
+      toast(t.typing.notWritten, { tone: "warning", key: "typing" });
+      return false;
+    }
+    return save({ auto: false });
+  }
+
   const pasteEntry = (): MenuEntry => ({
     command: "paste",
     label: t.objects.paste,
@@ -2036,8 +2183,8 @@ async function start(): Promise<void> {
   /** What one object's menu ends with: its words and settings, and its code. */
   const objectEnds = (object: InspectObject | undefined, reveal: () => void): MenuEntry[] => [
     "separator",
-    ...(object && inspector.hasWords(object)
-      ? [{ command: "edit-text", label: t.objects.editText, icon: "text" as const, run: () => openSettings(object, true) }]
+    ...(object && (inspector.hasWords(object) || wordsFor(object, {}).kind === "label")
+      ? [{ command: "edit-text", label: t.objects.editText, icon: "text" as const, run: () => editWords(object) }]
       : []),
     ...(object ? [{ command: "format", label: t.objects.format, icon: "format" as const, run: () => openSettings(object, false) }] : []),
     { command: "go-to-code", label: t.objects.goToCode, icon: "code", shortcut: isMac ? "⌥Click" : "Alt+Click", run: reveal },

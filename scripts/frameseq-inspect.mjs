@@ -296,6 +296,39 @@ function objectTexts(sourceFile, node) {
 }
 
 /**
+ * The cells of a table written as rows of literals, by row and column, so each can be typed
+ * into on the slide. A cell the code works out is left out, and so is a row that is not an
+ * array written in place.
+ */
+function tableCells(sourceFile, node) {
+  const rows = ts.isCallExpression(node) ? node.arguments[0] : undefined;
+  if (!rows || !ts.isArrayLiteralExpression(rows)) return [];
+  return rows.elements.flatMap((row, rowIndex) => {
+    if (!ts.isArrayLiteralExpression(row)) return [];
+    return row.elements.flatMap((cell, column) => {
+      const editable = ts.isStringLiteral(cell) || ts.isNoSubstitutionTemplateLiteral(cell) || staticValue(cell)?.kind === "number"
+        ? editableProperty(sourceFile, "cell", cell)
+        : undefined;
+      return editable ? [{ ...editable, argument: 0, row: rowIndex, column }] : [];
+    });
+  });
+}
+
+/** The argument a shape's label is, by its command: shape() and polygon() take it second. */
+const labelArguments = new Map([["rect", 0], ["circle", 0], ["junction", 0], ["shape", 1], ["polygon", 1]]);
+
+/**
+ * Where a label goes in a shape written without one, such as rect() or shape("diamond"), so
+ * words typed on it can be written in: the offset, and what goes before the string there.
+ */
+function labelInsertion(node, type) {
+  const argument = labelArguments.get(type);
+  if (argument === undefined || !ts.isCallExpression(node) || node.arguments.length !== argument) return undefined;
+  const last = node.arguments[node.arguments.length - 1];
+  return last ? { at: last.getEnd(), prefix: ", " } : { at: node.arguments.pos, prefix: "" };
+}
+
+/**
  * How the chain of methods after an object's command can change: each call with the range that
  * removes it, the whitespace before its dot included, and where a new call goes, on a line of
  * its own when the last call has one.
@@ -360,6 +393,8 @@ function contentObjects(sourceFile, root, after = 0) {
     const computed = [];
     const properties = objectProperties(sourceFile, node, chain, computed);
     const refers = objectRefers(chain);
+    const cells = type === "table" ? tableCells(sourceFile, node) : [];
+    const labelAt = labelInsertion(node, type);
     objects.push({
       type,
       ...(label ? { label } : {}),
@@ -368,6 +403,8 @@ function contentObjects(sourceFile, root, after = 0) {
       source: sourceRange(sourceFile, chain.root),
       properties,
       texts: objectTexts(sourceFile, node),
+      ...(cells.length ? { cells } : {}),
+      ...(labelAt ? { labelAt } : {}),
       computed,
       // at("x").text("...") returns the region, so methods after it style the region instead.
       ...(ts.isTaggedTemplateExpression(node) || ts.isIdentifier(node.expression) ? chainEdits(sourceFile, chain) : {}),

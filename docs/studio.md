@@ -27,14 +27,14 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Slides** (left) | Every slide, rendered by the same runtime as the preview and updated on every save. |
 | **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, and the settings of the one selected. |
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
-| **Preview** (right) | The interactive preview, where objects are selected and dragged directly, with its usual navigation and zoom, and a lock for the layout. |
+| **Preview** (right) | The interactive preview, where objects are selected, dragged, and typed into directly, with its usual navigation and zoom, and a lock for the layout. |
 | **Notes** (right, below the preview) | The speaker notes of the slide in the preview, typed in place. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the slides ran. |
 | **Terminal** (bottom, beside Problems and Output) | A shell in the presentation's folder. |
 
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail, `Ctrl+J` shows or hides the bottom panel, and `` Ctrl+` `` opens the [terminal](#the-terminal). The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
 
-To work on the slides without the code, click **Code** in the top bar or press `Ctrl+E`: the editor folds away and the preview takes its room, where objects are dragged, inserted, and deleted directly, with `Ctrl+Z` still undoing. The cursor keeps following what you pick, so the code comes back at the object you last touched, and the commands that are about the code, such as **Go to the slide's source**, a problem in the list, or `Alt`-clicking an object, bring it back by themselves.
+To work on the slides without the code, click **Code** in the top bar or press `Ctrl+E`: the editor folds away and the preview takes its room, where objects are dragged, typed into, inserted, and deleted directly, with `Ctrl+Z` still undoing. The cursor keeps following what you pick, so the code comes back at the object you last touched, and the commands that are about the code, such as **Go to the slide's source**, a problem in the list, or `Alt`-clicking an object, bring it back by themselves.
 
 ### The menu bar
 
@@ -65,7 +65,7 @@ Right-click something, or press `Shift+F10` or the menu key, for the commands th
 | **The code** | Go to definition, Rename; Cut, Copy, Paste; Comment or uncomment; Select all; Find and replace |
 | **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Edit the master, Delete; in the master view, New master, Go to source, Delete |
 
-A right-click on an object selects it, alone, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** opens the object's settings in Current slide with its words selected, and **Format…** opens them at its row. Each command is one step in the editor's history.
+A right-click on an object selects it, alone, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** types the object's words on the slide, as a [double-click](#typing-on-the-slide) does, or, for a formula or a picture, opens its settings in Current slide with its words selected; **Format…** opens them at its row. Each command is one step in the editor's history.
 
 **Copy** keeps the lines that write the objects, with the comments above them, and puts them on the clipboard as text, so they can be pasted into the code as well. **Paste** writes them onto the slide in the preview, after the selected object, as **Insert** does. A name that slide already has becomes a new one, such as `box` to `box2`, and the pasted lines that refer to it follow. Pasted back onto the slide they came from, objects placed by coordinates move 24 down and to the right each time, so a copy never hides the original. In the preview, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, and `Ctrl+D` copy, cut, paste, and duplicate. An object written inside another command is copied in the code.
 
@@ -168,6 +168,18 @@ Objects in the preview are worked on as in PowerPoint, with no mode to turn on f
 
 See [Visual Studio Code extension](vscode.md) for the rules that decide which numbers a drag may rewrite.
 
+## Typing on the slide
+
+Double-click an object's words in the preview to type them where they are, as in PowerPoint: a text, an item of a list, a cell of a table, a card's title or its text, a metric, or the label of a shape or a box. The words show as the code writes them, with inline math as `$...$`, and the caret lands where you double-clicked.
+
+- `Enter`, `Tab`, or a click elsewhere writes them into the string that holds them, in the quotes it was written with, as one step in the editor's history; `Esc` puts them back as they were.
+- `Shift+Enter` starts a new line. In code, which runs over lines, `Enter` does, and `Ctrl+Enter` finishes.
+- A number in a table's cell stays a number while it reads as one. A shape written without a label, such as `rect()`, takes the words typed on it, as `rect("Cache")`.
+- **Edit text** in the right-click menu types the object's words the same way, all of them selected.
+- Words typed with a formula in them, such as `Area $\frac{1}{2}ab$`, are written as `` text`...` ``, which keeps their backslashes.
+
+Words the code works out, such as `` text(`Hi ${name}`) ``, and words a loop or a helper function writes for several objects at once, are changed in the code: the Studio says so, with **Go to code**. A formula, a picture, a chart, a QR code, and an icon open their settings in **Current slide** instead, where a LaTeX formula is set as it is typed.
+
 ## Inserting content
 
 **Insert**, in the menu bar and at the top of the preview, puts objects on the slide in the preview, as a word processor and a drawing program do. Its gallery has two sides. **Content**, on the left, is named:
@@ -180,7 +192,7 @@ See [Visual Studio Code extension](vscode.md) for the rules that decide which nu
 
 On a slide that flows, which is every layout but a canvas, the object is written **after the selected object**: the one chosen in the preview or in **Current slide**, or the statement holding the editor's cursor; with nothing selected, after the slide's last line. It lands in the same region as that object. On a canvas, where nothing flows, it is drawn like a shape instead: drag out its width, or click to place it at its usual size.
 
-The new object arrives with sample words, in the Studio's language, and **Current slide** opens its settings with those words selected, so typing replaces them: the formula's source, a list's first item, a table's first heading. With that panel folded, the editor selects them instead. A LaTeX formula is set by KaTeX as you type; a Typst formula and a LaTeX table are compiled by Typst and Tectonic, which the [FrameSeq app](app.md) includes.
+The new object arrives with sample words, in the Studio's language, selected so that typing replaces them. Text, a list, steps, a quote, code, and a table are [typed on the slide](#typing-on-the-slide) itself, from a list's first item or a table's first heading. A formula, a picture, a chart, a QR code, and an icon open their settings in **Current slide** instead, with the formula's source or the picture's description selected; with that panel folded, the editor selects them. A LaTeX formula is set by KaTeX as you type; a Typst formula and a LaTeX table are compiled by Typst and Tectonic, which the [FrameSeq app](app.md) includes.
 
 **Picture** asks for a picture with this computer's own dialog, or for its path when there is none, and copies it into an `images` folder beside the presentation, unless it is there already, so the slides carry it wherever the folder goes. It is written as `image(new URL("./images/photo.png", import.meta.url).href, "Picture")`; the second string describes it for people who cannot see it. A web address is written as it is.
 
@@ -200,7 +212,7 @@ The right side of **Insert**'s gallery draws objects onto the slide in the previ
 - Pick a polygon, then click on the slide for each of its corners. A double-click, `Enter`, or a click on the first corner finishes it, and it is written as `polygon([[0, 0], [120, 0], [120, 90]]).position({ x, y })`, its corners counted from its top-left. `Backspace` takes back the last corner, and `Shift` holds an edge to steps of 45°.
 - `Esc` puts the tool down without writing anything.
 
-The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected in the editor, ready to be typed over, and can be dragged and resized at once. Each drawing is one step in the editor's history.
+The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected on the slide, ready to be typed over, and can be dragged and resized at once. Each drawing is one step in the editor's history.
 
 A slide made by a loop or a helper function has no lines of its own to write into, so nothing can be drawn onto it.
 

@@ -812,6 +812,14 @@ const en = {
     nothingCopied: "Copy or cut an object first.",
   },
 
+  typing: {
+    shared: "A loop or a helper function writes these words for several objects at once, so they are changed in the code.",
+    computed: "The code works these words out, so they are changed in the code.",
+    outside: "These words are written outside this slide document, so they are changed where they are written.",
+    notWritten: "The words could not be written, because the code changed meanwhile. Type them again.",
+    added: (name: string, line: number) => `Added the ${name.toLowerCase()} on line ${line}. Type on the slide to replace its words.`,
+  },
+
   window: {
     minimize: "Minimize",
     maximize: "Maximize",
@@ -1732,6 +1740,14 @@ const zh: Catalog = {
     sharedObject: "这个对象和同类对象由循环或辅助函数用同一行代码画出，拖动改不了，请在代码里修改。",
     insideAnother: "这个对象写在另一条命令里面，请在代码里复制。",
     nothingCopied: "请先复制或剪切一个对象。",
+  },
+
+  typing: {
+    shared: "这些文字由循环或辅助函数同时写给几个对象，请在代码里修改。",
+    computed: "这些文字是代码算出来的，请在代码里修改。",
+    outside: "这些文字写在这份幻灯片文档之外，请到写它的地方修改。",
+    notWritten: "文字没能写入：代码在这期间变了，请再输入一次。",
+    added: (name, line) => `已在第 ${line} 行添加${name}，直接在幻灯片上输入即可替换文字。`,
   },
 
   window: {
