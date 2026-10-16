@@ -154,7 +154,10 @@ function documentationPage({ slug, label, blurb, source, previews }, content, lo
     locale,
   );
   const other = locale === "en" ? locales.zh : locales.en;
-  const switchHref = locale === "en" ? `zh/${slug}.html` : `../${slug}.html`;
+  // A page left in English has no Chinese counterpart, so its switch leads to the Chinese home.
+  const switchHref = locale === "en"
+    ? `zh/${translatedSlugs.has(slug) ? slug : "index"}.html`
+    : `../${slug}.html`;
   // The landing page in the documentation's language.
   const home = locale === "en" ? "../" : "../../zh/";
   return `<!doctype html>

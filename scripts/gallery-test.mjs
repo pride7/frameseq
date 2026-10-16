@@ -64,6 +64,11 @@ for (const [file, source] of docsSources) {
     if (/^(?:https?:|mailto:|\.\.\/)/.test(target)) continue;
     const [path, fragment] = target.split("#", 2);
     if (path && !path.endsWith(".html")) continue;
+    // The language switch leads into the Chinese documentation, which has fewer pages.
+    if (path.startsWith("zh/")) {
+      assert.ok(chineseFiles.includes(path.slice("zh/".length)), `Broken documentation link in ${file}: ${target}`);
+      continue;
+    }
     const targetFile = path || file;
     const targetSource = docsSources.get(basename(targetFile));
     assert.ok(targetSource, `Broken documentation link in ${file}: ${target}`);
