@@ -20,6 +20,8 @@ import {
   shapeSize,
   svgPath,
   type LineRoute,
+  type OutlineKind,
+  type PolygonPoints,
   type ShapeKind,
   type ShapePaint,
 } from "./shapes";
@@ -172,7 +174,9 @@ function renderLine(node: FrameSeqNode): HTMLElement {
 let shapeObserver: ResizeObserver | undefined;
 
 interface ShapeDrawing {
-  kind: ShapeKind;
+  kind: OutlineKind;
+  /** A polygon's corners. */
+  points?: PolygonPoints;
   fill: string;
   stroke: string;
   strokeWidth: number;
@@ -201,6 +205,7 @@ function drawShape(element: HTMLElement, fallback?: { width: number; height: num
   const geometry = shapeGeometry(drawing.kind, width, height, {
     strokeWidth: drawing.strokeWidth,
     radius: drawing.radius,
+    points: drawing.points,
   });
   const svg = element.querySelector<SVGSVGElement>(":scope > .frameseq-shape-outline");
   const label = element.querySelector<HTMLElement>(":scope > .frameseq-shape-label");
@@ -242,9 +247,10 @@ function pixels(value: unknown): number | undefined {
 
 function renderShape(node: FrameSeqNode): HTMLElement {
   const element = document.createElement("div");
-  const kind = node.props.kind as ShapeKind;
+  const kind = node.props.kind as OutlineKind;
+  const points = kind === "polygon" ? node.props.points as PolygonPoints : undefined;
   const paint = node.props.paint as ShapePaint | undefined;
-  const defaults = shapeSize(kind);
+  const defaults = shapeSize(kind, points);
   const width = pixels(node.styles.width) ?? defaults.width;
   const height = pixels(node.styles.height) ?? (kind === "circle" ? width : defaults.height);
   // The node's own styles are applied after these and win wherever they state a size.
@@ -255,6 +261,7 @@ function renderShape(node: FrameSeqNode): HTMLElement {
   element.dataset.frameseqShape = kind;
   const drawing: ShapeDrawing = {
     kind,
+    points,
     fill: String(node.props.fill ?? paint?.fill ?? "var(--frameseq-surface)"),
     stroke: String(node.props.stroke ?? paint?.stroke ?? "var(--frameseq-border)"),
     strokeWidth: pixels(node.props.strokeWidth) ?? 2,
@@ -2798,7 +2805,7 @@ function createLayoutEditor(
  * What the Studio can have drawn: a shape, a line, a connector, or a box for a text, a formula,
  * a picture, or some other content, which is placed by its corner and width alone.
  */
-type PlacementKind = ShapeKind | "text" | "line" | "arrow" | "connector" | (string & {});
+type PlacementKind = ShapeKind | "text" | "line" | "arrow" | "connector" | "polygon" | (string & {});
 
 /** The size a box of content takes when it is clicked in rather than dragged out. */
 function usualBox(kind: string): { width: number; height: number } {
@@ -2831,8 +2838,9 @@ function connectable(target: Element | null, canvas: HTMLElement): HTMLElement |
  * Draw a new object onto the slide shown, as a drawing program does: the Studio says what, and
  * the pointer says where. A shape or a text box is dragged out corner to corner, or clicked in at
  * its usual size; a line runs from press to release; a connector runs from one object to
- * another. The preview only measures, in the coordinates the object will be written in, and
- * leaves writing it into the slide document to the Studio.
+ * another; a polygon is clicked in corner by corner. The preview only measures, in the
+ * coordinates the object will be written in, and leaves writing it into the slide document to
+ * the Studio.
  */
 /** The tool the Studio picked, kept while a saved document redraws the preview under it. */
 let placingKind: PlacementKind | undefined;
@@ -2850,6 +2858,10 @@ function createPlacer(
   };
   let press: { x: number; y: number; pointerId: number; from?: HTMLElement } | undefined;
   let swallowClick = false;
+  /** A polygon's corners so far, in the page's coordinates, while it is clicked in. */
+  let corners: Array<{ x: number; y: number }> = [];
+  /** Whether the press now down put down a polygon's corner, or closed it. */
+  let cornerPress = false;
   const overlay = document.createElementNS(svgNamespace, "svg");
   overlay.classList.add("frameseq-place-overlay");
   overlay.setAttribute("aria-hidden", "true");
@@ -2860,6 +2872,7 @@ function createPlacer(
     if (cancelled && kind) window.parent.postMessage({ type: "frameseq.place-cancelled" }, "*");
     choose(undefined);
     press = undefined;
+    corners = [];
     overlay.remove();
     document.documentElement.classList.remove("frameseq-placing");
     delete document.documentElement.dataset.frameseqPlacing;
@@ -2891,14 +2904,57 @@ function createPlacer(
     return frame ?? canvas;
   };
 
-  /** Lines snap to every 45° while Shift is held, as in a drawing program. */
-  const snapLine = (x: number, y: number, shift: boolean): { x: number; y: number } => {
-    if (!press || !shift) return { x, y };
-    const dx = x - press.x;
-    const dy = y - press.y;
+  /** Lines, and a polygon's edges, snap to every 45° while Shift is held, as in a drawing program. */
+  const snapLine = (x: number, y: number, shift: boolean, from: { x: number; y: number } | undefined = press): { x: number; y: number } => {
+    if (!from || !shift) return { x, y };
+    const dx = x - from.x;
+    const dy = y - from.y;
     const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
     const length = Math.hypot(dx, dy);
-    return { x: press.x + Math.cos(angle) * length, y: press.y + Math.sin(angle) * length };
+    return { x: from.x + Math.cos(angle) * length, y: from.y + Math.sin(angle) * length };
+  };
+
+  /** How the canvas is scaled on the page, and a point on the page in the coordinates written. */
+  const measure = (canvas: HTMLElement): { scale: number; local: (x: number, y: number) => { x: number; y: number } } => {
+    const frame = frameOf(canvas);
+    const scale = canvas.getBoundingClientRect().width / canvas.offsetWidth || 1;
+    const origin = frame.getBoundingClientRect();
+    return {
+      scale,
+      local: (x, y) => ({
+        x: Math.round((x - origin.left) / scale - frame.clientLeft),
+        y: Math.round((y - origin.top) / scale - frame.clientTop),
+      }),
+    };
+  };
+
+  /** The polygon clicked in so far, its last edge running to the pointer. */
+  const drawCorners = (pointer?: { x: number; y: number }): void => {
+    const points = pointer ? [...corners, pointer] : corners;
+    const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+    ghost.setAttribute("d", points.length >= 3 ? `${path} Z` : path);
+  };
+
+  /** Write the polygon clicked in, once it has three corners spanning some width and height. */
+  const finishPolygon = (): void => {
+    const canvas = activeCanvas();
+    if (!canvas || corners.length < 3) return;
+    const { local } = measure(canvas);
+    const points = corners.map((corner) => local(corner.x, corner.y));
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    if (Math.max(...xs) === x || Math.max(...ys) === y) return;
+    window.parent.postMessage({
+      type: "frameseq.placed",
+      kind: "polygon",
+      x,
+      y,
+      points: points.map((point) => [point.x - x, point.y - y]),
+    }, "*");
+    stop(false);
+    placed();
   };
 
   /** The box dragged out, square while Shift is held. */
@@ -2949,6 +3005,22 @@ function createPlacer(
     if (!canvas || !target || !canvas.contains(target)) return;
     event.preventDefault();
     event.stopPropagation();
+    if (kind === "polygon") {
+      cornerPress = true;
+      const first = corners[0];
+      const last = corners.at(-1);
+      // Clicking the first corner again closes the outline.
+      if (first && corners.length >= 3 && Math.hypot(event.clientX - first.x, event.clientY - first.y) <= 8) {
+        finishPolygon();
+        return;
+      }
+      const corner = snapLine(event.clientX, event.clientY, event.shiftKey, last);
+      // The second click of a double-click lands where the first did, and adds nothing.
+      if (!last || Math.hypot(corner.x - last.x, corner.y - last.y) > 3) corners.push(corner);
+      if (!overlay.isConnected) document.body.append(overlay);
+      drawCorners();
+      return;
+    }
     const from = kind === "connector" ? connectable(target, canvas) : undefined;
     if (kind === "connector" && !from) return;
     press = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, from };
@@ -2958,9 +3030,18 @@ function createPlacer(
 
   addEventListener("pointermove", (event) => {
     if (press && event.pointerId === press.pointerId) draw(event.clientX, event.clientY, event.shiftKey);
+    else if (kind === "polygon" && corners.length > 0) {
+      drawCorners(snapLine(event.clientX, event.clientY, event.shiftKey, corners.at(-1)));
+    }
   }, { signal });
 
   addEventListener("pointerup", (event) => {
+    if (cornerPress) {
+      cornerPress = false;
+      swallowClick = true;
+      setTimeout(() => { swallowClick = false; }, 0);
+      return;
+    }
     if (!press || !kind || event.pointerId !== press.pointerId) return;
     const canvas = activeCanvas();
     const start = press;
@@ -2993,13 +3074,7 @@ function createPlacer(
       return;
     }
 
-    const frame = frameOf(canvas);
-    const scale = canvas.getBoundingClientRect().width / canvas.offsetWidth || 1;
-    const origin = frame.getBoundingClientRect();
-    const local = (x: number, y: number): { x: number; y: number } => ({
-      x: Math.round((x - origin.left) / scale - frame.clientLeft),
-      y: Math.round((y - origin.top) / scale - frame.clientTop),
-    });
+    const { scale, local } = measure(canvas);
 
     if (what === "line" || what === "arrow") {
       const end = dragged ? snapLine(event.clientX, event.clientY, event.shiftKey) : { x: start.x + 200 * scale, y: start.y };
@@ -3036,7 +3111,25 @@ function createPlacer(
     event.stopPropagation();
   }, { capture: true, signal });
 
+  // A polygon is finished with a double-click, and Enter; Backspace takes back its last corner.
+  root.addEventListener("dblclick", (event) => {
+    if (kind !== "polygon") return;
+    event.preventDefault();
+    event.stopPropagation();
+    finishPolygon();
+  }, { capture: true, signal });
+
   addEventListener("keydown", (event) => {
+    if (kind === "polygon" && (event.key === "Enter" || event.key === "Backspace")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.key === "Enter") finishPolygon();
+      else {
+        corners.pop();
+        drawCorners();
+      }
+      return;
+    }
     if (!kind || event.key !== "Escape") return;
     event.preventDefault();
     event.stopImmediatePropagation();

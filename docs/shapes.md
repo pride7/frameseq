@@ -1,6 +1,6 @@
 # Shapes and connectors
 
-FrameSeq draws diagrams from a small set of primitives: `shape()` with 27 outlines, from flowchart symbols to block arrows; the `rect()` and `circle()` boxes; and `line()` connectors that run straight, at right angles, or in a curve between named objects. Every one of them stays editable after export: PowerPoint receives its own preset shapes and lines, and Typst receives polygons and curves.
+FrameSeq draws diagrams from a small set of primitives: `shape()` with 27 outlines, from flowchart symbols to block arrows; `polygon()` through corners of your own; the `rect()` and `circle()` boxes; and `line()` connectors that run straight, at right angles, or in a curve between named objects. Every one of them stays editable after export: PowerPoint receives its own preset shapes and lines, and Typst receives polygons and curves.
 
 ## Start with a canvas
 
@@ -32,6 +32,20 @@ Each kind has a usual size, such as 200 x 140 for a diamond or 160 x 150 for a c
 The label sits in the outline's own room: the middle half of a diamond, below a cylinder's top, along an arrow's shaft. It supports the same inline `$...$` math as `text()`, and `size()`, `weight()`, and `color()` style it.
 
 Proportions follow PowerPoint's preset shapes, so a chevron's point or a cylinder's rim keeps its depth when the shape is stretched, and an exported shape looks as it did on the slide.
+
+## Polygons
+
+When no kind has the outline a diagram needs, such as an encoder that narrows from one side to the other, `polygon(points, label)` draws one through corners of your own:
+
+```ts
+polygon([[0, 0], [64, 47], [64, 153], [0, 200]], "Encoder")
+  .position({ x: 190, y: 370 })
+  .tone("gray");
+```
+
+The corners are `[x, y]` pixels, measured from any origin, in order around the outline. The polygon is as large as they span, here 64 x 200, and is placed like any shape, with `position()`, `anchor()`, or a placement such as `rightOf()`. `width()` and `height()` stretch it, and each corner keeps its place across the box. A polygon needs at least three corners, and they must span some width and some height.
+
+In every other respect a polygon is a shape: `tone()`, `fill()`, `stroke()`, `dashed()`, and `shadow()` paint it, its label is centred in its box, and connectors meet the edges of that box.
 
 ## Colour with `tone()`
 
@@ -72,6 +86,12 @@ rect("TypeScript")
 ```
 
 A rectangle without a height is 240 x 96, its minimum. Setting `height()` releases that minimum, so a shorter shape is rendered as asked; set `minHeight()` before `height()` to keep a floor of your own.
+
+A `rect()` or `circle()` without a label has no padding, so a small one, such as a cell in a strip of colours, keeps the size it is given:
+
+```ts
+rect().width(30).height(30).radius(3).fill("#f4b42c").stroke("#e8a92a");
+```
 
 ```ts
 circle("FrameSeq")
@@ -138,7 +158,7 @@ line().from("worker").to("queue").route("curve").dashed().label("async");
 
 ## Drawing in FrameSeq Studio
 
-In [FrameSeq Studio](studio.md#drawing-objects), **Insert** opens a gallery of every shape, a text box, a line, an arrow, and a connector. Pick one and drag it out on the slide in the preview: FrameSeq writes the command with the coordinates and size you drew, and you can go on dragging and resizing it. Dragging a connector from one object to another names both, if they have no names yet, and writes a `line().from().to()` that follows them.
+In [FrameSeq Studio](studio.md#drawing-objects), **Insert** opens a gallery of every shape, a text box, a line, an arrow, a connector, and a polygon. Pick one and drag it out on the slide in the preview, or click in a polygon corner by corner: FrameSeq writes the command with the coordinates and size you drew, and you can go on dragging and resizing it. Dragging a connector from one object to another names both, if they have no names yet, and writes a `line().from().to()` that follows them.
 
 ## Composing a diagram
 
@@ -178,9 +198,9 @@ In interactive mode, `showAt()` follows the slide's reveal steps. PDF and PPTX o
 
 ## In PowerPoint and Typst
 
-Editable PPTX export turns each `shape()` into PowerPoint's own preset of the same outline, such as a diamond, a can, or a cloud, so it can still be recoloured, resized, or swapped for another shape there. Rectangles and circles become rectangles and ellipses, straight lines become lines, and elbow and curved connectors become paths, all with their arrowheads, dashes, and labels.
+Editable PPTX export turns each `shape()` into PowerPoint's own preset of the same outline, such as a diamond, a can, or a cloud, so it can still be recoloured, resized, or swapped for another shape there. A `polygon()` becomes a freeform through the same corners, whose points PowerPoint can edit. Rectangles and circles become rectangles and ellipses, straight lines become lines, and elbow and curved connectors become paths, all with their arrowheads, dashes, and labels.
 
-Typst export draws shapes as `polygon` and `curve` elements and connectors as lines and curves with their arrowheads, all of it editable Typst. Shadows are left out.
+Typst export draws shapes and polygons as `polygon` and `curve` elements and connectors as lines and curves with their arrowheads, all of it editable Typst. Shadows are left out.
 
 ## Custom SVG artwork
 

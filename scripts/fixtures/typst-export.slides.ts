@@ -51,3 +51,5 @@ line({ x1: 320, y1: 160, x2: 760, y2: 170 })
 shape("diamond", "Valid?").as("check").position({ x: 80, y: 300 }).tone("amber");
 shape("cylinder", "Store").as("store").position({ x: 760, y: 470 }).tone("purple", "solid");
 line().from("check").to("store").route("elbow").arrow().label("yes");
+polygon([[0, 0], [120, 0], [90, 80], [30, 80]], "Gate").position({ x: 420, y: 520 }).tone("teal");
+rect("Optional").position({ x: 420, y: 330 }).stroke("#d97706").dashed();

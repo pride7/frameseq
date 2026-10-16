@@ -393,6 +393,16 @@ shape(kind: ShapeKind, label?: string): ShapeBuilder
 
 Adds a diagram shape drawn as a vector outline, with the label set in the outline's own room: the middle of a diamond, below a cylinder's top. Each kind has a usual size, from 120 x 120 for `plus` to 240 x 120 for `callout`, which `width()` and `height()` replace. A `circle` given only a width keeps its height equal to it. Each kind exports to PowerPoint as its native preset shape and to Typst as an editable polygon or curve. Without `tone()` a shape is a soft tint of the theme's accent.
 
+### `polygon(points, label?)`
+
+```ts
+type PolygonPoints = Array<[number, number]>;
+
+polygon(points: PolygonPoints, label?: string): ShapeBuilder
+```
+
+Adds a diagram shape drawn through its own corners, given as `[x, y]` pixels from any origin in order around the outline. Its size is the box the corners span, which `width()` and `height()` stretch; it needs at least three corners that span some width and some height. Its label is centred in that box and supports inline math. It takes every `ShapeBuilder` modifier, exports to PowerPoint as an editable freeform through the same corners, and to Typst as a `polygon`.
+
 ### `line(points)`
 
 ```ts

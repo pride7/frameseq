@@ -10,6 +10,7 @@ export {
   connectorPath,
   isShapeKind,
   polygonCorners,
+  polygonProblem,
   resolveShapePaint,
   routeConnector,
   shapeGeometry,
@@ -22,6 +23,8 @@ export {
 } from "./shapes";
 export type {
   LineRoute,
+  OutlineKind,
+  PolygonPoints,
   RouteBox,
   RouteEnd,
   Segment,

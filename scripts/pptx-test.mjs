@@ -117,6 +117,16 @@ assert.match(cylinder, /prst="can"/);
 assert.match(cylinder, /<a:outerShdw/);
 assert.match(shapeXmlStarting(shapesSlide, "FrameSeq shape cloud"), /prst="cloud"[\s\S]*prstDash val="dash"/);
 assert.match(shapeXmlStarting(shapesSlide, "FrameSeq shape pill"), /prst="roundRect"/);
+// A polygon() has no preset, so it is a freeform through its own four corners, still labelled.
+const encoder = shapeXmlStarting(shapesSlide, "FrameSeq shape polygon");
+assert.match(encoder, /<a:custGeom>[\s\S]*<a:moveTo>(?:[\s\S]*?<a:lnTo>){3}[\s\S]*?<a:close \/>[\s\S]*<\/a:custGeom>/);
+assert.equal(encoder.match(/<a:lnTo>/g)?.length, 3);
+assert.match(encoder, /<a:solidFill><a:srgbClr val="[0-9A-F]{6}"/);
+assert.match(encoder, />Encoder</);
+// A rect() with no label keeps the small size it was given, and its dash beside a stroke().
+const cell = shapeXmlStarting(shapesSlide, "FrameSeq rect");
+assert.match(cell, /<a:ext cx="285750" cy="285750"\/>/);
+assert.match(cell, /prstDash val="dash"/);
 // Elbow and curved connectors are paths of their own, with arrowheads; straight ones stay lines.
 assert.match(shapesSlide, /<a:custGeom>[\s\S]*?<a:lnTo>[\s\S]*?<\/a:custGeom>/);
 assert.match(shapesSlide, /<a:cubicBezTo>/);

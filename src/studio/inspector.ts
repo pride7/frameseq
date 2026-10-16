@@ -69,6 +69,7 @@ const icons: Record<string, string> = {
   rect: svg('<rect x="3.5" y="6" width="17" height="12" rx="1.5"/>'),
   circle: svg('<circle cx="12" cy="12" r="8"/>'),
   shape: svg('<path d="M12 3.5 20.5 12 12 20.5 3.5 12Z"/>'),
+  polygon: svg('<path d="M4.5 7.5 15 4l5 8-5.5 8L4 16.5Z"/>'),
   line: svg('<path d="M4.5 19.5 19.5 4.5M19.5 4.5h-6M19.5 4.5v6"/>'),
   bullets: svg('<path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5h1M4.5 12h1M4.5 17.5h1"/>'),
   steps: svg('<path d="M10 6.5h9.5M10 12h9.5M10 17.5h9.5M4.5 5l1.5-.8v4.3M4 15.5c.4-.7 2.6-.9 2.5.6 0 1-2.5 1.8-2.5 3h2.6"/>'),
@@ -93,7 +94,7 @@ const iconFor: Record<string, string> = {
 /** The family an object belongs to, which tints its picture. */
 function category(type: string): string {
   if (["text", "lead", "caption", "quote", "bullets", "steps", "metric"].includes(type)) return "text";
-  if (["rect", "circle", "shape", "line"].includes(type)) return "shape";
+  if (["rect", "circle", "shape", "polygon", "line"].includes(type)) return "shape";
   if (["math", "equation", "typst", "typstFile", "latex", "latexFile", "code"].includes(type)) return "formula";
   if (["image", "chart", "qr", "icon", "table"].includes(type)) return "media";
   return "container";
@@ -150,6 +151,7 @@ function textLabel(type: string, argument: number): string | undefined {
     case "qr": return first(names.qr);
     case "rect": case "circle": return first(names.label);
     case "shape": return argument === 0 ? names.shapeKind : (argument === 1 ? names.label : undefined);
+    case "polygon": return argument === 1 ? names.label : undefined;
     case "card": return argument === 0 ? names.title : (argument === 1 ? names.body : undefined);
     case "metric": return argument === 0 ? names.value : (argument === 1 ? names.label : undefined);
     default: return undefined;

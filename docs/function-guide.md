@@ -935,6 +935,24 @@ shape("pill", "Start").tone("green", "solid").width(180).height(56);
 
 **Returns** `ShapeBuilder`. Each kind has a usual size that `.width()` and `.height()` replace. `.tone(color, style)` paints it from one colour, `"soft"` (the default), `"solid"`, or `"outline"`, in one of `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or any CSS colour. `.shadow()` casts a soft shadow and `.dashed()` dashes the outline.
 
+### `polygon()`
+
+Creates a diagram shape through corners of your own, for an outline no `shape()` kind has, such as an encoder that narrows from one side to the other. It exports to PowerPoint as an editable freeform.
+
+```ts
+polygon([[0, 0], [64, 47], [64, 153], [0, 200]], "Encoder").position({ x: 190, y: 370 }).tone("gray");
+polygon([[60, 0], [120, 100], [0, 100]]).as("peak").width(180).height(120).tone("amber", "solid");
+```
+
+**Signature** `polygon(points, label) → ShapeBuilder`
+
+**Parameters**
+
+- `points` — `Array<[number, number]>`, required. The corners in order around the outline, in pixels from any origin; at least three, spanning some width and some height.
+- `label` — `string`, optional. Defaults to an empty string. Centred in the polygon's box; inline math between `$` signs is supported.
+
+**Returns** `ShapeBuilder`. The polygon is as large as its corners span, and `.width()` and `.height()` stretch it. It takes `.tone()`, `.fill()`, `.stroke()`, `.dashed()`, `.shadow()`, and placement by name like any shape.
+
 ### `line()`
 
 Creates a vector connector between two canvas coordinates.

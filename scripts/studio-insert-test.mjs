@@ -119,8 +119,8 @@ try {
   await page.click("[data-action='insert']");
   await page.waitForSelector(".studio-insert-gallery");
   const kinds = await page.$$eval(".studio-insert-item", (items) => items.map((item) => item.dataset.kind));
-  assert.equal(kinds.length, 44, "the gallery must offer 13 kinds of content, 27 shapes, text, a line, an arrow, and a connector");
-  assert.ok(kinds.includes("diamond") && kinds.includes("cylinder") && kinds.includes("connector"));
+  assert.equal(kinds.length, 45, "the gallery must offer 13 kinds of content, 27 shapes, text, a line, an arrow, a connector, and a polygon");
+  assert.ok(kinds.includes("diamond") && kinds.includes("cylinder") && kinds.includes("connector") && kinds.includes("polygon"));
   assert.ok(["typst", "math", "latex", "table", "chart", "image"].every((kind) => kinds.includes(kind)));
   assert.equal(
     await page.$eval(".studio-insert-item[data-kind='typst'] .studio-insert-label", (label) => label.textContent),
@@ -242,6 +242,37 @@ try {
   await preview.waitForFunction(() => !document.documentElement.classList.contains("frameseq-placing"));
   await delay(400);
   assert.equal(await read(), before, "Escape must not write anything");
+
+  // A polygon is clicked in corner by corner: Backspace takes back a corner, and a double-click
+  // puts down the last one and writes the polygon, its corners counted from its top-left.
+  await page.evaluate(() => document.querySelector("[data-action='insert']").click());
+  await page.click(".studio-insert-item[data-kind='polygon']");
+  await preview.waitForFunction(() => document.documentElement.classList.contains("frameseq-placing"));
+  const polygonSlide = await preview.evaluate(() => {
+    const canvas = document.querySelector(".frameseq-slide-frame.is-active .frameseq-slide");
+    const box = canvas.getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width, height: box.height, scale: box.width / canvas.offsetWidth };
+  });
+  const corner = (dx, dy) => ({
+    x: frameBox.x + polygonSlide.x + polygonSlide.width * 0.55 + dx * polygonSlide.scale,
+    y: frameBox.y + polygonSlide.y + polygonSlide.height * 0.12 + dy * polygonSlide.scale,
+  });
+  for (const [dx, dy] of [[0, 0], [120, 0], [40, 200]]) {
+    const { x, y } = corner(dx, dy);
+    await page.mouse.click(x, y);
+  }
+  await page.keyboard.press("Backspace");
+  const last = corner(120, 90);
+  await page.mouse.click(last.x, last.y, { clickCount: 2 });
+  const polygonText = await waitFor(async () => {
+    const text = await read();
+    return /polygon\(\[\[0, 0\], \[\d+, 0\], \[\d+, \d+\]\]\)\.position\(\{ x: -?\d+, y: -?\d+ \}\);/.test(text) && text;
+  }, "the polygon to be written");
+  const [, bx, cx, cy] = polygonText.match(/polygon\(\[\[0, 0\], \[(\d+), 0\], \[(\d+), (\d+)\]\]\)/).map(Number);
+  assert.ok(Math.abs(bx - 120) <= 2 && Math.abs(cx - 120) <= 2 && Math.abs(cy - 90) <= 2, `the polygon keeps the corners clicked, not ${[bx, cx, cy]}`);
+  await waitFor(() => preview.evaluate(() => Boolean(
+    document.querySelector("#app .frameseq-slide-frame.is-active [data-frameseq-shape='polygon'] .frameseq-shape-body"),
+  )).catch(() => false), "the polygon to be drawn");
 
   // On a canvas nothing flows, so a formula is drawn like a shape: a click places it there.
   await page.evaluate(() => document.querySelector("[data-action='insert']").click());

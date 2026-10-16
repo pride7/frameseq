@@ -1505,7 +1505,9 @@ async function start(): Promise<void> {
     const name = insertName(kind);
     const hint = kind === "connector"
       ? t.insert.hintConnector
-      : (kind === "line" || kind === "arrow" ? t.insert.hintLine(name) : t.insert.hintDraw(name));
+      : kind === "polygon"
+        ? t.insert.hintPolygon
+        : (kind === "line" || kind === "arrow" ? t.insert.hintLine(name) : t.insert.hintDraw(name));
     placingHint = toast(hint, {
       tone: "info",
       timeout: 0,

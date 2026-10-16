@@ -82,7 +82,7 @@ export interface Plan {
 export const textRoles = ["body", "title", "hero", "subtitle", "author", "eyebrow", "lead", "caption", "quote"] as const;
 
 const containers = new Set(["group", "card", "gridSection", "row", "column", "stack"]);
-const shapes = new Set(["rect", "circle", "shape"]);
+const shapes = new Set(["rect", "circle", "shape", "polygon"]);
 const formulas = new Set(["math", "equation", "typst", "typstFile", "latex", "latexFile"]);
 
 /** The settings shown for a kind of object, in the order a drawing program would show them. */
@@ -106,7 +106,7 @@ export function planFor(type: string): Plan {
   if (shapes.has(type)) {
     return {
       sections: [
-        { id: "appearance", fields: ["tone", ...(type === "shape" ? ["toneStyle"] : []), "fill", "stroke", "strokeWidth"] },
+        { id: "appearance", fields: ["tone", ...(type === "shape" || type === "polygon" ? ["toneStyle"] : []), "fill", "stroke", "strokeWidth"] },
         { id: "size", fields: ["width", "height"] },
       ],
       more: ["radius", "fontSize", "color", "opacity", "rotation"],

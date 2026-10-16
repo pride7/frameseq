@@ -4,7 +4,7 @@ import process from "node:process";
 import PptxGenJS from "pptxgenjs";
 import puppeteer from "puppeteer";
 import { build as viteBuild, preview } from "vite";
-import { shapePreset } from "../lib/index.js";
+import { polygonCorners, shapeGeometry, shapePreset } from "../lib/index.js";
 import { deckReady, watchDeck } from "./document-errors.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
 import { keepSlides, slidesFileSuffix } from "./slide-selection.mjs";
@@ -327,6 +327,7 @@ function addShape(pptx, slide, item) {
 /**
  * A shape() becomes PowerPoint's own preset of the same outline, so it can still be restyled,
  * resized, or swapped for another shape there. The preset places its label in its own room.
+ * A polygon() has no preset, and becomes a freeform through its own corners instead.
  */
 function addVectorShape(pptx, slide, item) {
   const { shape, box } = item;
@@ -335,7 +336,7 @@ function addVectorShape(pptx, slide, item) {
   const options = {
     ...textOptions(item, box),
     isTextBox: false,
-    shape: shapePreset(shape.kind),
+    shape: shape.kind === "polygon" ? pptx.ShapeType.custGeom : shapePreset(shape.kind),
     fill: fillColor && fillColor.transparency < 100
       ? { color: fillColor.color, transparency: fillColor.transparency }
       : undefined,
@@ -353,6 +354,13 @@ function addVectorShape(pptx, slide, item) {
     valign: "mid",
     objectName: `FrameSeq shape ${shape.kind} ${item.id}`,
   };
+  if (shape.kind === "polygon") {
+    const outline = shapeGeometry("polygon", box.width, box.height, { points: shape.points, strokeWidth: shape.strokeWidth }).outline;
+    options.points = [
+      ...(polygonCorners(outline) ?? []).map(([x, y]) => ({ x: x / cssPixelsPerInch, y: y / cssPixelsPerInch })),
+      { close: true },
+    ];
+  }
   const shortSide = Math.min(box.width, box.height);
   const radius = shape.kind === "pill"
     ? shortSide / 2
@@ -776,6 +784,7 @@ async function captureSlides(page) {
           };
           item.shape = {
             kind: drawing.kind,
+            points: drawing.points,
             fill: bodyStyle?.fill,
             stroke: bodyStyle?.stroke,
             strokeWidth: px(bodyStyle?.strokeWidth),

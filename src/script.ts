@@ -12,6 +12,7 @@ import {
   LineBuilder,
   type LinePoints,
   type Length,
+  Polygon,
   resolvePrintUnits,
   Rect,
   Shape,
@@ -53,7 +54,7 @@ import {
   type TableCell,
 } from "./objects";
 import type { IconName } from "./icon-names";
-import type { ShapeKind } from "./shapes";
+import type { PolygonPoints, ShapeKind } from "./shapes";
 import {
   type Bibliography,
   type CitationOptions,
@@ -509,6 +510,16 @@ export function circle(label = ""): ShapeBuilder {
  */
 export function shape(kind: ShapeKind, label = ""): ShapeBuilder {
   return attach(Shape(kind, label).className("frameseq-semantic-shape"));
+}
+
+/**
+ * Add a polygon through the given corners, optionally with a label. The corners are pixels from
+ * any origin: the polygon is as large as they span and stretches with width() and height().
+ * It exports to PowerPoint as an editable freeform shape.
+ * @example polygon([[0, 0], [60, 45], [60, 155], [0, 200]], "Encoder").position({ x: 200, y: 120 });
+ */
+export function polygon(points: PolygonPoints, label = ""): ShapeBuilder {
+  return attach(Polygon(points, label).className("frameseq-semantic-shape"));
 }
 
 /** Add a canvas-relative vector line or connector. Omit the points when using from()/to(). */

@@ -20,6 +20,7 @@ const markableCommands = new Set([
   "rect",
   "circle",
   "shape",
+  "polygon",
   "line",
   "table",
   "chart",

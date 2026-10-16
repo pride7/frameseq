@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   connectorMidpoint,
   line,
+  polygon,
   polygonCorners,
   presentation,
   rect,
@@ -46,6 +47,17 @@ import {
   assert.deepEqual(shapeGeometry("diamond", 200, 100).text, { x: 50, y: 25, width: 100, height: 50 });
 }
 
+// A polygon is as large as its corners span, and stretches to fill whatever box it is given.
+{
+  const corners = [[10, 20], [70, 20], [40, 120]];
+  assert.deepEqual(shapeSize("polygon", corners), { width: 60, height: 100 });
+  assert.deepEqual(polygonCorners(shapeGeometry("polygon", 60, 100, { points: corners }).outline), [[0, 0], [60, 0], [30, 100]]);
+  assert.deepEqual(polygonCorners(shapeGeometry("polygon", 120, 50, { points: corners }).outline), [[0, 0], [120, 0], [60, 50]]);
+  // Its outline stays inside its box, as every shape's does.
+  assert.deepEqual(polygonCorners(shapeGeometry("polygon", 60, 100, { points: corners, strokeWidth: 4 }).outline), [[2, 2], [58, 2], [30, 98]]);
+  assert.deepEqual(shapeGeometry("polygon", 60, 100, { points: corners }).text, { x: 0, y: 0, width: 60, height: 100 });
+}
+
 // A tone is a tint of its colour on a light theme, and a deeper one on a dark theme.
 {
   const brightness = (hex) => [1, 3, 5].reduce((sum, at) => sum + Number.parseInt(hex.slice(at, at + 2), 16), 0);
@@ -84,6 +96,20 @@ import {
   resolveAnchors(document.node);
   assert.equal(resolved.node.props.y1, 445, "the circle's centre is half its width down");
   assert.equal(round.node.props.kind, "circle");
+
+  // A polygon's size comes from its corners, so connectors meet its edges.
+  const wedge = polygon([[0, 0], [60, 40], [60, 160], [0, 200]]).as("wedge").position({ x: 0, y: 600 });
+  const out = line().from("wedge").to("box");
+  resolveAnchors(document.node);
+  resolveShapePaint(document.node);
+  assert.equal(out.node.props.x1, 60, "the connector leaves the polygon's right edge");
+  assert.equal(out.node.props.y1, 700, "halfway down its corners");
+  assert.ok(wedge.node.props.paint.fill.startsWith("#"), "a polygon is painted like any shape");
+
+  // A dashed rect keeps its dash whether stroke() comes before dashed() or after it.
+  assert.equal(rect().stroke("#d97706").dashed().node.styles.borderStyle, "dashed");
+  assert.equal(rect().dashed().stroke("#d97706").node.styles.borderStyle, "dashed");
+  assert.equal(rect().stroke("#d97706").dashed().dashed(false).node.styles.borderStyle, "solid");
 }
 
 // Elbows leave and enter square, go around what stands between, and keep to the corners they need.
@@ -159,6 +185,9 @@ import {
   assert.throws(() => shape("hexagonal"), /shape\(\) does not know "hexagonal"/);
   assert.throws(() => shape("rect").tone("blue", "glossy"), /tone\(\) expects the style/);
   assert.throws(() => line().route("zigzag"), /route\(\) expects "straight", "elbow", or "curve"/);
+  assert.throws(() => polygon([[0, 0], [10, 10]]), /polygon\(\) needs at least three corners, not 2/);
+  assert.throws(() => polygon([[0, 0], [10, "a"], [5, 5]]), /corner 2 is \[10,"a"\]/);
+  assert.throws(() => polygon([[0, 0], [50, 0], [100, 0]]), /span some width and some height/);
 }
 
-console.log("Shapes test passed: geometry, presets, tones, placement, routes, and labels.");
+console.log("Shapes test passed: geometry, presets, polygons, tones, placement, routes, and labels.");

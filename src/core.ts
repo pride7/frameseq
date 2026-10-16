@@ -4,9 +4,11 @@ import type { Bibliography, CitationOptions } from "./citations";
 import { paperCanvasUnits, paperDimensions, type PaperDimensions, type PaperSize } from "./paper";
 import {
   isShapeKind,
+  polygonProblem,
   shapeKinds,
   toneNames,
   type LineRoute,
+  type PolygonPoints,
   type ShapeKind,
   type ToneName,
   type ToneStyle,
@@ -1031,6 +1033,12 @@ export function Shape(kind: ShapeKind, label = ""): ShapeBuilder {
     throw new Error(`shape() does not know "${kind}". Use one of: ${shapeKinds.join(", ")}`);
   }
   return new ShapeBuilder(node("shape", { kind, label }));
+}
+
+export function Polygon(points: PolygonPoints, label = ""): ShapeBuilder {
+  const problem = polygonProblem(points);
+  if (problem) throw new Error(problem);
+  return new ShapeBuilder(node("shape", { kind: "polygon", points: points.map(([x, y]) => [x, y]), label }));
 }
 
 export function Line(points: Partial<LinePoints> = {}): LineBuilder {

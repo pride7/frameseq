@@ -24,7 +24,7 @@ export const placeholderKinds = ["placeholder-title", "placeholder-subtitle", "p
 export type PlaceholderKind = (typeof placeholderKinds)[number];
 
 /** What can be put onto a slide from the Studio. */
-export type InsertKind = ShapeKind | "text" | "line" | "arrow" | "connector" | ContentKind | PlaceholderKind;
+export type InsertKind = ShapeKind | "text" | "line" | "arrow" | "connector" | "polygon" | ContentKind | PlaceholderKind;
 
 export type InsertGroup = keyof typeof t.insert.groups;
 
@@ -48,7 +48,7 @@ export const contentGroups: Array<{ id: InsertGroup; kinds: ContentKind[] }> = [
 
 /** The drawing side of the gallery, in the order a drawing program lists it. */
 export const insertGroups: Array<{ id: InsertGroup; kinds: InsertKind[] }> = [
-  { id: "lines", kinds: ["text", "line", "arrow", "connector"] },
+  { id: "lines", kinds: ["text", "line", "arrow", "connector", "polygon"] },
   {
     id: "basic",
     kinds: [
@@ -115,6 +115,8 @@ export function insertPicture(kind: InsertKind): string {
     case "connector":
       return `${svgOpen}<rect x="2" y="3" width="9" height="7" rx="1.5"/><rect x="21" y="14" width="9" height="7" rx="1.5"/>`
         + '<path class="is-stroke" d="M11 6.5h5v11h2.5"/><path class="is-ink" d="M21 17.5l-3.4-2v4z"/></svg>';
+    case "polygon":
+      return `${svgOpen}<path d="M5 15.5 11 4l9.5 3.5L27 16l-11 4.5Z"/></svg>`;
     default: {
       const usual = shapeSize(kind);
       const scale = Math.min(26 / usual.width, 18 / usual.height);
@@ -359,6 +361,8 @@ export interface Placement {
   y1?: number;
   x2?: number;
   y2?: number;
+  /** A polygon's corners, measured from its top-left corner. */
+  points?: Array<[number, number]>;
 }
 
 const integer = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? Math.round(value) : 0);
@@ -372,6 +376,10 @@ export function placementCode(placement: Placement): { code: string; select?: [n
   }
   const label = JSON.stringify(t.insert.placeholder);
   const position = `.position({ x: ${integer(placement.x)}, y: ${integer(placement.y)} })`;
+  if (kind === "polygon") {
+    const corners = (placement.points ?? []).map(([x, y]) => `[${integer(x)}, ${integer(y)}]`).join(", ");
+    return { code: `polygon([${corners}])${position};` };
+  }
   if (isPlaceholderKind(kind)) {
     const role = kind.slice("placeholder-".length);
     const head = role === "body" ? "placeholder()" : `placeholder(${JSON.stringify(role)})`;

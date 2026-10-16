@@ -49,6 +49,7 @@ const documentedFunctions = [
   "rect",
   "circle",
   "shape",
+  "polygon",
   "line",
   "table",
   "chart",

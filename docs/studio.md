@@ -190,11 +190,12 @@ The same content is a snippet in the editor. At the start of a line, type the co
 
 ## Drawing objects
 
-The right side of **Insert**'s gallery draws objects onto the slide in the preview, as a drawing program does: a text box, a line, an arrow, a connector, and every [shape](shapes.md).
+The right side of **Insert**'s gallery draws objects onto the slide in the preview, as a drawing program does: a text box, a line, an arrow, a connector, a polygon, and every [shape](shapes.md).
 
 - Pick a shape or a text box, then drag across the slide to draw it, or click to place one at its usual size. `Shift` keeps a shape square; a circle always is.
 - Pick a line or an arrow, then drag from where it starts to where it ends. `Shift` holds it to steps of 45°.
 - Pick a connector, then drag from one object to another. An object without a name gets one, written as `.as("shape1")` at the end of its command, and the connector is written after the later of the two as `line().from("shape1").to("box1").arrow()`, so it follows them wherever they move.
+- Pick a polygon, then click on the slide for each of its corners. A double-click, `Enter`, or a click on the first corner finishes it, and it is written as `polygon([[0, 0], [120, 0], [120, 90]]).position({ x, y })`, its corners counted from its top-left. `Backspace` takes back the last corner, and `Shift` holds an edge to steps of 45°.
 - `Esc` puts the tool down without writing anything.
 
 The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected in the editor, ready to be typed over. Layout editing turns on, so the new object can be dragged and resized at once. Each drawing is one step in the editor's history.

@@ -81,10 +81,49 @@ export function isShapeKind(value: unknown): value is ShapeKind {
   return typeof value === "string" && Object.hasOwn(shapeInfo, value);
 }
 
-/** The size a shape of this kind takes when its command states none. */
-export function shapeSize(kind: ShapeKind): { width: number; height: number } {
+/** An outline shape() draws by its kind, or "polygon", which polygon() draws through its corners. */
+export type OutlineKind = ShapeKind | "polygon";
+
+/** A polygon's corners, in pixels from any origin; the outline fills its box. */
+export type PolygonPoints = Array<[number, number]>;
+
+/** The box a polygon's corners span. */
+function polygonExtent(points: PolygonPoints): { left: number; top: number; width: number; height: number } {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  return { left, top, width: Math.max(...xs) - left, height: Math.max(...ys) - top };
+}
+
+/**
+ * The size a shape of this kind takes when its command states none. A polygon is as large as the
+ * corners it was given span.
+ */
+export function shapeSize(kind: OutlineKind, points?: PolygonPoints): { width: number; height: number } {
+  if (kind === "polygon") {
+    const extent = points && points.length > 0 ? polygonExtent(points) : { width: 1, height: 1 };
+    return { width: Math.max(extent.width, 1), height: Math.max(extent.height, 1) };
+  }
   const { width, height } = shapeInfo[kind];
   return { width, height };
+}
+
+/**
+ * Whether a value is a list of at least three [x, y] corners that span some width and some
+ * height, which is what polygon() can draw.
+ */
+export function polygonProblem(points: unknown): string | undefined {
+  if (!Array.isArray(points)) return "polygon() expects its corners as a list of [x, y] pairs, such as [[0, 0], [120, 40], [0, 80]]";
+  for (const [index, point] of points.entries()) {
+    if (!Array.isArray(point) || point.length !== 2 || !point.every((value) => typeof value === "number" && Number.isFinite(value))) {
+      return `polygon() expects every corner as an [x, y] pair of numbers; corner ${index + 1} is ${JSON.stringify(point)}`;
+    }
+  }
+  if (points.length < 3) return `polygon() needs at least three corners, not ${points.length}`;
+  const extent = polygonExtent(points as PolygonPoints);
+  if (extent.width === 0 || extent.height === 0) return "polygon() needs corners that span some width and some height, not a single line";
+  return undefined;
 }
 
 /** The PowerPoint preset that draws the same outline. */
@@ -293,13 +332,15 @@ export interface ShapeOptions {
   strokeWidth?: number;
   /** Corner radius of a rect or rounded rect. */
   radius?: number;
+  /** A polygon's corners, stretched so that they span the box. */
+  points?: PolygonPoints;
 }
 
 /**
  * The outline of a shape filling a box of the given size, with its label's room. Proportions
  * follow PowerPoint's preset shapes, so an exported shape keeps its look.
  */
-export function shapeGeometry(kind: ShapeKind, width: number, height: number, options: ShapeOptions = {}): ShapeGeometry {
+export function shapeGeometry(kind: OutlineKind, width: number, height: number, options: ShapeOptions = {}): ShapeGeometry {
   const inset = Math.max(options.strokeWidth ?? 0, 0) / 2;
   const x0 = inset;
   const y0 = inset;
@@ -485,6 +526,16 @@ export function shapeGeometry(kind: ShapeKind, width: number, height: number, op
       room = vertical
         ? [0.25, (kind === "arrow-up" ? length - end : start) / length, 0.75, (kind === "arrow-up" ? length - start : end) / length]
         : [(kind === "arrow-left" ? length - end : start) / length, 0.25, (kind === "arrow-left" ? length - start : end) / length, 0.75];
+      break;
+    }
+    case "polygon": {
+      // The corners keep their proportions to one another and stretch to fill the box.
+      const points = options.points ?? [[0, 0], [1, 0], [1, 1], [0, 1]];
+      const extent = polygonExtent(points);
+      path.polygon(points.map(([x, y]) => [
+        x0 + (extent.width > 0 ? ((x - extent.left) / extent.width) * w : 0),
+        y0 + (extent.height > 0 ? ((y - extent.top) / extent.height) * h : 0),
+      ]));
       break;
     }
   }

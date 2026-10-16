@@ -1078,12 +1078,13 @@ function typstOutline(segments, fill, stroke, context) {
 async function serializeVectorShape(node, context) {
   const styles = node.styles ?? {};
   const kind = node.props?.kind;
+  const points = kind === "polygon" ? node.props?.points : undefined;
   const paint = node.props?.paint ?? {};
-  const defaults = shapeSize(kind);
+  const defaults = shapeSize(kind, points);
   const width = pixelValue(styles.width) ?? defaults.width;
   const height = pixelValue(styles.height) ?? (kind === "circle" ? width : defaults.height);
   const strokeWidth = pixelValue(node.props?.strokeWidth) ?? 2;
-  const geometry = shapeGeometry(kind, width, height, { strokeWidth, radius: pixelValue(styles.borderRadius) });
+  const geometry = shapeGeometry(kind, width, height, { strokeWidth, radius: pixelValue(styles.borderRadius), points });
   const fill = cssColor(node.props?.fill ?? paint.fill ?? context.theme.colors.surface, context) ?? "none";
   const strokeColor = cssColor(node.props?.stroke ?? paint.stroke ?? context.theme.colors.border, context);
   const thickness = length(`${strokeWidth}px`, context) ?? "1.5pt";

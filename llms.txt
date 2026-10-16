@@ -68,7 +68,7 @@ Presentation: `presentation(options)`, with `size: "A0" | "A4" | "letter" | "36x
 
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`, `note(content)`
 
-Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `shape(kind, label)`, `rect()`, `circle()`, `line()`, `spacer()`, `table(rows)`, `chart(kind, data)`, `qr(text)`, `icon(name)`
+Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `shape(kind, label)`, `polygon(points, label)`, `rect()`, `circle()`, `line()`, `spacer()`, `table(rows)`, `chart(kind, data)`, `qr(text)`, `icon(name)`
 Citations: `presentation({ bibliography })` with `import bibliography from "./references.bib"` (never name the import `references`), `cite(...keys)` returns a marker to write into text, `footnote(text)` returns a superscript marker, `references()` lists every cited work
 Diagram references: `.as(name)`, `.rightOf()`, `.leftOf()`, `.above()`, `.below()`, `.centerOn()`, `.alignTop()`, `.alignLeft()`, `line().from(ref)`, `line().to(ref)`
 Diagram styling: `.tone(color, "soft" | "solid" | "outline")`, `.shadow()`, `.dashed()` on shapes; `.route("elbow" | "curve")`, `.label(text)`, `.dashed()` on connectors
@@ -185,7 +185,7 @@ line().from("enc").to("dec").arrow("end");
 
 Write the connectors inside the same container. A resolved row or column needs an explicit `gap()` and children with known sizes; `wrap()`, `grow()`, and text of unknown height are refused with an error.
 
-Names are unique per slide and may be referenced before they are defined. `from()` and `to()` accept an anchor, such as `"enc.right"` or `"enc.bottom-left"`; without one FrameSeq uses the facing edges. Referenced objects must sit on the same canvas and have a resolvable box: `rect()` defaults to 240 by 96, `circle()` to 160 by 160, and each `shape()` kind has a usual size of its own.
+Names are unique per slide and may be referenced before they are defined. `from()` and `to()` accept an anchor, such as `"enc.right"` or `"enc.bottom-left"`; without one FrameSeq uses the facing edges. Referenced objects must sit on the same canvas and have a resolvable box: `rect()` defaults to 240 by 96, `circle()` to 160 by 160, each `shape()` kind has a usual size of its own, and a `polygon()` is as large as its corners span.
 
 ## Diagrams that look good
 
@@ -196,6 +196,8 @@ Draw diagram nodes with `shape(kind, label)` rather than plain rectangles. Choos
 - Arrows and steps: `chevron` and `step` (stages of a process), `arrow-right`, `arrow-left`, `arrow-up`, `arrow-down`, `arrow-both`
 
 A `pill` starts or ends a flow, a `diamond` is a decision, a `parallelogram` is input or output. Each kind has a usual size of about 200 by 120 that `.width()` and `.height()` replace; a shape does not grow with its label, so keep labels to one to three words or make the shape larger.
+
+When no kind fits, such as an encoder that narrows from one side to the other, draw the outline with `polygon(points, label)`: its corners are `[x, y]` pixels in order around it, it is as large as they span, and it takes `.tone()`, `.position()`, and names like any shape. A `rect()` with no label has no padding, so `rect().width(30).height(30)` stays 30 pixels square, which suits cells and swatches.
 
 Colour each shape with `.tone(color, style)`. `color` is `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or a CSS colour; `style` is `"soft"` (a tint with a darker label, the default), `"solid"`, or `"outline"`. Tints follow the theme, light or dark, so do not hand-pick fills and label colours. `.shadow()` lifts a shape and `.dashed()` marks it optional.
 

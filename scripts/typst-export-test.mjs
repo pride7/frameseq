@@ -58,6 +58,12 @@ assert.match(source, /#polygon\(fill: rgb\("#[0-9a-f]{6}"\), stroke: \(paint: rg
 assert.match(source, /#curve\(fill: rgb\("#[0-9a-f]{6}"\), stroke: [^\n]*curve\.cubic\(/);
 assert.match(source, /curve\.close\(mode: "straight"\)/);
 assert.match(source, /weight: "semibold", fill: rgb\("#[0-9a-f]{6}"\), size: [\d.]+pt\)\[#text\("Valid\?"\)\]/);
+// A polygon is a polygon through its own corners, with its label over it.
+const gate = source.match(/#polygon\(([^\]]*)\)\]#place\(top \+ left, dx: [^\n]*?#text\("Gate"\)/);
+assert.ok(gate, "the polygon is drawn with its label");
+assert.equal(gate[1].match(/\(-?[\d.]+pt, -?[\d.]+pt\)/g)?.length, 4);
+// A dashed rect stays dashed.
+assert.match(source, /#rect\([^\n]*stroke: \(paint: rgb\("#d97706"\), thickness: [\d.]+pt, dash: "dashed"\)/);
 // A named elbow connector is resolved before export, with its label on the background.
 assert.match(source, /#curve\(stroke: \(paint: [^\n]*curve\.move\([^\n]*curve\.line\(/);
 assert.match(source, /\[#text\("yes"\)\]/);

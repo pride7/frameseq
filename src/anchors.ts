@@ -5,7 +5,7 @@ import type {
   PlacementStep,
   SourceSpan,
 } from "./core";
-import { isShapeKind, routeConnector, shapeSize, type LineRoute, type RouteBox } from "./shapes";
+import { isShapeKind, routeConnector, shapeSize, type LineRoute, type PolygonPoints, type RouteBox } from "./shapes";
 
 /** One reference that could not be resolved, with the command that wrote it when it is known. */
 export interface DocumentProblem {
@@ -158,6 +158,11 @@ function gapOf(node: FrameSeqNode): { row?: number; column?: number } {
 
 function sizeOf(node: FrameSeqNode): { width?: number; height?: number } {
   // A shape() has a size of its own kind, and states it exactly: no stylesheet minimum applies.
+  // A polygon() is as large as its corners span.
+  if (node.type === "shape" && node.props.kind === "polygon") {
+    const defaults = shapeSize("polygon", node.props.points as PolygonPoints);
+    return { width: cssNumber(node.styles.width) ?? defaults.width, height: cssNumber(node.styles.height) ?? defaults.height };
+  }
   if (node.type === "shape" && isShapeKind(node.props.kind)) {
     const defaults = shapeSize(node.props.kind);
     const width = cssNumber(node.styles.width) ?? defaults.width;
