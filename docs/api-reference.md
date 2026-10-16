@@ -422,6 +422,25 @@ polygon(points: PolygonPoints, label?: string): ShapeBuilder
 
 Adds a diagram shape drawn through its own corners, given as `[x, y]` pixels from any origin in order around the outline. Its size is the box the corners span, which `width()` and `height()` stretch; it needs at least three corners that span some width and some height. Its label is centred in that box and supports inline math. It takes every `ShapeBuilder` modifier, exports to PowerPoint as an editable freeform through the same corners, and to Typst as a `polygon`.
 
+### `cells(values)`
+
+```ts
+type CellValue = number | string | null;
+
+cells(values: CellValue[] | CellValue[][]): CellsBuilder
+```
+
+Adds a row of equal cells from a list of values, or a grid from rows of the same length. A number from 0 to 1 shades its cell in the tone, from a faint tint to the full colour; words sit in a faint tint of the tone, or in grey without one; `null` is a masked cell. The set is one grid container as large as its cells, and each cell is a `rect()`.
+
+```ts
+tone(color: ToneName | string): this                 // "accent" unless set
+cell(width: number, height?: number): this           // 32 x 32 unless set
+gap(pixels: number): this                            // 4 unless set
+labels(words: string[] | string[][] | ((row: number, column: number) => string)): this
+size(pixels: number): this                           // the labels' size
+framed(enabled?: boolean): this                      // a rounded frame around the cells
+```
+
 ### `junction(sign?)`
 
 ```ts

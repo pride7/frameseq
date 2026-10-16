@@ -1,4 +1,7 @@
 import {
+  Cells,
+  CellsBuilder,
+  type CellValue,
   Circle,
   Code,
   Column,
@@ -590,6 +593,18 @@ export function polygon(points: PolygonPoints, label = ""): ShapeBuilder {
  */
 export function junction(sign = ""): ShapeBuilder {
   return attach(Junction(sign).className("frameseq-semantic-shape"));
+}
+
+/**
+ * Add a row of equal cells from a list of values, or a grid of them from rows: a number from 0
+ * to 1 shades its cell in the tone, from a faint tint to the full colour; words are written in
+ * a neutral cell; null is a masked cell. Use it for tokens, embeddings, codes, attention masks,
+ * and similarity matrices.
+ * @example cells([0.3, 0.9, 0.1, 0.6]).tone("amber").as("codes").position({ x: 340, y: 380 });
+ * @example cells(Array.from({ length: 4 }, (_, r) => Array.from({ length: 4 }, (_, c) => (r === c ? 1 : 0.1)))).tone("indigo").cell(72);
+ */
+export function cells(values: CellValue[] | CellValue[][]): CellsBuilder {
+  return attach(Cells(values).className("frameseq-semantic-cells"));
 }
 
 /** Add a canvas-relative vector line or connector. Omit the points when using from()/to(). */

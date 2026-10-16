@@ -24,6 +24,7 @@ const screenWidthPoints = 960;
 const semanticClasses = new Set([
   "frameseq-auto-title-page",
   "frameseq-panel-title",
+  "frameseq-semantic-cells",
   "frameseq-body-copy",
   "frameseq-caption",
   "frameseq-card",
@@ -1032,7 +1033,14 @@ async function serializeShape(node, context) {
     radius: node.type === "rect" ? context.theme.radii.medium : undefined,
     width: node.type === "circle" ? "120px" : "240px",
   });
-  const label = inlineContent(node.props?.label ?? "");
+  // The label takes the box's type, as the browser sets it: 24 px and semibold unless restyled.
+  const text = String(node.props?.label ?? "");
+  const textArguments = [`weight: ${weight(styles.fontWeight) ?? "\"semibold\""}`];
+  const textColor = cssColor(styles.color ?? paint?.text ?? context.theme.colors.foreground, context);
+  if (textColor && textColor !== "none") textArguments.push(`fill: ${textColor}`);
+  const size = length(styles.fontSize ?? "24px", context);
+  if (size) textArguments.push(`size: ${size}`);
+  const label = text ? `#text(${textArguments.join(", ")})[${inlineContent(text)}]` : "";
   const element = node.type === "circle" ? "circle" : "rect";
   let result = `#${element}(${joinArguments(args)})[#align(center + horizon)[${label}]]`;
   const rotate = styles.transform?.match(/rotate\(\s*(-?[\d.]+)deg\s*\)/i)?.[1];

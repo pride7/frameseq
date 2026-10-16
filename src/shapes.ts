@@ -702,13 +702,55 @@ export function tonePaint(colors: Pick<ThemeColors, "background" | "foreground" 
   }
 }
 
+/** How strongly a cell of cells() is shaded in its colour, or null for a masked cell. */
+export interface ShadeSpec {
+  color: string;
+  amount: number | null;
+}
+
+/**
+ * Paint for a cell shaded `amount` of the way from a faint tint of the colour to the colour
+ * itself, against the theme, with a label that reads on it; a masked cell, with no amount, is
+ * a faint grey. A colour this module cannot read, such as a CSS variable, is a soft tone.
+ */
+export function shadePaint(colors: Pick<ThemeColors, "background" | "foreground" | "accent">, shade: ShadeSpec): ShapePaint {
+  const background = parseColor(colors.background) ?? [255, 255, 255];
+  const dark = luminance(background) < 0.35;
+  if (shade.amount === null) {
+    const gray = parseColor(toneHues.gray) as Rgb;
+    return {
+      fill: hex(mix(gray, background, dark ? 0.12 : 0.05)),
+      stroke: hex(mix(gray, background, dark ? 0.3 : 0.16)),
+      text: hex(mix(gray, background, 0.8)),
+      shade: hex(mix(gray, background, 0.1)),
+    };
+  }
+  const named = shade.color === "accent" ? colors.accent : toneHues[shade.color as Exclude<ToneName, "accent">];
+  const base = parseColor(named ?? shade.color);
+  if (!base) return tonePaint(colors, { color: shade.color, style: "soft" });
+  const color = dark ? mix([255, 255, 255], base, 0.18) : base;
+  const strength = 0.1 + 0.9 * Math.min(Math.max(shade.amount, 0), 1);
+  const fill = mix(color, background, strength);
+  const foreground = parseColor(colors.foreground) ?? (dark ? [248, 250, 252] : [17, 24, 39]);
+  const onFill = luminance(fill) > 0.4 ? mix(color, [17, 24, 39], 0.25) : [255, 255, 255] as Rgb;
+  return {
+    fill: hex(fill),
+    stroke: hex(mix(color, background, Math.min(strength + 0.2, 1))),
+    text: hex(strength < 0.3 ? mix(color, foreground, 0.42) : onFill),
+    shade: hex(fill),
+  };
+}
+
 /** Walk every slide and give each shape the paint its tone has against the theme. */
 export function resolveShapePaint(root: FrameSeqNode): void {
   const theme = root.props.theme as { colors?: ThemeColors } | undefined;
   const colors = theme?.colors ?? { background: "#ffffff", foreground: "#111827", accent: "#2563eb" };
   const visit = (node: FrameSeqNode): void => {
     const tone = node.props.tone as ToneSpec | undefined;
-    if (tone || node.type === "shape") {
+    const shade = node.props.shade as ShadeSpec | undefined;
+    if (shade) {
+      node.props.paint = shadePaint(colors, shade);
+    } else if (tone || node.type === "shape") {
       node.props.paint = tonePaint(colors, tone ?? { color: "accent", style: "soft" });
     }
     for (const child of node.children) visit(child);

@@ -129,6 +129,10 @@ assert.ok(stops, "the connector through stops is exported");
 assert.match(stops, /<a:custGeom>/);
 assert.equal(stops.match(/<a:lnTo>/g)?.length, 3);
 assert.match(stops, /<a:tailEnd type="triangle"\/>/);
+// Each cell of cells() is a rectangle of its own, shaded by its value.
+assert.match(shapesSlide, /<a:srgbClr val="123ABC"\/>/i);
+// A box whose label is math travels as a picture, never as the math's hidden text.
+assert.doesNotMatch(shapesSlide, /x\^\{2\}|\u200b/);
 // A panel's outline is a shape of its own, and its tag and title stay editable text.
 assert.match(shapesSlide, />\(b\)</);
 assert.match(shapesSlide, />Generator</);

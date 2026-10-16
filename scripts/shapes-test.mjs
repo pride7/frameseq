@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   at,
+  cells,
   connectorMidpoint,
   junction,
   line,
@@ -12,6 +13,7 @@ import {
   resolveShapePaint,
   routeConnector,
   routeThrough,
+  shadePaint,
   shape,
   shapeGeometry,
   shapeKinds,
@@ -265,6 +267,49 @@ import {
   assert.equal(tagged.node.styles.position, "absolute", "a panel placed with position() keeps its place");
 }
 
+// cells() draws a row or a grid of equal cells: numbers shade them, words label them, and null
+// masks them. The whole set is one object, as large as its cells and gaps.
+{
+  const document = presentation("Cells");
+  slide("Figure").canvas();
+  const strip = cells([0.2, 0.9, null, "cls"]).as("strip").position({ x: 0, y: 0 });
+  assert.equal(strip.node.styles.display, "grid");
+  assert.equal(strip.node.styles.gridTemplateColumns, "32px 32px 32px 32px");
+  assert.equal(strip.node.styles.width, "140px");
+  assert.equal(strip.node.styles.height, "32px");
+  assert.deepEqual(strip.node.children.map((cell) => cell.props.shade), [
+    { color: "accent", amount: 0.2 },
+    { color: "accent", amount: 0.9 },
+    { color: "accent", amount: null },
+    { color: "gray", amount: 0.06 },
+  ]);
+  assert.equal(strip.node.children[3].props.label, "cls");
+  // A tone, a size, a gap, labels, and a frame redraw the same cells.
+  const grid = cells([[1, 0.1], [0.1, 1]]).tone("indigo").cell(76, 60).gap(0).labels((r, c) => `${r}${c}`).framed()
+    .as("grid").position({ x: 300, y: 0 });
+  assert.equal(grid.node.children.length, 4);
+  assert.equal(grid.node.styles.gridTemplateColumns, "76px 76px");
+  assert.equal(grid.node.styles.width, "166px", "two cells, no gap, and the frame's padding and border on each side");
+  assert.equal(grid.node.styles.borderStyle, "solid");
+  assert.deepEqual(grid.node.children.map((cell) => cell.props.label), ["00", "01", "10", "11"]);
+  assert.deepEqual(grid.node.children[0].props.shade, { color: "indigo", amount: 1 });
+  assert.equal(grid.node.children[0].styles.height, "60px");
+  assert.equal(grid.node.children[0].styles.fontSize, "18px");
+  // Connectors reach the set as a whole.
+  const link = line().from("strip").to("grid");
+  resolveAnchors(document.node);
+  resolveShapePaint(document.node);
+  assert.equal(link.node.props.x1, 140);
+  assert.equal(link.node.props.x2, 300);
+  // A larger amount is a deeper shade, with a label that reads on it; a masked cell is grey.
+  const brightness = (hex) => [1, 3, 5].reduce((sum, at) => sum + Number.parseInt(hex.slice(at, at + 2), 16), 0);
+  const faint = shadePaint(themes.blank.colors, { color: "amber", amount: 0.1 });
+  const deep = shadePaint(themes.blank.colors, { color: "amber", amount: 1 });
+  assert.ok(brightness(faint.fill) > brightness(deep.fill), "more is deeper");
+  assert.equal(shadePaint(themes.blank.colors, { color: "indigo", amount: 1 }).text, "#ffffff");
+  assert.ok(strip.node.children[2].props.paint.fill.startsWith("#"), "a masked cell is painted");
+}
+
 // Mistakes are reported in words that say what to write instead.
 {
   presentation("Errors");
@@ -277,6 +322,10 @@ import {
   assert.throws(() => polygon([[0, 0], [50, 0], [100, 0]]), /span some width and some height/);
   assert.throws(() => line().via([1, "2"]), /via\(\) expects names, such as "split", or \[x, y\] pairs of numbers; stop 1 is \[1,"2"\]/);
   assert.throws(() => line().via("split.middle"), /via\(\) does not know the anchor "middle"/);
+  assert.throws(() => cells([]), /cells\(\) expects a list of values/);
+  assert.throws(() => cells([[0.1, 0.2], [0.3]]), /cells\(\) expects rows of the same length; row 2 has 1, not 2/);
+  assert.throws(() => cells([0.1, true]), /cells\(\) takes numbers from 0 to 1, words, or null; row 1, cell 2 is true/);
+  assert.throws(() => cells([0.5]).cell(0), /cells\(\)\.cell\(\) expects a positive width and height/);
   const curved = presentation("Curve");
   slide("Curve").canvas();
   rect("A").as("a").position({ x: 0, y: 0 });

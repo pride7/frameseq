@@ -1012,6 +1012,23 @@ line({ x1: 320, y1: 190, x2: 520, y2: 190 })
 
 **Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, `.to()`, `.via(...stops)`, `.route("straight" | "elbow" | "curve")`, `.label(text)`, and `.dashed()`. An elbow route turns at right angles and keeps clear of the other objects on the canvas; `.via()` runs the connector through named objects or `[x, y]` points on the way; a label sits halfway along the connector.
 
+### `cells()`
+
+Creates a row of equal cells from a list of values, or a grid from rows: tokens, embeddings, codes, attention masks, and similarity matrices. A number from 0 to 1 shades its cell, words label it, and `null` masks it.
+
+```ts
+cells([0.3, 0.9, 0.1, 0.6]).tone("amber").framed().as("codes").position({ x: 80, y: 360 });
+cells([[1, 0.1], [0.1, 1]]).tone("indigo").cell(76).labels((r, c) => `$I_${r + 1} \\cdot T_${c + 1}$`);
+```
+
+**Signature** `cells(values) → CellsBuilder`
+
+**Parameters**
+
+- `values` — `Array<number | string | null>` for a row, or rows of them of the same length, required. Numbers run from 0 to 1.
+
+**Returns** `CellsBuilder`, which provides `.tone(color)`, `.cell(width, height)`, `.gap(pixels)`, `.labels(words)`, `.size(pixels)`, and `.framed()`, besides placement and naming; connectors reach the set as a whole.
+
 ### `junction()`
 
 Creates the point where connectors meet or split, such as the place a skip connection leaves the main path, or, with a sign, the small round operator where streams are added or multiplied.

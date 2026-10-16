@@ -47,6 +47,24 @@ The corners are `[x, y]` pixels, measured from any origin, in order around the o
 
 In every other respect a polygon is a shape: `tone()`, `fill()`, `stroke()`, `dashed()`, and `shadow()` paint it, its label is centred in its box, and connectors meet the edges of that box.
 
+## Cells
+
+Figures about models are full of equal cells: tokens, embeddings, codes, attention masks, and similarity matrices. `cells(values)` draws a row of them from a list, or a grid from rows:
+
+```ts
+cells([0.3, 0.9, 0.1, 0.6]).tone("amber").framed().as("codes").position({ x: 80, y: 360 });
+cells(["Madison", "Square", "Garden"]).cell(110, 40).position({ x: 80, y: 500 });
+
+const pairs = [[1, 0.1, 0.1], [0.1, 1, 0.1], [0.1, 0.1, 1]];
+cells(pairs).tone("indigo").cell(76).labels((r, c) => `$I_${r + 1} \\cdot T_${c + 1}$`).as("similarity");
+```
+
+- A number from 0 to 1 shades its cell in the tone, from a faint tint to the full colour, with a label that reads on it.
+- Words are written in a cell of a faint tint of the tone, or of grey when no tone is set.
+- `null` is a masked cell, a faint grey, as in an attention mask.
+
+`tone()` takes the same colours as a shape's, `"accent"` unless set; `cell(width, height)` sizes each cell, 32 pixels square by default; `gap()` sets the space between them, 4 pixels unless set, and 0 makes them touch; `labels()` writes words in the cells from rows of words or a function of the row and column; `size()` sets those words' size; and `framed()` draws a rounded frame around the cells, as around a sequence of tokens. Rows must be the same length. The whole set is one object, as large as its cells, so it is named, placed, and connected like a shape, and each cell exports to PowerPoint as a rectangle of its own.
+
 ## Colour with `tone()`
 
 One colour paints a whole shape: its fill, its outline, and its label.

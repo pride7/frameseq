@@ -174,6 +174,7 @@ const documentCommands = [
   "shape",
   "polygon",
   "junction",
+  "cells",
   "line",
   "bullets",
   "steps",

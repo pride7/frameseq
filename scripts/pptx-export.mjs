@@ -699,7 +699,8 @@ async function captureSlides(page) {
         let kind;
         if (listMarker) kind = "marker";
         else if (nodeType === "line") kind = "line";
-        else if (nodeType === "rect" || nodeType === "circle") kind = "shape";
+        // A label with math in it has no native equivalent, so it travels as a picture.
+        else if (nodeType === "rect" || nodeType === "circle") kind = element.querySelector(".frameseq-inline-math") ? "raster" : "shape";
         // A shape() label with math in it has no native equivalent, so it travels as a picture.
         else if (nodeType === "shape") kind = element.querySelector(".frameseq-inline-math") ? "raster" : "vshape";
         // A table becomes an editable table unless math in a cell needs the picture of it.

@@ -68,6 +68,10 @@ assert.match(source, /#curve\(stroke: \(paint: rgb\("#123456"\)[^\n]*?(?:curve\.
 // back by its padding, since Typst places from inside the inset and the browser from outside it.
 assert.match(source, /#text\("\(a\)"\)[^\n]*#text\("Encoder layer"\)/);
 assert.match(source, /#place\(top \+ left, dx: -[\d.]+pt, dy: -[\d.]+pt\)\[#place\(top \+ left, dx: [\d.]+pt, dy: [\d.]+pt\)\[#rect\([^\n]*Inside/);
+// A box's label takes its type: its weight, its colour, and its size.
+assert.match(source, /#rect\([^\n]*\)\[#align\(center \+ horizon\)\[#text\(weight: "semibold", fill: rgb\("#[0-9a-f]{6}"\), size: [\d.]+pt\)\[#text\("Input"\)\]\]\]/);
+// cells() is a grid of shaded boxes.
+assert.match(source, /#grid\(columns: \([\d.]+pt, [\d.]+pt, [\d.]+pt,\)/);
 // A dashed rect stays dashed.
 assert.match(source, /#rect\([^\n]*stroke: \(paint: rgb\("#d97706"\), thickness: [\d.]+pt, dash: "dashed"\)/);
 // A named elbow connector is resolved before export, with its label on the background.

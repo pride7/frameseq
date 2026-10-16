@@ -22,6 +22,7 @@ declare global {
   const shape: typeof import("./script").shape;
   const polygon: typeof import("./script").polygon;
   const junction: typeof import("./script").junction;
+  const cells: typeof import("./script").cells;
   const line: typeof import("./script").line;
   const bullets: typeof import("./script").bullets;
   const steps: typeof import("./script").steps;

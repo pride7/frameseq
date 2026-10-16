@@ -12,4 +12,6 @@ line().from("encoder").via("split", [1150, 600]).to("store").stroke("#123456").a
 line().from("cached").to("store").route("elbow").arrow().label("yes");
 line().from("net").to("store").route("curve").arrow().dashed();
 line().from("cached").to("start").arrow();
+cells([0.1, 1]).tone("#123abc").cell(40).position({ x: 900, y: 40 });
+rect("$x^2$").position({ x: 960, y: 120 }).width(80).height(50);
 at("panel").panel("(b) Generator").canvas().position({ x: 40, y: 500 }).width(300).height(180);

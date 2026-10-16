@@ -529,7 +529,7 @@ class ObjectItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon(
       object.type === "text" ? "symbol-string"
         : (object.type === "image" ? "file-media"
-          : (["rect", "circle", "shape", "polygon", "junction", "line"].includes(object.type) ? "symbol-structure" : "symbol-method")),
+          : (["rect", "circle", "shape", "polygon", "junction", "cells", "line"].includes(object.type) ? "symbol-structure" : "symbol-method")),
     );
     this.tooltip = new vscode.MarkdownString([
       `**${object.type}**${label ? ` — ${label}` : ""}`,

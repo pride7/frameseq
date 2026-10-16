@@ -1,5 +1,5 @@
 import { resolveTheme, type ThemeDefinition, type ThemeInput } from "./theme";
-import { attachNode } from "./node-tree";
+import { attachNode, detachNode } from "./node-tree";
 import type { Bibliography, CitationOptions } from "./citations";
 import { paperCanvasUnits, paperDimensions, type PaperDimensions, type PaperSize } from "./paper";
 import {
@@ -1082,6 +1082,159 @@ export function Junction(sign = ""): ShapeBuilder {
     Object.assign(item.styles, { width: "10px", background: "var(--frameseq-muted)", borderStyle: "none" });
   }
   return new ShapeBuilder(item);
+}
+
+/** What one cell of cells() shows: a shade from 0 to 1, words, or null for a masked cell. */
+export type CellValue = number | string | null;
+
+interface CellsLayout {
+  values: CellValue[][];
+  labels?: string[][];
+  /** The colour asked for with tone(); numbers are shaded in the accent, and words in grey, without one. */
+  tone?: string;
+  /** The labels' size asked for with size(); otherwise it follows the cells' size. */
+  fontSize?: number;
+  width: number;
+  height: number;
+  gap: number;
+  framed: boolean;
+}
+
+/** A row or a grid of equal cells, drawn from values: see cells(). */
+export class CellsBuilder extends ContainerBuilder {
+  private get layout(): CellsLayout {
+    return this.node.props.cells as CellsLayout;
+  }
+
+  /** Shade the cells in this colour: a tone such as "amber" or "blue", or any CSS colour. */
+  tone(color: ToneName | (string & {})): this {
+    if (typeof color !== "string" || !color.trim()) {
+      throw new Error(`cells().tone() expects a colour: one of ${toneNames.join(", ")}, or a CSS colour such as "#0f766e"`);
+    }
+    this.layout.tone = color.trim();
+    return this.draw();
+  }
+
+  /** Size each cell in pixels: one number for square cells, or a width and a height. */
+  cell(width: number, height = width): this {
+    if (!(width > 0) || !(height > 0)) throw new Error(`cells().cell() expects a positive width and height, not ${width} x ${height}`);
+    this.layout.width = width;
+    this.layout.height = height;
+    return this.draw();
+  }
+
+  /** Set the size of the words in the cells, in pixels. */
+  override size(value: Length): this {
+    const pixels = typeof value === "number" ? value : Number.parseFloat(String(value));
+    if (!(pixels > 0)) throw new Error(`cells().size() expects a positive size in pixels, not ${JSON.stringify(value)}`);
+    this.layout.fontSize = pixels;
+    return this.draw();
+  }
+
+  /** The space between the cells in pixels; 0 makes them touch. */
+  override gap(value: Length): this {
+    const pixels = typeof value === "number" ? value : Number.parseFloat(String(value));
+    if (!(pixels >= 0)) throw new Error(`cells().gap() expects pixels of 0 or more, not ${JSON.stringify(value)}`);
+    this.layout.gap = pixels;
+    return this.draw();
+  }
+
+  /**
+   * Write words in the cells, such as "$I_1 \cdot T_1$": a list for one row, rows of words, or
+   * a function of the row and column, counted from 0.
+   */
+  labels(words: string[] | string[][] | ((row: number, column: number) => string)): this {
+    const { values } = this.layout;
+    this.layout.labels = values.map((row, r) => row.map((_, c) => {
+      if (typeof words === "function") return String(words(r, c) ?? "");
+      const line = Array.isArray(words[0]) ? (words as string[][])[r] : values.length === 1 ? (words as string[]) : undefined;
+      return String(line?.[c] ?? "");
+    }));
+    return this.draw();
+  }
+
+  /** Draw a rounded frame around the cells, as around a sequence of tokens. */
+  framed(enabled = true): this {
+    this.layout.framed = enabled;
+    return this.draw();
+  }
+
+  /** Lay the cells out again from the values and the settings so far. */
+  draw(): this {
+    const { values, labels, tone, fontSize: asked, width, height, gap, framed } = this.layout;
+    const columns = values[0].length;
+    const inset = framed ? 7 : 0;
+    for (const child of [...this.node.children]) detachNode(child);
+    Object.assign(this.node.styles, {
+      display: "grid",
+      gridTemplateColumns: Array.from({ length: columns }, () => `${width}px`).join(" "),
+      gap: `${gap}px`,
+      width: `${columns * width + (columns - 1) * gap + inset * 2}px`,
+      height: `${values.length * height + (values.length - 1) * gap + inset * 2}px`,
+    });
+    if (framed) {
+      Object.assign(this.node.styles, {
+        padding: "5px",
+        borderWidth: "2px",
+        borderStyle: "solid",
+        borderColor: "var(--frameseq-border)",
+        borderRadius: "8px",
+      });
+    } else {
+      for (const property of ["padding", "borderWidth", "borderStyle", "borderColor", "borderRadius"]) delete this.node.styles[property];
+    }
+    const fontSize = asked ?? Math.max(8, Math.min(18, Math.round(height * 0.42)));
+    values.forEach((row, r) => row.forEach((value, c) => {
+      const label = labels?.[r]?.[c] || (typeof value === "string" ? value : "");
+      // A number is shaded by its value; words sit in a faint tint of the tone, or in grey.
+      const shade = typeof value === "number"
+        ? { color: tone ?? "accent", amount: value }
+        : typeof value === "string"
+          ? { color: tone ?? "gray", amount: tone ? 0.12 : 0.06 }
+          : { color: tone ?? "accent", amount: null };
+      const cell = node("rect", { label, shade });
+      Object.assign(cell.styles, {
+        width: `${width}px`,
+        height: `${height}px`,
+        minHeight: "0px",
+        padding: "0px",
+        borderWidth: "1px",
+        borderStyle: "solid",
+        borderRadius: `${Math.min(4, Math.round(Math.min(width, height) / 8))}px`,
+        fontSize: `${fontSize}px`,
+        fontWeight: "500",
+        lineHeight: "1",
+      });
+      attachNode(this.node, cell);
+    }));
+    return this;
+  }
+}
+
+/** A row of cells from a list of values, or a grid of them from rows: see cells(). */
+export function Cells(values: CellValue[] | CellValue[][]): CellsBuilder {
+  const valid = (value: unknown): boolean => value === null || typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("cells() expects a list of values, such as [0.2, 0.9, 0.5], or rows of them");
+  }
+  const rows = (Array.isArray(values[0]) ? values : [values]) as unknown[][];
+  for (const [r, row] of rows.entries()) {
+    if (!Array.isArray(row) || row.length === 0) throw new Error(`cells() expects every row to be a list of values; row ${r + 1} is ${JSON.stringify(row)}`);
+    if (row.length !== rows[0].length) throw new Error(`cells() expects rows of the same length; row ${r + 1} has ${row.length}, not ${rows[0].length}`);
+    const wrong = row.findIndex((value) => !valid(value));
+    if (wrong >= 0) {
+      throw new Error(`cells() takes numbers from 0 to 1, words, or null; row ${r + 1}, cell ${wrong + 1} is ${JSON.stringify(row[wrong])}`);
+    }
+  }
+  const item = node("column");
+  item.props.cells = {
+    values: rows.map((row) => [...row]) as CellValue[][],
+    width: 32,
+    height: 32,
+    gap: 4,
+    framed: false,
+  } satisfies CellsLayout;
+  return new CellsBuilder(item).draw();
 }
 
 export function Line(points: Partial<LinePoints> = {}): LineBuilder {

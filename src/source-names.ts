@@ -106,7 +106,7 @@ const placementModifiers = new Set(["rightOf", "leftOf", "above", "below", "cent
  */
 const knownCalls = new Set([
   "presentation", "figure", "slide", "master", "placeholder", "note", "text", "image", "code", "math", "typst", "typstFile",
-  "latex", "latexFile", "rect", "circle", "shape", "polygon", "junction", "line", "bullets", "steps", "metric", "spacer",
+  "latex", "latexFile", "rect", "circle", "shape", "polygon", "junction", "cells", "line", "bullets", "steps", "metric", "spacer",
   "group", "ref", "card", "gridSection", "main", "left", "right", "cell", "at", "gap",
   "table", "chart", "qr", "icon", "cite", "footnote", "references", "poster",
   "px", "pt", "mm", "rem", "percent", "vw", "vh", "defineTheme",
@@ -832,7 +832,7 @@ export function inlineFormulas(text: string): TextSpan[] {
 /** Commands whose strings are words a slide shows, where `$...$` renders as math. */
 const wordCommands = new Set([
   "presentation", "slide", "title", "subtitle", "eyebrow", "author", "text", "lead", "caption",
-  "quote", "bullets", "steps", "card", "metric", "footnote", "rect", "circle", "shape", "polygon", "junction", "table",
+  "quote", "bullets", "steps", "card", "metric", "footnote", "rect", "circle", "shape", "polygon", "junction", "cells", "table",
 ]);
 /** Commands whose string is one formula from end to end. */
 const formulaCommands = new Set(["math"]);
