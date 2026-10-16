@@ -33,7 +33,8 @@ async function modulePath(path) {
   throw new Error(`Cannot find the imported file: ${path}`);
 }
 
-const scripts = new Set([".ts", ".js", ".mjs"]);
+// An .fsq presentation is TypeScript under FrameSeq's own extension.
+const scripts = new Set([".ts", ".fsq", ".js", ".mjs"]);
 const assets = new Set([".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".bmp", ".woff", ".woff2", ".ttf"]);
 
 /** Compile a document on the device with TypeScript's JavaScript compiler, without native tools. */

@@ -186,7 +186,12 @@ try {
   assert.equal(session.entry, second);
   const created = await call("POST", "files/create", { title: "新建文稿", folder: documents, template: "blank", language: "zh" });
   assert.equal(created.data.ok, true);
-  await waitFor(async () => (await (await fetch(`${origin}/__frameseq/studio/session`)).json()).name === "新建文稿.slides.ts", "creating another presentation");
+  await waitFor(async () => (await (await fetch(`${origin}/__frameseq/studio/session`)).json()).name === "新建文稿.fsq", "creating another presentation");
+  // A new presentation is an .fsq file, which this edition compiles as TypeScript too.
+  await waitFor(async () => {
+    const frame = page.frames().find((item) => /frameseq-preview=studio(?:#|$)/.test(item.url()));
+    return frame?.evaluate(() => document.querySelector(".frameseq-slide")?.textContent.includes("新建文稿")).catch(() => false);
+  }, "the new .fsq presentation to render");
   const fatal = failures.filter((message) => !/Execution context|detached Frame/.test(message));
   assert.deepEqual(fatal, [], `Browser errors: ${fatal.join("\n")}`);
   console.log("✓ Template cover, opening another file and creating a presentation");

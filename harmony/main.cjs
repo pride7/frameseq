@@ -110,7 +110,7 @@ app.whenReady().then(async () => {
   const example = join(documents, "Welcome.slides.ts");
   try { await copyFile(join(__dirname, "examples/welcome.slides.ts"), example, require("node:fs").constants.COPYFILE_EXCL); }
   catch (error) { if (error.code !== "EEXIST") throw error; }
-  const argument = process.argv.slice(app.isPackaged ? 1 : 2).find((value) => !value.startsWith("-") && value.endsWith(".ts"));
+  const argument = process.argv.slice(app.isPackaged ? 1 : 2).find((value) => !value.startsWith("-") && /\.(?:ts|fsq)$/i.test(value));
   const entry = argument ? resolve(argument) : example;
   process.chdir(documents);
   const { createHarmonyServer } = await import(pathToFileURL(join(__dirname, "scripts/harmony-server.mjs")).href);
