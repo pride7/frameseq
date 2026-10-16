@@ -1,8 +1,20 @@
 name: CI
 
+# A change only to the documentation or the website is checked by the Deploy Gallery
+# workflow, which tests both before it publishes them; a push with any other file runs it all.
 on:
   push:
+    paths-ignore:
+      - "docs/**"
+      - "gallery/**"
+      - "README.md"
+      - "README.zh-CN.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "gallery/**"
+      - "README.md"
+      - "README.zh-CN.md"
 
 permissions:
   contents: read

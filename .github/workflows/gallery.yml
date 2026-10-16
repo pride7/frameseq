@@ -35,11 +35,17 @@ jobs:
         run: npm ci
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
+      # CI skips a push that changes only the documentation or the website, so they are
+      # checked here, and a page that fails is never published.
+      - name: Check the documentation
+        run: npm run docs:check
       - name: Build Gallery
         run: npm run build:gallery
         env:
           # The download pages read the latest release, as the workflow's own token can.
           GITHUB_TOKEN: ${{ github.token }}
+      - name: Test Gallery
+        run: node scripts/gallery-test.mjs
       - name: Upload Gallery artifact
         uses: actions/upload-pages-artifact@v5
         with:
