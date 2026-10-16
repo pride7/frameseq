@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:6db030532c0816f1 -->
+<!-- translation-of: docs/studio.md sha256:ed3e7f4efb936ea1 -->
 
 # FrameSeq Studio
 
@@ -98,7 +98,9 @@ Studio 有英文和中文两种界面。它一开始使用浏览器的语言，�
 - **打开** 会显示这台电脑自己的打开对话框。没有这种对话框时，比如 Linux 上既没有 `zenity` 也没有 `kdialog`，Studio 会改为让你输入文件路径；设置 `FRAMESEQ_NO_DIALOGS=1` 则总是让你输入。
 - 当前文档有未保存的修改时，Studio 会先问是否保存。选 **取消** 则留在当前文档。
 
-演示文件的后缀是 FrameSeq 自己的 `.fsq`。装了 FrameSeq 应用，或者运行过 `frameseq shortcut` 之后，在 Windows 上双击 `.fsq` 文件就会在 Studio 里打开它。文件内容就是 TypeScript，和 `.slides.ts` 文件里写的完全一样，Studio 两种都能打开：把文件从一种后缀改成另一种，别的什么都不用变。如果演示属于一个用 `tsc` 做检查的 TypeScript 项目，或者想让 VS Code 边写边检查类型，就继续用 `.slides.ts`，因为 TypeScript 本身只读 `.ts` 文件；见 [VS Code](vscode.md#fsq-文件)。
+演示文件的后缀是 FrameSeq 自己的 `.fsq`。文件内容就是 TypeScript，和 `.slides.ts` 文件里写的完全一样，Studio 两种都能打开：把文件从一种后缀改成另一种，别的什么都不用变。如果演示属于一个用 `tsc` 做检查的 TypeScript 项目，就继续用 `.slides.ts`，因为 `tsc` 只读 `.ts` 文件；编辑器里的情况见 [VS Code](vscode.md#fsq-文件)。
+
+双击 `.fsq` 文件就能在 Studio 里打开它：Windows 上要先装 FrameSeq 应用或者运行过 `frameseq shortcut`，macOS 上用 FrameSeq 应用，Linux 上要运行过 `frameseq shortcut`（应用的 `install.sh` 会运行它）。同一份演示不会在两个 Studio 里同时打开：已经有 Studio 打开了它，就把那个 Studio 的窗口切到前面。还停在启动页的 Studio 会直接打开它；否则它在自己的新窗口里打开，并以文件所在的文件夹为工作目录。在 macOS 上，应用只保留一个窗口，它像 **打开…** 一样打开这份演示，有未保存的修改时会先询问。
 
 随后另一份演示会在同一个窗口里打开，从此 Studio 以它所在的文件夹为工作目录：它的导出会写在它旁边，即它自己的 `output/` 和 `dist/`。最近的演示记录在 FrameSeq 的设置文件夹里：Windows 上是 `%APPDATA%\FrameSeq`，macOS 上是 `~/Library/Application Support/FrameSeq`，Linux 上是 `~/.config/frameseq`；设置了 `FRAMESEQ_CONFIG_DIR` 时则用它。用 `--no-open` 启动的 Studio（脚本和测试就是这样启动的）不会改动这份列表。只有运行 Studio 的那台电脑能打开文件、显示对话框，即使加了 `--host` 也是如此。
 
@@ -108,7 +110,7 @@ Studio 有英文和中文两种界面。它一开始使用浏览器的语言，�
 frameseq shortcut
 ```
 
-这条命令会把带 FrameSeq 图标的 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式打开的是启动页。它运行的是 `frameseq studio --background`：不经过终端启动 Studio，并在它的窗口关闭后停止；服务器的输出写到设置文件夹里的 `studio.log`。`--background` 也可以和文件一起用：`frameseq studio talk.fsq --background`。在 Windows 上，这个快捷方式还会让双击 `.fsq` 文件时在 Studio 里打开它，并给它换上 FrameSeq 的图标；`--remove` 也会把这些一并撤掉。
+这条命令会把带 FrameSeq 图标的 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式打开的是启动页。它运行的是 `frameseq studio --background`：不经过终端启动 Studio，并在它的窗口关闭后停止；服务器的输出写到设置文件夹里的 `studio.log`。`--background` 也可以和文件一起用：`frameseq studio talk.fsq --background`。在 Windows 和 Linux 上，这个快捷方式还会让双击 `.fsq` 文件时在 Studio 里打开它，并给它换上 FrameSeq 的图标；`--remove` 也会把这些一并撤掉。在 macOS 上由 FrameSeq 应用来打开它们，指向 npm 安装的快捷方式做不到这一点。
 
 快捷方式运行的是创建它的那份 FrameSeq，通常是全局安装的那份，所以移动或重新安装 FrameSeq 之后，要再运行一次 `frameseq shortcut`。`frameseq shortcut --remove` 会把它删掉。
 

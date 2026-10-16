@@ -34,11 +34,14 @@ import {
 } from "./user-templates.mjs";
 import { createAssistant, maximumAttachment } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
+import { listStudio } from "./studio-instances.mjs";
 import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
 import { createUpdates } from "./studio-updates.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
 export const studioSourceEvent = "frameseq:studio-source";
+/** Pushed to the Studio to bring its window to the front, as opening its file again does. */
+export const studioFocusEvent = "frameseq:studio-focus";
 
 const maximumBody = 8 * 1024 * 1024;
 const exportTimeout = 10 * 60_000;
@@ -363,6 +366,31 @@ export function studioPlugin({
 
       if (quitOnClose) quitWhenClosed(server);
 
+      // A Studio someone works in is listed, so opening its file again shows it rather than a
+      // second Studio on the same file; one a script runs is left out unless the script asks.
+      if (remember || process.env.FRAMESEQ_STUDIO_LISTED === "1") {
+        // One exit hook per process, however often the server restarts on another presentation.
+        const listing = globalThis[Symbol.for("frameseq.studio.listing")] ??= { unlist: undefined, hooked: false };
+        if (!listing.hooked) {
+          listing.hooked = true;
+          process.once("exit", () => listing.unlist?.());
+        }
+        let unlist;
+        const list = () => {
+          const address = server.httpServer?.address();
+          if (!address || typeof address === "string") return;
+          try {
+            unlist = listStudio({ port: address.port, desktop: process.env.FRAMESEQ_STUDIO_DESKTOP === "1" });
+            listing.unlist = unlist;
+          } catch (error) {
+            server.config.logger.warn(`FrameSeq Studio could not note that it runs: ${error instanceof Error ? error.message : error}`);
+          }
+        };
+        if (server.httpServer?.listening) list();
+        else server.httpServer?.once("listening", list);
+        server.httpServer?.once("close", () => unlist?.());
+      }
+
       // A shell runs whatever it is given, so only the Studio's own page on this computer gets one,
       // even when the Studio was started with --host.
       if (host.terminal !== false) attachTerminals(server, {
@@ -560,6 +588,22 @@ export function studioPlugin({
           if (!await isFile(target)) return [404, { error: say.noFile(target) }];
           if (!start && deckKey(target) === deckKey(entry)) return { ok: true, path: target, name: basename(target), current: true };
           return openPresentation(target);
+        },
+
+        /**
+         * Come to the front, as when the presentation open here is opened again from outside,
+         * such as by a double-click. On the start page, open it first.
+         */
+        "POST /files/show": async (body) => {
+          const path = typeof body.path === "string" && body.path.trim() ? resolve(body.path.trim()) : undefined;
+          if (path && !start && deckKey(path) !== deckKey(entry)) return [409, { error: "Another presentation is open in this Studio." }];
+          if (path && start) {
+            const say = fileMessages(body.language);
+            if (!isPresentationFile(path)) return [400, { error: say.notTs }];
+            if (!await isFile(path)) return [404, { error: say.noFile(path) }];
+          }
+          server.ws.send(studioFocusEvent, {});
+          return path && start ? openPresentation(path) : { ok: true, current: true };
         },
 
         /** Write the chosen template under a file named after the title, then open it. */

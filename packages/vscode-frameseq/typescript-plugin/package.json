@@ -1,0 +1,8 @@
+{
+  "name": "frameseq-typescript-plugin",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Gives FrameSeq .fsq presentations the FrameSeq globals in VS Code's TypeScript server.",
+  "license": "MIT",
+  "main": "index.js"
+}

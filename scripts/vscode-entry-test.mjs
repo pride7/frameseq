@@ -72,7 +72,7 @@ assert.deepEqual(
 
 // Commands run the project's own FrameSeq, and a deck with none uses a global install, found
 // from the `frameseq` command npm put on the PATH, as a terminal finds it.
-const { cliIn, findCli, globalCli, runtimeFor } = require(resolve(extensionRoot, "out", "cli.js"));
+const { cliIn, findCli, globalCli, globalsFor, runtimeFor } = require(resolve(extensionRoot, "out", "cli.js"));
 const cliSandbox = resolve(packageRoot, "tmp", "vscode-cli-test");
 if (!cliSandbox.startsWith(resolve(packageRoot, "tmp"))) throw new Error(`Unsafe CLI test path: ${cliSandbox}`);
 await rm(cliSandbox, { recursive: true, force: true });
@@ -101,6 +101,13 @@ assert.equal(await findCli(project, () => globalCli(searchPath)), projectCli, "t
 assert.equal(await findCli(lone, () => globalCli(searchPath)), installedGlobalCli);
 assert.equal(await findCli(lone, async () => undefined), undefined, "no FrameSeq anywhere must be reported, not guessed");
 assert.equal(await runtimeFor(installedGlobalCli), "node", "an npm install runs with the Node.js on the PATH");
+// The TypeScript plugin gets the global install's declarations, from the package around its CLI.
+assert.equal(await globalsFor(installedGlobalCli), undefined, "an install without declarations offers none");
+const globalDeclarations = resolve(globalModules, "@pride7", "frameseq", "lib", "globals.d.ts");
+await mkdir(dirname(globalDeclarations), { recursive: true });
+await writeFile(globalDeclarations, "", "utf8");
+const foundDeclarations = await globalsFor(installedGlobalCli);
+assert.equal(foundDeclarations && await realpath(foundDeclarations), await realpath(globalDeclarations));
 
 // The FrameSeq app puts its command on the PATH beside the app, and brings its own Node.js,
 // which the extension uses so a computer with only the app needs nothing else.
@@ -129,6 +136,15 @@ await writeFile(appEntry, "", "utf8");
 const foundAppEntry = await globalCli(appPath);
 assert.equal(foundAppEntry && await realpath(foundAppEntry), await realpath(appEntry), "the app's command must lead to the app's entry");
 assert.equal(await runtimeFor(appEntry), appNode, "the app's entry must run with the app's own Node.js");
+const appDeclarations = resolve(appRoot, "app", "lib", "globals.d.ts");
+await mkdir(dirname(appDeclarations), { recursive: true });
+await writeFile(appDeclarations, "", "utf8");
+const foundAppDeclarations = foundAppEntry && await globalsFor(foundAppEntry);
+assert.equal(
+  foundAppDeclarations && await realpath(foundAppDeclarations),
+  await realpath(appDeclarations),
+  "the app's declarations are in the package its entry starts",
+);
 await rm(cliSandbox, { recursive: true, force: true });
 
 // These assertions describe the source, not its line endings, and Git hands Windows a

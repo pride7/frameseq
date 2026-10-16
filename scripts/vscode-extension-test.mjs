@@ -62,6 +62,24 @@ const grammarFile = JSON.parse(await readFile(resolve(extensionRoot, grammar.pat
 assert.equal(grammarFile.scopeName, grammar.scopeName);
 assert.deepEqual(grammarFile.patterns, [{ include: "source.ts" }]);
 JSON.parse(await readFile(resolve(extensionRoot, fsq.configuration), "utf8"));
+// .fsq documents reach tsserver through the TypeScript plugin, which ships inside the package.
+const tsPlugin = manifest.contributes.typescriptServerPlugins?.find((item) => item.name === "frameseq-typescript-plugin");
+assert.ok(tsPlugin, "The TypeScript server plugin must be contributed");
+assert.deepEqual(tsPlugin.languages, ["frameseq"], "VS Code's TypeScript extension must serve .fsq documents");
+assert.equal(tsPlugin.enableForWorkspaceTypeScriptVersions, true);
+assert.equal(manifest.dependencies["frameseq-typescript-plugin"], "file:typescript-plugin");
+const pluginManifest = JSON.parse(await readFile(resolve(extensionRoot, "typescript-plugin", "package.json"), "utf8"));
+assert.equal(pluginManifest.name, tsPlugin.name);
+assert.ok(manifest.scripts.compile.includes("npm run plugin"), "compiling must refresh the installed plugin");
+assert.ok(!manifest.scripts.package.includes("--no-dependencies"), "the package must carry the plugin from node_modules");
+// npm links a file: dependency by default, and vsce packs no file below a link.
+assert.match(await readFile(resolve(extensionRoot, ".npmrc"), "utf8"), /^install-links=true\r?$/m);
+const vscodeIgnore = (await readFile(resolve(extensionRoot, ".vscodeignore"), "utf8")).split(/\r?\n/);
+assert.ok(vscodeIgnore.includes("!node_modules/frameseq-typescript-plugin/**"));
+const typescriptSource = (await readFile(resolve(extensionRoot, "src", "typescript.ts"), "utf8")).replace(/\r\n/g, "\n");
+assert.ok(source.includes("void configureTypeScriptPlugin(output)"));
+assert.ok(typescriptSource.includes('"vscode.typescript-language-features"'));
+assert.ok(typescriptSource.includes('api.configurePlugin(typescriptPluginName, { globals: globals ?? "" })'));
 for (const item of Object.values(manifest.contributes.menus).flat()) {
   if (/resourceFilename/.test(item.when ?? "")) assert.match(item.when, /fsq/, `${item.command} is missing from .fsq editors`);
 }

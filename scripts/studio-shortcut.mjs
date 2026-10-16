@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { iconIcns, iconIco, iconPng } from "./app-icon.mjs";
 import { bundledStudioWindow } from "./browsers.mjs";
 import { configDirectory } from "./studio-files.mjs";
@@ -172,30 +172,87 @@ const desktopArgument = (value) => `"${value.replace(/[\\"`$]/g, (character) => 
   .replace(/\\/g, "\\\\")
   .replace(/%/g, "%%");
 
+/** The type .fsq files are given, which the Studio's desktop entry opens. */
+const linuxPresentationType = "application/x-frameseq";
+
+const linuxPresentationTypeXml = `<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="${linuxPresentationType}">
+    <comment>FrameSeq presentation</comment>
+    <sub-class-of type="text/plain"/>
+    <icon name="application-x-frameseq"/>
+    <glob pattern="*.fsq"/>
+  </mime-type>
+</mime-info>
+`;
+
+/** Run a desktop's helper program, if it is installed; whatever it says is left unsaid. */
+function runQuietly(command, args) {
+  return new Promise((resolveRun) => {
+    const child = spawn(command, args, { stdio: "ignore" });
+    child.on("error", () => resolveRun());
+    child.on("close", () => resolveRun());
+  });
+}
+
+/**
+ * Where the desktop entry, the .fsq file type, and the type's icon go: the person's own data
+ * folder, or with FRAMESEQ_SHORTCUT_DIR all in that one folder, with no helper run, for testing.
+ */
+function linuxPlaces() {
+  const testing = process.env.FRAMESEQ_SHORTCUT_DIR;
+  if (testing) {
+    return {
+      entry: join(testing, "frameseq-studio.desktop"),
+      type: join(testing, "frameseq.xml"),
+      typeIcon: join(testing, "application-x-frameseq.png"),
+    };
+  }
+  const data = process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share");
+  return {
+    entry: join(data, "applications", "frameseq-studio.desktop"),
+    type: join(data, "mime", "packages", "frameseq.xml"),
+    typeIcon: join(data, "icons", "hicolor", "256x256", "mimetypes", "application-x-frameseq.png"),
+    data,
+  };
+}
+
 async function linuxShortcut({ node, cli, window, remove }) {
-  const folder = process.env.FRAMESEQ_SHORTCUT_DIR
-    ?? join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "applications");
-  const entry = join(folder, "frameseq-studio.desktop");
+  const { entry, type, typeIcon, data } = linuxPlaces();
   const icon = join(configDirectory(), "frameseq.png");
+  // Tell the desktop the types and entries changed, so a double-click on an .fsq file opens the
+  // Studio at once, without logging in again.
+  const refresh = async () => {
+    if (!data) return;
+    await runQuietly("update-mime-database", [join(data, "mime")]);
+    await runQuietly("update-desktop-database", [join(data, "applications")]);
+  };
   if (remove) {
-    await Promise.all([entry, icon].map((path) => rm(path, { force: true })));
+    await Promise.all([entry, icon, type, typeIcon].map((path) => rm(path, { force: true })));
+    await refresh();
     return [entry];
   }
-  await mkdir(folder, { recursive: true });
+  for (const path of [entry, type, typeIcon]) await mkdir(dirname(path), { recursive: true });
   await mkdir(configDirectory(), { recursive: true });
   await writeFile(icon, iconPng(256));
+  await writeFile(typeIcon, iconPng(256));
+  await writeFile(type, linuxPresentationTypeXml, "utf8");
+  // %f is the .fsq file opened with the Studio, and nothing when it starts from the menu.
   await writeFile(entry, [
     "[Desktop Entry]",
     "Type=Application",
     `Name=${title}`,
     `Comment=${description}`,
-    window ? `Exec=${desktopArgument(window)}` : `Exec=${[node, cli].map(desktopArgument).join(" ")} studio --background`,
+    window ? `Exec=${desktopArgument(window)} %f` : `Exec=${[node, cli].map(desktopArgument).join(" ")} studio %f --background`,
     `Icon=${icon}`,
     "Terminal=false",
     "Categories=Office;Presentation;",
+    `MimeType=${linuxPresentationType};`,
     "",
   ].join("\n"), "utf8");
   await chmod(entry, 0o755);
+  await refresh();
+  if (data) await runQuietly("xdg-mime", ["default", "frameseq-studio.desktop", linuxPresentationType]);
   return [entry];
 }
 

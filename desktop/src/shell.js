@@ -22,5 +22,6 @@
     screens: () => tauri().core.invoke("screens"),
     startShow: (show) => tauri().core.invoke("start_show", show),
     endShow: () => tauri().core.invoke("end_show"),
+    focus: () => tauri().core.invoke("focus_window"),
   });
 })();

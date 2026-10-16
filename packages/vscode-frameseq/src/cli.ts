@@ -66,6 +66,16 @@ export async function globalCli(path = process.env.PATH ?? ""): Promise<string |
 }
 
 /**
+ * The FrameSeq globals of the install a CLI belongs to, which declare `slide()` and the other
+ * commands for TypeScript. The package sits two folders above its CLI: npm's
+ * `scripts/frameseq.mjs`, or the app's `app/scripts/app-launch.mjs` inside the app's package.
+ */
+export async function globalsFor(cli: string): Promise<string | undefined> {
+  const globals = join(dirname(dirname(cli)), "lib", "globals.d.ts");
+  return await exists(globals) ? globals : undefined;
+}
+
+/**
  * The Node.js that runs a CLI: the FrameSeq app's own, beside the app, so a computer with only
  * the app needs no Node.js of its own; and otherwise `node` from the PATH.
  */

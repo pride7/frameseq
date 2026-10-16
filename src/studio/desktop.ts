@@ -45,6 +45,8 @@ export interface DesktopShell {
   }): Promise<void>;
   /** Close presenter view and bring the window back from full screen, to where it was. */
   endShow?(): Promise<void>;
+  /** Bring the window to the front, out of the taskbar or the Dock if need be. */
+  focus?(): Promise<void>;
 }
 
 declare global {
@@ -61,6 +63,15 @@ export function openOutside(url: string): void {
   const address = new URL(url, location.href).href;
   if (desktop) void desktop.openExternal(address);
   else window.open(address, "_blank");
+}
+
+/**
+ * Come to the front, as when the presentation is opened again from outside the Studio. A
+ * browser's window may refuse, and then the program that opened the presentation tries.
+ */
+export function bringToFront(): void {
+  if (desktop?.focus) void desktop.focus().catch(() => window.focus());
+  else window.focus();
 }
 
 /** Whether the window may close: the Studio asks about unsaved edits first. */

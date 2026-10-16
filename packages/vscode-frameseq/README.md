@@ -32,6 +32,7 @@ Edit FrameSeq presentations with `slides.ts` on the left and a live FrameSeq pre
 - Exports the active presentation to HTML, PDF, PPTX, or editable Typst source from a visible Slides-view toolbar button.
 - Opens the deck in FrameSeq Studio, a window of its own with live slide thumbnails, a TypeScript editor, the preview, and live layout checks, from the Slides-view toolbar. Needs `@pride7/frameseq` 0.36.0 or newer in the project.
 - Provides TypeScript snippets for presentations, slides, whole-page and local-grid layouts, bullets, LaTeX, and Typst.
+- Checks `.fsq` presentations, as FrameSeq Studio saves them, with VS Code's TypeScript support through a bundled TypeScript plugin: type errors, completions, and hovers, with FrameSeq's commands declared from the project's FrameSeq or a global install.
 
 The extension uses the `@pride7/frameseq` CLI installed in the current project, or a global install for a deck with no project. It does not bundle a second renderer.
 

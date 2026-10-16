@@ -52,6 +52,7 @@ export const groups = [
       test("studio-page-test"),
       test("studio-menu-test"),
       test("studio-files-test"),
+      test("studio-instances-test"),
     ],
   },
   {

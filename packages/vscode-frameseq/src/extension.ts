@@ -19,6 +19,7 @@ import {
   regionsForOffset,
   selectionHasStructureBoundary,
 } from "./regions";
+import { configureTypeScriptPlugin } from "./typescript";
 
 interface SourceLocation {
   line: number;
@@ -2054,6 +2055,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     previewLineDecoration,
   );
   registerNameFeatures(context);
+  // Not awaited: starting VS Code's TypeScript extension must not hold up the outline.
+  void configureTypeScriptPlugin(output);
   context.subscriptions.push(provider.onDidChangeMessage((message) => {
     tree.message = message;
   }));

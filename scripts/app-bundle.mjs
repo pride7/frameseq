@@ -506,6 +506,8 @@ Root: HKA; Subkey: "${classes}\\${kind}\\shell\\open\\command"; ValueType: strin
 }
 
 function macInfoPlist() {
+  // The kind of file an .fsq presentation is to macOS, which the app declares and owns.
+  const macPresentationType = "io.github.pride7.frameseq.presentation";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -520,6 +522,30 @@ function macInfoPlist() {
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- .fsq files are FrameSeq presentations, which open here when double-clicked in Finder. -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>FrameSeq presentation</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>CFBundleTypeIconFile</key><string>FrameSeq</string>
+      <key>LSHandlerRank</key><string>Owner</string>
+      <key>LSItemContentTypes</key><array><string>${macPresentationType}</string></array>
+    </dict>
+  </array>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key><string>${macPresentationType}</string>
+      <key>UTTypeDescription</key><string>FrameSeq presentation</string>
+      <key>UTTypeIconFile</key><string>FrameSeq</string>
+      <key>UTTypeConformsTo</key><array><string>public.plain-text</string></array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key><array><string>fsq</string></array>
+      </dict>
+    </dict>
+  </array>
 </dict>
 </plist>
 `;

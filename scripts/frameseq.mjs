@@ -19,6 +19,7 @@ import { presentationStem, presentationTemplate, presentationTemplates, template
 import { keepSlides, readSlides, slidesFileSuffix } from "./slide-selection.mjs";
 import { createFromTemplate, findUserTemplate, templateDirectory, userTemplates } from "./user-templates.mjs";
 import { configDirectory } from "./studio-files.mjs";
+import { showInStudio, studioFor, studioTitle } from "./studio-instances.mjs";
 import { studioShortcut } from "./studio-shortcut.mjs";
 import { exportTypst } from "./typst-export.mjs";
 import { agentsMarkdown, claudeMarkdown } from "../packages/create-frameseq/project-instructions.mjs";
@@ -276,6 +277,7 @@ async function startDevelopmentServer(
   process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser || desktop ? "1" : "0";
   // The FrameSeq app's window started this server and shows it, so the server stops with it.
   if (desktop) process.env.FRAMESEQ_STUDIO_QUIT_ON_CLOSE = "1";
+  process.env.FRAMESEQ_STUDIO_DESKTOP = desktop ? "1" : "0";
   // The Studio opens its own window once the server is listening, so Vite opens nothing.
   process.env.FRAMESEQ_OPEN_BROWSER = openBrowser && !studio ? "1" : "0";
   if (remoteEnabled) process.env.FRAMESEQ_REMOTE = "1";
@@ -682,6 +684,36 @@ async function checkLayout(entry, { json = false, strict = false } = {}) {
 }
 
 /**
+ * A presentation opened from outside the Studio, as a double-click on it opens it, comes up in
+ * the Studio that already has it open, or in one still on its start page, rather than in a second
+ * Studio. Resolves to whether one showed it.
+ */
+async function showInRunningStudio(entry) {
+  if (!existsSync(entry)) return false;
+  const studio = await studioFor(entry);
+  if (!studio || !await showInStudio(studio, entry)) return false;
+  // The app's window brings itself to the front. A browser's app window cannot, but on Windows
+  // this process may, since the person has just started it.
+  if (process.platform === "win32" && !studio.desktop) await activateWindow(studio.entry ? studioTitle(studio.entry) : "FrameSeq Studio");
+  console.log(studio.entry
+    ? `FrameSeq Studio already has ${basename(entry)} open, and is in front now.`
+    : `FrameSeq Studio opened ${basename(entry)} in the window already on its start page.`);
+  return true;
+}
+
+/** Bring the window with this title to the front, on Windows; any failure is left unsaid. */
+function activateWindow(title) {
+  return new Promise((resolveActivate) => {
+    const child = spawn("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-Command",
+      "$null = (New-Object -ComObject WScript.Shell).AppActivate($env:FRAMESEQ_WINDOW_TITLE)",
+    ], { windowsHide: true, stdio: "ignore", env: { ...process.env, FRAMESEQ_WINDOW_TITLE: title } });
+    child.on("error", () => resolveActivate());
+    child.on("close", () => resolveActivate());
+  });
+}
+
+/**
  * Start this same command again as a process of its own, with no console, and return. The
  * Studio it starts stops when its window closes, since there is no terminal to stop it from.
  */
@@ -747,7 +779,10 @@ try {
       console.log(`It runs FrameSeq from ${cli}; run this command again after moving or reinstalling FrameSeq.`);
     }
   } else if (command === "studio" && process.argv.includes("--background")) {
-    await startInBackground();
+    if (!named || !await showInRunningStudio(resolve(process.cwd(), named))) await startInBackground();
+  } else if (command === "studio" && desktop && named && await showInRunningStudio(resolve(process.cwd(), named))) {
+    // The app's window that started this closes again when it reads this line.
+    console.log("  ➜  Shown:   in the FrameSeq Studio already running");
   } else if (command === "studio" && !named && !existsSync(resolve(process.cwd(), defaultFile))) {
     // No document to open: the start page offers a new presentation, an existing one, or a recent one.
     await startDevelopmentServer(resolve(process.cwd(), "slides.ts"), {

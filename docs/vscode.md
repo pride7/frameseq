@@ -78,7 +78,9 @@ Commands run from the slide file's own project root: the closest directory above
 
 An `.fsq` file, as FrameSeq Studio saves a presentation, is FrameSeq's own extension for the same TypeScript. The extension opens it as a **FrameSeq** document, coloured as TypeScript, with the preview, the outline, Current Slide, the names of regions and objects, the snippets, and every command working as they do in a `.slides.ts` file.
 
-VS Code's TypeScript support reads only `.ts` files, so an `.fsq` file gets no type errors, completions, or hovers in VS Code; `frameseq check` and FrameSeq Studio still report its type errors. To write a presentation in VS Code with TypeScript checking it as you type, name it `.slides.ts`: rename one to the other at any time, since the text is the same.
+TypeScript checks an `.fsq` file as you type, as it does a `.ts` file: type errors in the editor and the Problems panel, completions, and hovers. A TypeScript plugin that comes with the extension hands the file to VS Code's built-in TypeScript support and gives it FrameSeq's commands, such as `slide()` and `text()`, from the FrameSeq installed in the file's project, from the source when the file is inside a checkout of the FrameSeq repository, and otherwise from the global install, the FrameSeq app or `npm install --global @pride7/frameseq`. A global install added while VS Code is open is used after **Developer: Reload Window**.
+
+No `tsconfig.json` includes an `.fsq` file, so VS Code checks it with its own options for files outside a project, not the project's `compilerOptions`, and `tsc` on the command line does not read it; `frameseq check` and FrameSeq Studio still report its type errors. The checking needs VS Code's built-in TypeScript and JavaScript Language Features extension, which is on unless you disabled it. To have the project's `tsconfig.json` and `tsc` check a presentation too, name it `.slides.ts`: rename one to the other at any time, since the text is the same.
 
 ## Commands
 

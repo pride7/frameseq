@@ -343,9 +343,14 @@ if (process.platform === "win32") {
 } else {
   const entry = await readFile(join(shortcuts, "frameseq-studio.desktop"), "utf8");
   assert.match(entry, /^Name=FrameSeq Studio$/m);
-  assert.ok(entry.includes(`Exec="${process.execPath}" "${cli}" studio --background`), entry);
+  // It opens .fsq files too: %f is the file, and nothing when it starts from the menu.
+  assert.ok(entry.includes(`Exec="${process.execPath}" "${cli}" studio %f --background`), entry);
+  assert.match(entry, /^MimeType=application\/x-frameseq;$/m);
   assert.match(entry, /^Terminal=false$/m);
   assert.ok((await stat(join(config, "frameseq.png"))).size > 1000);
+  const type = await readFile(join(shortcuts, "frameseq.xml"), "utf8");
+  assert.match(type, /<mime-type type="application\/x-frameseq">[\s\S]*<glob pattern="\*\.fsq"\/>/);
+  assert.ok((await stat(join(shortcuts, "application-x-frameseq.png"))).size > 1000);
 }
 const removed = spawnSync(process.execPath, [cli, "shortcut", "--remove"], { cwd: workspace, env: shortcutEnvironment, encoding: "utf8" });
 assert.equal(removed.status, 0, removed.stderr);

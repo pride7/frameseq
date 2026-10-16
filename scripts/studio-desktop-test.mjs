@@ -59,6 +59,7 @@ function fakeShell(chrome) {
       screens: async () => ${JSON.stringify(appScreens)},
       startShow: async (show) => { calls.push("startShow " + JSON.stringify(show)); },
       endShow: async () => { calls.push("endShow"); },
+      focus: async () => { calls.push("focus"); },
     };
     // The window goes full screen for a show, so the page never asks for it.
     Element.prototype.requestFullscreen = async function () { calls.push("requestFullscreen"); };
@@ -107,6 +108,17 @@ try {
 
   const session = await page.evaluate(() => fetch("/__frameseq/studio/session").then((response) => response.json()));
   assert.equal(session.quitOnClose, true, "the server stops with the app's window");
+
+  // Its presentation opened again from outside brings the window to the front.
+  const show = (path) => page.evaluate((token, file) => fetch("/__frameseq/studio/files/show", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-FrameSeq-Studio": token },
+    body: JSON.stringify({ path: file }),
+  }).then((response) => response.status), session.token, path);
+  assert.equal(await show(session.entry), 200);
+  await waitFor(async () => (await calls()).includes("focus"), "the window to be brought to the front");
+  assert.equal(await show(resolve(dirname(session.entry), "else.fsq")), 409, "another presentation is not opened over this one");
+  await page.evaluate(() => { window.__shellCalls.length = 0; });
   await waitFor(async () => {
     const settings = JSON.parse(await readFile(resolve(config, "studio.json"), "utf8").catch(() => "{}"));
     return settings.recent?.some((item) => item.path === deck);

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/vscode.md sha256:8c59a2d1b308b985 -->
+<!-- translation-of: docs/vscode.md sha256:86a3c96488c420b0 -->
 
 # Visual Studio Code 扩展
 
@@ -80,7 +80,9 @@ code --install-extension output/vscode/frameseq-vscode.vsix
 
 FrameSeq Studio 保存演示时用的 `.fsq` 是 FrameSeq 自己的后缀,内容是同样的 TypeScript。扩展把它当作 **FrameSeq** 文档打开,按 TypeScript 着色;预览、大纲、Current Slide、区域和对象的名字、代码片段以及每个命令,都和在 `.slides.ts` 文件里一样可用。
 
-VS Code 的 TypeScript 支持只读 `.ts` 文件,所以 `.fsq` 文件在 VS Code 里没有类型错误提示、补全和悬停说明;`frameseq check` 和 FrameSeq Studio 仍然会报告它的类型错误。想在 VS Code 里写演示、并让 TypeScript 边写边检查,就把文件命名为 `.slides.ts`:内容一样,两种后缀随时可以互相改名。
+TypeScript 会像检查 `.ts` 文件一样边写边检查 `.fsq` 文件:编辑器和 Problems 面板里的类型错误、补全和悬停说明都有。扩展自带一个 TypeScript 插件,把文件交给 VS Code 内置的 TypeScript 支持,并给它提供 `slide()`、`text()` 等 FrameSeq 命令的声明:优先用文件所在项目里安装的 FrameSeq;文件在 FrameSeq 仓库的检出里时用仓库源码;否则用全局安装,即 FrameSeq 应用或 `npm install --global @pride7/frameseq`。VS Code 开着时才装好的全局安装,要在 **Developer: Reload Window** 之后才会用上。
+
+没有哪个 `tsconfig.json` 会包含 `.fsq` 文件,所以 VS Code 用它给项目之外的文件准备的选项来检查,而不是项目的 `compilerOptions`;命令行上的 `tsc` 也不读它。`frameseq check` 和 FrameSeq Studio 仍然会报告它的类型错误。这项检查需要 VS Code 内置的 TypeScript and JavaScript Language Features 扩展,除非你停用了它,否则它一直开着。想让项目的 `tsconfig.json` 和 `tsc` 也检查演示,就把文件命名为 `.slides.ts`:内容一样,两种后缀随时可以互相改名。
 
 ## 命令
 

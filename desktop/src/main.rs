@@ -145,7 +145,8 @@ fn main() {
     .manage(server.clone())
     .manage(Splash::default())
     .manage(Show::default())
-    .invoke_handler(tauri::generate_handler![open_external, screens, start_show, end_show])
+    .manage(Opening::default())
+    .invoke_handler(tauri::generate_handler![open_external, screens, start_show, end_show, focus_window])
     .setup(move |app| {
       open_main_window(app.handle())?;
       match start {
@@ -173,8 +174,62 @@ fn main() {
       app.exit(0);
     }
     RunEvent::Exit => stop_server(&app.state::<Arc<Server>>()),
+    // macOS hands this program the presentations opened in Finder, as a double-click opens one,
+    // rather than naming them when it starts it.
+    #[cfg(target_os = "macos")]
+    RunEvent::Opened { urls } => {
+      let files = urls.iter().filter_map(|url| url.to_file_path().ok()).collect();
+      open_files(app, files);
+    }
     _ => {}
   });
+}
+
+/// Presentations to open in the Studio, and whether its page is there to open them.
+#[derive(Default)]
+struct Opening {
+  state: Mutex<OpeningState>,
+}
+
+#[derive(Default)]
+struct OpeningState {
+  studio_loaded: bool,
+  pending: Vec<PathBuf>,
+}
+
+/// Open presentations in the Studio as its Open… does, asking about unsaved edits first, now or
+/// once its page has loaded.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn open_files(app: &AppHandle, files: Vec<PathBuf>) {
+  let Some(window) = app.get_webview_window(MAIN) else { return };
+  let opening = app.state::<Opening>();
+  let mut state = opening.state.lock().unwrap();
+  if state.studio_loaded {
+    for file in &files {
+      hand_over(&window, file);
+    }
+    let _ = window.set_focus();
+  } else {
+    state.pending.extend(files);
+  }
+}
+
+/// The Studio's page has loaded: it opens what came while it was loading.
+fn studio_loaded(window: &WebviewWindow) {
+  let opening = window.state::<Opening>();
+  let mut state = opening.state.lock().unwrap();
+  state.studio_loaded = true;
+  for file in state.pending.drain(..) {
+    hand_over(window, &file);
+  }
+}
+
+/// The page opens the presentation once it can, the last one if several come before.
+fn hand_over(window: &WebviewWindow, file: &Path) {
+  let path = serde_json::to_string(&file.to_string_lossy()).unwrap_or_default();
+  let _ = window.eval(format!(
+    "window.frameseqOpen ? window.frameseqOpen({path}) : (window.frameseqPendingOpen ??= []).push({path})"
+  ));
 }
 
 fn open_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
@@ -193,8 +248,13 @@ fn open_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     .on_navigation(allow_navigation)
     .on_new_window(popup(app.clone()))
     .on_page_load(|window, payload| {
-      if payload.event() == PageLoadEvent::Finished && is_bundled(payload.url()) {
+      if payload.event() != PageLoadEvent::Finished {
+        return;
+      }
+      if is_bundled(payload.url()) {
         splash_loaded(&window);
+      } else if is_local(payload.url()) {
+        studio_loaded(&window);
       }
     });
   #[cfg(windows)]
@@ -444,6 +504,18 @@ async fn end_show(app: AppHandle) -> Result<(), String> {
   Ok(())
 }
 
+/// The Studio's presentation opened again from outside, as a double-click opens it, brings the
+/// window to the front, out of the taskbar or the Dock.
+#[tauri::command]
+async fn focus_window(app: AppHandle) -> Result<(), String> {
+  let window = app.get_webview_window(MAIN).ok_or("The Studio's window is gone")?;
+  if window.is_minimized().map_err(text)? {
+    window.unminimize().map_err(text)?;
+  }
+  window.show().map_err(text)?;
+  window.set_focus().map_err(text)
+}
+
 fn text(error: tauri::Error) -> String {
   error.to_string()
 }
@@ -577,17 +649,22 @@ fn serve(app: AppHandle, server: Arc<Server>, files: Vec<String>) {
   if let Some(stdout) = stdout {
     thread::spawn(move || {
       let mut opened = false;
+      let mut shown = false;
       read_lines(stdout, &server, &log, |line| {
-        if opened {
+        if opened || shown {
           return;
         }
         if let Some(url) = studio_address(line) {
           opened = true;
           show_studio(&app, url);
+        } else if line.contains("➜  Shown:") {
+          // A Studio already running had the presentation open, or none, and shows it instead.
+          shown = true;
+          app.exit(0);
         }
       });
       // The server stopped. Before the Studio opened, that is a failure to report.
-      if !opened {
+      if !opened && !shown {
         let recent: Vec<String> = server.recent.lock().unwrap().iter().cloned().collect();
         let mut message = recent.join("\n");
         if let Some(path) = server.log.lock().unwrap().as_ref() {

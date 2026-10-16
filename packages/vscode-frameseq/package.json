@@ -65,6 +65,15 @@
         "path": "./syntaxes/frameseq.tmLanguage.json"
       }
     ],
+    "typescriptServerPlugins": [
+      {
+        "name": "frameseq-typescript-plugin",
+        "enableForWorkspaceTypeScriptVersions": true,
+        "languages": [
+          "frameseq"
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -368,14 +377,18 @@
     "vscode:prepublish": "npm run compile",
     "prepackage": "node -e \"require('node:fs').mkdirSync('../../output/vscode', { recursive: true })\"",
     "shared": "node -e \"const fs=require('node:fs');fs.mkdirSync('src/shared',{recursive:true});fs.copyFileSync('../../src/source-names.ts','src/shared/source-names.ts')\"",
-    "compile": "npm run shared && tsc -p .",
+    "plugin": "node -e \"const fs=require('node:fs');const to='node_modules/frameseq-typescript-plugin';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('typescript-plugin',to,{recursive:true})\"",
+    "compile": "npm run shared && npm run plugin && tsc -p .",
     "check": "npm run shared && tsc -p . --noEmit",
-    "package": "npm run compile && vsce package --no-dependencies --out ../../output/vscode/frameseq-vscode.vsix"
+    "package": "npm run compile && vsce package --out ../../output/vscode/frameseq-vscode.vsix"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.9.2",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "frameseq-typescript-plugin": "file:typescript-plugin"
   }
 }

@@ -61,7 +61,7 @@ import {
 } from "./frames";
 import { formulaEscapes, nameDefinition, nameDiagnostics, prepareNameRename, type FormulaEscape } from "../source-names";
 import { copiedCode, namesAt, pastedLines } from "./clipboard";
-import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
+import { bringToFront, guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { askExportSlides } from "./export-slides";
 import { chooseIcon } from "./icons";
@@ -296,6 +296,8 @@ function showFatal(title: string, detail: string): void {
 
 async function start(): Promise<void> {
   installWindowFrame();
+  // Opening the presentation again from outside, as a double-click does, shows this window.
+  import.meta.hot?.on("frameseq:studio-focus", bringToFront);
   let session: StudioSession;
   let source: SourceResponse;
   try {

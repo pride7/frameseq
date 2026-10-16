@@ -258,12 +258,30 @@ async function reloadInto(opened: OpenResponse): Promise<void> {
   toast(t.files.didNotOpen(opened.name), { tone: "error" });
 }
 
+declare global {
+  interface Window {
+    /** Open a presentation as Open… would, set once the page can. */
+    frameseqOpen?: (path: string) => void;
+    /** Presentations handed over before the page could open them. */
+    frameseqPendingOpen?: string[];
+  }
+}
+
 /** Opening, creating, and switching presentations, for the start page and the file menu. */
 export class Presentations {
   constructor(
     private readonly session: StudioSession,
     private readonly guard: LeaveGuard = { leave: async () => true, stay: () => undefined },
-  ) {}
+  ) {
+    // The app's window on macOS hands over a presentation opened in Finder, as a double-click
+    // opens one, to open as Open… would, asking about unsaved edits first. One that came while
+    // the page was still loading waits for it.
+    window.frameseqOpen = (path) => {
+      if (typeof path === "string" && path) void this.openPath(path);
+    };
+    const pending = window.frameseqPendingOpen?.splice(0) ?? [];
+    for (const path of pending.slice(-1)) window.frameseqOpen(path);
+  }
 
   files(): Promise<FilesResponse> {
     return call<FilesResponse>("GET", "files");
