@@ -4,6 +4,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Fixed
+
+- A slide show started with `F5` from FrameSeq Studio's preview takes the keys once it is on screen, so the arrow keys, `End`, and the rest move the show at once. They went on reaching the preview until the show was clicked.
+
 ## [0.39.0] - 2026-10-16
 
 ### Added

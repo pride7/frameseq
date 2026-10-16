@@ -839,6 +839,8 @@ try {
   await page.focus(".studio-preview-frame");
   await page.keyboard.press("F5");
   await waitFor(async () => (await shownSlide()) === 2, "F5 in the preview to show its slide");
+  // The keys pressed in the preview go to the show once it is on screen.
+  await waitFor(() => showFrame()?.evaluate(() => document.hasFocus()).catch(() => false), "the show to take the keys from the preview");
   await page.keyboard.press("End");
   await waitFor(async () => (await shownSlide()) === healthySlides - 1, "End to show the last slide");
   await page.keyboard.press("Escape");

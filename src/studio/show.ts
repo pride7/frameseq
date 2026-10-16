@@ -248,6 +248,9 @@ export class SlideShow {
 
   private reveal(frame: HTMLIFrameElement): void {
     frame.style.visibility = "";
+    // A hidden frame cannot take the keys, which then stay where F5 was pressed, such as in the
+    // preview, so the show takes them once it shows.
+    if (frame === this.frame) this.focus();
   }
 
   private receive(event: MessageEvent<unknown>): void {
