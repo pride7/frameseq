@@ -498,13 +498,70 @@ function regionReferences(sourceFile, root, after = 0) {
   ));
 }
 
+/**
+ * How the presentation() call, or poster() or figure(), states its options, so an editor can
+ * set one, such as the subtitle a cover shows or the size of the page, where it is written:
+ * nothing yet, a title alone, or an object of options, each with the range that replaces its
+ * value and the range that removes it. An argument the code works out is "other", and is left
+ * alone.
+ */
+function presentationOptions(sourceFile, call) {
+  if (!call) return undefined;
+  const text = sourceFile.text;
+  const [argument] = call.arguments;
+  const options = {
+    command: call.expression.text,
+    // Just inside the parentheses, where options go when there are none.
+    arguments: { start: call.arguments.pos, end: call.arguments.end },
+  };
+  if (!argument) return { ...options, form: "none" };
+  if (staticString(argument) !== undefined) {
+    return { ...options, form: "title", title: editableProperty(sourceFile, "title", argument) };
+  }
+  if (!ts.isObjectLiteralExpression(argument)) return { ...options, form: "other" };
+  const open = argument.getStart(sourceFile);
+  const close = argument.getEnd();
+  const properties = argument.properties.map((property) => {
+    const start = property.getStart(sourceFile);
+    const end = property.getEnd();
+    const entry = { start, end };
+    if (!ts.isPropertyAssignment(property)) return entry;
+    const initializer = property.initializer;
+    const value = staticValue(initializer);
+    return {
+      ...entry,
+      name: propertyName(property.name),
+      ...(value ? { kind: value.kind, value: value.value } : {}),
+      code: initializer.getText(sourceFile),
+      source: sourceRange(sourceFile, initializer),
+    };
+  });
+  const inside = text.slice(open + 1, close - 1);
+  const first = properties[0];
+  const lineStart = first ? text.lastIndexOf("\n", first.start - 1) + 1 : -1;
+  const indent = first && !text.slice(lineStart, first.start).trim() ? text.slice(lineStart, first.start) : undefined;
+  return {
+    ...options,
+    form: "object",
+    object: {
+      start: open,
+      end: close,
+      multiline: inside.includes("\n"),
+      ...(indent === undefined ? {} : { indent }),
+    },
+    properties,
+  };
+}
+
 function presentationMetadata(sourceFile) {
   const call = findIdentifierCall(sourceFile, "presentation")
     ?? findIdentifierCall(sourceFile, "poster")
     ?? findIdentifierCall(sourceFile, "figure");
   const argument = call?.arguments[0];
+  const options = presentationOptions(sourceFile, call);
   return {
     title: staticString(argument) ?? objectString(argument, "title") ?? "FrameSeq",
+    ...(options ? { options } : {}),
   };
 }
 

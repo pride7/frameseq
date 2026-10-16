@@ -64,7 +64,9 @@ import { guardWindowClose, installWindowFrame, openOutside } from "./desktop";
 import { AssistantPanel, type AssistantContext } from "./assistant";
 import { askExportSlides } from "./export-slides";
 import { chooseIcon } from "./icons";
-import { SlideInspector } from "./inspector";
+import { detailNames, SlideInspector, type DetailName, type SlideDetails } from "./inspector";
+import { optionString, planOptions, presentationOption, type OptionPlan } from "./presentation";
+import { stringLiteral } from "./properties";
 import { SlideShow } from "./show";
 import { wordsFor, type TextPart } from "./typing";
 import {
@@ -337,6 +339,8 @@ async function start(): Promise<void> {
   let previewLabel = "";
   /** The notes of the slide in the preview as they rendered; unknown again once the text changes. */
   let previewNotes: string | undefined;
+  /** Whether the slide in the preview draws the presentation's details: a "cover", a poster's "header", or "". */
+  let previewDetails = "";
   /** Why the last run of the document failed, until a run succeeds again. */
   let runtimeFailures: PreviewFailure[] = [];
   let exporting = false;
@@ -432,10 +436,11 @@ async function start(): Promise<void> {
         }));
         refreshDocumentDiagnostics(view);
       },
-      slide: (index, count, label, slideNotes) => {
+      slide: (index, count, label, slideNotes, details) => {
         previewSlide = index;
         previewLabel = label;
         previewNotes = slideNotes;
+        previewDetails = details;
         assistant?.refreshContext();
         renderedCount = count;
         showPreviewPosition();
@@ -485,6 +490,12 @@ async function start(): Promise<void> {
       dragBlocked: (target, reason, code) => void explainBlockedDrag(target, reason, code),
       typeRequest: (request, target, part, shared, asked) => void answerTyping(request, target, part, shared, asked),
       typed: (request, value) => writeTyped(request, value),
+      detail: (field, action) => {
+        if (!isDetail(field)) return;
+        if (action === "reveal") revealDetail(field);
+        else selectDetail(field);
+      },
+      typeDetail: (request, field, asked) => void answerDetailTyping(request, field, asked),
     },
     previewSlide,
     resolvedTheme(),
@@ -516,6 +527,12 @@ async function start(): Promise<void> {
 
   // ── Current slide ───────────────────────────────────────────────────────────────────────
   const inspector = new SlideInspector(slot("inspector"), {
+    setDetail: (name, value) => {
+      void writeDetail(name, value);
+      return true;
+    },
+    revealDetail: (name) => revealDetail(name),
+    convertCover: () => void convertCover(),
     selectObject: (object) => {
       const position = object.source.start ?? view.state.doc.line(Math.min(object.source.line, view.state.doc.lines)).from;
       suppressFollow = true;
@@ -687,7 +704,7 @@ async function start(): Promise<void> {
     refreshNotes();
     const current = inspectedSlide();
     if (!current) return;
-    inspector.show(current.slide, current.note);
+    inspector.show(current.slide, current.note, slideDetails());
     const label = outline?.[previewSlide]?.label
       ?? (masterView ? t.masters.label(current.slide?.master ?? "") : current.slide?.label) ?? "";
     slot("inspector-meta").textContent = renderedCount > 0
@@ -2049,7 +2066,7 @@ async function start(): Promise<void> {
 
   // ── Typing on the slide ─────────────────────────────────────────────────────────────────
   /** Words the preview is typing in place, by its request: the object and the part of it. */
-  const typingRequests = new Map<number, { target: SourceTarget; part: TextPart; words: string }>();
+  const typingRequests = new Map<number, { target?: SourceTarget; part: TextPart; words: string; detail?: DetailName }>();
   /**
    * An object just written, whose words the preview types into once it shows it: where its
    * command starts in the editor, and until when to wait for the preview to draw it.
@@ -2155,7 +2172,8 @@ async function start(): Promise<void> {
     const pending = typingRequests.get(request);
     typingRequests.delete(request);
     if (!pending) return false;
-    const { object } = await typedObject(pending.target);
+    if (pending.detail) return await writeDetail(pending.detail, value, pending.words) && save({ auto: false });
+    const { object } = pending.target ? await typedObject(pending.target) : { object: undefined };
     const choice = object ? wordsFor(object, pending.part) : undefined;
     let ok = false;
     suppressFollow = true;
@@ -2169,6 +2187,180 @@ async function start(): Promise<void> {
       return false;
     }
     return save({ auto: false });
+  }
+
+  // ── The presentation's details ──────────────────────────────────────────────────────────
+  function isDetail(field: string): field is DetailName {
+    return (detailNames as readonly string[]).includes(field);
+  }
+
+  /** The report of the editor's text as it is now, waiting a moment for one that has caught up. */
+  async function freshReport(): Promise<InspectReport | undefined> {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const current = await inspect();
+      if (current && reportText === editorText()) return current;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+    }
+    return undefined;
+  }
+
+  /** A detail's words as presentation() writes them, or the code that works them out. */
+  function detailOf(current: InspectReport, name: DetailName): { value: string; computed?: string } {
+    const option = presentationOption(current.presentation.options, name);
+    if (option && option.kind !== "string") return { value: "", computed: option.code ?? "" };
+    return { value: option ? String(option.value) : "" };
+  }
+
+  /** The details the slide in the preview draws, as Current slide sets them. */
+  function slideDetails(): SlideDetails | undefined {
+    if (masterView || (previewDetails !== "cover" && previewDetails !== "header")) return undefined;
+    if (!report || reportText !== editorText()) return undefined;
+    const current = report;
+    const options = current.presentation.options;
+    return {
+      kind: previewDetails,
+      fields: detailNames.map((name) => ({ name, ...detailOf(current, name) })),
+      editable: Boolean(options && options.form !== "other"),
+    };
+  }
+
+  /** Writes of details, one after another, as the panel's boxes are left one after another. */
+  let detailWrites: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Set one of the presentation's details in presentation(), as one step: emptied, it is taken
+   * away, except the title. `expected`, when given, is what it must still say, as words typed on
+   * the slide started from.
+   */
+  function writeDetail(name: DetailName, value: string, expected?: string): Promise<boolean> {
+    const write = detailWrites.then(async () => {
+      const current = await freshReport();
+      if (!current) {
+        toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+        return false;
+      }
+      const options = current.presentation.options;
+      const reveal = [{ label: t.objects.goToCode, run: () => revealDetail(name) }];
+      if (!options || options.form === "other") {
+        toast(t.details.code, { tone: "warning", key: "details", actions: reveal });
+        return false;
+      }
+      const now = detailOf(current, name);
+      if (now.computed !== undefined) {
+        toast(t.details.computed(now.computed), { tone: "warning", key: "details", actions: reveal });
+        return false;
+      }
+      if (expected !== undefined && now.value !== expected) {
+        toast(t.typing.notWritten, { tone: "warning", key: "typing" });
+        return false;
+      }
+      if (now.value === value) return true;
+      const plan = planOptions(editorText(), options, { [name]: value === "" && name !== "title" ? undefined : optionString(options, value) });
+      return !plan || applyOptions(plan, "input.details");
+    });
+    detailWrites = write.catch(() => false);
+    return write;
+  }
+
+  /** Apply changes to presentation()'s options as one step, while the code still reads as planned. */
+  function applyOptions(plan: OptionPlan, userEvent: string): boolean {
+    const doc = view.state.doc;
+    if (!plan.checks.every((check) => check.to <= doc.length && doc.sliceString(check.from, check.to) === check.text)) {
+      toast(t.inspector.catchingUp, { tone: "warning", key: "inspector-stale" });
+      return false;
+    }
+    suppressFollow = true;
+    view.dispatch({ changes: plan.edits, userEvent });
+    return true;
+  }
+
+  /** Show where presentation() writes a detail, or where it would go. */
+  function revealDetail(name: DetailName): void {
+    if (!report || reportText !== editorText()) return;
+    const options = report.presentation.options;
+    const option = presentationOption(options, name);
+    const at = option?.source?.start ?? option?.start ?? options?.arguments.start;
+    if (at !== undefined) revealPosition(at);
+  }
+
+  /** Select a detail clicked on the slide: its row in Current slide, and its words in the code. */
+  function selectDetail(name: DetailName): void {
+    inspector.highlightDetail(name);
+    const option = presentationOption(report?.presentation.options, name);
+    if (!option?.source || reportText !== editorText()) return;
+    suppressFollow = true;
+    view.dispatch({
+      selection: EditorSelection.range(option.source.start, option.source.end),
+      effects: EditorView.scrollIntoView(option.source.start, { y: "center" }),
+    });
+  }
+
+  /** Answer the preview's request to type a detail where the slide shows it. */
+  async function answerDetailTyping(request: number, field: string, asked: boolean): Promise<void> {
+    const refuse = (message: string, name: DetailName): void => {
+      frames.refuseTyping(request);
+      toast(message, { tone: "warning", key: "typing", actions: [{ label: t.objects.goToCode, run: () => revealDetail(name) }] });
+    };
+    if (!isDetail(field)) {
+      frames.refuseTyping(request);
+      return;
+    }
+    const current = await freshReport();
+    const options = current?.presentation.options;
+    if (!current || !options || options.form === "other") {
+      refuse(t.details.code, field);
+      return;
+    }
+    const now = detailOf(current, field);
+    if (now.computed !== undefined) {
+      refuse(t.details.computed(now.computed), field);
+      return;
+    }
+    typingRequests.set(request, { part: {}, words: now.value, detail: field });
+    inspector.highlightDetail(field);
+    frames.beginTyping(request, now.value, now.value.includes("\n"), asked);
+  }
+
+  /**
+   * Write a cover drawn from the presentation's details as text on its slide, in the roles a
+   * cover's text takes, so it is moved, styled, and typed into like any other. The details stay
+   * in presentation(), where footers and exports read them.
+   */
+  async function convertCover(): Promise<void> {
+    if (previewDetails !== "cover") {
+      toast(t.details.notCover, { tone: "warning" });
+      return;
+    }
+    const current = await freshReport();
+    const target = current ? await placeableGroup() : undefined;
+    if (!current || !target) return;
+    const options = current.presentation.options;
+    const code = (name: DetailName): string | undefined => presentationOption(options, name)?.code;
+    const title = code("title") ?? stringLiteral(current.presentation.title ?? "FrameSeq", documentQuote());
+    const roles: Array<[DetailName, string]> = [["subtitle", "subtitle"], ["author", "author"], ["institute", "caption"], ["date", "caption"]];
+    const lines = [`text(${title}).hero();`, ...roles.flatMap(([name, role]) => {
+      const written = code(name);
+      return written ? [`text(${written}).${role}();`] : [];
+    })];
+    const { after, indent } = flowPoint(target.group);
+    const at = writeLines(after, lines.map((line) => `${indent}${line}`), "input.cover");
+    await save({ auto: false });
+    toast(t.details.converted(view.state.doc.lineAt(at).number), {
+      tone: "success",
+      actions: [{ label: t.inspector.undo, run: () => { undo(view); } }],
+    });
+  }
+
+  /** The menu of a detail selected on the slide. */
+  function detailEntries(name: DetailName): MenuEntry[] {
+    return [
+      { command: "edit-text", label: t.objects.editText, icon: "text", run: () => frames.typeDetail(name) },
+      { command: "go-to-code", label: t.objects.goToCode, icon: "code", run: () => revealDetail(name) },
+      ...(previewDetails === "cover" ? [
+        "separator" as const,
+        { command: "convert-cover", label: t.details.convert, icon: "textBox" as const, run: () => void convertCover() },
+      ] : []),
+    ];
   }
 
   const pasteEntry = (): MenuEntry => ({
@@ -2280,6 +2472,9 @@ async function start(): Promise<void> {
       "separator",
       { command: "insert", label: t.menus.insert, icon: "insert", submenu: insertEntries },
       { command: "new-slide", label: t.menu.newSlide, icon: "newSlide", submenu: newSlideEntries },
+      ...(previewDetails === "cover" && !masterView
+        ? [{ command: "convert-cover", label: t.details.convert, icon: "textBox" as const, run: () => void convertCover() }]
+        : []),
       "separator",
       {
         command: "lock-layout",
@@ -2297,6 +2492,10 @@ async function start(): Promise<void> {
   /** A right-click in the preview: the menu of the objects it selected, or of the slide. */
   async function showPreviewMenu(x: number, y: number, selection: PreviewSelection, keyboard: boolean): Promise<void> {
     const count = selection.objects.length;
+    if (count === 0 && selection.detail && isDetail(selection.detail)) {
+      showContextMenu(x, y, detailEntries(selection.detail), { label: t.details.fields[selection.detail], keyboard });
+      return;
+    }
     if (count === 0) {
       showContextMenu(x, y, slideEntries(selection), { label: t.rail.menuLabel(previewSlide + 1), keyboard });
       return;

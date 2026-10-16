@@ -36,7 +36,28 @@ import {
 import { chooseIcon } from "./icons";
 import { element, showMenu, toast } from "./ui";
 
+/** The presentation's details a cover or a poster's header draws, in the order a cover shows them. */
+export const detailNames = ["title", "subtitle", "author", "institute", "date"] as const;
+
+export type DetailName = (typeof detailNames)[number];
+
+/** The presentation's details as the slide in the preview draws them, to be set in Current slide. */
+export interface SlideDetails {
+  /** A cover drawn from them, or a poster's header. */
+  kind: "cover" | "header";
+  /** Each detail's words, or the code that works them out. */
+  fields: Array<{ name: DetailName; value: string; computed?: string }>;
+  /** False when presentation()'s options are code, so none can be set here. */
+  editable: boolean;
+}
+
 export interface InspectorEvents {
+  /** Set one of the presentation's details; false when it cannot be written. */
+  setDetail: (name: DetailName, value: string) => boolean;
+  /** Show where presentation() writes a detail. */
+  revealDetail: (name: DetailName) => void;
+  /** Write a cover drawn from the presentation's details as text objects on its slide. */
+  convertCover: () => void;
   /** Show where an object was written, and outline it in the preview. */
   selectObject: (object: InspectObject) => void;
   selectRegion: (region: InspectRegion) => void;
@@ -192,6 +213,9 @@ export class SlideInspector {
   private contentFocus: { position: number; until: number } | undefined;
   /** Text boxes the reader dragged to another height, kept across the redraw. */
   private readonly heights = new Map<string, string>();
+  /** The presentation's details the slide draws, and the one selected in the preview. */
+  private details: SlideDetails | undefined;
+  private detailHighlighted: DetailName | undefined;
 
   constructor(private readonly body: HTMLElement, private readonly events: InspectorEvents) {
     this.body.addEventListener("keydown", (event) => this.navigate(event));
@@ -271,15 +295,26 @@ export class SlideInspector {
   }
 
   /** Show a slide's objects; with no slide, say why there is nothing to show. */
-  show(slide: InspectSlide | undefined, note = ""): void {
+  show(slide: InspectSlide | undefined, note = "", details?: SlideDetails): void {
     this.slide = slide;
     this.note = note;
+    if (details?.kind !== this.details?.kind) this.detailHighlighted = undefined;
+    this.details = details;
     this.render();
+  }
+
+  /** Mark one of the presentation's details as selected, as a click on it in the preview does. */
+  highlightDetail(name: DetailName | undefined): void {
+    this.detailHighlighted = name;
+    if (name) this.highlight(undefined);
+    this.render();
+    this.body.querySelector<HTMLElement>(".studio-card-row.is-highlighted")?.scrollIntoView({ block: "nearest" });
   }
 
   /** Select the object at the editor's cursor, opening the rows above it. */
   highlight(object: InspectObject | undefined): void {
     const key = object ? this.objectKey(object) : undefined;
+    if (object) this.detailHighlighted = undefined;
     if (key === this.highlighted) return;
     this.highlighted = key;
     this.folded = false;
@@ -388,6 +423,7 @@ export class SlideInspector {
     ].filter(Boolean).join(" · ");
     rows.push(summary);
     if (this.note) rows.push(element("p", "studio-inspector-note", this.note));
+    if (this.details) rows.push(this.detailsCard(this.details));
 
     const paths = [...new Set([
       ...slide.objects.map((object) => object.region || "main"),
@@ -416,8 +452,11 @@ export class SlideInspector {
       if (region?.properties?.length) rows.push(this.regionCard(region));
       for (const object of members) this.objectRows(object, 1, rows);
     }
-    if (slide.objects.length === 0) rows.push(element("p", "studio-inspector-empty", t.inspector.noObjects));
-    else if (!this.selectedObject()) rows.push(element("p", "studio-inspector-hint", t.inspector.selectHint));
+    if (slide.objects.length === 0) {
+      if (!this.details) rows.push(element("p", "studio-inspector-empty", t.inspector.noObjects));
+    } else if (!this.selectedObject()) {
+      rows.push(element("p", "studio-inspector-hint", t.inspector.selectHint));
+    }
 
     this.body.replaceChildren(...rows);
 
@@ -604,6 +643,64 @@ export class SlideInspector {
       }
     });
     return row;
+  }
+
+  // ── The presentation's details ────────────────────────────────────────────────────────────
+
+  /**
+   * The details a cover or a poster's header draws from presentation(): its title, subtitle,
+   * author, institute, and date, each set here as the cover's own words would be. Clearing one
+   * takes it away; one the code works out is shown as code and leads to it.
+   */
+  private detailsCard(details: SlideDetails): HTMLElement {
+    const card = element("div", "studio-object-card is-details");
+    const section = element("section", "studio-card-section");
+    section.append(element("h4", "studio-card-heading", details.kind === "cover" ? t.details.cover : t.details.header));
+    for (const field of details.fields) {
+      const key = `detail:${field.name}`;
+      let control: HTMLElement;
+      if (field.computed !== undefined) {
+        const button = element("button", "studio-prop is-computed");
+        button.type = "button";
+        button.dataset.key = key;
+        button.append(element("span", "studio-prop-code", field.computed));
+        button.title = t.inspector.computed(field.computed);
+        button.addEventListener("click", () => this.events.revealDetail(field.name));
+        control = button;
+      } else {
+        const input = this.textBox(field.value, false);
+        input.dataset.key = key;
+        input.placeholder = field.name === "title" ? "FrameSeq" : t.details.unset;
+        input.disabled = !details.editable;
+        input.setAttribute("aria-label", t.details.fields[field.name]);
+        this.editable(input, () => field.value, (value) => {
+          const written = this.events.setDetail(field.name, value);
+          if (written) field.value = value;
+          return written;
+        });
+        control = input;
+      }
+      const row = this.labelled(t.details.fields[field.name], control);
+      if (field.name === this.detailHighlighted) row.classList.add("is-highlighted");
+      section.append(row);
+    }
+    card.append(section);
+    if (!details.editable) card.append(element("p", "studio-inspector-empty", t.details.code));
+    const footer = element("div", "studio-card-footer");
+    if (details.kind === "cover") {
+      const convert = element("button", "studio-card-more");
+      convert.type = "button";
+      convert.innerHTML = actionIcons.plus;
+      convert.append(element("span", undefined, t.details.convert));
+      convert.title = t.details.convertTitle;
+      convert.dataset.action = "convert-cover";
+      convert.addEventListener("click", () => this.events.convertCover());
+      footer.append(convert);
+    }
+    footer.append(element("span", "studio-card-spacer"));
+    footer.append(this.iconButton(actionIcons.code, t.inspector.goToCode, () => this.events.revealDetail(this.detailHighlighted ?? "title")));
+    card.append(footer);
+    return card;
   }
 
   // ── The selected object's settings ────────────────────────────────────────────────────────

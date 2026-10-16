@@ -1689,6 +1689,20 @@ body:has(.studio-topbar) .studio-window-drag {
   padding-bottom: 8px;
 }
 
+/* The presentation's details a cover draws, above the slide's own objects. */
+.studio-object-card.is-details {
+  margin-left: 8px;
+}
+
+.studio-card-row.is-highlighted .studio-card-label {
+  color: var(--studio-accent);
+  font-weight: 600;
+}
+
+.studio-card-row.is-highlighted .studio-text-input {
+  border-color: var(--studio-accent);
+}
+
 .studio-card-texts {
   display: grid;
   gap: 7px;

@@ -203,8 +203,34 @@ export interface InspectSlide {
   objectCount: number;
 }
 
+/** One option of the presentation() call, with the ranges that rewrite its value and remove it. */
+export interface PresentationOption {
+  /** The option's name; none for a spread or a method, which stay as they are. */
+  name?: string;
+  start: number;
+  end: number;
+  kind?: "number" | "string" | "boolean";
+  value?: number | string | boolean;
+  /** The value's code, as written. */
+  code?: string;
+  source?: { line: number; character: number; start: number; end: number };
+}
+
+/** How the presentation() call, or poster() or figure(), states its options. */
+export interface PresentationOptions {
+  command: "presentation" | "poster" | "figure";
+  /** Just inside the call's parentheses. */
+  arguments: { start: number; end: number };
+  /** No options yet, a title alone, an object of options, or a value the code works out. */
+  form: "none" | "title" | "object" | "other";
+  title?: InspectProperty;
+  /** The object's braces, whether its options run over lines, and the indent of the first. */
+  object?: { start: number; end: number; multiline: boolean; indent?: string };
+  properties?: PresentationOption[];
+}
+
 export interface InspectReport {
-  presentation: { title?: string };
+  presentation: { title?: string; options?: PresentationOptions };
   summary: { slides: number; objects: number; masters?: number };
   slides: InspectSlide[];
   /** The master pages, written like slides and drawn behind them. */

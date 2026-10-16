@@ -59,6 +59,8 @@ export interface PreviewSelection {
   arrange: { x: boolean; y: boolean; distributeX: boolean; distributeY: boolean };
   /** For one object written on its own: whether it is drawn by coordinates, and can go further back or forward. */
   stacking?: { layered: boolean; backward: boolean; forward: boolean };
+  /** One of the presentation's details selected alone, such as a cover's "title". */
+  detail?: string;
 }
 
 /** What the preview can do to its selection, when the Studio's menu asks. */
@@ -110,6 +112,7 @@ function readSelection(message: Record<string, unknown>): PreviewSelection {
     ...(stacking ? {
       stacking: { layered: stacking.layered === true, backward: stacking.backward === true, forward: stacking.forward === true },
     } : {}),
+    ...(typeof message.detail === "string" ? { detail: message.detail } : {}),
   };
 }
 
@@ -122,8 +125,15 @@ export interface FrameEvents {
   previewRendered: () => void;
   /** The slide document threw while it was being run, so the preview still shows the last deck. */
   previewFailed: (failures: PreviewFailure[]) => void;
-  /** The slide the preview shows, with its speaker notes as they rendered. */
-  slide: (index: number, count: number, label: string, notes: string) => void;
+  /**
+   * The slide the preview shows, with its speaker notes as they rendered, and whether it draws
+   * the presentation's details: a "cover" drawn from them, a poster's "header", or neither.
+   */
+  slide: (index: number, count: number, label: string, notes: string, details: string) => void;
+  /** One of the presentation's details clicked in the preview, or Alt-clicked to show its code. */
+  detail: (field: string, action: "select" | "reveal") => void;
+  /** A double-click on one of the presentation's details, asking to type it in place. */
+  typeDetail: (request: number, field: string, asked: boolean) => void;
   reveal: (target: SourceTarget) => void;
   select: (targets: SourceTarget[]) => void;
   edit: (request: Record<string, unknown>) => Promise<boolean>;
@@ -295,8 +305,12 @@ export class StudioFrames {
               message.count,
               typeof message.label === "string" ? message.label : "",
               typeof message.notes === "string" ? message.notes : "",
+              typeof message.details === "string" ? message.details : "",
             );
           }
+          return;
+        case "frameseq.detail":
+          if (typeof message.field === "string") events.detail(message.field, message.action === "reveal" ? "reveal" : "select");
           return;
         case "frameseq.reveal": {
           const [target] = readTargets([message]);
@@ -340,6 +354,10 @@ export class StudioFrames {
           return;
         }
         case "frameseq.type-request": {
+          if (typeof message.detail === "string" && Number.isInteger(message.request)) {
+            events.typeDetail(message.request as number, message.detail, message.asked === true);
+            return;
+          }
           const [target] = readTargets([message.target]);
           if (target && Number.isInteger(message.request)) {
             events.typeRequest(message.request as number, target, readPart(message.part), message.shared === true, message.asked === true);
@@ -443,6 +461,12 @@ export class StudioFrames {
   typeAt(slideIndex: number, line: number, column: number): void {
     this.preview.focus();
     this.preview.contentWindow?.postMessage({ type: "frameseq.type-at", slideIndex, line, column }, "*");
+  }
+
+  /** Have the preview type one of the presentation's details where the slide shows it. */
+  typeDetail(field: string): void {
+    this.preview.focus();
+    this.preview.contentWindow?.postMessage({ type: "frameseq.type-detail", field }, "*");
   }
 
   /** Lock the preview's layout, so objects stay put while they are selected and typed into, or unlock it. */

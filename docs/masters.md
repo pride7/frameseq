@@ -83,6 +83,8 @@ The cover writes only what it says; the master decides where each part goes and 
 
 The rail's **+** adds the cover master, the content master, or another master by name. Each starts where the theme already puts things, so the slides look the same until the master is changed.
 
+The cover master and the cover share the work as in PowerPoint: the master's placeholders decide where the cover's title, subtitle, and author go and how they look, and the cover says what they are. On the slides, a cover's words are typed on the cover itself, whether it writes them with `.hero()` and the like or takes them from `presentation()`, as `minimal-academic` does; see [Cover details](studio.md#cover-details).
+
 With the slides showing, **Slide › Master** chooses the master the slide in the preview is drawn on: its usual one, another by name, or none. **Edit the master**, there and in the rail's right-click menu, opens the slide's master.
 
 ## Export

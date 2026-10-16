@@ -820,6 +820,19 @@ const en = {
     added: (name: string, line: number) => `Added the ${name.toLowerCase()} on line ${line}. Type on the slide to replace its words.`,
   },
 
+  details: {
+    cover: "Cover",
+    header: "Poster header",
+    fields: { title: "Title", subtitle: "Subtitle", author: "Author", institute: "Institute", date: "Date" } as Record<string, string>,
+    unset: "Not set",
+    code: "presentation()'s options are worked out by the code, so they are changed there.",
+    computed: (code: string) => `The code works this out (${code}), so it is changed in the code.`,
+    convert: "Convert to an editable cover",
+    convertTitle: "Write the cover's words on its slide as text objects, to move and style like any other",
+    converted: (line: number) => `The cover's words are now text on its slide, from line ${line}: drag, style, and type them like any other.`,
+    notCover: "Only a cover drawn from the presentation's details can be converted.",
+  },
+
   window: {
     minimize: "Minimize",
     maximize: "Maximize",
@@ -1748,6 +1761,19 @@ const zh: Catalog = {
     outside: "这些文字写在这份幻灯片文档之外，请到写它的地方修改。",
     notWritten: "文字没能写入：代码在这期间变了，请再输入一次。",
     added: (name, line) => `已在第 ${line} 行添加${name}，直接在幻灯片上输入即可替换文字。`,
+  },
+
+  details: {
+    cover: "封面",
+    header: "海报页眉",
+    fields: { title: "标题", subtitle: "副标题", author: "作者", institute: "单位", date: "日期" },
+    unset: "未设置",
+    code: "presentation() 的选项是代码算出来的，请在代码里修改。",
+    computed: (code) => `这一项由代码算出（${code}），请在代码里修改。`,
+    convert: "转为可编辑封面",
+    convertTitle: "把封面上的文字写成这一页的文本对象，之后像其他文字一样移动、设置格式",
+    converted: (line) => `封面上的文字已写成这一页的文本，从第 ${line} 行开始：可以像其他文字一样拖动、设置格式和修改。`,
+    notCover: "只有由演示信息生成的封面才能转换。",
   },
 
   window: {

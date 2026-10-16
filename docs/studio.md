@@ -60,7 +60,8 @@ Right-click something, or press `Shift+F10` or the menu key, for the commands th
 | --- | --- |
 | **An object in the preview** | Cut, Copy, Paste; Duplicate, Delete; **Order**: Bring to front, Bring forward, Send backward, Send to back, or, for an object in the flow, Move to the start, Move earlier, Move later, Move to the end; Edit text, Format…, Go to code |
 | **Several selected objects** | Cut, Copy, Paste, Duplicate, Delete; **Align** by their edges or centres, or distribute them evenly; Bind into a region…; Go to code |
-| **The slide itself** | Paste; Insert; New slide after this one; Lock layout; Go to the slide's source; Present from here |
+| **The slide itself** | Paste; Insert; New slide after this one; on a cover drawn from the presentation's details, Convert to an editable cover; Lock layout; Go to the slide's source; Present from here |
+| **A detail of the cover** | Edit text, Go to code, Convert to an editable cover |
 | **An object in Current slide** | Cut, Copy, Paste, Duplicate, Delete, Edit text, Format…, Go to code |
 | **The code** | Go to definition, Rename; Cut, Copy, Paste; Comment or uncomment; Select all; Find and replace |
 | **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Edit the master, Delete; in the master view, New master, Go to source, Delete |
@@ -123,6 +124,12 @@ A box shows the value written in the code, or *Auto* or *Default* when none is. 
 
 Every change is one step in the editor's history, so `Ctrl+Z` takes it back. For a slide made in a loop or by a helper function, the panel shows the objects written once in the loop or the helper, and says so.
 
+### Cover details
+
+A cover the theme draws from the presentation's details, as `minimal-academic` and the Beamer themes draw `slide().cover()`, and a poster's header, show words no line on the slide writes: the title, subtitle, author, institute, and date of `presentation({ … })`. On such a slide, Current slide opens with **Cover**, or **Poster header**, which lists all five; typing in one writes it into `presentation()`, on a line of its own when the options have lines of their own, and emptying one takes it away. The cover's words work as objects do on the slide: click one to select it, which selects its option in the code and its row here, [double-click](#typing-on-the-slide) it to type it in place, and `Alt`-click it for its code. A detail the code works out is shown as code.
+
+**Convert to an editable cover**, below the details and in the cover's right-click menu, writes the cover's words on its slide as text: `text("…").hero()`, `.subtitle()`, `.author()`, and captions for the institute and the date. They are then moved, styled, and typed into like any other text, and a [cover master](masters.md)'s placeholders decide where they go. The details stay in `presentation()`, where footers, PDF properties, and the other exports read them.
+
 Drag the divider above **Current slide** to share the rail between it and the slides, or fold it away with the arrow beside its title.
 
 ## Speaker notes
@@ -170,7 +177,7 @@ See [Visual Studio Code extension](vscode.md) for the rules that decide which nu
 
 ## Typing on the slide
 
-Double-click an object's words in the preview to type them where they are, as in PowerPoint: a text, an item of a list, a cell of a table, a card's title or its text, a metric, or the label of a shape or a box. The words show as the code writes them, with inline math as `$...$`, and the caret lands where you double-clicked.
+Double-click an object's words in the preview to type them where they are, as in PowerPoint: a text, an item of a list, a cell of a table, a card's title or its text, a metric, the label of a shape or a box, or one of the [cover details](#cover-details), which are written into `presentation()`. The words show as the code writes them, with inline math as `$...$`, and the caret lands where you double-clicked.
 
 - `Enter`, `Tab`, or a click elsewhere writes them into the string that holds them, in the quotes it was written with, as one step in the editor's history; `Esc` puts them back as they were.
 - `Shift+Enter` starts a new line. In code, which runs over lines, `Enter` does, and `Ctrl+Enter` finishes.

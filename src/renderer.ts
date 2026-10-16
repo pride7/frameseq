@@ -657,9 +657,14 @@ function hasClass(node: FrameSeqNode, className: string): boolean {
   return classes.includes(className);
 }
 
-function titlePageItem(className: string, content: string): HTMLElement {
+/**
+ * Text the presentation's details write, such as its title on a cover. `field` names the
+ * presentation() option it shows, so an editor can lead from it to that option.
+ */
+function titlePageItem(className: string, content: string, field?: string): HTMLElement {
   const element = document.createElement("div");
   element.className = `frameseq-text ${className}`;
+  if (field) element.dataset.frameseqMeta = field;
   appendTextWithInlineMath(element, content);
   return element;
 }
@@ -677,9 +682,9 @@ function addAutomaticTitlePage(canvas: HTMLElement, slides: SlidesRootDefinition
 
   const titlePage = document.createElement("section");
   titlePage.className = "frameseq-auto-title-page";
-  titlePage.append(titlePageItem("frameseq-cover-title", slides.title));
+  titlePage.append(titlePageItem("frameseq-cover-title", slides.title, "title"));
   if (slides.subtitle) {
-    titlePage.append(titlePageItem("frameseq-cover-subtitle", slides.subtitle));
+    titlePage.append(titlePageItem("frameseq-cover-subtitle", slides.subtitle, "subtitle"));
   }
 
   const rule = document.createElement("div");
@@ -687,14 +692,15 @@ function addAutomaticTitlePage(canvas: HTMLElement, slides: SlidesRootDefinition
   titlePage.append(rule);
 
   if (slides.author) {
-    titlePage.append(titlePageItem("frameseq-cover-author", slides.author));
+    titlePage.append(titlePageItem("frameseq-cover-author", slides.author, "author"));
   }
   if (slides.institute) {
-    titlePage.append(titlePageItem("frameseq-cover-institute", slides.institute));
+    titlePage.append(titlePageItem("frameseq-cover-institute", slides.institute, "institute"));
   }
   if (slides.date) {
-    titlePage.append(titlePageItem("frameseq-cover-date", slides.date));
+    titlePage.append(titlePageItem("frameseq-cover-date", slides.date, "date"));
   }
+  canvas.dataset.frameseqDetails = "cover";
   canvas.append(titlePage);
 }
 
@@ -706,15 +712,17 @@ function addAutomaticTitlePage(canvas: HTMLElement, slides: SlidesRootDefinition
 function addMetadataHeader(canvas: HTMLElement, slides: SlidesRootDefinition): void {
   const header = document.createElement("header");
   header.className = "frameseq-theme-header";
-  header.append(titlePageItem("frameseq-theme-header-title", slides.title));
-  if (slides.subtitle) header.append(titlePageItem("frameseq-theme-header-subtitle", slides.subtitle));
-  const credits = [slides.author, slides.institute, slides.date].filter((value): value is string => Boolean(value));
+  header.append(titlePageItem("frameseq-theme-header-title", slides.title, "title"));
+  if (slides.subtitle) header.append(titlePageItem("frameseq-theme-header-subtitle", slides.subtitle, "subtitle"));
+  const credits = ([["author", slides.author], ["institute", slides.institute], ["date", slides.date]] as Array<[string, string | undefined]>)
+    .filter((credit): credit is [string, string] => Boolean(credit[1]));
   if (credits.length > 0) {
     const line = document.createElement("div");
     line.className = "frameseq-theme-header-credits";
-    for (const credit of credits) line.append(titlePageItem("frameseq-theme-header-credit", credit));
+    for (const [field, credit] of credits) line.append(titlePageItem("frameseq-theme-header-credit", credit, field));
     header.append(line);
   }
+  canvas.dataset.frameseqDetails = "header";
   canvas.classList.add("frameseq-has-header");
   canvas.prepend(header);
 }
@@ -1052,6 +1060,9 @@ const englishWords = {
   computedSize: (code: string) => `Sized by the code (${code}), so a drag cannot resize it`,
   layoutLockedHint: "Layout locked · unlock it to move or resize objects",
   sharedObject: "Drawn by a loop or a helper with others like it, so a drag cannot move it",
+  selectedDetail: (name: string) => `Selected · the presentation's ${name} · double-click to type it`,
+  detailNames: { title: "title", subtitle: "subtitle", author: "author", institute: "institute", date: "date" },
+  detailDeleted: "Selected · written in presentation(); clear it in Current slide",
   selectedMany: (count: number, label: string) => `${count} selected · ${label}`,
   regionDeleted: "Selected · a region is deleted in the source",
   insideAnother: "Selected · written inside another command; delete it in the source",
@@ -1149,6 +1160,9 @@ const chineseWords: typeof englishWords = {
   computedSize: (code) => `大小由代码算出（${code}），拖动改不了`,
   layoutLockedHint: "布局已锁定 · 解锁后才能移动或缩放对象",
   sharedObject: "它和同类对象由循环或辅助函数画出，拖动改不了",
+  selectedDetail: (name) => `已选中 · 演示的${name} · 双击可修改`,
+  detailNames: { title: "标题", subtitle: "副标题", author: "作者", institute: "单位", date: "日期" },
+  detailDeleted: "已选中 · 它写在 presentation() 里，请在“当前页”里清空",
   selectedMany: (count, label) => `已选中 ${count} 个 · ${label}`,
   regionDeleted: "已选中 · 区域要在代码里删除",
   insideAnother: "已选中 · 它写在另一条命令里，请在代码里删除",
@@ -1915,6 +1929,16 @@ function enableSourceReveal(
     if (event.button !== 0) return;
     // A click in words being typed places the caret there.
     if (event.target instanceof Element && event.target.closest(".is-frameseq-typing")) return;
+    // The presentation's details on a cover are selected like an object, and lead to presentation().
+    const detail = inStudio && event.target instanceof Element
+      ? event.target.closest<HTMLElement>("[data-frameseq-meta]")
+      : null;
+    if (detail) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectDetail(detail, event.altKey ? "reveal" : "select");
+      return;
+    }
     const element = event.target instanceof Element
       ? event.target.closest<HTMLElement>("[data-frameseq-source]")
       : undefined;
@@ -1990,6 +2014,10 @@ function enableSourceReveal(
    */
   const deleteSelected = (): void => {
     const elements = [...selected];
+    if (elements.some((element) => element.dataset.frameseqMeta)) {
+      explain(w.detailDeleted);
+      return;
+    }
     if (elements.some((element) => ["row", "column", "stack", "slide"].includes(element.dataset.frameseqNode ?? ""))) {
       explain(w.regionDeleted);
       return;
@@ -2054,7 +2082,28 @@ function enableSourceReveal(
         backward: stacking.index > 0,
         forward: stacking.index < stacking.peers.length - 1,
       },
+      // One of the presentation's details, such as a cover's title, selected alone.
+      detail: elements.length === 1 ? elements[0].dataset.frameseqMeta : undefined,
     };
+  };
+  /**
+   * Select one of the presentation's details on the slide, alone, so FrameSeq Studio shows its
+   * setting; with `reveal`, Alt-clicked, the Studio shows where presentation() writes it.
+   */
+  const selectDetail = (element: HTMLElement, action: "select" | "reveal"): void => {
+    clearFocused();
+    clearSelection();
+    selected.add(element);
+    element.classList.add("is-frameseq-selected");
+    const index = Number(element.closest<HTMLElement>(".frameseq-slide-frame")?.dataset.index);
+    selectionSlideIndex = Number.isInteger(index) ? index : undefined;
+    const field = element.dataset.frameseqMeta ?? "";
+    explain(w.selectedDetail(w.detailNames[field as keyof typeof w.detailNames] ?? field));
+    const box = element.getBoundingClientRect();
+    selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
+    selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
+    focusCanvas();
+    window.parent.postMessage({ type: "frameseq.detail", field, action }, "*");
   };
   const inStudio = window.parent !== window
     && new URLSearchParams(location.search).get("frameseq-preview") === "studio";
@@ -2073,6 +2122,7 @@ function enableSourceReveal(
       const active = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
       const hit = event.target.closest<HTMLElement>("[data-frameseq-source]");
       const object = hit && !hit.classList.contains("frameseq-slide") && active?.contains(hit) ? hit : undefined;
+      const detail = event.target.closest<HTMLElement>("[data-frameseq-meta]");
       const onSlide = Boolean(event.target.closest(".frameseq-slide"));
       // The menu key gives no point; the menu then opens at the selection, or on the slide.
       // Control-click, which opens menus on a Mac, is the left button.
@@ -2087,6 +2137,8 @@ function enableSourceReveal(
           object.classList.add("is-frameseq-selected");
           notifySelection();
         }
+      } else if (detail && active?.contains(detail) && !keyboard) {
+        if (!selected.has(detail)) selectDetail(detail, "select");
       } else if (onSlide && !keyboard) {
         clearSelection();
       }
@@ -2406,6 +2458,17 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     return partAt(object, object).host;
   };
 
+  /** One of the presentation's details, such as a cover's title, as this drawing shows it. */
+  const detailAt = (field: string): HTMLElement | undefined => root
+    .querySelector<HTMLElement>(`.frameseq-slide-frame.is-active [data-frameseq-meta="${CSS.escape(field)}"]`) ?? undefined;
+
+  /** The element drawing words, found again in this drawing: an object's part, or a detail. */
+  const hostOf = (place: WordsPlace): HTMLElement | undefined => {
+    if (typeof place.part.detail === "string") return detailAt(place.part.detail);
+    const object = objectAt(place.source.line, place.source.column);
+    return object && partOf(object, place.part);
+  };
+
   const ask = (
     object: HTMLElement,
     target: Element,
@@ -2426,6 +2489,16 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
       shared: object.dataset.frameseqShared === "true",
       asked: select,
     }, "*");
+  };
+
+  /** Ask to type one of the presentation's details, which presentation() writes. */
+  const askDetail = (element: HTMLElement, point: { x: number; y: number } | undefined, select: boolean): void => {
+    const field = element.dataset.frameseqMeta;
+    if (!field) return;
+    typingSequence += 1;
+    const source = { line: 0, column: 0, start: 0, end: 0 };
+    typingAsked.set(typingSequence, { host: element, source, part: { detail: field }, point, select, again: true });
+    window.parent.postMessage({ type: "frameseq.type-request", request: typingSequence, detail: field, asked: select }, "*");
   };
 
   /** Stop typing, and hand the words to the Studio when `commit` asks and they changed. */
@@ -2511,8 +2584,8 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     typingAsked.delete(request);
     if (!waiting || typingSession) return;
     // The slide may have been drawn again while the Studio answered.
-    const relocated = waiting.host.isConnected ? undefined : objectAt(waiting.source.line, waiting.source.column);
-    const host = relocated ? partOf(relocated, waiting.part) : waiting.host;
+    const relocated = !waiting.host.isConnected;
+    const host = relocated ? hostOf(waiting) : waiting.host;
     if (!host?.isConnected) return;
     const session = { request, value, multiline, source: waiting.source, part: waiting.part };
     start(host, session, value, { selectAll, point: relocated ? undefined : waiting.point });
@@ -2531,8 +2604,7 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     askAgain();
     const session = typingSession;
     if (!session || root.contains(session.host)) return;
-    const object = objectAt(session.source.line, session.source.column);
-    const host = object && partOf(object, session.part);
+    const host = hostOf(session);
     const typed = session.host.textContent ?? session.value;
     session.stop.abort();
     typingSession = undefined;
@@ -2545,10 +2617,17 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
   typingDoubleClick = (event) => {
     // A polygon being drawn ends with a double-click, which is not a request to type.
     if (typingSession || placingKind || event.altKey || !(event.target instanceof Element)) return;
+    const point = { x: event.clientX, y: event.clientY };
+    const detail = event.target.closest<HTMLElement>("[data-frameseq-meta]");
+    if (detail?.closest(".frameseq-slides")) {
+      event.preventDefault();
+      askDetail(detail, point, false);
+      return;
+    }
     const object = objectOf(event.target);
     if (!object) return;
     event.preventDefault();
-    ask(object, event.target, { x: event.clientX, y: event.clientY }, false);
+    ask(object, event.target, point, false);
   };
   if (!typingListening) {
     typingListening = true;
@@ -2572,6 +2651,12 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     if (object) ask(object, object.querySelector(wordParts) ?? object, undefined, true);
   };
 
+  /** Type one of the presentation's details, as Edit text on it asks. */
+  const typeDetail = (field: string): void => {
+    const element = typingSession ? undefined : detailAt(field);
+    if (element) askDetail(element, undefined, true);
+  };
+
   addEventListener("message", (event: MessageEvent<unknown>) => {
     const data = event.data as Record<string, unknown> | null;
     if (!data || typeof data.type !== "string") return;
@@ -2593,6 +2678,8 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
       if (typed && data.ok === false && typed.host.isConnected) typed.host.replaceChildren(...typed.original);
     } else if (data.type === "frameseq.type-at" && typeof data.line === "number" && typeof data.column === "number") {
       typeAt(data.line, data.column);
+    } else if (data.type === "frameseq.type-detail" && typeof data.field === "string") {
+      typeDetail(data.field);
     }
   }, { signal });
 }
@@ -4080,6 +4167,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         count: slides.length,
         label: slides[currentSlide].label,
         notes: typeof slides[currentSlide].node.props.notes === "string" ? slides[currentSlide].node.props.notes : "",
+        // A cover or a poster's header drawn from the presentation's details, which an editor offers to set.
+        details: slides[currentSlide].canvas.dataset.frameseqDetails ?? "",
       }, "*");
     }
     updatePresenter();
