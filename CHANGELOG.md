@@ -7,6 +7,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Fixed
 
 - A slide show started with `F5` from FrameSeq Studio's preview takes the keys once it is on screen, so the arrow keys, `End`, and the rest move the show at once. They went on reaching the preview until the show was clicked.
+- FrameSeq Studio's start page draws the templates' covers in the new-presentation dialog at once. It had Tailwind scan the folder the Studio started in, the Documents folder when it starts from the Start menu, and the covers could stay blank for half a minute; it now looks only in the templates folder. The start page also lists one's own templates there, which it refused to before.
+- The FrameSeq app's Start menu and desktop shortcuts, and those `frameseq shortcut` makes on Windows, start FrameSeq Studio without a console window. Windows 11 shows a console in Windows Terminal, which ignores a shortcut's "Run: Minimized", so a black window opened on every start. Shortcuts made before keep it until the app is installed again or `frameseq shortcut` runs again.
 
 ## [0.39.0] - 2026-10-16
 
