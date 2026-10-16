@@ -69,6 +69,8 @@ Both run the same FrameSeq. Install with npm, as [Getting started](getting-start
 
 The installers are not signed yet. On Windows 11 with **Smart App Control** turned on, Windows may now and then refuse to start the unsigned installer, depending on what Microsoft's online check answers at that moment; try again a little later, or use the portable zip. It may refuse the Studio's window, which is not signed either, in the same way. The Start menu's shortcut therefore runs Node.js, which the OpenJS Foundation signs, and Node.js opens the window; when Windows refuses it, the Studio opens in a browser's app window instead, and FrameSeq does not try the window again until it changes, as it does with an update. Elsewhere on Windows, SmartScreen may ask before running the installer (**More info › Run anyway**). macOS asks to confirm the first opening (open it from Finder with **Control-click › Open**). Signing the installers and the window would end all of these.
 
+They are not signed because FrameSeq is free and a code-signing certificate is not. Every app is built in public by the Desktop app workflow from the release's tag, and each release lists the SHA-256 of its files in `SHA256SUMS.txt`. To check a download, compare its hash with that list: `Get-FileHash <file>` in PowerShell, `shasum -a 256 <file>` on macOS, or, on Linux, `sha256sum --check --ignore-missing SHA256SUMS.txt` in the folder that holds both.
+
 ## Building the app
 
 `node scripts/app-bundle.mjs` builds the app for this computer from a checkout of the repository; `--platform` and `--arch` build it for another. The Windows installer needs Inno Setup 6, from its own installer, Chocolatey, or Scoop (`scoop install extras/inno-setup`); without it, only the zip is made.

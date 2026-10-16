@@ -1,4 +1,4 @@
-<!-- translation-of: docs/app.md sha256:1ca0084874a4e145 -->
+<!-- translation-of: docs/app.md sha256:3c33540723552393 -->
 
 # FrameSeq 应用
 
@@ -70,6 +70,8 @@ PDF、PowerPoint 和 `frameseq check` 用 Chromium 浏览器渲染。应用按�
 两者运行的是同一个 FrameSeq。当演示放在一个有自己依赖的项目里,或者希望编程代理和 CI 像运行其他东西一样运行它时,按[快速上手](getting-started.md)用 npm 安装。如果只想写演示,而不想搭建开发环境,就安装应用。
 
 安装程序目前还没有签名。在开启了**智能应用控制**的 Windows 11 上,Windows 偶尔会拒绝启动未签名的安装程序,取决于微软在线检查当时的结果;稍后再试一次,或者改用便携版 zip。Studio 的窗口同样没有签名,也可能这样被拒绝。所以开始菜单的快捷方式运行的是有 OpenJS 基金会签名的 Node.js,再由 Node.js 打开窗口;Windows 拒绝窗口时,Studio 改在浏览器的应用窗口里打开,而且在窗口程序改变之前(比如更新之后),FrameSeq 不会再尝试它。在其他 Windows 电脑上,SmartScreen 可能会在运行安装程序前询问(**更多信息 › 仍要运行**)。macOS 会要求确认第一次打开(在访达里 **按住 Control 点按 › 打开**)。给安装程序和窗口签名后,这些情况都会消失。
+
+安装程序没有签名,是因为 FrameSeq 是免费的,而代码签名证书要花钱。每个应用都由 Desktop app 工作流从版本标签公开构建,每个版本都在 `SHA256SUMS.txt` 里列出它的文件的 SHA-256。要核对下载的文件,把它的哈希和这份列表比对:在 PowerShell 里用 `Get-FileHash <文件>`,在 macOS 上用 `shasum -a 256 <文件>`;在 Linux 上,在同时放着两者的文件夹里运行 `sha256sum --check --ignore-missing SHA256SUMS.txt`。
 
 ## 构建应用
 

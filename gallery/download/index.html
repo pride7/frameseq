@@ -136,10 +136,12 @@
           <article class="dl-panel reveal">
             <p class="eyebrow">The first time you open it</p>
             <h2 id="first-title">The app is not signed yet.</h2>
+            <p class="dl-panel-note">FrameSeq is free, and a code-signing certificate is not. Every download is built in public on GitHub Actions from the release's tag.</p>
             <ul class="dl-steps">
               <li><b>Windows</b> SmartScreen may ask before running the installer: choose <b>More info › Run anyway</b>. With Smart App Control on, Windows may now and then refuse it; try again a little later, or use the portable zip.</li>
               <li><b>macOS</b> The first time, macOS asks you to confirm: open FrameSeq Studio from Finder with <b>Control-click › Open</b>.</li>
               <li><b>Linux</b> It runs as it is. Where the Studio's window cannot open, the Studio opens in a browser's app window instead.</li>
+              <li><b>Checking a download</b> Every release lists the SHA-256 of each file in <a href="https://github.com/pride7/frameseq/releases/latest/download/SHA256SUMS.txt">SHA256SUMS.txt</a>. Compare yours with <code>Get-FileHash</code> in PowerShell, <code>shasum -a 256</code> on macOS, or <code>sha256sum</code> on Linux.</li>
             </ul>
             <a class="text-link" href="../docs/app.html">Read the app guide <span aria-hidden="true">→</span></a>
           </article>

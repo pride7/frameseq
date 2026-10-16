@@ -105,6 +105,9 @@ jobs:
         with:
           path: apps
           merge-multiple: true
+      - name: List their checksums
+        working-directory: apps
+        run: sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
       - name: Attach them to the release
         env:
           GH_TOKEN: ${{ github.token }}

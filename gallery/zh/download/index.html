@@ -136,10 +136,12 @@
           <article class="dl-panel reveal">
             <p class="eyebrow">第一次打开时</p>
             <h2 id="first-title">应用目前还没有签名。</h2>
+            <p class="dl-panel-note">FrameSeq 是免费的，而代码签名证书要花钱。每个下载文件都由 GitHub Actions 从版本标签公开构建。</p>
             <ul class="dl-steps">
               <li><b>Windows</b> 运行安装程序前，SmartScreen 可能会询问：选择 <b>更多信息 › 仍要运行</b>。开启了智能应用控制时，Windows 偶尔会拒绝运行；稍后再试一次，或者改用便携版 zip。</li>
               <li><b>macOS</b> 第一次打开时需要确认：在访达里 <b>按住 Control 点按 › 打开</b> FrameSeq Studio。</li>
               <li><b>Linux</b> 直接就能运行。Studio 的窗口打不开时，会改在浏览器的应用窗口里打开。</li>
+              <li><b>核对下载的文件</b> 每个版本都在 <a href="https://github.com/pride7/frameseq/releases/latest/download/SHA256SUMS.txt">SHA256SUMS.txt</a> 里列出每个文件的 SHA-256。用 PowerShell 的 <code>Get-FileHash</code>、macOS 的 <code>shasum -a 256</code> 或 Linux 的 <code>sha256sum</code> 算出你下载的文件的值，和它比对。</li>
             </ul>
             <a class="text-link" href="../../docs/zh/app.html">阅读应用说明 <span aria-hidden="true">→</span></a>
           </article>
