@@ -1814,7 +1814,10 @@ function enableSourceReveal(
   } | undefined;
   const focusCanvas = (): void => {
     root.focus({ preventScroll: true });
-    setTimeout(() => root.focus({ preventScroll: true }), 0);
+    // Words that start being typed meanwhile, as on a slide drawn again, keep the keys.
+    setTimeout(() => {
+      if (!typingSession) root.focus({ preventScroll: true });
+    }, 0);
   };
 
   const clearFocused = (): void => {
@@ -2467,8 +2470,9 @@ function enableSourceReveal(
     selectionSlideIndex = stored.slideIndex;
     notifySelection();
     // The keys go back to the canvas they were pressed on, but a redraw that lands while the
-    // person has moved on, such as to the code around an embedded preview, leaves them there.
-    if (document.hasFocus()) focusCanvas();
+    // person has moved on, such as to the code around an embedded preview, or is typing on the
+    // slide, leaves them there.
+    if (document.hasFocus() && !typingSession) focusCanvas();
   }, 0);
 }
 
@@ -2494,6 +2498,8 @@ const typingAsked = new Map<number, WordsPlace & {
   select: boolean;
   /** Asked again of a newer drawing, which is done once. */
   again: boolean;
+  /** The Studio's answer, kept for the drawing shown next when none could take it as it came. */
+  answer?: { value: string; multiline: boolean; selectAll: boolean; until: number };
 }>();
 
 /**
@@ -2950,12 +2956,20 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
 
   const begin = (request: number, value: string, multiline: boolean, selectAll: boolean): void => {
     const waiting = typingAsked.get(request);
-    typingAsked.delete(request);
-    if (!waiting || typingSession) return;
-    // The slide may have been drawn again while the Studio answered.
+    if (!waiting || typingSession) {
+      typingAsked.delete(request);
+      return;
+    }
+    // The slide may have been drawn again while the Studio answered. Each drawing still on the
+    // page hears the answer, and one taken off it leaves the words to the drawing that is shown,
+    // or to the next one shown.
     const relocated = !waiting.host.isConnected;
     const host = relocated ? hostOf(waiting) : waiting.host;
-    if (!host?.isConnected) return;
+    if (!host?.isConnected) {
+      waiting.answer = { value, multiline, selectAll, until: Date.now() + 5000 };
+      return;
+    }
+    typingAsked.delete(request);
     const session = { request, value, multiline, source: waiting.source, part: waiting.part };
     start(host, session, value, { selectAll, point: relocated ? undefined : waiting.point });
   };
@@ -2971,6 +2985,12 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
       return;
     }
     askAgain();
+    // An answer that came while no drawing on show could take it is taken by this one, soon after.
+    for (const [request, waiting] of typingAsked) {
+      if (!waiting.answer) continue;
+      if (Date.now() > waiting.answer.until || typingSession) typingAsked.delete(request);
+      else begin(request, waiting.answer.value, waiting.answer.multiline, waiting.answer.selectAll);
+    }
     const session = typingSession;
     if (!session || root.contains(session.host)) return;
     const host = hostOf(session);

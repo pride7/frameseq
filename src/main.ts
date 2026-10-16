@@ -96,7 +96,8 @@ async function replaceSlides(nextSlides: SlidesRootDefinition): Promise<void> {
   }
   appRoot.replaceChildren(...stage.childNodes);
   stage.remove();
-  if (appRoot.querySelector(".is-frameseq-selected")) {
+  // Words being typed on the slide keep the keys.
+  if (appRoot.querySelector(".is-frameseq-selected") && !appRoot.querySelector(".is-frameseq-typing")) {
     appRoot.querySelector<HTMLElement>(".frameseq-slides")?.focus({ preventScroll: true });
   }
   dispatchEvent(new Event("resize"));
