@@ -51,7 +51,8 @@ Drag a thumbnail up or down to move its slide. Right-click it to duplicate, move
 Objects on the slide are worked on directly, as in PowerPoint:
 
 - Click an object to select it, and `Ctrl`-click to add others.
-- Drag an object you drew to move it, and its corner to resize it. Drag one in the slide's flow, such as a paragraph or a list, to change its place among its neighbours.
+- Drag an object you drew to move it, the handles on its sides and corners to resize it, and the round one above it to turn it. Drag one in the slide's flow, such as a paragraph or a list, to change its place among its neighbours.
+- Drag across the slide's empty part to select every object inside the box.
 - Double-click words to type them where they are: a text, a list's item, a table's cell, a shape's label. `Enter` keeps them, and `Esc` puts them back.
 - The padlock among the slide's controls locks the layout, so nothing moves by accident while you work on the words.
 - `Delete` deletes the selection, and `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, and `Ctrl+D` copy, cut, paste, and duplicate it.

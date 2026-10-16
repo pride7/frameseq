@@ -51,7 +51,7 @@ function chainRoot(node) {
 }
 
 /** Chain steps that take a single number the preview can rewrite in place. */
-const numericSteps = new Set(["width", "height"]);
+const numericSteps = new Set(["width", "height", "rotate"]);
 
 /** A number written literally in the source, which a drag can replace without reprinting. */
 function numericField(sourceFile, node) {

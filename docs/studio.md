@@ -164,7 +164,10 @@ With **Follow cursor** on, moving the cursor shows the slide that holds it and o
 
 Objects in the preview are worked on as in PowerPoint, with no mode to turn on first:
 
-- **Click** an object to select it, and **drag** it: one placed with `position({ x, y })` moves, and the handle at its corner resizes one that states its `width()` or `height()`. Only the digits change, through the editor, so `Ctrl+Z` puts the object back. The same keys work while the preview has focus: `Ctrl+Z` and `Ctrl+Y` undo and redo in the editor, and `Ctrl+S` saves.
+- **Click** an object to select it, and **drag** it: one placed with `position({ x, y })` moves. Only the digits change, through the editor, so `Ctrl+Z` puts the object back. The same keys work while the preview has focus: `Ctrl+Z` and `Ctrl+Y` undo and redo in the editor, and `Ctrl+S` saves.
+- **Drag across the slide's empty part** to draw a box: the objects wholly inside it are selected, and `Ctrl` or `Shift` adds them to what is selected already.
+- The **handles** on a selected object's sides and corners resize it from there: the right and bottom ones change the `width()` and `height()` it states, and the left and top ones its `x` and `y` too, so the opposite side stays put. `Shift` on a corner keeps its proportions. A side shows a handle only where the code states the numbers it changes.
+- The **round handle above** an object placed by coordinates turns it about its middle, written as `.rotate(30)`, or rewriting the angle already written; `Shift` turns it by steps of 15°.
 - Drag an object in the document flow to change its place among its neighbours; its lines move in the source, comments included. The pointer has to travel a little further before this starts than before a move does, so a click that wobbles never reorders the slide.
 - A value the code works out, such as `position({ x: left + 40, y: 120 })`, `width(size * 2)`, or a placement such as `.rightOf("box")`, is never overwritten by a drag. The selected object says what places it, its corner handle is grey, and a drag that tries leaves it where it is and says why, with **Go to code**.
 - The padlock among the preview's controls, or **Lock layout** in the slide's right-click menu, locks the layout: objects can still be selected, formatted, and typed into, but not dragged, resized, or nudged with the arrow keys until it is unlocked.

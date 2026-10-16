@@ -76,9 +76,9 @@ export type SelectionAction =
 export type ObjectCommand = "copy" | "cut" | "paste" | "duplicate";
 
 /** Why a drag in the preview changed nothing. */
-export type BlockedDrag = "locked" | "position" | "size" | "shared";
+export type BlockedDrag = "locked" | "position" | "size" | "rotation" | "shared";
 
-const blockedDrags: ReadonlySet<unknown> = new Set<BlockedDrag>(["locked", "position", "size", "shared"]);
+const blockedDrags: ReadonlySet<unknown> = new Set<BlockedDrag>(["locked", "position", "size", "rotation", "shared"]);
 
 const objectCommands: ReadonlySet<unknown> = new Set<ObjectCommand>(["copy", "cut", "paste", "duplicate"]);
 

@@ -294,6 +294,19 @@ export class SlideInspector {
     return ok;
   }
 
+  /**
+   * Set one of an object's settings, as its box in the panel does, such as the turn a drag in the
+   * preview gave it: rewritten where it is written, added as a method call where it is not, and
+   * taken away when `value` is empty.
+   */
+  writeSetting(object: InspectObject, name: string, value: string): boolean {
+    const spec = fieldSpecs[name];
+    if (!spec) return false;
+    const ok = value.trim() ? this.setField(object, spec, value) : this.resetField(object, spec);
+    if (ok) this.render();
+    return ok;
+  }
+
   /** Show a slide's objects; with no slide, say why there is nothing to show. */
   show(slide: InspectSlide | undefined, note = "", details?: SlideDetails): void {
     this.slide = slide;

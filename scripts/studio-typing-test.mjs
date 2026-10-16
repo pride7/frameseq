@@ -145,10 +145,23 @@ try {
   const typing = () => preview.evaluate(() => document.querySelector("#app .is-frameseq-typing")?.textContent ?? null)
     .catch(() => null);
   /** Wait for the slide shown to be drawn again with these words on it, as a person would. */
-  const shows = (words) => waitFor(() => preview.evaluate((wanted) => {
-    const active = document.querySelector("#app .frameseq-slide-frame.is-active");
-    return Boolean(active && !active.querySelector(".is-frameseq-typing") && active.textContent.includes(wanted));
-  }, words).catch(() => false), `the slide to show “${words}”`);
+  const shows = async (words) => {
+    await waitFor(() => preview.evaluate((wanted) => {
+      const active = document.querySelector("#app .frameseq-slide-frame.is-active");
+      return Boolean(active && !active.querySelector(".is-frameseq-typing") && active.textContent.includes(wanted));
+    }, words).catch(() => false), `the slide to show “${words}”`);
+    // A save can be drawn twice in quick succession; the slide is used once it has stopped changing.
+    await waitFor(async () => {
+      const marked = await preview.evaluate(() => {
+        const slides = document.querySelector("#app .frameseq-slides");
+        if (slides) slides.dataset.testDrawing = "seen";
+        return Boolean(slides);
+      }).catch(() => false);
+      if (!marked) return false;
+      await delay(500);
+      return preview.evaluate(() => document.querySelector("#app .frameseq-slides")?.dataset.testDrawing === "seen").catch(() => false);
+    }, "the slide to stop changing");
+  };
   const selectAllTyped = async () => {
     await page.keyboard.down("Control");
     await page.keyboard.press("a");
@@ -220,9 +233,13 @@ try {
 
   // ── A table's rows and columns, from the menu of one of its cells ───────────────────────
   const tableMenu = async (selector, action) => {
-    const point = await centreOf(selector);
-    await page.mouse.click(point.x, point.y, { button: "right" });
-    await page.waitForSelector(".studio-context-menu [data-command='table']");
+    await waitFor(async () => {
+      const point = await centreOf(selector);
+      await page.mouse.click(point.x, point.y, { button: "right" });
+      if (await page.waitForSelector(".studio-context-menu [data-command='table']", { timeout: 2000 }).catch(() => null)) return true;
+      await page.keyboard.press("Escape");
+      return false;
+    }, "the cell's menu to offer Table");
     await page.click(".studio-context-menu [data-command='table']");
     await page.waitForSelector(`.studio-context-menu [data-command='table-${action}']`);
     await page.click(`.studio-context-menu [data-command='table-${action}']`);

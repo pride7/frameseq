@@ -1058,6 +1058,7 @@ const englishWords = {
   locked: "locked",
   computedPosition: (code: string) => `Placed by the code (${code}), so a drag cannot move it`,
   computedSize: (code: string) => `Sized by the code (${code}), so a drag cannot resize it`,
+  computedRotation: (code: string) => `Turned by the code (${code}), so a drag cannot turn it`,
   layoutLockedHint: "Layout locked · unlock it to move or resize objects",
   sharedObject: "Drawn by a loop or a helper with others like it, so a drag cannot move it",
   selectedDetail: (name: string) => `Selected · the presentation's ${name} · double-click to type it`,
@@ -1158,6 +1159,7 @@ const chineseWords: typeof englishWords = {
   locked: "已锁定",
   computedPosition: (code) => `位置由代码算出（${code}），拖动改不了`,
   computedSize: (code) => `大小由代码算出（${code}），拖动改不了`,
+  computedRotation: (code) => `旋转角度由代码算出（${code}），拖动改不了`,
   layoutLockedHint: "布局已锁定 · 解锁后才能移动或缩放对象",
   sharedObject: "它和同类对象由循环或辅助函数画出，拖动改不了",
   selectedDetail: (name) => `已选中 · 演示的${name} · 双击可修改`,
@@ -1798,14 +1800,17 @@ function enableSourceReveal(
     const placedByCode = !positioned && (computed.x ?? computed.y);
     const locked = document.documentElement.classList.contains("frameseq-layout-locked");
     if (positioned) {
-      const at = w.selectedAt(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+      const turn = override?.rotate ?? fields.rotate?.value;
+      const at = `${w.selectedAt(Math.round(x), Math.round(y), Math.round(width), Math.round(height))}${turn ? ` · ${Math.round(turn)}°` : ""}`;
       selectionCoordinates.textContent = locked ? `${at} · ${w.locked}` : at;
     } else {
       selectionCoordinates.textContent = placedByCode ? w.selectedComputed(placedByCode) : locked ? w.selectedLocked : w.selectedFlow;
     }
     selectionCoordinates.classList.toggle("is-readonly", !positioned || locked);
     selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
-    selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
+    // Above the handle that turns the object, where it has one, so the label never covers it.
+    const turnable = !locked && (Boolean(fields.rotate) || (inStudioPreview() && positioned));
+    selectionCoordinates.style.top = `${Math.max(8, box.top - (turnable ? 60 : 32))}px`;
     selectionCoordinates.classList.add("is-visible");
   };
   const selectionLabel = (element: HTMLElement): string => {
@@ -1925,8 +1930,82 @@ function enableSourceReveal(
   };
   addEventListener("message", (event) => focusSource(event.data), { signal });
 
+  /**
+   * Drag across the slide's empty part to draw a box, and select the objects wholly inside it,
+   * as a drawing program does; Ctrl or Shift adds them to what is selected already. The click
+   * that ends the drag selects nothing more.
+   */
+  let marquee: { pointerId: number; x: number; y: number; add: boolean; box?: HTMLElement } | undefined;
+  let swallowClick = false;
+  root.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.altKey || placingKind || typingSession || !(event.target instanceof Element)) return;
+    if (!document.documentElement.classList.contains("frameseq-edit-mode")) return;
+    const active = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
+    if (!active?.contains(event.target)) return;
+    const hit = event.target.closest<HTMLElement>("[data-frameseq-source]");
+    if ((hit && !hit.classList.contains("frameseq-slide")) || event.target.closest("[data-frameseq-meta], .frameseq-edit-handle")) return;
+    marquee = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, add: event.ctrlKey || event.metaKey || event.shiftKey };
+  }, { signal });
+  addEventListener("pointermove", (event) => {
+    if (!marquee || event.pointerId !== marquee.pointerId) return;
+    if (!marquee.box && Math.hypot(event.clientX - marquee.x, event.clientY - marquee.y) < dragThreshold) return;
+    if (!marquee.box) {
+      marquee.box = document.createElement("div");
+      marquee.box.className = "frameseq-marquee";
+      marquee.box.setAttribute("aria-hidden", "true");
+      document.body.append(marquee.box);
+      // The box follows the pointer past the slide's edge, and ends where the pointer is let go.
+      try {
+        root.setPointerCapture(event.pointerId);
+      } catch {
+        // Without capture, the box simply ends when the pointer comes back.
+      }
+    }
+    Object.assign(marquee.box.style, {
+      left: `${Math.min(marquee.x, event.clientX)}px`,
+      top: `${Math.min(marquee.y, event.clientY)}px`,
+      width: `${Math.abs(event.clientX - marquee.x)}px`,
+      height: `${Math.abs(event.clientY - marquee.y)}px`,
+    });
+  }, { signal });
+  const endMarquee = (event: PointerEvent): void => {
+    if (!marquee || event.pointerId !== marquee.pointerId) return;
+    const { box, add } = marquee;
+    marquee = undefined;
+    if (!box) return;
+    const area = box.getBoundingClientRect();
+    box.remove();
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 0);
+    const active = root.querySelector<HTMLElement>(".frameseq-slide-frame.is-active");
+    const inside = [...active?.querySelectorAll<HTMLElement>("[data-frameseq-source]") ?? []].filter((element) => {
+      if (element.classList.contains("frameseq-slide") || element.closest(".frameseq-master-layer")) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width + rect.height > 0 && rect.left >= area.left && rect.top >= area.top
+        && rect.right <= area.right && rect.bottom <= area.bottom;
+    });
+    // An object inside another one that is selected goes with it.
+    const outermost = inside.filter((element) => !inside.some((other) => other !== element && other.contains(element)));
+    clearFocused();
+    if (!add) clearSelection();
+    for (const element of outermost) {
+      selected.add(element);
+      element.classList.add("is-frameseq-selected");
+    }
+    focusCanvas();
+    if (selected.size > 0) notifySelection();
+  };
+  addEventListener("pointerup", endMarquee, { signal });
+  addEventListener("pointercancel", endMarquee, { signal });
+  signal?.addEventListener("abort", () => marquee?.box?.remove(), { once: true });
+
   root.addEventListener("click", (event) => {
     if (event.button !== 0) return;
+    // The click that ends drawing a selection box selects nothing more.
+    if (swallowClick) {
+      swallowClick = false;
+      return;
+    }
     // A click in words being typed places the caret there.
     if (event.target instanceof Element && event.target.closest(".is-frameseq-typing")) return;
     // The presentation's details on a cover are selected like an object, and lead to presentation().
@@ -2285,7 +2364,8 @@ function enableSourceReveal(
     const { element, reason, code = "" } = event.detail;
     explain(reason === "locked" ? w.layoutLockedHint
       : reason === "shared" ? w.sharedObject
-        : reason === "size" ? w.computedSize(code) : w.computedPosition(code));
+        : reason === "size" ? w.computedSize(code)
+          : reason === "rotation" ? w.computedRotation(code) : w.computedPosition(code));
     const box = element.getBoundingClientRect();
     selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
     selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
@@ -2974,13 +3054,17 @@ function insertionIndex(boxes: DOMRect[], x: number, y: number): number {
   return index < 0 ? boxes.length : index;
 }
 
-type BlockedReason = "locked" | "position" | "size" | "shared";
+type BlockedReason = "locked" | "position" | "size" | "rotation" | "shared";
 
 interface LayoutDrag {
   element: HTMLElement;
   fields: SourceFields;
   /** "blocked" is a press on an object the drag cannot change, which says why once it moves. */
-  mode: "move" | "resize" | "reorder" | "blocked";
+  mode: "move" | "resize" | "rotate" | "reorder" | "blocked";
+  /** The side or corner a resize pulls, such as "e" or "nw". */
+  side?: string;
+  /** Where the object's middle is on the page, which it turns about. */
+  centre?: { x: number; y: number };
   /**
    * Why a blocked drag changes nothing: the layout is locked, the code works the value out, or
    * one command in a loop or a helper drew the object and others like it.
@@ -3019,19 +3103,53 @@ interface LayoutEditor {
   setLocked: (locked: boolean) => void;
 }
 
+/** The sides and corners an object is resized by, as a drawing program puts its handles. */
+const handleSides = ["n", "ne", "e", "se", "s", "sw", "w", "nw"] as const;
+
 /**
- * Drag an object on a canvas slide to change the coordinates its command states, and drag the
- * corner handle to change its size. Returns the switches that turn the mode on and off and lock
- * the layout; a locked layout keeps every object where it is, while it can still be selected.
+ * The sides an object can be resized from: the right with a width written as a number, the left
+ * when its x is one too, the bottom with a height, the top when its y is one too, and a corner
+ * where both of its sides can.
+ */
+function resizableSides(fields: SourceFields): Set<string> {
+  const east = Boolean(fields.width);
+  const west = east && Boolean(fields.x);
+  const south = Boolean(fields.height);
+  const north = south && Boolean(fields.y);
+  const sides = new Set<string>();
+  for (const [side, can] of [["e", east], ["w", west], ["s", south], ["n", north]] as const) if (can) sides.add(side);
+  for (const corner of ["ne", "se", "sw", "nw"]) if (sides.has(corner[0]) && sides.has(corner[1])) sides.add(corner);
+  return sides;
+}
+
+/**
+ * Drag an object on a canvas slide to change the coordinates its command states, drag one of
+ * the handles on its sides and corners to change its size, and the one above it to turn it.
+ * Returns the switches that turn the mode on and off and lock the layout; a locked layout keeps
+ * every object where it is, while it can still be selected.
  */
 function createLayoutEditor(
   root: HTMLElement,
   canvasWidth: number,
   signal?: AbortSignal,
 ): LayoutEditor {
-  const handle = document.createElement("div");
-  handle.className = "frameseq-edit-handle";
-  handle.setAttribute("aria-hidden", "true");
+  const handles = handleSides.map((side) => {
+    const handle = document.createElement("div");
+    handle.className = `frameseq-edit-handle is-${side}`;
+    handle.dataset.handle = side;
+    handle.setAttribute("aria-hidden", "true");
+    return handle;
+  });
+  const turner = document.createElement("div");
+  turner.className = "frameseq-rotate-handle";
+  turner.setAttribute("aria-hidden", "true");
+  /** The object the handles are on. */
+  let handled: HTMLElement | null = null;
+  const removeHandles = (): void => {
+    for (const handle of handles) handle.remove();
+    turner.remove();
+    handled = null;
+  };
   let locked = false;
   const insertion = document.createElement("div");
   insertion.className = "frameseq-insertion-marker";
@@ -3126,18 +3244,39 @@ function createLayoutEditor(
   }
 
   /**
-   * Put the resize handle on an object that states its width as a number, or, marked as fixed,
-   * on one whose code works the width out, so the corner says why it does not follow.
+   * Put the handles on an object: one on each side and corner it can be resized from, and, in
+   * FrameSeq Studio, which can write the turn, one above an object placed by coordinates to turn
+   * it. Where the code works out the size or the turn, a handle shows as fixed, so the object says
+   * why it does not follow.
    */
   const placeHandle = (element: HTMLElement | null): void => {
-    const fields = element ? parseSourceFields(element) : undefined;
-    const computed = element ? parseSourceComputed(element) : undefined;
-    if (!element || locked || !(fields?.width || computed?.width)) {
-      handle.remove();
+    const fields = element ? parseSourceFields(element) ?? {} : {};
+    const computed = element ? parseSourceComputed(element) ?? {} : {};
+    // Words being typed on the slide keep their element to themselves.
+    if (!element || locked || element.closest(".is-frameseq-typing") || element.querySelector(".is-frameseq-typing")) {
+      removeHandles();
       return;
     }
-    handle.classList.toggle("is-computed", !fields?.width);
-    if (handle.parentElement !== element) element.append(handle);
+    const sides = resizableSides(fields);
+    const fixed = sides.size === 0 && Boolean(computed.width || computed.height);
+    const turns = Boolean(fields.rotate || computed.rotate) || (inStudioPreview() && Boolean(fields.x && fields.y));
+    if (sides.size === 0 && !fixed && !turns) {
+      removeHandles();
+      return;
+    }
+    handled = element;
+    for (const handle of handles) {
+      const side = handle.dataset.handle ?? "";
+      handle.classList.toggle("is-computed", fixed);
+      if (fixed ? side === "se" : sides.has(side)) {
+        if (handle.parentElement !== element) element.append(handle);
+      } else {
+        handle.remove();
+      }
+    }
+    turner.classList.toggle("is-computed", Boolean(computed.rotate && !fields.rotate));
+    if (!turns) turner.remove();
+    else if (turner.parentElement !== element) element.append(turner);
   };
   /** The one object selected, which keeps its handle while the pointer is elsewhere. */
   const selectedOne = (): HTMLElement | null => {
@@ -3150,7 +3289,7 @@ function createLayoutEditor(
     const element = event.target instanceof Element
       ? event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-computed]")
       : null;
-    if (element && element === handle.parentElement) return;
+    if (element && element === handled) return;
     placeHandle(element ?? selectedOne());
   });
   addEventListener("frameseq-selection-change", () => {
@@ -3162,14 +3301,16 @@ function createLayoutEditor(
     if (!editing || event.button !== 0 || event.altKey || !(event.target instanceof Element)) return;
     // Words being typed on the slide take their own presses, to place the caret and select.
     if (event.target.closest(".is-frameseq-typing")) return;
-    const resizing = Boolean(event.target.closest(".frameseq-edit-handle"));
-    const region = event.shiftKey
+    const grip = event.target.closest<HTMLElement>(".frameseq-edit-handle");
+    const resizing = Boolean(grip);
+    const turning = Boolean(event.target.closest(".frameseq-rotate-handle"));
+    const region = event.shiftKey && !resizing && !turning
       ? event.target.closest<HTMLElement>(
         ":is(.frameseq-row,.frameseq-column,.frameseq-stack)[data-frameseq-name][data-frameseq-edit]",
       )
       : null;
-    const element = region ?? (resizing
-      ? handle.parentElement
+    const element = region ?? (resizing || turning
+      ? handled
       : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-computed], [data-frameseq-statement]"));
     // One command in a loop or a helper drew this and others like it, so no drag can say which to move.
     const shared = element ? undefined : event.target.closest<HTMLElement>("[data-frameseq-shared]:not(.frameseq-slide)");
@@ -3200,12 +3341,14 @@ function createLayoutEditor(
     const siblings = statement ? reorderSiblings(element) : [];
     // An object placed by coordinates is dragged to new ones; one in the document flow has
     // none to change, so dragging it trades its place with a neighbour instead.
-    let mode: LayoutDrag["mode"] = resizing ? "resize" : (fields.x && fields.y ? "move" : "reorder");
+    let mode: LayoutDrag["mode"] = turning ? "rotate" : resizing ? "resize" : (fields.x && fields.y ? "move" : "reorder");
     let blocked: LayoutDrag["blocked"];
-    if (mode === "resize" && !fields.width) {
-      if (!computed.width) return;
+    if (mode === "resize" && grip?.classList.contains("is-computed")) {
       mode = "blocked";
-      blocked = { reason: "size", code: computed.width };
+      blocked = { reason: "size", code: computed.width ?? computed.height };
+    } else if (mode === "rotate" && computed.rotate && !fields.rotate) {
+      mode = "blocked";
+      blocked = { reason: "rotation", code: computed.rotate };
     } else if (mode === "reorder" && (computed.x || computed.y)) {
       // An object its code places has no coordinates to rewrite, and moving its lines would not
       // move it, so the drag says where it is placed instead.
@@ -3220,11 +3363,15 @@ function createLayoutEditor(
     }
 
     event.preventDefault();
+    const box = element.getBoundingClientRect();
     drag = {
       element,
       fields,
       mode,
       blocked,
+      side: grip?.dataset.handle,
+      // An object turns about its middle, which turning leaves where it is.
+      centre: { x: box.left + box.width / 2, y: box.top + box.height / 2 },
       statement,
       siblings,
       index: siblings.indexOf(element),
@@ -3298,11 +3445,52 @@ function createLayoutEditor(
       return;
     }
 
-    drag.values = { width: Math.max(8, Math.round(drag.fields.width.value + dx)) };
-    drag.element.style.width = `${drag.values.width}px`;
-    if (drag.fields.height) {
-      drag.values.height = Math.max(8, Math.round(drag.fields.height.value + dy));
+    if (drag.mode === "rotate") {
+      const centre = drag.centre ?? { x: drag.originX, y: drag.originY };
+      const angle = (x: number, y: number): number => Math.atan2(y - centre.y, x - centre.x) * 180 / Math.PI;
+      let degrees = (drag.fields.rotate?.value ?? 0) + angle(event.clientX, event.clientY) - angle(drag.originX, drag.originY);
+      degrees = ((degrees % 360) + 540) % 360 - 180;
+      // Shift turns by steps of 15°, as a drawing program does.
+      degrees = event.shiftKey ? Math.round(degrees / 15) * 15 : Math.round(degrees);
+      drag.values = { rotate: degrees === -180 ? 180 : degrees };
+      drag.element.style.transform = `rotate(${drag.values.rotate}deg)`;
+      dispatchEvent(new CustomEvent("frameseq-layout-preview", {
+        detail: { element: drag.element, values: drag.values },
+      }));
+      return;
+    }
+
+    // A side moves only its own edge; the left and top edges move the object's x and y with it.
+    const side = drag.side ?? "se";
+    const { width, height, x, y } = drag.fields;
+    let newWidth = width?.value;
+    let newHeight = height?.value;
+    if (width && side.includes("e")) newWidth = width.value + dx;
+    if (width && x && side.includes("w")) newWidth = width.value - dx;
+    if (height && side.includes("s")) newHeight = height.value + dy;
+    if (height && y && side.includes("n")) newHeight = height.value - dy;
+    // Shift on a corner keeps the object's proportions.
+    if (event.shiftKey && side.length === 2 && width && height && newWidth !== undefined) {
+      newHeight = newWidth * (height.value / width.value);
+    }
+    drag.values = {};
+    const horizontal = side.includes("e") || side.includes("w");
+    const vertical = side.includes("n") || side.includes("s");
+    if (width && newWidth !== undefined && horizontal) {
+      drag.values.width = Math.max(8, Math.round(newWidth));
+      drag.element.style.width = `${drag.values.width}px`;
+      if (x && side.includes("w")) {
+        drag.values.x = Math.round(x.value + width.value - drag.values.width);
+        drag.element.style.left = `${drag.values.x}px`;
+      }
+    }
+    if (height && newHeight !== undefined && vertical) {
+      drag.values.height = Math.max(8, Math.round(newHeight));
       drag.element.style.height = `${drag.values.height}px`;
+      if (y && side.includes("n")) {
+        drag.values.y = Math.round(y.value + height.value - drag.values.height);
+        drag.element.style.top = `${drag.values.y}px`;
+      }
     }
     dispatchEvent(new CustomEvent("frameseq-layout-preview", {
       detail: { element: drag.element, values: drag.values },
@@ -3321,6 +3509,12 @@ function createLayoutEditor(
     clearSmartGuides();
     if (!finished.moved || finished.mode === "blocked") return;
 
+    // A turn its code does not write yet is added to it by FrameSeq Studio, as .rotate().
+    if (finished.mode === "rotate" && !finished.fields.rotate) {
+      const target = parseSourceTarget(finished.element.dataset.frameseqSource ?? "");
+      if (target && finished.values.rotate !== undefined) sendSourceRequest({ rotate: { target, degrees: finished.values.rotate } });
+      return;
+    }
     // The slide document is written for us, which hot-swaps a newly laid-out canvas.
     if (finished.mode !== "reorder") {
       sendSourceEdits(finished.fields, finished.values);
@@ -3381,7 +3575,7 @@ function createLayoutEditor(
   import.meta.hot?.on(sourceEditResultEvent, receiveEditResult);
   signal?.addEventListener("abort", () => {
     import.meta.hot?.off(sourceEditResultEvent, receiveEditResult);
-    handle.remove();
+    removeHandles();
     insertion.remove();
     clearSmartGuides();
   }, { once: true });
@@ -3392,14 +3586,14 @@ function createLayoutEditor(
       document.documentElement.classList.toggle("frameseq-edit-mode", active);
       dispatchEvent(new CustomEvent("frameseq-editing-change", { detail: active }));
       if (!active) {
-        handle.remove();
+        removeHandles();
         insertion.remove();
       }
     },
     setLocked: (next: boolean): void => {
       locked = next;
       document.documentElement.classList.toggle("frameseq-layout-locked", next);
-      if (next) handle.remove();
+      if (next) removeHandles();
       else placeHandle(selectedOne());
     },
   };

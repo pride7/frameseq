@@ -6,6 +6,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Added
 
+- Select and shape objects in FrameSeq Studio as in a drawing program: drag across the slide's empty part to select the objects inside the box, with `Ctrl` or `Shift` to add to the selection; resize from handles on all four sides and corners, the left and top ones moving `x` and `y` with the edge and `Shift` on a corner keeping the proportions; and turn an object placed by coordinates with the round handle above it, written as `.rotate()`, by steps of 15° with `Shift`. A turn the code works out stays as it is, and says so.
+
 - Add and take away a table's rows and columns in FrameSeq Studio: right-click a cell for **Table**, which inserts a row above or below it or a column left or right of it, or deletes its row or column, written into `table([...])` as the other rows are, and types into the new cell at once.
 
 - **File › Page setup…** in FrameSeq Studio sets the size of every slide, as PowerPoint's slide size does: Widescreen 16:9, Standard 4:3, a sheet from A0 to A5, Letter, Legal, or Tabloid upright or on its side, or a size of one's own in canvas units or on paper, written into `presentation()` as one step. **Scale the content with the page** keeps the canvas as many units across as it is, so every object keeps its size against the new page, and the dialog shows the canvas and the printed size before anything changes. A poster offers paper only, and a figure its canvas and the width it prints at.

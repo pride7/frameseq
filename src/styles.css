@@ -326,22 +326,101 @@ button {
   pointer-events: none;
 }
 
+/* The box dragged across the slide's empty part to select the objects inside it. */
+.frameseq-marquee {
+  position: fixed;
+  z-index: 36;
+  border: 1px solid var(--frameseq-accent);
+  background: color-mix(in srgb, var(--frameseq-accent) 10%, transparent);
+  pointer-events: none;
+}
+
+/* The handles on an object's sides and corners, which resize it from there. */
 .frameseq-edit-handle {
   position: absolute;
-  right: -6px;
-  bottom: -6px;
+  z-index: 2;
+  box-sizing: border-box;
   width: 12px;
   height: 12px;
   border: 1px solid var(--frameseq-background);
   border-radius: 3px;
   background: var(--frameseq-accent);
+}
+
+.frameseq-edit-handle.is-n,
+.frameseq-edit-handle.is-s {
+  left: calc(50% - 6px);
+  cursor: ns-resize;
+}
+
+.frameseq-edit-handle.is-e,
+.frameseq-edit-handle.is-w {
+  top: calc(50% - 6px);
+  cursor: ew-resize;
+}
+
+.frameseq-edit-handle:is(.is-n, .is-ne, .is-nw) {
+  top: -6px;
+}
+
+.frameseq-edit-handle:is(.is-s, .is-se, .is-sw) {
+  bottom: -6px;
+}
+
+.frameseq-edit-handle:is(.is-e, .is-ne, .is-se) {
+  right: -6px;
+}
+
+.frameseq-edit-handle:is(.is-w, .is-nw, .is-sw) {
+  left: -6px;
+}
+
+.frameseq-edit-handle:is(.is-ne, .is-sw) {
+  cursor: nesw-resize;
+}
+
+.frameseq-edit-handle:is(.is-nw, .is-se) {
   cursor: nwse-resize;
 }
 
-/* A width the code works out cannot follow the handle, which shows it. */
+/* The handle above an object, which turns it about its middle. */
+.frameseq-rotate-handle {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  top: -34px;
+  left: calc(50% - 7px);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--frameseq-accent);
+  border-radius: 50%;
+  background: var(--frameseq-background);
+  cursor: grab;
+}
+
+.frameseq-rotate-handle::after {
+  position: absolute;
+  top: 12px;
+  left: 4px;
+  width: 2px;
+  height: 18px;
+  background: var(--frameseq-accent);
+  content: "";
+}
+
+/* A size or a turn the code works out cannot follow its handle, which shows it. */
 .frameseq-edit-handle.is-computed {
   background: color-mix(in srgb, var(--frameseq-foreground) 35%, var(--frameseq-background));
   cursor: not-allowed;
+}
+
+.frameseq-rotate-handle.is-computed {
+  border-color: color-mix(in srgb, var(--frameseq-foreground) 35%, var(--frameseq-background));
+  cursor: not-allowed;
+}
+
+.frameseq-rotate-handle.is-computed::after {
+  background: color-mix(in srgb, var(--frameseq-foreground) 35%, var(--frameseq-background));
 }
 
 /* An object whose code places it needs a containing block for its handle too. */

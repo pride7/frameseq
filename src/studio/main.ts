@@ -1085,6 +1085,15 @@ async function start(): Promise<void> {
       if (ordered.some((change, index) => index > 0 && change.from < ordered[index - 1].to)) return false;
       suppressFollow = true;
       view.dispatch({ changes: ordered, userEvent: "delete.preview" });
+    } else if (request.rotate && typeof request.rotate === "object") {
+      // An object turned in the preview whose code does not write a turn yet takes .rotate().
+      const { target, degrees } = request.rotate as Record<string, unknown>;
+      const place = target as SourceTarget | undefined;
+      const located = place && ["line", "column", "start", "end"].every((key) => Number.isInteger(place[key as keyof SourceTarget]));
+      if (!located || typeof degrees !== "number" || !Number.isFinite(degrees)) return false;
+      const { object } = await typedObject(place);
+      suppressFollow = true;
+      if (!object || !inspector.writeSetting(object, "rotation", degrees === 0 ? "" : String(Math.round(degrees)))) return false;
     } else {
       return false;
     }
@@ -2050,9 +2059,11 @@ async function start(): Promise<void> {
       return;
     }
     const object = await inspectedObject(target);
-    const names = reason === "size" ? ["width", "height"] : ["x", "y"];
+    const names = reason === "size" ? ["width", "height"] : reason === "rotation" ? ["rotation"] : ["x", "y"];
     const computed = object?.computed?.find((value) => names.includes(value.name));
-    toast(reason === "size" ? t.objects.computedSize(code) : t.objects.computedPosition(code), {
+    const message = reason === "size" ? t.objects.computedSize(code)
+      : reason === "rotation" ? t.objects.computedRotation(code) : t.objects.computedPosition(code);
+    toast(message, {
       tone: "warning",
       key: "layout-blocked",
       actions: [{
