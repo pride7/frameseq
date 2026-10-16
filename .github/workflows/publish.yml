@@ -15,9 +15,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The tagged commit went through CI on its way to main, so this waits for that run to have
+  # passed, or for the run the tag itself starts, rather than running every test a second time.
   release-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -26,19 +31,27 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Install CJK fonts
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
-      - name: Use an OIDC-capable npm CLI
-        run: npm install --global npm@^11.5.1
-      - name: Install dependencies
-        run: npm ci
       - name: Verify release tag and package versions
         if: github.event_name == 'push'
-        run: npm run release:tag-check -- "${{ github.ref_name }}"
-      - name: Run release checks
-        run: npm run release:check
+        run: node scripts/release-tag-test.mjs "${{ github.ref_name }}"
+      - name: Wait for CI to pass on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 70); do
+            runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --limit 20 --json status,conclusion,url)"
+            if jq -e 'any(.[]; .conclusion == "success")' <<<"$runs" >/dev/null; then
+              echo "CI passed on $GITHUB_SHA: $(jq -r '[.[] | select(.conclusion == "success")][0].url' <<<"$runs")"
+              exit 0
+            fi
+            if jq -e 'length > 0 and all(.[]; .status == "completed")' <<<"$runs" >/dev/null; then
+              echo "::error::CI did not pass on $GITHUB_SHA; fix it and tag a commit it passes on."
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "::error::No CI run on $GITHUB_SHA finished within 35 minutes."
+          exit 1
 
   publish-frameseq:
     if: github.event_name == 'push'

@@ -162,7 +162,7 @@ npm run studio          # 在 Studio 中打开 slides.ts
 npm run release:check   # 运行 CI 的全部检查
 ```
 
-`release:check` 会构建库、示例和官网，在桌面和手机尺寸下运行浏览器测试，在干净的项目里安装打包好的 npm 包，并导出 PDF 和 PowerPoint 文件。每次推送都会在 GitHub Actions 上运行它，推送到 `main` 会部署官网。用户能看到的改动写在 [CHANGELOG.md](CHANGELOG.md) 的 **Unreleased** 下；发布流程见 [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html)（英文）。
+`release:check` 会构建库、示例和官网，在桌面和手机尺寸下运行浏览器测试，在干净的项目里安装打包好的 npm 包，并导出 PDF 和 PowerPoint 文件。每次推送都会在 GitHub Actions 上分成四组同时运行它（`node scripts/test-suite.mjs studio` 只运行其中一组），推送到 `main` 会部署官网。用户能看到的改动写在 [CHANGELOG.md](CHANGELOG.md) 的 **Unreleased** 下；发布流程见 [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html)（英文）。
 
 ## 许可
 

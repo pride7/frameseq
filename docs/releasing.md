@@ -40,7 +40,7 @@ npm run release:tag-check -- v0.16.0
 npm run release:check
 ```
 
-Commit and push the release changes before creating the tag.
+Commit and push the release changes before creating the tag, and let CI pass on them. CI runs `release:check` in four groups side by side, as `node scripts/test-suite.mjs core`, `studio` (with `pack:check`), `app`, and `exports`, and `node scripts/test-suite.mjs studio` runs one group locally.
 
 ## Publish from a tag
 
@@ -54,7 +54,7 @@ git push origin v0.16.0
 The workflow then:
 
 1. verifies that the tag, framework version, creator template, and playground dependency agree;
-2. runs the complete `release:check` suite;
+2. waits for CI to have passed on the tagged commit, the run of its push to `main` or else the one the tag starts, rather than running `release:check` a second time, and stops if it failed;
 3. publishes `@pride7/frameseq` and `create-frameseq` in separate jobs.
 
 The two publish jobs are independent. If one transiently fails, rerun only its failed job from GitHub Actions rather than creating another tag.

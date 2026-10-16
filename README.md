@@ -162,7 +162,7 @@ npm run studio          # open slides.ts in the Studio
 npm run release:check   # everything CI runs
 ```
 
-`release:check` builds the library, demo, and website, runs the browser tests at desktop and mobile sizes, installs the packed npm tarballs in a clean project, and exports PDF and PowerPoint files. Every push runs it on GitHub Actions, and pushes to `main` deploy the website. User-visible changes go under **Unreleased** in [CHANGELOG.md](CHANGELOG.md); [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html) covers publishing.
+`release:check` builds the library, demo, and website, runs the browser tests at desktop and mobile sizes, installs the packed npm tarballs in a clean project, and exports PDF and PowerPoint files. Every push runs it on GitHub Actions, in four groups side by side (`node scripts/test-suite.mjs studio` runs one of them), and pushes to `main` deploy the website. User-visible changes go under **Unreleased** in [CHANGELOG.md](CHANGELOG.md); [Release FrameSeq](https://pride7.github.io/frameseq/docs/releasing.html) covers publishing.
 
 ## License
 

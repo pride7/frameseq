@@ -59,7 +59,9 @@ if (!cliSource.includes('const hostEnabled = process.argv.includes("--host") || 
 if (!publishWorkflow.includes("tags:")
   || !publishWorkflow.includes('"v*"')
   || !publishWorkflow.includes("id-token: write")
-  || !publishWorkflow.includes("npm run release:check")
+  || !publishWorkflow.includes("node scripts/release-tag-test.mjs")
+  // Only a commit CI passed on is published.
+  || !publishWorkflow.includes("--workflow ci.yml --commit \"$GITHUB_SHA\"")
   || !publishWorkflow.includes("npm publish --access=public")
   || !publishWorkflow.includes("working-directory: packages/create-frameseq")
   || publishWorkflow.includes("NODE_AUTH_TOKEN")) {

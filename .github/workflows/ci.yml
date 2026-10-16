@@ -20,9 +20,24 @@ permissions:
   contents: read
 
 jobs:
+  # release:check, in the groups scripts/test-suite.mjs makes, side by side: each takes a few
+  # minutes, where all of it one after another took a quarter of an hour.
   release-check:
+    name: release-check (${{ matrix.group }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: core
+            run: node scripts/test-suite.mjs core
+          - group: studio
+            run: node scripts/test-suite.mjs studio && npm run pack:check
+          - group: app
+            run: node scripts/test-suite.mjs app
+          - group: exports
+            run: node scripts/test-suite.mjs exports
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -37,8 +52,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Install dependencies
         run: npm ci
-      - name: Run release checks
-        run: npm run release:check
+      - name: Run the ${{ matrix.group }} tests
+        run: ${{ matrix.run }}
 
   # The FrameSeq app's window for the Studio compiles; the app workflow builds it for release.
   desktop-window:
