@@ -77,6 +77,29 @@ poster(options) → ContentSlideBuilder
 
 **Returns** `ContentSlideBuilder`, the poster's page, so its layout, such as `.grid(3)`, can follow directly. See [Posters and print](posters.md).
 
+### `figure()`
+
+Starts a figure for a paper: one canvas with no margins, printed at the width it will have on the page, so `frameseq pdf` gives a page of exactly that size and the layout check judges type in printed points.
+
+```ts
+figure({ title: "Method", width: 1600, height: 820 });
+at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(620).height(780);
+```
+
+**Signature**
+
+```text
+figure(title) → ContentSlideBuilder
+figure(options) → ContentSlideBuilder
+```
+
+**Parameters**
+
+- `title` — `string`, optional. A short form for setting only the title.
+- `options` — `FigureOptions`, optional. `width` and `height` are canvas units, 1600 and 900 by default; `printWidth` is how wide it prints, `"170mm"` by default, or `"85mm"` for one column; `theme`, `font`, and `background` work as for `presentation()`.
+
+**Returns** `ContentSlideBuilder`, the figure's page, already a canvas. See [Posters and print](posters.md#figures-for-a-paper).
+
 ### `slide()`
 
 Starts a slide. Every content command after it belongs to that slide until the next `slide()` call.

@@ -48,6 +48,8 @@ Usage:
                                       Build a static HTML presentation
   frameseq pdf [file] [--output path] [--slides 1-3,5]
                                       Export slides to PDF
+  frameseq png [file] [--output path] [--slides 1-3,5] [--scale 2]
+                                      Export each page as a PNG picture
   frameseq pptx [file] [--output path] [--flatten] [--slides 1-3,5]
                                       Export an editable or flattened PowerPoint
   frameseq typst [file] [--output path] [--slides 1-3,5]
@@ -75,6 +77,7 @@ Examples:
   frameseq build talk.slides.ts --single-file
   frameseq pdf talk.slides.ts
   frameseq pdf talk.slides.ts --slides 1-3,5
+  frameseq png figure.slides.ts --scale 3
   frameseq pptx talk.slides.ts
   frameseq pptx talk.slides.ts --flatten
   frameseq typst talk.slides.ts
@@ -456,7 +459,11 @@ async function buildHtml(entry, requestedOutput, singleFile = false) {
   }
 }
 
-async function exportPdf(entry, requestedOutput, slides) {
+/**
+ * Build the slides and open them as printing lays them out, every page one after another, with
+ * only the chosen slides kept. The caller works with the page, then closes it.
+ */
+async function openPrintedDeck(entry, slides, { scale = 1 } = {}) {
   const buildDirectory = resolve(process.cwd(), "tmp", "frameseq-build");
   process.env.FRAMESEQ_ENTRY = entry;
   process.env.FRAMESEQ_BUILD_DIR = buildDirectory;
@@ -480,13 +487,14 @@ async function exportPdf(entry, requestedOutput, slides) {
     throw new Error("Could not determine preview server address");
   }
 
-  const defaultOutput = resolve(process.cwd(), "output", "pdf", pdfName(entry, slides));
-  const outputPath = resolve(requestedOutput ?? defaultOutput);
-  await mkdir(dirname(outputPath), { recursive: true });
-
   const browser = await puppeteer.launch(puppeteerLaunchOptions());
+  const close = async () => {
+    await browser.close();
+    await server.close();
+  };
   try {
     const page = await browser.newPage();
+    if (scale !== 1) await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: scale });
     await watchDeck(page);
     await page.goto(`http://127.0.0.1:${address.port}/?print=1`, {
       waitUntil: "networkidle0",
@@ -495,7 +503,20 @@ async function exportPdf(entry, requestedOutput, slides) {
     await page.evaluate(() => document.fonts.ready);
     await page.emulateMediaType("screen");
     if (slides) await keepSlides(page, slides);
+    return { page, close };
+  } catch (error) {
+    await close();
+    throw error;
+  }
+}
 
+async function exportPdf(entry, requestedOutput, slides) {
+  const defaultOutput = resolve(process.cwd(), "output", "pdf", pdfName(entry, slides));
+  const outputPath = resolve(requestedOutput ?? defaultOutput);
+  await mkdir(dirname(outputPath), { recursive: true });
+
+  const { page, close } = await openPrintedDeck(entry, slides);
+  try {
     // A page made for paper prints at the paper's size: the canvas is scaled up as a whole, so
     // the PDF stays vector and its layout is exactly the one that was checked.
     const dimensions = await page.evaluate(() => {
@@ -522,9 +543,46 @@ async function exportPdf(entry, requestedOutput, slides) {
     });
     console.log(`PDF exported to ${outputPath}`);
   } finally {
-    await browser.close();
-    await server.close();
+    await close();
   }
+}
+
+/**
+ * A PNG picture of each page, as the PDF prints them, `scale` times the canvas's size: one file
+ * for a single page, such as a figure, and a folder of numbered pages otherwise.
+ */
+async function exportPng(entry, requestedOutput, slides, scale) {
+  const { page, close } = await openPrintedDeck(entry, slides, { scale });
+  try {
+    const frames = await page.$$(".frameseq-slide-frame");
+    const stem = basename(entry, extname(entry)).replace(/\.slides$/, "");
+    const name = `${stem}${slidesFileSuffix(slides)}`;
+    const single = frames.length === 1;
+    const target = resolve(requestedOutput ?? resolve(process.cwd(), "output", "png", single ? `${name}.png` : name));
+    // Pages are named by their slide, and by their step when a slide reveals in several.
+    const indices = await Promise.all(frames.map((frame) => frame.evaluate((element) => Number(element.dataset.index) || 0)));
+    const written = [];
+    for (const [position, frame] of frames.entries()) {
+      const index = indices[position];
+      const steps = indices.filter((value) => value === index).length;
+      const step = indices.slice(0, position).filter((value) => value === index).length + 1;
+      const path = single ? target : resolve(target, `${stem}-${index + 1}${steps > 1 ? `-${step}` : ""}.png`);
+      await mkdir(dirname(path), { recursive: true });
+      await frame.screenshot({ path, type: "png" });
+      written.push(path);
+    }
+    console.log(single ? `PNG exported to ${target}` : `${written.length} PNG pictures exported to ${target}`);
+  } finally {
+    await close();
+  }
+}
+
+/** How many times the canvas's size `--scale` asks for, 2 by default. */
+function chosenScale() {
+  if (!process.argv.includes("--scale")) return 2;
+  const value = Number(option("--scale"));
+  if (!(value > 0 && value <= 8)) throw new Error("--scale takes a number above 0 and at most 8, such as 2 or 3.");
+  return value;
 }
 
 function printLayoutReport(report) {
@@ -692,7 +750,7 @@ try {
       start: true,
       desktop,
     });
-  } else if (command === "dev" || command === "studio" || command === "build" || command === "pdf" || command === "pptx" || command === "typst" || command === "check" || command === "inspect") {
+  } else if (command === "dev" || command === "studio" || command === "build" || command === "pdf" || command === "png" || command === "pptx" || command === "typst" || command === "check" || command === "inspect") {
     const entry = resolve(process.cwd(), file);
     await ensureFile(entry);
     if (command === "dev") {
@@ -715,6 +773,7 @@ try {
       await buildHtml(entry, option("--output"), process.argv.includes("--single-file"));
     }
     if (command === "pdf") await exportPdf(entry, option("--output"), chosenSlides());
+    if (command === "png") await exportPng(entry, option("--output"), chosenSlides(), chosenScale());
     if (command === "pptx") {
       await exportPptx({
         entry,

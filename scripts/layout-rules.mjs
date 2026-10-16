@@ -40,6 +40,8 @@ export function collectLayoutIssues(win = window) {
   // share of a poster's short side, which on an A0 sheet is about 21pt.
   const readingScale = Number(document.documentElement.dataset.frameseqReadingScale) || 1;
   const pointsPerPixel = Number(document.documentElement.dataset.frameseqPaperPoints) || 0;
+  // A figure is read in a paper, where type of 6 printed points is about the smallest that reads.
+  const figurePoints = document.documentElement.dataset.frameseqFigure === "true" && pointsPerPixel ? 6 : 0;
   const excerpt = (element) => (element.textContent ?? "")
     .replace(/\s+/g, " ")
     .trim()
@@ -394,7 +396,9 @@ export function collectLayoutIssues(win = window) {
           const fontSize = Number.parseFloat(style.fontSize);
           const heading = element.classList.contains("frameseq-slide-title")
             || element.classList.contains("frameseq-cover-title");
-          const minimum = Math.round((heading ? 24 : 14) * readingScale * 10) / 10;
+          const minimum = figurePoints
+            ? Math.round((figurePoints / pointsPerPixel) * 10) / 10
+            : Math.round((heading ? 24 : 14) * readingScale * 10) / 10;
           if (Number.isFinite(fontSize) && fontSize < minimum) {
             // On paper the same numbers are printed points, which is how type on a sheet is judged.
             const printed = (value) => (pointsPerPixel ? ` (${Math.round(value * pointsPerPixel)}pt printed)` : "");

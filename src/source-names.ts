@@ -105,7 +105,7 @@ const placementModifiers = new Set(["rightOf", "leftOf", "above", "below", "cent
  * own commands, and the common globals of TypeScript itself.
  */
 const knownCalls = new Set([
-  "presentation", "slide", "master", "placeholder", "note", "text", "image", "code", "math", "typst", "typstFile",
+  "presentation", "figure", "slide", "master", "placeholder", "note", "text", "image", "code", "math", "typst", "typstFile",
   "latex", "latexFile", "rect", "circle", "shape", "polygon", "junction", "line", "bullets", "steps", "metric", "spacer",
   "group", "ref", "card", "gridSection", "main", "left", "right", "cell", "at", "gap",
   "table", "chart", "qr", "icon", "cite", "footnote", "references", "poster",

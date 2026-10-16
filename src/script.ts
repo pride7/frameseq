@@ -55,6 +55,7 @@ import {
   type TableCell,
 } from "./objects";
 import type { IconName } from "./icon-names";
+import { defineTheme, type ThemeInput } from "./theme";
 import type { PolygonPoints, ShapeKind } from "./shapes";
 import {
   type Bibliography,
@@ -284,6 +285,62 @@ export function poster(titleOrOptions: string | SlidesOptions = {}): ContentSlid
   // A poster lists its sources in a references() block of its own, not again at its foot.
   presentation({ size: "A0", theme: "poster", ...options, citations: { footnotes: false, ...options.citations } });
   return slide({ name: "Poster" });
+}
+
+/** What figure() takes: the canvas, how wide it prints, and how it looks. */
+export interface FigureOptions {
+  title?: string;
+  /** Canvas units across, 1600 by default. */
+  width?: number;
+  /** Canvas units down, 900 by default. */
+  height?: number;
+  /**
+   * How wide the figure prints, as on the page of a paper: "170mm" by default, across a page,
+   * or "85mm" for one column; centimetres, inches, and points work too.
+   */
+  printWidth?: string;
+  theme?: ThemeInput;
+  font?: SlidesOptions["font"];
+  background?: string;
+}
+
+const millimetresPerUnit: Record<string, number> = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72 };
+
+/**
+ * Start a figure for a paper: one canvas with no margins, no title bar, and no page number,
+ * printed at the width it will have on the page, so pdf gives a page of exactly that size and
+ * the layout check judges type by the points it prints at. Draw on it as on a canvas slide.
+ * @example figure({ title: "Method", width: 1600, height: 820 });
+ */
+export function figure(titleOrOptions: string | FigureOptions = {}): ContentSlideBuilder {
+  const options = typeof titleOrOptions === "string" ? { title: titleOrOptions } : titleOrOptions;
+  const width = options.width ?? 1600;
+  const height = options.height ?? 900;
+  if (!(width > 0) || !(height > 0)) throw new Error(`figure() needs a positive width and height, not ${width} x ${height}`);
+  const printed = /^\s*(\d+(?:\.\d+)?)\s*(mm|cm|in|pt)\s*$/i.exec(options.printWidth ?? "170mm");
+  if (!printed) {
+    throw new Error(`figure() expects printWidth as a length such as "170mm", "8.5cm", or "6.5in", not "${options.printWidth}"`);
+  }
+  const across = Number(printed[1]) * millimetresPerUnit[printed[2].toLowerCase()];
+  const round = (value: number): number => Math.round(value * 100) / 100;
+  const theme = defineTheme({
+    name: "figure",
+    extends: options.theme ?? "blank",
+    spacing: { slideX: "0px", slideY: "0px" },
+    chrome: { titleBar: false, footer: false, slideNumber: false, header: false, autoTitlePage: false },
+  });
+  const document = presentation({
+    title: options.title ?? "Figure",
+    size: `${round(across)}x${round((across * height) / width)}mm`,
+    width,
+    height,
+    theme,
+    font: options.font,
+    background: options.background,
+  });
+  // The renderer and the layout check read it: type is judged as it prints in a paper.
+  document.node.props.figure = true;
+  return slide({ name: options.title ?? "Figure" }).canvas();
 }
 
 /** Start a slide. Content commands belong to it until the next slide() call. */

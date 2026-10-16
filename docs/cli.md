@@ -147,6 +147,20 @@ frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 
 PDF export launches a headless browser, renders all pages and reveal steps, and writes a page-sized PDF with backgrounds included. A presentation made for paper, such as a poster, prints at the paper's size; see [Posters and print](posters.md).
 
+## Export PNG
+
+```bash
+frameseq png [file] [--output path] [--slides 1-3,5] [--scale 2]
+```
+
+Each page the PDF would print becomes a PNG picture, `--scale` times the canvas's size, twice by default and up to eight times. A single page, such as a [figure](posters.md#figures-for-a-paper), is written to `output/png/<entry-name>.png`, or to the file `--output` names; several pages go into the folder `output/png/<entry-name>/`, or the one `--output` names, as `<entry-name>-<slide>.png`, with `-<step>` added for each reveal step of a slide that has several.
+
+```bash
+frameseq png figure.slides.ts
+frameseq png figure.slides.ts --scale 3 --output figures/method.png
+frameseq png talk.slides.ts --slides 1-3
+```
+
 ## Export PowerPoint
 
 ```bash

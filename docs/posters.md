@@ -90,3 +90,25 @@ Every export prints the page at the paper's size:
 - `frameseq typst` writes a Typst page of that size.
 
 A poster is a single page, so the presentation's other features, presenter view and reveal steps among them, simply have nothing to do. A presentation made for paper may still have several pages, such as a set of handouts, each begun with `slide()`.
+
+## Figures for a paper
+
+A figure for a paper is the smallest piece of print: one canvas, no margins, placed on a page of the paper at a known width. `figure()` starts one:
+
+```ts
+figure({ title: "Method", width: 1600, height: 820 });
+
+at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(620).height(780);
+// ...
+```
+
+The canvas has the units you give it, 1600 × 900 by default, and prints 170 mm wide, across the page of most papers; `printWidth: "85mm"` makes it one column of two, and centimetres, inches, and points work too. The paper follows the canvas, so the figure above prints at 170 × 87.1 mm. The page has no margins, title bar, footer, or page number, and is a canvas from the start; `theme`, `font`, and `background` work as for `presentation()`.
+
+`frameseq check` judges a figure's type as it prints in the paper: 6 points is about the smallest that reads, which is 20 units on a 1600-wide figure printed 170 mm wide.
+
+```text
+WARNING Slide 1 "Method" [font-too-small]
+  Font size 14px (4pt printed) is below the recommended 19.9px (6pt printed) minimum.
+```
+
+`frameseq pdf` makes a one-page PDF of exactly the printed size, vector throughout, for `\includegraphics` in LaTeX at its natural size. `frameseq png` makes a picture of it, twice the canvas's size unless `--scale` says otherwise, for a paper or a page that takes pictures.

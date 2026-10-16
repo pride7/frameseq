@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:08cf09b0edc3273f -->
+<!-- translation-of: docs/cli.md sha256:1ce5f81b7b7388d1 -->
 
 # CLI 参考
 
@@ -148,6 +148,20 @@ frameseq pdf quarterly.slides.ts --output reports/quarterly.pdf
 ```
 
 PDF 导出会启动无头浏览器,渲染所有页面和揭示步骤,并写出按页尺寸、含背景的 PDF。为纸张制作的演示,比如海报,会按纸张尺寸打印;见[海报与打印](posters.md)。
+
+## 导出 PNG
+
+```bash
+frameseq png [file] [--output path] [--slides 1-3,5] [--scale 2]
+```
+
+PDF 里的每一页都会变成一张 PNG 图片,尺寸是画布的 `--scale` 倍,默认两倍,最多八倍。只有一页时,比如一张[插图](posters.md#论文插图),写到 `output/png/<入口名>.png`,或 `--output` 指定的文件;有多页时写进 `output/png/<入口名>/` 文件夹,或 `--output` 指定的文件夹,文件名是 `<入口名>-<页号>.png`,一页有多个揭示步骤时再加上 `-<步骤>`。
+
+```bash
+frameseq png figure.slides.ts
+frameseq png figure.slides.ts --scale 3 --output figures/method.png
+frameseq png talk.slides.ts --slides 1-3
+```
 
 ## 导出 PowerPoint
 

@@ -461,7 +461,9 @@ function regionReferences(sourceFile, root, after = 0) {
 }
 
 function presentationMetadata(sourceFile) {
-  const call = findIdentifierCall(sourceFile, "presentation") ?? findIdentifierCall(sourceFile, "poster");
+  const call = findIdentifierCall(sourceFile, "presentation")
+    ?? findIdentifierCall(sourceFile, "poster")
+    ?? findIdentifierCall(sourceFile, "figure");
   const argument = call?.arguments[0];
   return {
     title: staticString(argument) ?? objectString(argument, "title") ?? "FrameSeq",
@@ -539,7 +541,7 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
 
   for (const statement of sourceFile.statements) {
     const masterCall = findIdentifierCall(statement, "master");
-    if (masterCall && !findIdentifierCall(statement, "slide") && !findIdentifierCall(statement, "poster")) {
+    if (masterCall && !findIdentifierCall(statement, "slide") && !findIdentifierCall(statement, "poster") && !findIdentifierCall(statement, "figure")) {
       const masterSource = location(sourceFile, masterCall);
       finishSlide(masterSource.line - 1);
       const name = staticString(masterCall.arguments[0]) ?? "master";
@@ -560,21 +562,27 @@ export function inspectSource(entry, source, cwd = process.cwd()) {
       };
       continue;
     }
-    // A poster is a presentation whose one page poster() begins itself.
+    // A poster or a figure is a presentation whose one page poster() or figure() begins itself.
     const posterCall = findIdentifierCall(statement, "poster");
-    const slideCall = findIdentifierCall(statement, "slide") ?? posterCall;
+    const figureCall = findIdentifierCall(statement, "figure");
+    const slideCall = findIdentifierCall(statement, "slide") ?? posterCall ?? figureCall;
     if (slideCall) {
       const slideSource = location(sourceFile, slideCall);
       finishSlide(slideSource.line - 1);
 
       const argument = posterCall === slideCall ? undefined : slideCall.arguments[0];
       const stringTitle = staticString(argument);
-      const name = posterCall === slideCall ? "Poster" : stringTitle ?? objectString(argument, "name");
+      const name = posterCall === slideCall
+        ? "Poster"
+        : figureCall === slideCall
+          ? stringTitle ?? objectString(argument, "title") ?? "Figure"
+          : stringTitle ?? objectString(argument, "name");
       const title = stringTitle ?? objectString(argument, "title");
       const methods = methodCalls(statement, slideCall.getEnd()).map((call) => call.name);
       const layoutMethod = layoutPriority.find((method) => methods.includes(method));
       const index = slides.length + 1;
-      const layout = layoutMethod === "fullBleed" ? "full-bleed" : (layoutMethod ?? "default");
+      // figure() draws on a canvas of its own.
+      const layout = figureCall === slideCall ? "canvas" : layoutMethod === "fullBleed" ? "full-bleed" : (layoutMethod ?? "default");
       // A statement that is the slide() call's own chain runs once; one wrapping it may not.
       const chain = callChain(slideCall);
       const direct = ts.isExpressionStatement(statement) && statement.expression === chain.root;

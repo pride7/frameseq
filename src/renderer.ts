@@ -3214,6 +3214,9 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     delete document.documentElement.dataset.frameseqPaper;
     delete document.documentElement.dataset.frameseqPaperPoints;
   }
+  // A figure is read on the page of a paper, so the layout check judges its type in points.
+  if (slidesDocument.node.props.figure === true) document.documentElement.dataset.frameseqFigure = "true";
+  else delete document.documentElement.dataset.frameseqFigure;
   document.documentElement.dataset.frameseqTheme = slidesDocument.theme.name;
   document.documentElement.dataset.frameseqThemeFamily = slidesDocument.theme.family;
   document.documentElement.dataset.frameseqCoverLayout = slidesDocument.theme.coverLayout;

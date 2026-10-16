@@ -87,6 +87,25 @@ poster(options?: SlidesOptions): ContentSlideBuilder
 
 Calls `presentation({ size: "A0", theme: "poster", ...options })` and `slide()`, and returns the poster's page.
 
+### `figure(titleOrOptions?)`
+
+```ts
+figure(title?: string): ContentSlideBuilder
+figure(options?: FigureOptions): ContentSlideBuilder
+
+interface FigureOptions {
+  title?: string;
+  width?: number;      // canvas units across, 1600 by default
+  height?: number;     // canvas units down, 900 by default
+  printWidth?: string; // "170mm" by default; mm, cm, in, or pt
+  theme?: BuiltInThemeName | ThemeDefinition;
+  font?: PresentationFontOptions;
+  background?: string;
+}
+```
+
+Starts a figure for a paper: a presentation made for paper whose size follows the canvas at `printWidth`, on a theme with no slide padding, title bar, footer, slide number, or automatic title page, and its one page begun as a canvas. The layout check judges its type in printed points, with 6 pt as the smallest recommended.
+
 ## Themes
 
 ### `defineTheme(options)`

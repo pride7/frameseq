@@ -156,6 +156,7 @@ function networkOrigins(port: number, protocol: "http" | "https"): string[] {
 const documentCommands = [
   "presentation",
   "poster",
+  "figure",
   "slide",
   "master",
   "placeholder",

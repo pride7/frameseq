@@ -24,6 +24,7 @@ const readme = await readFile(readmePath, "utf8");
 const documentedFunctions = [
   "presentation",
   "poster",
+  "figure",
   "slide",
   "note",
   "text",

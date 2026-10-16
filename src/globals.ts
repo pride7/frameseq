@@ -4,6 +4,7 @@ export {};
 declare global {
   const presentation: typeof import("./script").presentation;
   const poster: typeof import("./script").poster;
+  const figure: typeof import("./script").figure;
   const slide: typeof import("./script").slide;
   const master: typeof import("./script").master;
   const placeholder: typeof import("./script").placeholder;

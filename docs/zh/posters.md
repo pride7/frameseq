@@ -1,4 +1,4 @@
-<!-- translation-of: docs/posters.md sha256:f9fe74657ced2c4a -->
+<!-- translation-of: docs/posters.md sha256:cc36baeb880b7016 -->
 
 # 海报与打印
 
@@ -92,3 +92,25 @@ WARNING Slide 1 "Poster" [font-too-small]
 - `frameseq typst` 写出同样尺寸的 Typst 页面。
 
 海报只有一页,所以演讲者视图、分步揭示这些演示功能在这里没有用武之地。为纸张制作的演示仍然可以有多页,比如一组讲义,每页用 `slide()` 开始。
+
+## 论文插图
+
+论文里的插图是最小的印刷品:一块画布,没有页边距,以确定的宽度放在论文的版面上。`figure()` 开始一张插图:
+
+```ts
+figure({ title: "Method", width: 1600, height: 820 });
+
+at("encoder").panel("(a) Encoder layer").canvas().position({ x: 20, y: 20 }).width(620).height(780);
+// ...
+```
+
+画布使用你给的单位,默认 1600 × 900,打印宽度是 170 mm,也就是大多数论文的通栏宽度;`printWidth: "85mm"` 让它占双栏中的一栏,也可以用厘米、英寸和磅。纸张随画布比例而定,所以上面这张图打印出来是 170 × 87.1 mm。这一页没有页边距、标题栏、页脚和页码,而且一开始就是画布;`theme`、`font` 和 `background` 的用法和 `presentation()` 一样。
+
+`frameseq check` 按插图印在论文里的大小判断字号:6 磅大约是能读清的最小字号,在一张 1600 宽、打印 170 mm 宽的插图上约为 20 个单位。
+
+```text
+WARNING Slide 1 "Method" [font-too-small]
+  Font size 14px (4pt printed) is below the recommended 19.9px (6pt printed) minimum.
+```
+
+`frameseq pdf` 生成一页、尺寸恰好等于打印尺寸的 PDF,全程矢量,可以在 LaTeX 里用 `\includegraphics` 按原始尺寸插入。`frameseq png` 生成它的图片,默认是画布尺寸的两倍,可以用 `--scale` 调整,适合只接受图片的论文或网页。

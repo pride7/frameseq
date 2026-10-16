@@ -9,6 +9,7 @@ const markableCommands = new Set([
   "master",
   "placeholder",
   "poster",
+  "figure",
   "text",
   "image",
   "code",
@@ -115,7 +116,7 @@ function editableFields(sourceFile, node) {
 function isRegionBarrier(node) {
   if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false;
   const name = node.expression.text;
-  if (["presentation", "poster", "slide", "master", "main", "left", "right", "cell", "at"].includes(name)) return true;
+  if (["presentation", "poster", "figure", "slide", "master", "main", "left", "right", "cell", "at"].includes(name)) return true;
   // group(a, b) and gridSection(2, a, b) collect objects written above them into a container.
   if (name === "group") return node.arguments.length > 0;
   if (name === "gridSection") return node.arguments.length > 1;
@@ -207,7 +208,7 @@ export function sourceMarks(source, fileName = "slides.ts") {
         // A slide is not one object among neighbours; its content lives in later statements.
         // Neither is a call that collects the objects written above it: moving it past them
         // would leave it reaching for objects that do not exist yet.
-        statement: ["slide", "master", "poster", "at"].includes(chainRoot(node) ?? "") || isRegionBarrier(node)
+        statement: ["slide", "master", "poster", "figure", "at"].includes(chainRoot(node) ?? "") || isRegionBarrier(node)
           ? undefined
           : statementBlock(sourceFile, node),
       });
@@ -247,7 +248,7 @@ function pageStart(statement) {
     if (found) return;
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
       const name = node.expression.text;
-      if (name === "slide" || name === "poster") found = "slide";
+      if (name === "slide" || name === "poster" || name === "figure") found = "slide";
       else if (name === "master") found = "master";
     }
     // A helper declared here makes slides only where it is called.
