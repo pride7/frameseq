@@ -82,7 +82,7 @@ export interface Plan {
 export const textRoles = ["body", "title", "hero", "subtitle", "author", "eyebrow", "lead", "caption", "quote"] as const;
 
 const containers = new Set(["group", "card", "gridSection", "row", "column", "stack"]);
-const shapes = new Set(["rect", "circle", "shape", "polygon"]);
+const shapes = new Set(["rect", "circle", "shape", "polygon", "junction"]);
 const formulas = new Set(["math", "equation", "typst", "typstFile", "latex", "latexFile"]);
 
 /** The settings shown for a kind of object, in the order a drawing program would show them. */

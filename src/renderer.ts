@@ -87,10 +87,11 @@ let lineMarkerSequence = 0;
 function renderLine(node: FrameSeqNode): HTMLElement {
   const element = document.createElement("div");
   const svg = document.createElementNS(svgNamespace, "svg");
-  const route = node.props.route as LineRoute | undefined;
+  const route = (node.props.route as LineRoute | undefined) ?? "straight";
   const points = node.props.points as Array<[number, number]> | undefined;
-  // A routed connector is a path through its corners; a straight one stays a plain line.
-  const routed = (route === "elbow" || route === "curve") && Array.isArray(points) && points.length >= 2;
+  // A routed connector, or one through stops, is a path through its corners; a straight one
+  // from end to end stays a plain line.
+  const routed = Array.isArray(points) && points.length >= 2 && (route !== "straight" || points.length > 2);
   const vector = document.createElementNS(svgNamespace, routed ? "path" : "line");
   const stroke = String(node.props.stroke ?? "var(--frameseq-accent)");
   const strokeWidth = String(node.props.strokeWidth ?? "3px");

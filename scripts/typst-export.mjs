@@ -1127,7 +1127,7 @@ async function serializeLine(node, context) {
   const start = [Number(props.x1 ?? 0), Number(props.y1 ?? 0)];
   const end = [Number(props.x2 ?? 0), Number(props.y2 ?? 0)];
   const route = props.route === "elbow" || props.route === "curve" ? props.route : "straight";
-  const points = route !== "straight" && Array.isArray(props.points) && props.points.length >= 2
+  const points = Array.isArray(props.points) && props.points.length >= 2 && (route !== "straight" || props.points.length > 2)
     ? props.points
     : [start, end];
   const widthPixels = pixelValue(props.strokeWidth ?? "3px") ?? 3;

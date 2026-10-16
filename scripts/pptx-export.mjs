@@ -415,9 +415,9 @@ function addLineLabel(pptx, slide, item) {
 
 function addLine(pptx, slide, item) {
   const { x1, y1, x2, y2, points, route } = item.line;
-  // An elbow or a curve has no preset that bends where FrameSeq routed it, so it is drawn as a
-  // path of its own, still a line PowerPoint can recolour and restyle.
-  if (Array.isArray(points) && points.length >= 2 && (route === "elbow" || route === "curve")) {
+  // An elbow, a curve, or a connector through stops has no preset that bends where FrameSeq
+  // routed it, so it is drawn as a path of its own, still a line PowerPoint can recolour and restyle.
+  if (Array.isArray(points) && points.length >= 2 && (route === "elbow" || route === "curve" || points.length > 2)) {
     const left = Math.min(...points.map((point) => point.x));
     const top = Math.min(...points.map((point) => point.y));
     const right = Math.max(...points.map((point) => point.x));

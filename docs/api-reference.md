@@ -403,6 +403,14 @@ polygon(points: PolygonPoints, label?: string): ShapeBuilder
 
 Adds a diagram shape drawn through its own corners, given as `[x, y]` pixels from any origin in order around the outline. Its size is the box the corners span, which `width()` and `height()` stretch; it needs at least three corners that span some width and some height. Its label is centred in that box and supports inline math. It takes every `ShapeBuilder` modifier, exports to PowerPoint as an editable freeform through the same corners, and to Typst as a `polygon`.
 
+### `junction(sign?)`
+
+```ts
+junction(sign?: string): ShapeBuilder
+```
+
+Adds the point where connectors meet or split: a 10-pixel dot in `var(--frameseq-muted)`, the colour connectors are drawn in by the style the guide recommends. With a sign, such as `"+"` or `"×"`, it is the small round operator where streams are added or multiplied instead: a 32-pixel circle in the background colour, outlined in the same colour, with the sign in its middle. It is a `circle()` underneath, so `fill()`, `stroke()`, `width()`, and placement by name work on it.
+
 ### `line(points)`
 
 ```ts
@@ -708,6 +716,7 @@ strokeWidth(value: Length): this
 arrow(value?: "none" | "start" | "end" | "both"): this
 from(reference: string, offset?: { dx?: number; dy?: number }): this
 to(reference: string, offset?: { dx?: number; dy?: number }): this
+via(...points: Array<string | [number, number]>): this
 route(value: "straight" | "elbow" | "curve"): this
 label(text: string): this
 dashed(enabled?: boolean): this
@@ -718,6 +727,8 @@ Calling `arrow()` without an argument adds an end arrow. A line has no arrow by 
 `route("elbow")` draws the connector at right angles, leaving and entering its objects square to their sides and keeping clear of the other objects on its canvas; `route("curve")` draws a smooth curve that leaves and enters square. `label()` writes a short text halfway along the connector, on the slide's background so the line stops behind it.
 
 `from()` and `to()` take the name given to an object by `as()`, optionally followed by an anchor: `"encoder"` or `"encoder.top-right"`. Without an anchor FrameSeq uses the edges that face the other end of the connector.
+
+`via()` runs the connector through stops on its way, in order: names, passed at the object's centre or at the anchor given, such as `"split"` or `"block.right"`, or `[x, y]` coordinates in the connector's canvas. A straight connector then runs from each stop to the next, and an elbow turns at right angles between them; each end faces its nearest stop. A curve with stops is reported as an error.
 
 `as()`, the placement modifiers, and connector anchors are resolved by `resolveAnchors(root)` before rendering. `mountSlides()` calls it, so linear documents need nothing further; the function is exported for tools that consume the node tree directly. Names are scoped to a slide, may be referenced before they are defined, and require both objects to share a coordinate system — the same `canvas()`, or a container positioned with `position()`.
 

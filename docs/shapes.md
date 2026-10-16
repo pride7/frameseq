@@ -147,7 +147,33 @@ line().from("service").to("database").route("curve").arrow();
 - `"elbow"` turns at right angles. It leaves and enters its objects square to their sides, and runs around the other objects on its canvas rather than through them, the way a flowchart's connectors do. A box drawn around either end, such as a panel or the outline of a repeated block, is a frame it runs inside, not something in its way, so a skip connection inside one still goes out to the side and back in.
 - `"curve"` is a smooth curve that also leaves and enters square.
 
-### Labels and dashes
+### Junctions and splits
+
+A figure's connectors often meet or split: a skip connection leaves the main path, or one stream feeds three inputs. `junction()` is the point where that happens, a small dot in the connectors' colour that is named, placed, and connected like any object:
+
+```ts
+junction().as("split").above("plus", 50);
+shape("rounded", "Attention").as("attention").above("split", 30).width(240).height(58);
+
+line().from("plus").to("split");                                                        // the main path
+line().from("split.left").to("attention.bottom", { dx: -60 }).route("elbow").arrow();   // queries
+line().from("split").to("attention.bottom").arrow();                                    // keys
+line().from("split.right").to("attention.bottom", { dx: 60 }).route("elbow").arrow();   // values
+line().from("split.right").to("norm.right").route("elbow").arrow();                     // the skip
+```
+
+Given a sign, `junction("+")` is the small round operator where streams are added, and `junction("×")` where they are multiplied: a 32-pixel circle in the background colour, outlined like the connectors. `fill()`, `stroke()`, and `width()` change either kind.
+
+### Stops on the way
+
+`via()` runs a connector through points on its way, in order: named objects, which it passes at their centre or at the anchor named, or `[x, y]` coordinates on the canvas. A straight connector then runs from each point to the next, and an elbow turns at right angles between them:
+
+```ts
+line().from("output.right").via([640, 117], [640, 690]).to("embedding.right").dashed().arrow();
+```
+
+Each end of the connector faces the stop it heads for first. A curve takes no stops.
+
 
 ```ts
 line().from("check").to("run").arrow().label("no");
@@ -199,7 +225,7 @@ In interactive mode, `showAt()` follows the slide's reveal steps. PDF and PPTX o
 
 ## In PowerPoint and Typst
 
-Editable PPTX export turns each `shape()` into PowerPoint's own preset of the same outline, such as a diamond, a can, or a cloud, so it can still be recoloured, resized, or swapped for another shape there. A `polygon()` becomes a freeform through the same corners, whose points PowerPoint can edit. Rectangles and circles become rectangles and ellipses, straight lines become lines, and elbow and curved connectors become paths, all with their arrowheads, dashes, and labels.
+Editable PPTX export turns each `shape()` into PowerPoint's own preset of the same outline, such as a diamond, a can, or a cloud, so it can still be recoloured, resized, or swapped for another shape there. A `polygon()` becomes a freeform through the same corners, whose points PowerPoint can edit. Rectangles, circles, and junctions become rectangles and ellipses, straight lines become lines, and elbow and curved connectors and connectors through stops become paths, all with their arrowheads, dashes, and labels.
 
 Typst export draws shapes and polygons as `polygon` and `curve` elements and connectors as lines and curves with their arrowheads, all of it editable Typst. Shadows are left out.
 

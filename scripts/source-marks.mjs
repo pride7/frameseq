@@ -21,6 +21,7 @@ const markableCommands = new Set([
   "circle",
   "shape",
   "polygon",
+  "junction",
   "line",
   "table",
   "chart",

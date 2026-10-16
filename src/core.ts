@@ -207,6 +207,9 @@ export interface AnchorReference extends AnchorOffset {
   side?: AnchorSide;
 }
 
+/** A point a connector passes on the way: a named object, or [x, y] on the canvas. */
+export type LineStop = string | [number, number];
+
 export type PlacementRelation =
   | "rightOf"
   | "leftOf"
@@ -829,6 +832,22 @@ export class LineBuilder extends ElementBuilder {
     this.node.props.to = { ...parseAnchorReference(reference, "to()"), ...offset };
     return this;
   }
+
+  /**
+   * Pass through points on the way, in order: named objects, such as "split" or "block.right",
+   * or [x, y] coordinates on the canvas. A straight connector runs from each to the next; an
+   * elbow turns at right angles between them. A curve takes no stops.
+   */
+  via(...points: LineStop[]): this {
+    this.node.props.via = points.map((point, index) => {
+      if (typeof point === "string") return parseAnchorReference(point, "via()");
+      if (Array.isArray(point) && point.length === 2 && point.every((value) => typeof value === "number" && Number.isFinite(value))) {
+        return { x: point[0], y: point[1] };
+      }
+      throw new Error(`via() expects names, such as "split", or [x, y] pairs of numbers; stop ${index + 1} is ${JSON.stringify(point)}`);
+    });
+    return this;
+  }
 }
 
 export class SlideBuilder extends ContainerBuilder {
@@ -1039,6 +1058,30 @@ export function Polygon(points: PolygonPoints, label = ""): ShapeBuilder {
   const problem = polygonProblem(points);
   if (problem) throw new Error(problem);
   return new ShapeBuilder(node("shape", { kind: "polygon", points: points.map(([x, y]) => [x, y]), label }));
+}
+
+/**
+ * A junction: a small dot in the connectors' colour where they meet or split, or, with a sign
+ * such as "+" or "×", the small round operator where streams are added or multiplied.
+ */
+export function Junction(sign = ""): ShapeBuilder {
+  const item = node("circle", { label: sign });
+  if (sign) {
+    Object.assign(item.styles, {
+      width: "32px",
+      background: "var(--frameseq-background)",
+      borderColor: "var(--frameseq-muted)",
+      borderStyle: "solid",
+      borderWidth: "2px",
+      padding: "0px",
+      fontSize: "20px",
+      fontWeight: "500",
+      lineHeight: "1",
+    });
+  } else {
+    Object.assign(item.styles, { width: "10px", background: "var(--frameseq-muted)", borderStyle: "none" });
+  }
+  return new ShapeBuilder(item);
 }
 
 export function Line(points: Partial<LinePoints> = {}): LineBuilder {

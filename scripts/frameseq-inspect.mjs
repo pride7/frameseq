@@ -21,6 +21,7 @@ const contentCommands = new Set([
   "circle",
   "shape",
   "polygon",
+  "junction",
   "line",
   "table",
   "chart",

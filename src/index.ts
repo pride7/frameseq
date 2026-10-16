@@ -13,6 +13,7 @@ export {
   polygonProblem,
   resolveShapePaint,
   routeConnector,
+  routeThrough,
   shapeGeometry,
   shapeKinds,
   shapePreset,

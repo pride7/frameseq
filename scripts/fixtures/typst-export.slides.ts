@@ -53,3 +53,5 @@ shape("cylinder", "Store").as("store").position({ x: 760, y: 470 }).tone("purple
 line().from("check").to("store").route("elbow").arrow().label("yes");
 polygon([[0, 0], [120, 0], [90, 80], [30, 80]], "Gate").position({ x: 420, y: 520 }).tone("teal");
 rect("Optional").position({ x: 420, y: 330 }).stroke("#d97706").dashed();
+junction().as("split").position({ x: 600, y: 600 });
+line().from("check").via("split", [700, 640]).to("store").stroke("#123456").arrow();

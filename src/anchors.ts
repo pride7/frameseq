@@ -5,7 +5,16 @@ import type {
   PlacementStep,
   SourceSpan,
 } from "./core";
-import { isShapeKind, routeConnector, shapeSize, type LineRoute, type PolygonPoints, type RouteBox } from "./shapes";
+import {
+  isShapeKind,
+  routeConnector,
+  routeThrough,
+  shapeSize,
+  type LineRoute,
+  type PolygonPoints,
+  type RouteBox,
+  type RouteEnd,
+} from "./shapes";
 
 /** One reference that could not be resolved, with the command that wrote it when it is known. */
 export interface DocumentProblem {
@@ -254,7 +263,7 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
         }
       }
       if (Array.isArray(child.props.place)) placed.push(child);
-      if (child.type === "line" && (child.props.from || child.props.to)) connectors.push(child);
+      if (child.type === "line" && (child.props.from || child.props.to || child.props.via)) connectors.push(child);
       else if (child.type === "line") routeFreeLine(child);
       collect(child, establishesFrame(child) ? child : frame);
     }
@@ -805,11 +814,23 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
 
       const fixedStart = { x: Number(line.props.x1) || 0, y: Number(line.props.y1) || 0 };
       const fixedEnd = { x: Number(line.props.x2) || 0, y: Number(line.props.y2) || 0 };
+      // The points passed on the way, each an object's anchor (its centre by default) or a
+      // coordinate on the canvas.
+      const stops = ((line.props.via ?? []) as Array<AnchorReference | Point>).map((stop): Point => {
+        if (!("target" in stop)) return { x: stop.x, y: stop.y };
+        const stopBox = targetBox(line, frame, stop.target, `.via("${stop.target}")`);
+        const point = anchorPoint(stopBox, stop.side ?? "center");
+        return { x: point.x + (stop.dx ?? 0), y: point.y + (stop.dy ?? 0) };
+      });
+      if (stops.length > 0 && line.props.route === "curve") {
+        throw new AnchorError("a curve takes no stops; draw it as a straight or elbow connector to use .via()");
+      }
+      // Each end faces the point it heads for first: the nearest stop, or the other end.
       const startSide = startBox
-        ? start?.side ?? facingSide(startBox, endBox ? center(endBox) : fixedEnd)
+        ? start?.side ?? facingSide(startBox, stops[0] ?? (endBox ? center(endBox) : fixedEnd))
         : undefined;
       const endSide = endBox
-        ? end?.side ?? facingSide(endBox, startBox ? center(startBox) : fixedStart)
+        ? end?.side ?? facingSide(endBox, stops.at(-1) ?? (startBox ? center(startBox) : fixedStart))
         : undefined;
       const startPoint = startBox && startSide ? anchorPoint(startBox, startSide) : fixedStart;
       const endPoint = endBox && endSide ? anchorPoint(endBox, endSide) : fixedEnd;
@@ -818,10 +839,18 @@ function resolveSlide(slide: FrameSeqNode, label: string, problems: DocumentProb
       line.props.y1 = round(startPoint.y + (start?.dy ?? 0));
       line.props.x2 = round(endPoint.x + (end?.dx ?? 0));
       line.props.y2 = round(endPoint.y + (end?.dy ?? 0));
-      if (isRouted(line)) {
-        const box = (found: Box | undefined): RouteBox | undefined => found && ({
-          x: found.x, y: found.y, width: found.width, height: found.height,
-        });
+      const box = (found: Box | undefined): RouteBox | undefined => found && ({
+        x: found.x, y: found.y, width: found.width, height: found.height,
+      });
+      if (stops.length > 0) {
+        const route = line.props.route === "elbow" ? "elbow" : "straight";
+        const ends: RouteEnd[] = [
+          { point: { x: line.props.x1 as number, y: line.props.y1 as number }, side: startSide, box: box(startBox) },
+          ...stops.map((point) => ({ point })),
+          { point: { x: line.props.x2 as number, y: line.props.y2 as number }, side: endSide, box: box(endBox) },
+        ];
+        line.props.points = routeThrough(route, ends, route === "elbow" ? obstaclesFor(frame) : []);
+      } else if (isRouted(line)) {
         line.props.points = routeConnector(
           line.props.route,
           { point: { x: line.props.x1 as number, y: line.props.y1 as number }, side: startSide, box: box(startBox) },

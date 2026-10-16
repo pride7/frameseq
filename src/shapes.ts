@@ -910,6 +910,26 @@ export function routeConnector(
   return points.map((point) => [round(point.x), round(point.y)]);
 }
 
+/**
+ * The points a connector is drawn through when it passes points on the way: a straight one runs
+ * from each to the next, and an elbow turns at right angles between each and the next, leaving
+ * its first end and entering its last as routeConnector() does. A curve takes no stops.
+ */
+export function routeThrough(
+  route: Exclude<LineRoute, "curve">,
+  ends: RouteEnd[],
+  obstacles: RouteBox[] = [],
+): Array<[number, number]> {
+  const points: Point[] = [];
+  for (let index = 1; index < ends.length; index += 1) {
+    const leg = route === "elbow"
+      ? elbowRoute(ends[index - 1], ends[index], obstacles)
+      : [ends[index - 1].point, ends[index].point];
+    points.push(...(index === 1 ? leg : leg.slice(1)));
+  }
+  return simplify(points).map((point) => [round(point.x), round(point.y)]);
+}
+
 /** SVG path data for a connector through its route's points. */
 export function connectorPath(route: LineRoute, points: Array<[number, number]>): string {
   if (route === "curve" && points.length === 4) {

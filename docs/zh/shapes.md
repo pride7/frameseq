@@ -1,4 +1,4 @@
-<!-- translation-of: docs/shapes.md sha256:1089b1c464a28ec1 -->
+<!-- translation-of: docs/shapes.md sha256:ef590623e8b1281d -->
 
 # 图形与连线
 
@@ -149,7 +149,33 @@ line().from("service").to("database").route("curve").arrow();
 - `"elbow"` 按直角转弯。它垂直地离开和进入对象的边,并且**绕开**画布上的其它对象而不是从中穿过,就像流程图里的连线那样。包住任一端的框,比如面板或重复模块的外框,是连线所在的框架而不是障碍,所以框里的跳跃连接照样会绕到侧面再接回来。
 - `"curve"` 是一条平滑曲线,同样垂直地离开和进入对象。
 
-### 标签与虚线
+### 分支点与分叉
+
+插图里的连线经常汇合或分叉:跳跃连接从主路径分出去,或者一路数据同时送进三个输入。`junction()` 就是发生这件事的那个点,一个连线颜色的小圆点,可以像其它对象一样命名、定位和连接:
+
+```ts
+junction().as("split").above("plus", 50);
+shape("rounded", "Attention").as("attention").above("split", 30).width(240).height(58);
+
+line().from("plus").to("split");                                                        // 主路径
+line().from("split.left").to("attention.bottom", { dx: -60 }).route("elbow").arrow();   // queries
+line().from("split").to("attention.bottom").arrow();                                    // keys
+line().from("split.right").to("attention.bottom", { dx: 60 }).route("elbow").arrow();   // values
+line().from("split.right").to("norm.right").route("elbow").arrow();                     // 跳跃连接
+```
+
+给它一个符号,`junction("+")` 就是数据流相加处的小圆运算节点,`junction("×")` 则是相乘处的:一个 32 像素、背景色填充、和连线同色描边的圆。`fill()`、`stroke()` 和 `width()` 对两种都有效。
+
+### 途经点
+
+`via()` 让连线按顺序经过一些点:命名对象(经过它的中心,或指定的锚点),或者画布上的 `[x, y]` 坐标。这样直线会从一个点连到下一个点,折线则在它们之间按直角转弯:
+
+```ts
+line().from("output.right").via([640, 117], [640, 690]).to("embedding.right").dashed().arrow();
+```
+
+连线的两端各自朝向它最先要去的那个途经点。曲线不接受途经点。
+
 
 ```ts
 line().from("check").to("run").arrow().label("no");
@@ -201,7 +227,7 @@ rect("Second step")
 
 ## 在 PowerPoint 和 Typst 里
 
-可编辑的 PPTX 导出会把每个 `shape()` 变成 PowerPoint 自己的同款预设形状,比如菱形、圆柱或云,所以在那里还能重新上色、缩放,或者换成另一种形状。`polygon()` 变成经过同样顶点的任意多边形,在 PowerPoint 里可以逐点编辑。矩形和圆变成矩形和椭圆,直线变成线条,折线和曲线连线变成路径,箭头、虚线和标签都会保留。
+可编辑的 PPTX 导出会把每个 `shape()` 变成 PowerPoint 自己的同款预设形状,比如菱形、圆柱或云,所以在那里还能重新上色、缩放,或者换成另一种形状。`polygon()` 变成经过同样顶点的任意多边形,在 PowerPoint 里可以逐点编辑。矩形、圆和分支点变成矩形和椭圆,直线变成线条,折线、曲线连线和带途经点的连线变成路径,箭头、虚线和标签都会保留。
 
 Typst 导出把形状和多边形画成 `polygon` 和 `curve` 元素,把连线画成带箭头的直线和曲线,全部是可编辑的 Typst。阴影不会导出。
 

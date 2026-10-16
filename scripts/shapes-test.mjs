@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   connectorMidpoint,
+  junction,
   line,
   polygon,
   polygonCorners,
@@ -9,6 +10,7 @@ import {
   resolveAnchors,
   resolveShapePaint,
   routeConnector,
+  routeThrough,
   shape,
   shapeGeometry,
   shapeKinds,
@@ -193,6 +195,53 @@ import {
   assert.equal(JSON.stringify(document.node), before, "resolving twice changes nothing");
 }
 
+// A connector can pass stops on the way: straight from each to the next, or at right angles.
+{
+  const ends = [
+    { point: { x: 0, y: 0 }, side: "right", box: { x: -40, y: -20, width: 40, height: 40 } },
+    { point: { x: 200, y: 100 } },
+    { point: { x: 400, y: 100 }, side: "left", box: { x: 400, y: 80, width: 40, height: 40 } },
+  ];
+  assert.deepEqual(routeThrough("straight", ends), [[0, 0], [200, 100], [400, 100]]);
+  const elbow = routeThrough("elbow", ends);
+  assert.deepEqual(elbow[0], [0, 0]);
+  assert.deepEqual(elbow.at(-1), [400, 100]);
+  const passes = elbow.slice(1).some(([bx, by], index) => {
+    const [ax, ay] = elbow[index];
+    return Math.min(ax, bx) <= 200 && 200 <= Math.max(ax, bx) && Math.min(ay, by) <= 100 && 100 <= Math.max(ay, by);
+  });
+  assert.ok(passes, `the elbow passes its stop: ${JSON.stringify(elbow)}`);
+  for (let index = 1; index < elbow.length; index += 1) {
+    const [ax, ay] = elbow[index - 1];
+    const [bx, by] = elbow[index];
+    assert.ok(ax === bx || ay === by, "every leg is horizontal or vertical");
+  }
+}
+
+// A junction is a small dot where connectors meet; with a sign it is a small round operator.
+// Named stops are passed at their centres, and each end faces its nearest stop.
+{
+  const document = presentation("Junctions");
+  slide("Flow").canvas();
+  const dot = junction().as("split").position({ x: 195, y: 295 });
+  const add = junction("+").as("add").position({ x: 400, y: 100 });
+  rect("A").as("a").position({ x: 0, y: 250 }).width(100).height(100);
+  rect("B").as("b").position({ x: 600, y: 250 }).width(100).height(100);
+  assert.equal(dot.node.type, "circle");
+  assert.equal(dot.node.styles.width, "10px");
+  assert.equal(dot.node.styles.background, "var(--frameseq-muted)");
+  assert.equal(add.node.props.label, "+");
+  assert.equal(add.node.styles.width, "32px");
+  assert.equal(add.node.styles.padding, "0px");
+  const through = line().from("a").via("split", "add.top", [500, 50]).to("b");
+  resolveAnchors(document.node);
+  assert.deepEqual(through.node.props.points, [[100, 300], [200, 300], [416, 100], [500, 50], [650, 250]]);
+  assert.equal(through.node.props.x2, 650, "the end faces the last stop, so it leaves b from its top");
+  const before = JSON.stringify(document.node);
+  resolveAnchors(document.node);
+  assert.equal(JSON.stringify(document.node), before, "resolving stops twice changes nothing");
+}
+
 // Mistakes are reported in words that say what to write instead.
 {
   presentation("Errors");
@@ -203,6 +252,13 @@ import {
   assert.throws(() => polygon([[0, 0], [10, 10]]), /polygon\(\) needs at least three corners, not 2/);
   assert.throws(() => polygon([[0, 0], [10, "a"], [5, 5]]), /corner 2 is \[10,"a"\]/);
   assert.throws(() => polygon([[0, 0], [50, 0], [100, 0]]), /span some width and some height/);
+  assert.throws(() => line().via([1, "2"]), /via\(\) expects names, such as "split", or \[x, y\] pairs of numbers; stop 1 is \[1,"2"\]/);
+  assert.throws(() => line().via("split.middle"), /via\(\) does not know the anchor "middle"/);
+  const curved = presentation("Curve");
+  slide("Curve").canvas();
+  rect("A").as("a").position({ x: 0, y: 0 });
+  line().from("a").via([300, 300]).to("a").route("curve");
+  assert.throws(() => resolveAnchors(curved.node), /a curve takes no stops/);
 }
 
 console.log("Shapes test passed: geometry, presets, polygons, tones, placement, routes, and labels.");

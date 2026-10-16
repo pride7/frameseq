@@ -62,6 +62,8 @@ assert.match(source, /weight: "semibold", fill: rgb\("#[0-9a-f]{6}"\), size: [\d
 const gate = source.match(/#polygon\(([^\]]*)\)\]#place\(top \+ left, dx: [^\n]*?#text\("Gate"\)/);
 assert.ok(gate, "the polygon is drawn with its label");
 assert.equal(gate[1].match(/\(-?[\d.]+pt, -?[\d.]+pt\)/g)?.length, 4);
+// A connector through stops is a curve through its corners, ending in an arrowhead.
+assert.match(source, /#curve\(stroke: \(paint: rgb\("#123456"\)[^\n]*?(?:curve\.line\([^\n]*?){3}\)\]#place\(top \+ left\)\[#polygon\(fill: rgb\("#123456"\)/);
 // A dashed rect stays dashed.
 assert.match(source, /#rect\([^\n]*stroke: \(paint: rgb\("#d97706"\), thickness: [\d.]+pt, dash: "dashed"\)/);
 // A named elbow connector is resolved before export, with its label on the background.

@@ -4,6 +4,7 @@ import {
   Column,
   Equation,
   Image,
+  Junction,
   Latex,
   type SlidesOptions,
   ElementBuilder,
@@ -520,6 +521,18 @@ export function shape(kind: ShapeKind, label = ""): ShapeBuilder {
  */
 export function polygon(points: PolygonPoints, label = ""): ShapeBuilder {
   return attach(Polygon(points, label).className("frameseq-semantic-shape"));
+}
+
+/**
+ * Add a junction: a small dot where connectors meet or split, such as the point a skip
+ * connection leaves the main path, or, given a sign such as "+" or "×", the small round
+ * operator where streams are added or multiplied. Name it, place it, and connect to it like
+ * any object.
+ * @example junction().as("split").below("attention", 30);
+ * @example junction("+").as("add").above("embedding", 40);
+ */
+export function junction(sign = ""): ShapeBuilder {
+  return attach(Junction(sign).className("frameseq-semantic-shape"));
 }
 
 /** Add a canvas-relative vector line or connector. Omit the points when using from()/to(). */

@@ -970,7 +970,25 @@ line({ x1: 320, y1: 190, x2: 520, y2: 190 })
 
 - `points` — `{ x1: number; y1: number; x2: number; y2: number }`, optional. Omit it when both ends use `.from()` and `.to()`.
 
-**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, `.to()`, `.route("straight" | "elbow" | "curve")`, `.label(text)`, and `.dashed()`. An elbow route turns at right angles and keeps clear of the other objects on the canvas; a label sits halfway along the connector.
+**Returns** `LineBuilder`, which provides `.stroke()`, `.strokeWidth()`, `.arrow("none" | "start" | "end" | "both")`, `.from()`, `.to()`, `.via(...stops)`, `.route("straight" | "elbow" | "curve")`, `.label(text)`, and `.dashed()`. An elbow route turns at right angles and keeps clear of the other objects on the canvas; `.via()` runs the connector through named objects or `[x, y]` points on the way; a label sits halfway along the connector.
+
+### `junction()`
+
+Creates the point where connectors meet or split, such as the place a skip connection leaves the main path, or, with a sign, the small round operator where streams are added or multiplied.
+
+```ts
+junction().as("split").above("plus", 50);
+junction("+").as("plus").above("embedding", 48);
+line().from("split.right").to("norm.right").route("elbow").arrow();
+```
+
+**Signature** `junction(sign) → ShapeBuilder`
+
+**Parameters**
+
+- `sign` — `string`, optional. Defaults to an empty string, which draws a 10-pixel dot in the connectors' colour. A sign such as `"+"` or `"×"` draws a 32-pixel outlined circle with the sign in it.
+
+**Returns** `ShapeBuilder`. Name it with `.as()`, place it with `.position()` or a placement such as `.above()`, and connect to it like any object; `.fill()`, `.stroke()`, and `.width()` restyle it.
 
 ### `.as()`
 

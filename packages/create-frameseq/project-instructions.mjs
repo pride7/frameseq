@@ -41,7 +41,7 @@ note("State that the value is illustrative.");
 \`\`\`
 
 - Slide layouts: \`.cover()\`, \`.split(ratio)\`, \`.grid(columns)\`, \`.center()\`, \`.canvas()\`.
-- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`, \`table(rows)\`, \`chart(kind, data)\`, \`qr(text)\`, \`icon(name)\`, \`shape(kind, label)\`, \`polygon(points, label)\`.
+- Content: \`text()\`, \`bullets()\`, \`steps()\`, \`metric()\`, \`card()\`, \`image()\`, \`code()\`, \`math\`, \`table(rows)\`, \`chart(kind, data)\`, \`qr(text)\`, \`icon(name)\`, \`shape(kind, label)\`, \`polygon(points, label)\`, \`junction(sign)\`.
 - Citations: \`presentation({ bibliography })\` with \`import bibliography from "./references.bib"\`, then \`cite(key)\` inside text, \`footnote(text)\`, and \`references()\`. Never type citation markers by hand.
 - Paper: \`poster({ title, author })\` starts an A0 poster; \`presentation({ size: "A4" })\` makes any deck for paper. On paper, \`mm()\` and \`pt()\` are printed sizes.
 - Regions: \`main()\`, \`left()\`, \`right()\`, \`cell(index)\`, \`at(path)\`.
