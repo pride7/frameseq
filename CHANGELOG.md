@@ -37,6 +37,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- After an undo in FrameSeq Studio that brings back text edited from Current slide or on the slide, a double-click on the slide types into the object it lands on again; the Studio took the slide for an older drawing and did nothing.
 - A `rect()` or `circle()` whose label holds math exports to PowerPoint as a picture, as a `shape()` does. Its text came out with the math's hidden copy beside it, such as "𝑇1T1".
 - Typst export sets a `rect()` or `circle()` label in the box's own type, its size, weight, and colour; it was always the page's body type.
 - Typst export places what a container positions by coordinates where the browser does: from the container's padding edge, not from inside its padding, and outside the flow of a row or a column. A row of a given height with `align("center")`, or a column with `justify("center")`, centres its contents up and down as on the slide.

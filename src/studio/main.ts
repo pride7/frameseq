@@ -577,6 +577,9 @@ async function start(): Promise<void> {
         changes: [...edits].sort((a, b) => a.from - b.from).map(({ from, to, insert }) => ({ from, to, insert })),
         userEvent: "input.inspector",
       });
+      // The panel carries its picture of the slide, which is the report's, through the edit, so
+      // the report no longer describes the text it was made from, which an undo can bring back.
+      reportText = "\u0000";
       return true;
     },
     reveal: (position) => revealPosition(position),
