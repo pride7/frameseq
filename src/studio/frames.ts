@@ -41,6 +41,8 @@ export interface PreviewSelection {
   slideIndex: number;
   /** Layout editing is on. */
   editing: boolean;
+  /** The layout is locked: objects can be selected and typed into, not moved. */
+  locked: boolean;
   objects: PreviewObject[];
   arrange: { x: boolean; y: boolean; distributeX: boolean; distributeY: boolean };
   /** For one object written on its own: whether it is drawn by coordinates, and can go further back or forward. */
@@ -57,6 +59,11 @@ export type SelectionAction =
 /** What a key pressed on the preview's objects asks of the Studio. */
 export type ObjectCommand = "copy" | "cut" | "paste" | "duplicate";
 
+/** Why a drag in the preview changed nothing. */
+export type BlockedDrag = "locked" | "position" | "size" | "shared";
+
+const blockedDrags: ReadonlySet<unknown> = new Set<BlockedDrag>(["locked", "position", "size", "shared"]);
+
 const objectCommands: ReadonlySet<unknown> = new Set<ObjectCommand>(["copy", "cut", "paste", "duplicate"]);
 
 function readSelection(message: Record<string, unknown>): PreviewSelection {
@@ -69,6 +76,7 @@ function readSelection(message: Record<string, unknown>): PreviewSelection {
   return {
     slideIndex: typeof message.slideIndex === "number" ? message.slideIndex : -1,
     editing: message.editing === true,
+    locked: message.locked === true,
     objects: objects.flatMap((item): PreviewObject[] => {
       if (!item || typeof item !== "object") return [];
       const { target, statement } = item as Record<string, unknown>;
@@ -125,6 +133,11 @@ export interface FrameEvents {
   contextMenu: (x: number, y: number, selection: PreviewSelection, keyboard: boolean) => void;
   /** Copy, cut, duplicate, or paste, pressed on the preview's objects. */
   objectCommand: (command: ObjectCommand, selection: PreviewSelection) => void;
+  /**
+   * A drag in the preview that could change nothing: the layout is locked, the object's code
+   * works out its place or size, written as `code`, or a loop or a helper drew it.
+   */
+  dragBlocked: (target: SourceTarget, reason: BlockedDrag, code: string) => void;
 }
 
 function readTargets(value: unknown): SourceTarget[] {
@@ -299,6 +312,13 @@ export class StudioFrames {
         case "frameseq.object-command":
           if (objectCommands.has(message.command)) events.objectCommand(message.command as ObjectCommand, readSelection(message));
           return;
+        case "frameseq.drag-blocked": {
+          const [target] = readTargets([message.target]);
+          if (target && blockedDrags.has(message.reason)) {
+            events.dragBlocked(target, message.reason as BlockedDrag, typeof message.code === "string" ? message.code : "");
+          }
+          return;
+        }
         default:
           return;
       }
@@ -367,9 +387,9 @@ export class StudioFrames {
     this.preview.contentWindow?.postMessage({ type: "frameseq.selection-action", action }, "*");
   }
 
-  /** Turn the preview's layout editing on or off. */
-  setLayoutEditing(active: boolean): void {
-    this.preview.contentWindow?.postMessage({ type: "frameseq.layout-editing", active }, "*");
+  /** Lock the preview's layout, so objects stay put while they are selected and typed into, or unlock it. */
+  setLayoutLock(locked: boolean): void {
+    this.preview.contentWindow?.postMessage({ type: "frameseq.layout-lock", locked }, "*");
   }
 
   /**

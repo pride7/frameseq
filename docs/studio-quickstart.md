@@ -48,10 +48,11 @@ Drag a thumbnail up or down to move its slide. Right-click it to duplicate, move
 
 ## Select, move, and format
 
-Press `E`, or click **E** among the slide's controls, to turn on layout editing; inserting, drawing, or right-clicking turns it on by itself. Then:
+Objects on the slide are worked on directly, as in PowerPoint:
 
 - Click an object to select it, and `Ctrl`-click to add others.
 - Drag an object you drew to move it, and its corner to resize it. Drag one in the slide's flow, such as a paragraph or a list, to change its place among its neighbours.
+- The padlock among the slide's controls locks the layout, so nothing moves by accident while you work on the words.
 - `Delete` deletes the selection, and `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, and `Ctrl+D` copy, cut, paste, and duplicate it.
 - Right-click for the rest: the stacking order, aligning several objects, editing the text, and its format.
 

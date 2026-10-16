@@ -214,16 +214,16 @@ try {
       return Boolean(await page.waitForSelector(".studio-menu", { timeout: 1500 }).catch(() => null));
     }, `the menu of slide ${index + 1}`);
   };
-  const setEditMode = async (on) => {
+  const setLocked = async (on) => {
     await waitFor(async () => {
       await settle(preview);
       const pressed = await preview
-        .$eval("[data-action='edit-toggle']", (button) => button.getAttribute("aria-pressed"))
+        .$eval("[data-action='layout-lock']", (button) => button.getAttribute("aria-pressed"))
         .catch(() => undefined);
       if (pressed === String(on)) return true;
-      await retrying(() => preview.click("[data-action='edit-toggle']"));
+      await retrying(() => preview.click("[data-action='layout-lock']"));
       return false;
-    }, `layout editing to turn ${on ? "on" : "off"}`);
+    }, `the layout to ${on ? "lock" : "unlock"}`);
   };
   const undoInEditor = async (times = 1) => {
     await page.focus(".cm-content");
@@ -362,17 +362,34 @@ try {
   await waitFor(async () => (await read()) === beforeNotes, "emptied notes to take .notes() away");
   await showSlide(1);
 
-  // Dragging in the preview becomes an ordinary editor edit, saved to the right characters.
+  // The preview edits as a drawing program does: objects drag with no mode to turn on first.
   const beforeDrag = await read();
-  await setEditMode(true);
   await settle(preview);
+  assert.ok(
+    await preview.evaluate(() => document.documentElement.classList.contains("frameseq-edit-mode")
+      && document.documentElement.classList.contains("frameseq-direct-edit")
+      && !document.querySelector("[data-action='edit-toggle']")),
+    "the Studio's preview is always ready to drag, and has no editing mode to enter",
+  );
   const box = await retrying(async () => (await preview.$(".frameseq-slide-frame.is-active [data-frameseq-move='true']")).boundingBox());
   const startX = box.x + box.width / 2;
   const startY = box.y + box.height / 2;
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  for (let step = 1; step <= 10; step += 1) await page.mouse.move(startX + step * 5, startY + step * 4);
-  await page.mouse.up();
+  const dragBox = async () => {
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    for (let step = 1; step <= 10; step += 1) await page.mouse.move(startX + step * 5, startY + step * 4);
+    await page.mouse.up();
+  };
+  // A locked layout keeps the object where it is, and says how to unlock it.
+  await setLocked(true);
+  await dragBox();
+  await waitFor(() => page.evaluate(() => [...document.querySelectorAll(".studio-toast-text")]
+    .some((toast) => toast.textContent.includes("layout is locked"))), "the lock to explain the drag that did nothing");
+  await delay(300);
+  assert.equal(await read(), beforeDrag, "a drag on a locked layout writes nothing");
+  await setLocked(false);
+  // Dragging becomes an ordinary editor edit, saved to the right characters.
+  await dragBox();
   await waitFor(async () => (await read()) !== beforeDrag, "the drag to be written");
   const dragged = await read();
   assert.match(dragged, /rect\("Box"\)\.position\(\{ x: \d+, y: \d+ \}\)\.width\(200\)\.height\(100\);\r\n/);
@@ -414,7 +431,6 @@ try {
   );
   await undoInEditor();
   await waitFor(async () => (await read()) === beforeDrag, "undo to remove the binding");
-  await setEditMode(false);
 
   // An edit made outside the Studio, by an agent or another editor, reloads the clean buffer,
   // and the layout check measures it at once.

@@ -51,6 +51,7 @@ import { notesText, readNotes, SpeakerNotes } from "./notes";
 import { blockStart, buildSlideMap, slideAt, type RenderedSlide, type SlideGroup, type SlideMap } from "./outline";
 import {
   StudioFrames,
+  type BlockedDrag,
   type ObjectCommand,
   type PreviewFailure,
   type PreviewSelection,
@@ -479,6 +480,7 @@ async function start(): Promise<void> {
       checkRendered: (frame) => scheduleLayoutCheck(frame),
       contextMenu: (x, y, selection, keyboard) => showPreviewMenu(x, y, selection, keyboard),
       objectCommand: (command, selection) => runObjectCommand(command, selection),
+      dragBlocked: (target, reason, code) => void explainBlockedDrag(target, reason, code),
     },
     previewSlide,
     resolvedTheme(),
@@ -1975,6 +1977,40 @@ async function start(): Promise<void> {
     view.focus();
   }
 
+  /**
+   * Say why a drag in the preview changed nothing: the layout is locked, with the way to unlock
+   * it, or the code works out where the object goes or how big it is, with the way to that code.
+   */
+  async function explainBlockedDrag(target: SourceTarget, reason: BlockedDrag, code: string): Promise<void> {
+    if (reason === "locked") {
+      toast(t.objects.layoutLocked, {
+        tone: "info",
+        key: "layout-blocked",
+        actions: [{ label: t.objects.unlock, run: () => frames.setLayoutLock(false) }],
+      });
+      return;
+    }
+    if (reason === "shared") {
+      toast(t.objects.sharedObject, {
+        tone: "warning",
+        key: "layout-blocked",
+        actions: [{ label: t.objects.goToCode, run: () => revealTarget(target) }],
+      });
+      return;
+    }
+    const object = await inspectedObject(target);
+    const names = reason === "size" ? ["width", "height"] : ["x", "y"];
+    const computed = object?.computed?.find((value) => names.includes(value.name));
+    toast(reason === "size" ? t.objects.computedSize(code) : t.objects.computedPosition(code), {
+      tone: "warning",
+      key: "layout-blocked",
+      actions: [{
+        label: t.objects.goToCode,
+        run: () => (computed ? revealPosition(computed.source.start) : revealTarget(target)),
+      }],
+    });
+  }
+
   /** The object Current slide lists for one the preview drew, once the outline has caught up. */
   async function inspectedObject(target: SourceTarget): Promise<InspectObject | undefined> {
     const range = editorRange(target);
@@ -2099,11 +2135,11 @@ async function start(): Promise<void> {
       { command: "new-slide", label: t.menu.newSlide, icon: "newSlide", submenu: newSlideEntries },
       "separator",
       {
-        command: "layout-editing",
-        label: t.objects.layoutEditing,
+        command: "lock-layout",
+        label: t.objects.lockLayout,
         icon: "move",
-        checked: () => selection.editing,
-        run: () => frames.setLayoutEditing(!selection.editing),
+        checked: () => selection.locked,
+        run: () => frames.setLayoutLock(!selection.locked),
       },
       "separator",
       { ...slideCommand("go-to-source", t.menu.goToSource, () => goToSource(previewSlide)), icon: "code" },

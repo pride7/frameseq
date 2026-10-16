@@ -27,14 +27,14 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Slides** (left) | Every slide, rendered by the same runtime as the preview and updated on every save. |
 | **Current slide** (left, below the slides) | The objects on the slide in the preview, by region, and the settings of the one selected. |
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
-| **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
+| **Preview** (right) | The interactive preview, where objects are selected and dragged directly, with its usual navigation and zoom, and a lock for the layout. |
 | **Notes** (right, below the preview) | The speaker notes of the slide in the preview, typed in place. |
 | **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the slides ran. |
 | **Terminal** (bottom, beside Problems and Output) | A shell in the presentation's folder. |
 
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail, `Ctrl+J` shows or hides the bottom panel, and `` Ctrl+` `` opens the [terminal](#the-terminal). The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
 
-To work on the slides without the code, click **Code** in the top bar or press `Ctrl+E`: the editor folds away and the preview takes its room, where objects are dragged, inserted, and deleted in layout editing, with `Ctrl+Z` still undoing. The cursor keeps following what you pick, so the code comes back at the object you last touched, and the commands that are about the code, such as **Go to the slide's source**, a problem in the list, or `Alt`-clicking an object, bring it back by themselves.
+To work on the slides without the code, click **Code** in the top bar or press `Ctrl+E`: the editor folds away and the preview takes its room, where objects are dragged, inserted, and deleted directly, with `Ctrl+Z` still undoing. The cursor keeps following what you pick, so the code comes back at the object you last touched, and the commands that are about the code, such as **Go to the slide's source**, a problem in the list, or `Alt`-clicking an object, bring it back by themselves.
 
 ### The menu bar
 
@@ -60,12 +60,12 @@ Right-click something, or press `Shift+F10` or the menu key, for the commands th
 | --- | --- |
 | **An object in the preview** | Cut, Copy, Paste; Duplicate, Delete; **Order**: Bring to front, Bring forward, Send backward, Send to back, or, for an object in the flow, Move to the start, Move earlier, Move later, Move to the end; Edit text, Format…, Go to code |
 | **Several selected objects** | Cut, Copy, Paste, Duplicate, Delete; **Align** by their edges or centres, or distribute them evenly; Bind into a region…; Go to code |
-| **The slide itself** | Paste; Insert; New slide after this one; Layout editing; Go to the slide's source; Present from here |
+| **The slide itself** | Paste; Insert; New slide after this one; Lock layout; Go to the slide's source; Present from here |
 | **An object in Current slide** | Cut, Copy, Paste, Duplicate, Delete, Edit text, Format…, Go to code |
 | **The code** | Go to definition, Rename; Cut, Copy, Paste; Comment or uncomment; Select all; Find and replace |
 | **A thumbnail in the slide rail** | New slide after…, Duplicate, Move up, Move down, Go to source, Present from here, Edit the master, Delete; in the master view, New master, Go to source, Delete |
 
-A right-click on an object selects it, alone, and turns layout editing on, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** opens the object's settings in Current slide with its words selected, and **Format…** opens them at its row. Each command is one step in the editor's history.
+A right-click on an object selects it, alone, unless it is already selected, when the selection stays as it is; a right-click on the slide's empty part clears the selection. The stacking order is the order of the lines: **Bring to front** moves an object's lines after those of the other objects beside it that are placed by coordinates, so it is drawn above them, and in the flow the same commands move it among its neighbours. **Edit text** opens the object's settings in Current slide with its words selected, and **Format…** opens them at its row. Each command is one step in the editor's history.
 
 **Copy** keeps the lines that write the objects, with the comments above them, and puts them on the clipboard as text, so they can be pasted into the code as well. **Paste** writes them onto the slide in the preview, after the selected object, as **Insert** does. A name that slide already has becomes a new one, such as `box` to `box2`, and the pasted lines that refer to it follow. Pasted back onto the slide they came from, objects placed by coordinates move 24 down and to the right each time, so a copy never hides the original. In the preview, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, and `Ctrl+D` copy, cut, paste, and duplicate. An object written inside another command is copied in the code.
 
@@ -155,11 +155,13 @@ The names a document gives with `.as()` and `at()` are strings to TypeScript, so
 
 With **Follow cursor** on, moving the cursor shows the slide that holds it and outlines the object written on that line. The preview keeps its reveal step while the cursor stays inside the same slide.
 
-The preview's own source links work as they do in VS Code:
+Objects in the preview are worked on as in PowerPoint, with no mode to turn on first:
 
-- **Alt-click** an object in the preview to put the cursor on the command that drew it.
-- Turn on layout editing with **E**, then **drag** an object placed with `position({ x, y })`, or resize one that states its `width()` or `height()`. Only the digits change, through the editor, so `Ctrl+Z` puts the object back. The same keys work while the preview has focus: `Ctrl+Z` and `Ctrl+Y` undo and redo in the editor, and `Ctrl+S` saves.
-- Drag an object in the document flow to change its place among its neighbours; its lines move in the source, comments included.
+- **Click** an object to select it, and **drag** it: one placed with `position({ x, y })` moves, and the handle at its corner resizes one that states its `width()` or `height()`. Only the digits change, through the editor, so `Ctrl+Z` puts the object back. The same keys work while the preview has focus: `Ctrl+Z` and `Ctrl+Y` undo and redo in the editor, and `Ctrl+S` saves.
+- Drag an object in the document flow to change its place among its neighbours; its lines move in the source, comments included. The pointer has to travel a little further before this starts than before a move does, so a click that wobbles never reorders the slide.
+- A value the code works out, such as `position({ x: left + 40, y: 120 })`, `width(size * 2)`, or a placement such as `.rightOf("box")`, is never overwritten by a drag. The selected object says what places it, its corner handle is grey, and a drag that tries leaves it where it is and says why, with **Go to code**.
+- The padlock among the preview's controls, or **Lock layout** in the slide's right-click menu, locks the layout: objects can still be selected, formatted, and typed into, but not dragged, resized, or nudged with the arrow keys until it is unlocked.
+- **Alt-click** an object to put the cursor on the command that drew it.
 - Click an object, or `Ctrl`-click several, and press `Delete` or `Backspace` to delete them: their lines leave the source, comments written above them included, along with any connector that ends at one of them. An object that another object is placed against by its name, an object written inside another command, and a region stay, and the preview says why. One `Ctrl+Z` brings everything back.
 - `Ctrl`-click several objects written one after another and choose **Bind region** to wrap their lines in a named `at("…").column()` region, so they can be positioned or anchored together.
 - Right-click an object to cut, copy, paste, duplicate, or stack it, or for the rest of its [menu](#right-click-menus).
@@ -198,7 +200,7 @@ The right side of **Insert**'s gallery draws objects onto the slide in the previ
 - Pick a polygon, then click on the slide for each of its corners. A double-click, `Enter`, or a click on the first corner finishes it, and it is written as `polygon([[0, 0], [120, 0], [120, 90]]).position({ x, y })`, its corners counted from its top-left. `Backspace` takes back the last corner, and `Shift` holds an edge to steps of 45°.
 - `Esc` puts the tool down without writing anything.
 
-The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected in the editor, ready to be typed over. Layout editing turns on, so the new object can be dragged and resized at once. Each drawing is one step in the editor's history.
+The object is written at the end of the slide's code, in the slide's first region, with the coordinates and size you drew. A shape or a text box arrives with its placeholder text selected in the editor, ready to be typed over, and can be dragged and resized at once. Each drawing is one step in the editor's history.
 
 A slide made by a loop or a helper function has no lines of its own to write into, so nothing can be drawn onto it.
 

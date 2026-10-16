@@ -33,6 +33,7 @@ const sourceEditEvent = "frameseq:apply-edit";
 const sourceUndoEvent = "frameseq:undo-edit";
 const sourceEditResultEvent = "frameseq:apply-edit-result";
 const layoutEditingKey = "frameseq-layout-editing";
+const layoutLockedKey = "frameseq-layout-locked";
 const previewSelectionKey = "frameseq-preview-selection";
 const notesScaleKey = "frameseq-presenter-notes-scale";
 /**
@@ -45,6 +46,20 @@ const defaultNotesScaleIndex = notesScaleSteps.indexOf(1);
 const localRemoteAvailable = __FRAMESEQ_REMOTE_ENABLED__ && Boolean(import.meta.hot);
 /** Editing writes the slide document, so it only exists while a development server is serving. */
 const localEditingAvailable = Boolean(import.meta.hot);
+
+/**
+ * Whether this page is FrameSeq Studio's own preview. There, as in a drawing program, objects
+ * are selected, dragged, and typed into with no mode to enter first.
+ */
+function inStudioPreview(): boolean {
+  return window.parent !== window && new URLSearchParams(location.search).get("frameseq-preview") === "studio";
+}
+
+/** A padlock, closed while the layout is locked and open while objects can be moved. */
+function lockPicture(closed: boolean): string {
+  const shackle = closed ? "M8 11V8a4 4 0 0 1 8 0v3" : "M8 11V8a4 4 0 0 1 7.6-1.8";
+  return `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="${shackle}"/></svg>`;
+}
 
 function applyStyles(element: HTMLElement, styles: Record<string, string>): void {
   Object.assign(element.style, styles);
@@ -606,6 +621,7 @@ function renderNode(node: FrameSeqNode, nodePath = "0"): HTMLElement {
         element.dataset.frameseqEdit = JSON.stringify(span.fields);
         if (span.fields.x && span.fields.y) element.dataset.frameseqMove = "true";
       }
+      if (span.computed) element.dataset.frameseqComputed = JSON.stringify(span.computed);
       if (span.statement && span.region !== undefined) {
         element.dataset.frameseqStatement = JSON.stringify(span.statement);
         element.dataset.frameseqRegion = String(span.region);
@@ -930,7 +946,7 @@ function addMaster(canvas: HTMLElement, slide: FrameSeqNode, index: number, slid
     if (typeof child.props.placeholder === "string") placeholders.push(child);
     else layer.append(renderNode(withFields(child, values), `${index}.master.${childIndex}`));
   }
-  const sourceAttributes = ["source", "edit", "move", "statement", "region", "shared", "path", "refers"];
+  const sourceAttributes = ["source", "edit", "computed", "move", "statement", "region", "shared", "path", "refers"];
   for (const element of layer.querySelectorAll<HTMLElement>("[data-frameseq-source], [data-frameseq-path]")) {
     for (const name of sourceAttributes) delete element.dataset[`frameseq${name[0].toUpperCase()}${name.slice(1)}`];
   }
@@ -1029,6 +1045,13 @@ const englishWords = {
   bindRegion: "Bind region",
   selectedAt: (x: number, y: number, width: number, height: number) => `Selected · x ${x} · y ${y} · ${width} × ${height}`,
   selectedFlow: "Selected · flow item · drag to reorder",
+  selectedComputed: (code: string) => `Selected · placed by the code: ${code}`,
+  selectedLocked: "Selected · layout locked",
+  locked: "locked",
+  computedPosition: (code: string) => `Placed by the code (${code}), so a drag cannot move it`,
+  computedSize: (code: string) => `Sized by the code (${code}), so a drag cannot resize it`,
+  layoutLockedHint: "Layout locked · unlock it to move or resize objects",
+  sharedObject: "Drawn by a loop or a helper with others like it, so a drag cannot move it",
   selectedMany: (count: number, label: string) => `${count} selected · ${label}`,
   regionDeleted: "Selected · a region is deleted in the source",
   insideAnother: "Selected · written inside another command; delete it in the source",
@@ -1045,6 +1068,9 @@ const englishWords = {
   pairRemote: "Pair phone remote",
   layoutEditing: "Toggle layout editing",
   layoutEditingTitle: "Drag objects to rewrite their coordinates (Escape to leave)",
+  layoutLock: "Lock layout",
+  layoutLockTitle: "Lock the layout: objects can still be selected and typed into, but not moved or resized",
+  layoutUnlockTitle: "The layout is locked · click to move and resize objects again",
   openPresenter: "Open presenter view",
   canvas: "FrameSeq slide canvas",
   showEnd: "End of slide show. Click to exit.",
@@ -1116,6 +1142,13 @@ const chineseWords: typeof englishWords = {
   bindRegion: "绑定到区域",
   selectedAt: (x, y, width, height) => `已选中 · x ${x} · y ${y} · ${width} × ${height}`,
   selectedFlow: "已选中 · 随版面排列 · 拖动可调整顺序",
+  selectedComputed: (code) => `已选中 · 位置由代码决定：${code}`,
+  selectedLocked: "已选中 · 布局已锁定",
+  locked: "已锁定",
+  computedPosition: (code) => `位置由代码算出（${code}），拖动改不了`,
+  computedSize: (code) => `大小由代码算出（${code}），拖动改不了`,
+  layoutLockedHint: "布局已锁定 · 解锁后才能移动或缩放对象",
+  sharedObject: "它和同类对象由循环或辅助函数画出，拖动改不了",
   selectedMany: (count, label) => `已选中 ${count} 个 · ${label}`,
   regionDeleted: "已选中 · 区域要在代码里删除",
   insideAnother: "已选中 · 它写在另一条命令里，请在代码里删除",
@@ -1132,6 +1165,9 @@ const chineseWords: typeof englishWords = {
   pairRemote: "配对手机遥控",
   layoutEditing: "开关布局编辑",
   layoutEditingTitle: "拖动对象来改写它们的坐标（按 Esc 退出）",
+  layoutLock: "锁定布局",
+  layoutLockTitle: "锁定布局：对象仍可选中、改文字，但不能移动或缩放",
+  layoutUnlockTitle: "布局已锁定 · 单击后可以重新移动和缩放对象",
   openPresenter: "打开演讲者视图",
   canvas: "FrameSeq 幻灯片画布",
   showEnd: "放映结束，单击鼠标退出。",
@@ -1725,6 +1761,7 @@ function enableSourceReveal(
     if (clearStored) storePreviewSelection();
     selectionToolbar.classList.remove("is-visible");
     selectionCoordinates.classList.remove("is-visible");
+    dispatchEvent(new CustomEvent("frameseq-selection-change"));
   };
   const showCoordinates = (element?: HTMLElement, override?: Record<string, number>): void => {
     if (!element || selected.size !== 1 || !selected.has(element)) {
@@ -1743,10 +1780,16 @@ function enableSourceReveal(
     const width = override?.width ?? fields.width?.value ?? box.width / scale;
     const height = override?.height ?? fields.height?.value ?? box.height / scale;
     const positioned = Boolean(fields.x && fields.y);
-    selectionCoordinates.textContent = positioned
-      ? w.selectedAt(Math.round(x), Math.round(y), Math.round(width), Math.round(height))
-      : w.selectedFlow;
-    selectionCoordinates.classList.toggle("is-readonly", !positioned);
+    const computed = parseSourceComputed(element) ?? {};
+    const placedByCode = !positioned && (computed.x ?? computed.y);
+    const locked = document.documentElement.classList.contains("frameseq-layout-locked");
+    if (positioned) {
+      const at = w.selectedAt(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+      selectionCoordinates.textContent = locked ? `${at} · ${w.locked}` : at;
+    } else {
+      selectionCoordinates.textContent = placedByCode ? w.selectedComputed(placedByCode) : locked ? w.selectedLocked : w.selectedFlow;
+    }
+    selectionCoordinates.classList.toggle("is-readonly", !positioned || locked);
     selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
     selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
     selectionCoordinates.classList.add("is-visible");
@@ -1815,6 +1858,7 @@ function enableSourceReveal(
     }
     const bind = selectionToolbar.querySelector<HTMLButtonElement>('[data-action="bind-region"]');
     if (bind) bind.hidden = targets.length < 2;
+    dispatchEvent(new CustomEvent("frameseq-selection-change"));
     if (window.parent !== window) {
       window.parent.postMessage({ type: "frameseq.select", targets }, "*");
     }
@@ -1992,6 +2036,7 @@ function enableSourceReveal(
     return {
       slideIndex: Number(frame?.dataset.index ?? -1),
       editing: document.documentElement.classList.contains("frameseq-edit-mode"),
+      locked: document.documentElement.classList.contains("frameseq-layout-locked"),
       objects: elements.flatMap((element) => {
         const target = parseSourceTarget(element.dataset.frameseqSource ?? "");
         return target ? [{ target, statement: parseSourceStatement(element) }] : [];
@@ -2112,6 +2157,10 @@ function enableSourceReveal(
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (document.documentElement.classList.contains("frameseq-layout-locked")) {
+      explain(w.layoutLockedHint);
+      return;
+    }
     const axis = event.key === "ArrowLeft" || event.key === "ArrowRight" ? "x" : "y";
     const elements = [...selected];
     const fields = elements.map((element) => parseSourceFields(element) ?? {});
@@ -2163,6 +2212,25 @@ function enableSourceReveal(
     values: Record<string, number>;
   }>) => {
     showCoordinates(event.detail.element, event.detail.values);
+  }) as EventListener, { signal });
+  /**
+   * A drag that cannot change anything says why beside the object: the layout is locked, or its
+   * code works out where it goes or how big it is. FrameSeq Studio offers the code too.
+   */
+  addEventListener("frameseq-layout-blocked", ((event: CustomEvent<{
+    element: HTMLElement;
+    reason: BlockedReason;
+    code?: string;
+  }>) => {
+    const { element, reason, code = "" } = event.detail;
+    explain(reason === "locked" ? w.layoutLockedHint
+      : reason === "shared" ? w.sharedObject
+        : reason === "size" ? w.computedSize(code) : w.computedPosition(code));
+    const box = element.getBoundingClientRect();
+    selectionCoordinates.style.left = `${Math.max(8, Math.min(innerWidth - 220, box.left))}px`;
+    selectionCoordinates.style.top = `${Math.max(8, box.top - 32)}px`;
+    const target = parseSourceTarget(element.dataset.frameseqSource ?? "");
+    if (inStudio && target) window.parent.postMessage({ type: "frameseq.drag-blocked", target, reason, code }, "*");
   }) as EventListener, { signal });
 
   const hint = (active: boolean): void => {
@@ -2235,6 +2303,22 @@ function storeLayoutEditing(active: boolean): void {
   }
 }
 
+function readLayoutLocked(): boolean {
+  try {
+    return sessionStorage.getItem(layoutLockedKey) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function storeLayoutLocked(locked: boolean): void {
+  try {
+    sessionStorage.setItem(layoutLockedKey, locked ? "1" : "0");
+  } catch {
+    // The lock simply will not survive a reload.
+  }
+}
+
 /**
  * The notes size is a lasting preference about a presenter's eyesight and lectern
  * distance, not a property of one deck, so it outlives the window that set it.
@@ -2261,6 +2345,17 @@ function parseSourceFields(element: HTMLElement): SourceFields | undefined {
   if (!descriptor) return undefined;
   try {
     return JSON.parse(descriptor) as SourceFields;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The coordinates and sizes an object's code works out, by name, with that code. */
+function parseSourceComputed(element: HTMLElement): Record<string, string> | undefined {
+  const descriptor = element.dataset.frameseqComputed;
+  if (!descriptor) return undefined;
+  try {
+    return JSON.parse(descriptor) as Record<string, string>;
   } catch {
     return undefined;
   }
@@ -2468,10 +2563,18 @@ function insertionIndex(boxes: DOMRect[], x: number, y: number): number {
   return index < 0 ? boxes.length : index;
 }
 
+type BlockedReason = "locked" | "position" | "size" | "shared";
+
 interface LayoutDrag {
   element: HTMLElement;
   fields: SourceFields;
-  mode: "move" | "resize" | "reorder";
+  /** "blocked" is a press on an object the drag cannot change, which says why once it moves. */
+  mode: "move" | "resize" | "reorder" | "blocked";
+  /**
+   * Why a blocked drag changes nothing: the layout is locked, the code works the value out, or
+   * one command in a loop or a helper drew the object and others like it.
+   */
+  blocked?: { reason: BlockedReason; code?: string };
   statement?: SourceStatement;
   siblings?: HTMLElement[];
   index?: number;
@@ -2494,17 +2597,31 @@ interface LayoutDrag {
 const dragThreshold = 4;
 
 /**
+ * Trading an object's place in the flow moves its lines in the code, so a press has to travel
+ * further before it counts as that: a click that wobbles must not reorder the slide.
+ */
+const reorderThreshold = 10;
+
+/** The switches of layout editing: whether objects can be dragged, and whether the layout is locked. */
+interface LayoutEditor {
+  setEditing: (active: boolean) => void;
+  setLocked: (locked: boolean) => void;
+}
+
+/**
  * Drag an object on a canvas slide to change the coordinates its command states, and drag the
- * corner handle to change its size. Returns the switch that turns the mode on and off.
+ * corner handle to change its size. Returns the switches that turn the mode on and off and lock
+ * the layout; a locked layout keeps every object where it is, while it can still be selected.
  */
 function createLayoutEditor(
   root: HTMLElement,
   canvasWidth: number,
   signal?: AbortSignal,
-): (active: boolean) => void {
+): LayoutEditor {
   const handle = document.createElement("div");
   handle.className = "frameseq-edit-handle";
   handle.setAttribute("aria-hidden", "true");
+  let locked = false;
   const insertion = document.createElement("div");
   insertion.className = "frameseq-insertion-marker";
   insertion.setAttribute("aria-hidden", "true");
@@ -2597,20 +2714,43 @@ function createLayoutEditor(
     return canvas.getBoundingClientRect().width / canvasWidth || 1;
   }
 
+  /**
+   * Put the resize handle on an object that states its width as a number, or, marked as fixed,
+   * on one whose code works the width out, so the corner says why it does not follow.
+   */
+  const placeHandle = (element: HTMLElement | null): void => {
+    const fields = element ? parseSourceFields(element) : undefined;
+    const computed = element ? parseSourceComputed(element) : undefined;
+    if (!element || locked || !(fields?.width || computed?.width)) {
+      handle.remove();
+      return;
+    }
+    handle.classList.toggle("is-computed", !fields?.width);
+    if (handle.parentElement !== element) element.append(handle);
+  };
+  /** The one object selected, which keeps its handle while the pointer is elsewhere. */
+  const selectedOne = (): HTMLElement | null => {
+    const chosen = root.querySelectorAll<HTMLElement>(".is-frameseq-selected");
+    return chosen.length === 1 ? chosen[0] : null;
+  };
+
   root.addEventListener("pointerover", (event) => {
     if (!editing || drag) return;
     const element = event.target instanceof Element
-      ? event.target.closest<HTMLElement>("[data-frameseq-edit]")
+      ? event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-computed]")
       : null;
-    if (element === handle.parentElement) return;
-    const fields = element ? parseSourceFields(element) : undefined;
-    if (element && fields?.width) element.append(handle);
-    else handle.remove();
+    if (element && element === handle.parentElement) return;
+    placeHandle(element ?? selectedOne());
   });
+  addEventListener("frameseq-selection-change", () => {
+    if (editing && !drag) placeHandle(selectedOne());
+  }, { signal });
 
   root.addEventListener("pointerdown", (event) => {
     // Alt is the shortcut for opening the source, so it never starts a drag.
     if (!editing || event.button !== 0 || event.altKey || !(event.target instanceof Element)) return;
+    // Words being typed on the slide take their own presses, to place the caret and select.
+    if (event.target.closest(".is-frameseq-typing")) return;
     const resizing = Boolean(event.target.closest(".frameseq-edit-handle"));
     const region = event.shiftKey
       ? event.target.closest<HTMLElement>(
@@ -2619,23 +2759,61 @@ function createLayoutEditor(
       : null;
     const element = region ?? (resizing
       ? handle.parentElement
-      : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-statement]"));
+      : event.target.closest<HTMLElement>("[data-frameseq-edit], [data-frameseq-computed], [data-frameseq-statement]"));
+    // One command in a loop or a helper drew this and others like it, so no drag can say which to move.
+    const shared = element ? undefined : event.target.closest<HTMLElement>("[data-frameseq-shared]:not(.frameseq-slide)");
+    if (shared) {
+      event.preventDefault();
+      drag = {
+        element: shared,
+        fields: {},
+        mode: "blocked",
+        blocked: { reason: "shared" },
+        pointerId: event.pointerId,
+        captured: false,
+        originX: event.clientX,
+        originY: event.clientY,
+        scale: 1,
+        moved: false,
+        values: {},
+        originBox: shared.getBoundingClientRect(),
+        peerBoxes: [],
+      };
+      return;
+    }
     if (!element) return;
 
     const fields = parseSourceFields(element) ?? {};
+    const computed = parseSourceComputed(element) ?? {};
     const statement = parseSourceStatement(element);
     const siblings = statement ? reorderSiblings(element) : [];
     // An object placed by coordinates is dragged to new ones; one in the document flow has
     // none to change, so dragging it trades its place with a neighbour instead.
-    const mode = resizing ? "resize" : (fields.x && fields.y ? "move" : "reorder");
-    if (mode === "resize" && !fields.width) return;
-    if (mode === "reorder" && (!statement || siblings.length < 2)) return;
+    let mode: LayoutDrag["mode"] = resizing ? "resize" : (fields.x && fields.y ? "move" : "reorder");
+    let blocked: LayoutDrag["blocked"];
+    if (mode === "resize" && !fields.width) {
+      if (!computed.width) return;
+      mode = "blocked";
+      blocked = { reason: "size", code: computed.width };
+    } else if (mode === "reorder" && (computed.x || computed.y)) {
+      // An object its code places has no coordinates to rewrite, and moving its lines would not
+      // move it, so the drag says where it is placed instead.
+      mode = "blocked";
+      blocked = { reason: "position", code: computed.x ?? computed.y };
+    } else if (mode === "reorder" && (!statement || siblings.length < 2)) {
+      return;
+    }
+    if (locked) {
+      mode = "blocked";
+      blocked = { reason: "locked" };
+    }
 
     event.preventDefault();
     drag = {
       element,
       fields,
       mode,
+      blocked,
       statement,
       siblings,
       index: siblings.indexOf(element),
@@ -2658,7 +2836,14 @@ function createLayoutEditor(
   addEventListener("pointermove", (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     const travelled = Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY);
-    if (!drag.moved && travelled < dragThreshold) return;
+    if (!drag.moved && travelled < (drag.mode === "reorder" ? reorderThreshold : dragThreshold)) return;
+    if (drag.mode === "blocked") {
+      if (!drag.moved) {
+        drag.moved = true;
+        dispatchEvent(new CustomEvent("frameseq-layout-blocked", { detail: { element: drag.element, ...drag.blocked } }));
+      }
+      return;
+    }
     if (!drag.moved) {
       drag.moved = true;
       try {
@@ -2723,7 +2908,7 @@ function createLayoutEditor(
     finished.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
     insertion.remove();
     clearSmartGuides();
-    if (!finished.moved) return;
+    if (!finished.moved || finished.mode === "blocked") return;
 
     // The slide document is written for us, which hot-swaps a newly laid-out canvas.
     if (finished.mode !== "reorder") {
@@ -2750,7 +2935,7 @@ function createLayoutEditor(
     abandoned.element.classList.remove("is-frameseq-dragging", "is-frameseq-reordering");
     insertion.remove();
     clearSmartGuides();
-    if (abandoned.moved) location.reload();
+    if (abandoned.moved && abandoned.mode !== "blocked") location.reload();
   }
 
   addEventListener("blur", abandonDrag, { signal });
@@ -2790,14 +2975,22 @@ function createLayoutEditor(
     clearSmartGuides();
   }, { once: true });
 
-  return (active: boolean): void => {
-    editing = active;
-    document.documentElement.classList.toggle("frameseq-edit-mode", active);
-    dispatchEvent(new CustomEvent("frameseq-editing-change", { detail: active }));
-    if (!active) {
-      handle.remove();
-      insertion.remove();
-    }
+  return {
+    setEditing: (active: boolean): void => {
+      editing = active;
+      document.documentElement.classList.toggle("frameseq-edit-mode", active);
+      dispatchEvent(new CustomEvent("frameseq-editing-change", { detail: active }));
+      if (!active) {
+        handle.remove();
+        insertion.remove();
+      }
+    },
+    setLocked: (next: boolean): void => {
+      locked = next;
+      document.documentElement.classList.toggle("frameseq-layout-locked", next);
+      if (next) handle.remove();
+      else placeHandle(selectedOne());
+    },
   };
 }
 
@@ -3187,6 +3380,10 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
   // edited like slides. Only a development server offers it.
   const masterMode = localEditingAvailable && !printMode && !remoteMode && !presenterMode && !showMode
     && searchParams.has("masters");
+  // FrameSeq Studio's preview edits as a drawing program does: objects are selected, dragged,
+  // and typed into with no mode to enter, and its E button locks the layout instead.
+  const directEditing = interactivePreview && !printMode && !thumbnailMode && inStudioPreview();
+  document.documentElement.classList.toggle("frameseq-direct-edit", directEditing);
   document.documentElement.classList.toggle("frameseq-master-mode", masterMode);
   document.documentElement.classList.toggle("frameseq-print", printMode);
   document.documentElement.classList.toggle("frameseq-presenter-mode", presenterMode);
@@ -3334,7 +3531,8 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
         </span>
       ` : ""}
       ${localRemoteAvailable ? `<button type="button" data-action="remote-pair" aria-label="${w.pairRemote}" title="${w.pairRemote}">R</button>` : ""}
-      ${localEditingAvailable ? `<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="${w.layoutEditing}" title="${w.layoutEditingTitle}">E</button>` : ""}
+      ${localEditingAvailable && directEditing ? `<button type="button" class="frameseq-lock-toggle" data-action="layout-lock" aria-pressed="false" aria-label="${w.layoutLock}" title="${w.layoutLockTitle}">${lockPicture(false)}</button>` : ""}
+      ${localEditingAvailable && !directEditing ? `<button type="button" data-action="edit-toggle" aria-pressed="false" aria-label="${w.layoutEditing}" title="${w.layoutEditingTitle}">E</button>` : ""}
       <button type="button" data-action="presenter" aria-label="${w.openPresenter}" title="${w.openPresenter}">P</button>
     `;
     if (!showMode) target.append(controls);
@@ -3350,37 +3548,55 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     target.append(showEnd);
   }
 
-  const setLayoutEditing = localEditingAvailable && !presenter && !remote && !showMode
+  const layoutEditor = localEditingAvailable && !presenter && !remote && !showMode
     ? createLayoutEditor(root, slidesDocument.canvasWidth, signal)
     : undefined;
-  // Editing mode survives both a hot canvas swap and a fallback page reload.
-  let layoutEditing = readLayoutEditing();
+  // Editing mode, and the Studio's lock, survive both a hot canvas swap and a fallback page reload.
+  let layoutEditing = directEditing || readLayoutEditing();
+  let layoutLocked = directEditing && readLayoutLocked();
   let audienceZoom: number | undefined;
   let currentAudienceScale = 1;
 
   function updateLayoutEditing(active: boolean): void {
-    if (!setLayoutEditing) return;
-    layoutEditing = active;
-    storeLayoutEditing(active);
-    setLayoutEditing(active);
+    if (!layoutEditor) return;
+    // FrameSeq Studio's preview never leaves editing; its layout is locked instead.
+    layoutEditing = active || directEditing;
+    if (!directEditing) storeLayoutEditing(layoutEditing);
+    layoutEditor.setEditing(layoutEditing);
     const button = controls.querySelector<HTMLButtonElement>('[data-action="edit-toggle"]');
-    button?.setAttribute("aria-pressed", String(active));
+    button?.setAttribute("aria-pressed", String(layoutEditing));
     if (button) {
-      button.title = active
+      button.title = layoutEditing
         ? "Editing on · click to select, Ctrl/Command-click to multi-select, Escape to leave"
         : "Enter editing mode";
-      button.setAttribute("aria-label", active ? "Layout editing on" : "Layout editing off");
+      button.setAttribute("aria-label", layoutEditing ? "Layout editing on" : "Layout editing off");
     }
   }
 
+  /** Lock FrameSeq Studio's layout, so objects stay where they are while they are selected and typed into. */
+  function updateLayoutLock(locked: boolean): void {
+    if (!layoutEditor || !directEditing) return;
+    layoutLocked = locked;
+    storeLayoutLocked(locked);
+    layoutEditor.setLocked(locked);
+    const button = controls.querySelector<HTMLButtonElement>('[data-action="layout-lock"]');
+    if (!button) return;
+    const w = words();
+    button.setAttribute("aria-pressed", String(locked));
+    button.title = locked ? w.layoutUnlockTitle : w.layoutLockTitle;
+    button.innerHTML = lockPicture(locked);
+  }
+
   updateLayoutEditing(layoutEditing);
-  // FrameSeq Studio's slide menu turns layout editing on and off.
+  updateLayoutLock(layoutLocked);
+  // FrameSeq Studio's menus lock the layout, and elsewhere turn layout editing on and off.
   addEventListener("message", (event: MessageEvent<unknown>) => {
-    const data = event.data as { type?: unknown; active?: unknown } | null;
+    const data = event.data as { type?: unknown; active?: unknown; locked?: unknown } | null;
     if (data?.type === "frameseq.layout-editing" && typeof data.active === "boolean") updateLayoutEditing(data.active);
+    if (data?.type === "frameseq.layout-lock" && typeof data.locked === "boolean") updateLayoutLock(data.locked);
   }, { signal });
   // An object drawn from the Studio is there to be arranged, so editing turns on once it lands.
-  if (setLayoutEditing && window.parent !== window) {
+  if (layoutEditor && window.parent !== window) {
     createPlacer(root, () => slides[currentSlide]?.canvas, () => updateLayoutEditing(true), signal);
   }
 
@@ -3734,6 +3950,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
     if (button?.dataset.action === "remote-pair") void openRemotePairing();
     if (button?.dataset.action === "remote-here") switchMode("remote");
     if (button?.dataset.action === "edit-toggle") updateLayoutEditing(!layoutEditing);
+    if (button?.dataset.action === "layout-lock") updateLayoutLock(!layoutLocked);
     if (button?.dataset.action === "zoom-out") setAudienceZoom(currentAudienceScale / 1.1);
     if (button?.dataset.action === "zoom-in") setAudienceZoom(currentAudienceScale * 1.1);
     if (button?.dataset.action === "zoom-fit") setAudienceZoom();
@@ -4049,7 +4266,7 @@ export function mountSlides(slidesDocument: SlidesRootDefinition, target: HTMLEl
       setAudienceZoom(1);
       return;
     }
-    if (event.key === "Escape" && layoutEditing) {
+    if (event.key === "Escape" && layoutEditing && !directEditing) {
       event.preventDefault();
       updateLayoutEditing(false);
       return;

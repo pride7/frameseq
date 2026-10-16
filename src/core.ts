@@ -71,6 +71,11 @@ export interface SourceSpan {
   end: number;
   /** Coordinates and sizes written as plain numbers, by name: x, y, width, height. */
   fields?: Record<string, SourceField>;
+  /**
+   * Coordinates and sizes the code works out, by name, with the code that does: a drag cannot
+   * rewrite them, and the preview says so.
+   */
+  computed?: Record<string, string>;
   /** The whole lines the command occupies, which is what a drag between neighbours moves. */
   statement?: { start: number; end: number; text: string };
   /**

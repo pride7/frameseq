@@ -77,15 +77,34 @@ function numericField(sourceFile, node) {
   return undefined;
 }
 
+/** Chain steps that place an object against another one, and the coordinates each one decides. */
+const placementSteps = new Map([
+  ["rightOf", ["x", "y"]],
+  ["leftOf", ["x", "y"]],
+  ["above", ["x", "y"]],
+  ["below", ["x", "y"]],
+  ["centerOn", ["x", "y"]],
+  ["alignTop", ["y"]],
+  ["alignLeft", ["x"]],
+  ["anchor", ["x", "y"]],
+]);
+
 /**
- * The coordinates and sizes a chain states as plain numbers. Computed values are left out:
- * position({ x: cursor }) has nothing a drag could rewrite without changing what the code means.
- * The chain is walked from its end, so the call that wins at runtime is the one recorded.
+ * The coordinates and sizes a chain states as plain numbers, and the ones its code works out
+ * instead: position({ x: cursor }) has nothing a drag could rewrite without changing what the
+ * code means, so `computed` keeps the code, for the preview to say why it stays put. The chain
+ * is walked from its end, so the call that wins at runtime is the one recorded.
  */
 function editableFields(sourceFile, node) {
   const fields = {};
-  const remember = (name, field) => {
-    if (field && !fields[name]) fields[name] = field;
+  const computed = {};
+  const seen = new Set();
+  const remember = (name, value, text) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const field = numericField(sourceFile, value);
+    if (field) fields[name] = field;
+    else computed[name] = text ?? value?.getText(sourceFile) ?? "";
   };
 
   let current = node;
@@ -94,19 +113,35 @@ function editableFields(sourceFile, node) {
     const [argument] = current.arguments;
     if (step === "position" && argument && ts.isObjectLiteralExpression(argument)) {
       for (const property of argument.properties) {
-        if (!ts.isPropertyAssignment(property)) continue;
+        if (ts.isShorthandPropertyAssignment(property)) {
+          if (property.name.text === "x" || property.name.text === "y") remember(property.name.text, property.name);
+          continue;
+        }
+        if (!ts.isPropertyAssignment(property)) {
+          // A spread may say anything about either coordinate.
+          for (const key of ["x", "y"]) remember(key, undefined, property.getText(sourceFile));
+          continue;
+        }
         const key = ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
           ? property.name.text
           : undefined;
-        if (key === "x" || key === "y") remember(key, numericField(sourceFile, property.initializer));
+        if (key === "x" || key === "y") remember(key, property.initializer);
       }
-    } else if (numericSteps.has(step)) {
-      remember(step, numericField(sourceFile, argument));
+    } else if (step === "position" && argument) {
+      for (const key of ["x", "y"]) remember(key, undefined, argument.getText(sourceFile));
+    } else if (numericSteps.has(step) && argument) {
+      remember(step, argument);
+    } else if (placementSteps.has(step)) {
+      const call = sourceFile.text.slice(current.expression.name.getStart(sourceFile), current.getEnd());
+      for (const key of placementSteps.get(step)) remember(key, undefined, call);
     }
     current = current.expression.expression;
   }
 
-  return Object.keys(fields).length > 0 ? fields : undefined;
+  return {
+    fields: Object.keys(fields).length > 0 ? fields : undefined,
+    computed: Object.keys(computed).length > 0 ? computed : undefined,
+  };
 }
 
 /**
@@ -200,12 +235,14 @@ export function sourceMarks(source, fileName = "slides.ts") {
       && !chainedFurther(node)) {
       const start = node.getStart(sourceFile);
       const position = sourceFile.getLineAndCharacterOfPosition(start);
+      const { fields, computed } = editableFields(sourceFile, node);
       marks.push({
         start,
         end: node.getEnd(),
         line: position.line + 1,
         column: position.character + 1,
-        fields: editableFields(sourceFile, node),
+        fields,
+        ...(computed ? { computed } : {}),
         // A slide is not one object among neighbours; its content lives in later statements.
         // Neither is a call that collects the objects written above it: moving it past them
         // would leave it reaching for objects that do not exist yet.
@@ -316,6 +353,7 @@ export function markEdits(mark) {
     start: mark.start,
     end: mark.end,
     ...(mark.fields ? { fields: mark.fields } : {}),
+    ...(mark.computed ? { computed: mark.computed } : {}),
     ...(mark.statement ? { statement: mark.statement, region: mark.region } : {}),
   };
   return [

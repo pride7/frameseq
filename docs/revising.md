@@ -100,9 +100,9 @@ Moving a page is the same property in reverse: cut the block from its `slide()` 
 +rect("Cache").as("cache").position({ x: 404, y: 132 });
 ```
 
-**Two numbers.** The `E` control in the live preview turns on layout editing, and an object placed by coordinates can then be dragged into place; releasing it writes the numbers back. An object in the flow has none to write, so dragging it changes its place among its neighbours and carries its lines there instead.
+**Two numbers.** In FrameSeq Studio an object placed by coordinates is simply dragged into place; in the live preview of `frameseq dev` and VS Code, the `E` control turns on layout editing first. Releasing it writes the numbers back. An object in the flow has none to write, so dragging it changes its place among its neighbours and carries its lines there instead.
 
-The point is what the edit looks like afterwards. Dragging produces the revision you would have typed, in the same place, at the same size, so it still reviews and diffs as source. Where no single number or line stands for what was dragged — a computed coordinate, or a command that runs in a loop — there is no handle to grab, because there would be nothing honest to write. See [Visual Studio Code extension](vscode.md) for the whole gesture set.
+The point is what the edit looks like afterwards. Dragging produces the revision you would have typed, in the same place, at the same size, so it still reviews and diffs as source. Where no single number or line stands for what was dragged — a computed coordinate, or a command that runs in a loop — the drag leaves the object where it is and says which code places it, because there would be nothing honest to write. See [Visual Studio Code extension](vscode.md) for the whole gesture set.
 
 ## Check the result
 

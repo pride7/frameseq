@@ -338,6 +338,41 @@ button {
   cursor: nwse-resize;
 }
 
+/* A width the code works out cannot follow the handle, which shows it. */
+.frameseq-edit-handle.is-computed {
+  background: color-mix(in srgb, var(--frameseq-foreground) 35%, var(--frameseq-background));
+  cursor: not-allowed;
+}
+
+/* An object whose code places it needs a containing block for its handle too. */
+.frameseq-edit-mode .frameseq-slides [data-frameseq-computed] {
+  position: relative;
+}
+
+/*
+ * FrameSeq Studio edits as a drawing program does, with no mode to enter, so the objects are not
+ * outlined until the pointer is over one, and then only the innermost.
+ */
+.frameseq-direct-edit .frameseq-slides [data-frameseq-edit],
+.frameseq-direct-edit .frameseq-slides [data-frameseq-edit]:hover {
+  outline: none;
+}
+
+.frameseq-direct-edit .frameseq-slides [data-frameseq-source]:not(.frameseq-slide):hover:not(:has([data-frameseq-source]:hover)),
+.frameseq-direct-edit .frameseq-slides [data-frameseq-meta]:hover {
+  outline: 1px solid color-mix(in srgb, var(--frameseq-accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.frameseq-direct-edit .frameseq-slides .is-frameseq-dragging {
+  outline: 2px solid var(--frameseq-accent);
+}
+
+/* A locked layout keeps every object where it is, so none of them offers to move. */
+.frameseq-layout-locked .frameseq-slides :is([data-frameseq-move], [data-frameseq-statement]) {
+  cursor: default;
+}
+
 .frameseq-slide {
   position: absolute;
   width: var(--slide-width);
@@ -1372,7 +1407,8 @@ button {
   color: var(--frameseq-foreground);
 }
 
-.frameseq-controls button[data-action="edit-toggle"][aria-pressed="true"] {
+.frameseq-controls button[data-action="edit-toggle"][aria-pressed="true"],
+.frameseq-controls button[data-action="layout-lock"][aria-pressed="true"] {
   border-color: var(--frameseq-accent);
   color: var(--frameseq-background);
   background: var(--frameseq-accent);

@@ -292,8 +292,8 @@ try {
   assert.equal(await preview.evaluate(() => document.querySelectorAll(".is-frameseq-selected").length), 0, "a right-click on the slide clears the selection");
   assert.deepEqual(
     (await commands()).map((item) => item.command),
-    ["paste", "insert", "new-slide", "layout-editing", "go-to-source", "present-here"],
-    "the slide's menu pastes, inserts, adds a slide, and switches layout editing",
+    ["paste", "insert", "new-slide", "lock-layout", "go-to-source", "present-here"],
+    "the slide's menu pastes, inserts, adds a slide, and locks the layout",
   );
   await page.click(".studio-context-menu [data-command='insert']");
   await page.waitForSelector(".studio-context-menu [data-command='insert-formulas']");
@@ -321,8 +321,19 @@ try {
   await page.keyboard.press("Escape");
   await menuClosed();
   await rightClick(blank);
-  await choose("layout-editing");
-  await preview.waitForFunction(() => !document.documentElement.classList.contains("frameseq-edit-mode"));
+  await choose("lock-layout");
+  await preview.waitForFunction(() => document.documentElement.classList.contains("frameseq-layout-locked")
+    && document.querySelector("[data-action='layout-lock']")?.getAttribute("aria-pressed") === "true");
+  // Locking keeps the preview editing: objects are still selected, and typed into.
+  assert.ok(await preview.evaluate(() => document.documentElement.classList.contains("frameseq-edit-mode")));
+  await rightClick(blank);
+  assert.equal(
+    await page.$eval(".studio-context-menu [data-command='lock-layout']", (item) => item.getAttribute("aria-checked")),
+    "true",
+    "the slide's menu shows the layout as locked",
+  );
+  await choose("lock-layout");
+  await preview.waitForFunction(() => !document.documentElement.classList.contains("frameseq-layout-locked"));
 
   // Cut on one slide, paste after an object on another, where the name is free.
   await rightClick(await pointOn("[data-frameseq-name='dot2']", 0.2, 0.32));

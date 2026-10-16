@@ -51,6 +51,28 @@ function commands(source) {
   assert.equal(mark.statement, undefined);
 }
 
+// Values the code works out are kept as code, so the preview can say why a drag leaves them be.
+{
+  const source = [
+    'rect("A").position({ x: left + 40, y: 120 }).width(size * 2);',
+    'rect("B").width(200).width(size);',
+    'rect("C").as("c").rightOf("a").height(80);',
+    'rect("D").position({ x, y: 10 }).alignLeft("a");',
+    "",
+  ].join("\n");
+  const [a, b, c, d] = sourceMarks(source);
+  assert.deepEqual(Object.keys(a.fields), ["y"]);
+  assert.deepEqual(a.computed, { width: "size * 2", x: "left + 40" });
+  // The last call wins at runtime, so an earlier literal is not offered to a drag.
+  assert.equal(b.fields, undefined);
+  assert.deepEqual(b.computed, { width: "size" });
+  assert.deepEqual(Object.keys(c.fields), ["height"]);
+  assert.deepEqual(c.computed, { x: 'rightOf("a")', y: 'rightOf("a")' });
+  assert.equal(d.fields.y.value, 10);
+  assert.deepEqual(d.computed, { x: 'alignLeft("a")' });
+  assert.match(marked(source), /"computed":\{"width":"size \* 2","x":"left \+ 40"\}/);
+}
+
 // Tagged templates are commands too.
 {
   const source = "text`Every $x$ counts`.caption();\nmath`e^{i\\pi}`;\n";
