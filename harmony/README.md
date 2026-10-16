@@ -1,4 +1,4 @@
-# FrameSeq 鸿蒙电脑原型
+# FrameSeq 鸿蒙电脑和平板原型
 
 这是供鸿蒙 Electron 运行时加载的应用目录。桌面入口为 `main.cjs`，窗口通过隔离的 `preload.cjs` 与 Studio 通信。
 
@@ -32,9 +32,9 @@ node output/harmony/FrameSeq/scripts/harmony-server.mjs path/to/talk.slides.ts
 npm run harmony:prepare
 ```
 
-这会先构建应用，再取得 [ohosvscode 的 HAP 宿主](https://github.com/ohosvscode/ohos_electron_hap)的固定版本，输出 `output/harmony/hap/`。宿主提交、五个 ARM64 库的 SHA-256 和电脑设备类型保存在 [host.lock.json](host.lock.json)，生成过程验证库文件，拒绝 Git LFS 指针、错误架构和校验不一致的二进制。首次执行需要 Git、Git LFS、tar 和网络；宿主缓存保存在 `tmp/harmony-host/`。
+这会先构建应用，再取得 [ohosvscode 的 HAP 宿主](https://github.com/ohosvscode/ohos_electron_hap)的固定版本，输出 `output/harmony/hap/`。宿主提交、五个 ARM64 库的 SHA-256 和设备类型保存在 [host.lock.json](host.lock.json)，生成过程验证库文件，拒绝 Git LFS 指针、错误架构和校验不一致的二进制。首次执行需要 Git、Git LFS、tar 和网络；宿主缓存保存在 `tmp/harmony-host/`。
 
-FrameSeq 以 `io.github.pride7.frameseq` 为包名，应用名为 FrameSeq Studio，使用项目图标，设备类型为 `2in1`。应用资源放入 `web_engine/src/main/resources/resfile/resources/app/`；保留 `node_modules`、`client`、`lib` 和 `scripts` 的相对位置，入口为 `main.cjs`。宿主当前声明的兼容 SDK 为 `5.0.3(15)`；这是兼容下限，不代表已完成对应系统的真机验证。关于运行时 API 和宿主更新，参阅 [Electron 鸿蒙化指导](https://gitcode.com/openharmony-sig/electron)。
+FrameSeq 以 `io.github.pride7.frameseq` 为包名，应用名为 FrameSeq Studio，使用项目图标，同时声明电脑 `2in1` 和平板 `tablet`。应用资源放入 `web_engine/src/main/resources/resfile/resources/app/`；保留 `node_modules`、`client`、`lib` 和 `scripts` 的相对位置，入口为 `main.cjs`。宿主当前声明的兼容 SDK 为 `5.0.3(15)`；这是兼容下限，不代表已完成对应系统的真机验证。关于运行时 API 和宿主更新，参阅 [Electron 鸿蒙化指导](https://gitcode.com/openharmony-sig/electron)。
 
 已有同一固定提交的宿主源码时，可以复用它，脚本不会修改该源码：
 
@@ -48,7 +48,7 @@ npm.cmd run harmony:prepare -- --source 'D:\path\to\ohos_electron_hap'
 
 从华为官方下载 [Command Line Tools](https://developer.huawei.com/consumer/cn/download/command-line-tools-for-hmos) 或 [DevEco Studio](https://developer.huawei.com/consumer/cn/deveco-studio/)。使用包含 OpenHarmony 工具链及 HMS Kit 的完整 HarmonyOS SDK，普通 OpenHarmony SDK 不包含此宿主所引用的全部 Kit。
 
-官网目前同时提供 6.1.1 和 26.0.0 系列。本项目正在使用 26.0.0 Release 尝试编译，它配套 HarmonyOS 7／API 26；工具链版本不等于应用最低系统版本。生成工程显式设置 `compatibleSdkVersion` 和 `targetSdkVersion` 为宿主原来的 `5.0.3(15)`，分别保留最低兼容配置和目标 API 行为，编译 SDK 则使用工具链自带版本。参阅[官方升级说明](https://developer.huawei.com/consumer/en/doc/harmonyos-releases/upgrade-adaptation)和[版本编号调整说明](https://developer.huawei.com/consumer/cn/doc/doccenter-release-notes/version-number-26)。这些配置仍需真实编译和设备验证。
+官网目前同时提供 6.1.1 和 26.0.0 系列。本项目已使用 26.0.0 Release 完成编译，它配套 HarmonyOS 7／API 26；工具链版本不等于应用最低系统版本。生成工程显式设置 `compatibleSdkVersion` 和 `targetSdkVersion` 为宿主原来的 `5.0.3(15)`，分别保留最低兼容配置和目标 API 行为，编译 SDK 则使用工具链自带版本。参阅[官方升级说明](https://developer.huawei.com/consumer/en/doc/harmonyos-releases/upgrade-adaptation)和[版本编号调整说明](https://developer.huawei.com/consumer/cn/doc/doccenter-release-notes/version-number-26)。系统兼容性仍需设备验证。
 
 本次 Windows 工具包版本、SHA-256 和已核对的华为 PGP 密钥指纹记录在 [toolchain.lock.json](toolchain.lock.json)。脚本会自动查找 `tmp/harmony-tools/<版本>/command-line-tools/` 中的本地安装。如果将工具解压在本仓库内部，请在其外层目录（例如 `tmp/harmony-tools/<版本>/`）放置内容为 `{"private":true,"type":"commonjs"}` 的 `package.json`，避免工具继承本仓库的 ES module 配置。工具在仓库外安装时无需此文件。
 
@@ -63,11 +63,46 @@ npm.cmd run harmony:hap -- --tools 'C:\path\to\command-line-tools'
 
 上述带参数的 PowerShell 示例显式使用 `npm.cmd`，避免本机 `npm.ps1` 吞掉 `--` 后的选项。在其他终端中可以使用普通的 `npm run`。
 
-`harmony:doctor` 检查 `hvigorw`、`ohpm`、完整 SDK 和 Java，并报告是否发现用于设备调试的 `hdc`。`harmony:hap` 会先安装工程依赖，再调用 Hvigor 构建 `electron@default`；只有构建成功、产物的包名与版本匹配，并且包含 FrameSeq 应用资源和 ARM64 库时才报告成功。产物位于 `output/harmony/hap/electron/build/default/outputs/`，文件大小与 SHA-256 记录在 `output/harmony/hap/frameseq-hap-artifacts.json`。
+`harmony:doctor` 检查 `hvigorw`、`ohpm`、完整 SDK 和 Java，并报告是否发现用于设备调试的 `hdc`。`harmony:hap` 会先安装工程依赖，再调用 Hvigor 构建 `electron@default`；只有构建成功、产物的包名、版本和设备类型匹配，并且包含 FrameSeq 应用资源和 ARM64 库时才报告成功。产物位于 `output/harmony/hap/electron/build/default/outputs/`，文件大小与 SHA-256 记录在 `output/harmony/hap/frameseq-hap-artifacts.json`。
 
 若保持默认生成的构建配置，产物为 **未签名 HAP**。本机已使用官方 Windows Command Line Tools 26.0.0.851（SDK 26.0.0.105、Hvigor 6.26.8）完成真实 ArkTS 编译和 HAP 打包，核对了包内应用资源、五个 ARM64 库及应用标识。上游宿主仍有 ArkTS、弃用 API、权限和重复资源警告；构建通过不代表这些警告已解决，也不代表已完成系统兼容性验证。
 
-接下来需要在 DevEco 中完成开发者签名，再进行鸿蒙电脑实机验收。宿主声明的权限包含 JIT 所需的 `ohos.permission.kernel.ALLOW_WRITABLE_CODE_MEMORY` 等权限，签名配置需按宿主要求处理；目前尚未验证签名及设备安装。`npm run harmony:hap-test` 使用测试宿主和测试工具检查接入逻辑，不代替真实 SDK 编译和设备验证。
+实机验收前需要完成开发者签名。宿主声明的权限包含 JIT 所需的 `ohos.permission.kernel.ALLOW_WRITABLE_CODE_MEMORY` 等权限，签名配置需按宿主要求处理。本机已通过官方 CLI 生成包含待测平板和所需 ACL 的调试 Profile，已签名 HAP 通过华为工具的包签名、原生代码签名和权限签名校验，并通过 USB 安装到平板。安装成功不代表运行验证通过。`npm run harmony:hap-test` 使用测试宿主和测试工具检查接入逻辑，不代替真实 SDK 编译和设备验证。
+
+## 调试签名
+
+可以使用 DevEco Studio，也可以使用官方 [DevEco CLI](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-deveco-cli-options)。本机已安装 CLI 1.3.6；CLI 仍需前述 Command Line Tools 或 DevEco Studio 提供工具链。
+
+```powershell
+# 已安装时无需重复安装。
+npm.cmd install -g @deveco/deveco-cli
+$env:DEVECO_CLI_CLT_PATH = 'C:\path\to\command-line-tools'
+devecocli.cmd auth login --no-prompt
+Push-Location output/harmony/hap
+try {
+  devecocli.cmd signature generate --type debug --product default
+} finally {
+  Pop-Location
+}
+npm run harmony:hap
+```
+
+登录时在华为页面确认账号授权和适用协议。CLI 1.3.6 的首次真机签名前置检查要求云端已有注册设备，即使 `devecocli.cmd device list` 能看到 USB 平板，也可能报告缺少设备。此时先按[官方注册设备说明](https://developer.huawei.com/consumer/cn/doc/doccenter-getting-started/agc-help-add-device-0000002283189937)，将待测设备的 UDID 注册到自己的 HarmonyOS 开发者中心账号，再重试签名命令。
+
+签名命令会修改生成工程的 `build-profile.json5`，保存证书、密钥库和 Profile；不要将这些材料、密码或设备 UDID 提交到 Git。签名成功后直接运行 `harmony:hap`，不要重新运行 `harmony:prepare`，也不要使用 `--force` 覆盖已有签名材料。只有得到已签名 HAP 并确认 Profile 覆盖待测设备和所需权限后，才继续安装。
+
+## 平板试装
+
+已通过 `hdc` 核实的待测设备为 MatePad Air（型号代码 `BKY-W20`）：HarmonyOS 6.1.0、API level 24、架构 `arm64-v8a`，设备类型为 `tablet`；设备界面显示的完整 API 版本为 `6.1.1(24)`。已完成签名包安装、启动、示例预览、触控切页、系统拼音软键盘输入中文备注、自动保存和应用重启后保留内容的基础验证。使用 26.0.0 工具链编译不表示设备必须升级到 HarmonyOS 7；其他设备的兼容性仍需分别验证。
+
+首次真机启动发现，上游宿主无条件调用 `setWindowTitleMoveEnabled`，在普通平板窗口上返回错误 801 并导致退出。工程生成和构建现在会应用 [WindowCompatibility.ets](WindowCompatibility.ets)：仅将不支持的桌面窗口装饰操作（错误 801）降级为日志，同时处理同步异常和 Promise 拒绝；支持的操作继续执行，其他错误继续上报。该补丁只修改生成工程，不改动固定版本的上游缓存，也不覆盖签名配置。
+
+当前使用与电脑版相同的 Studio 界面，建议横屏并连接键盘、鼠标。竖屏时工具栏和预览可能被裁切，软键盘弹出与收起后的窗口布局仍需适配；示例第二页图表还有底部超出画布 11px 的检查提示。中文备注的输入和持久化已通过，代码编辑、画布对象编辑、外部文件选择及授权、分屏和放映仍需分别验收，不能据此视为完整平板适配。
+
+1. 用 USB 连接开发机，在平板开发者选项中开启 USB 调试，并在平板上确认本机的调试授权。
+2. 使用 `harmony:doctor` 输出的 `hdc` 执行 `list targets`，核实连接。开发者签名的调试 Profile 需要包含这台平板，并包含宿主所需权限。
+3. 构建或签名得到已签名 HAP 后，使用 `hdc -t <设备ID> install <已签名HAP的绝对路径>` 安装。`unsigned.hap` 不能直接用于试装。更新已安装的调试包时使用 `install -r` 保留数据覆盖安装，无需卸载。
+4. 验证首次启动、中文输入、文件选择和保存、应用重启、横竖屏切换及放映，并保留安装错误和崩溃日志。
 
 文件选择通过 Electron 对话框取得路径，并在运行时提供该能力时持久化文件授权。配置和示例的可写副本放在应用自己的用户目录；应用安装资源不会被编辑。
 

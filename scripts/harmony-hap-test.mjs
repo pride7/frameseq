@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import JSON5 from "json5";
-import { buildHap, inspectToolchain, prepareHap, runTool, sha256, validateRuntime, versionCode } from "./harmony-hap.mjs";
+import ts from "typescript";
+import { applyHostCompatibility, buildHap, inspectToolchain, prepareHap, runTool, sha256, validateRuntime, versionCode } from "./harmony-hap.mjs";
 
 const workspace = await mkdtemp(join(tmpdir(), "frameseq-hap-test-"));
 const require = createRequire(import.meta.url);
@@ -30,6 +31,29 @@ try {
     for (const locale of ["base", "en_US", "zh_CN"]) await write(join(source, module, `src/main/resources/${locale}/element/string.json`), values);
   }
   await write(join(source, "electron/src/main/ets/entryability/EntryAbility.ets"), "/* Fixture host copyright notice. */\nexport default class EntryAbility {}\n");
+  await write(join(source, "web_engine/src/main/ets/ability/WebAbility.ets"), `
+import { ConfigurationConstant } from '@kit.AbilityKit';
+export class WebAbility {
+  hideTitleBar = false;
+  maximizable = true;
+  minimizable = true;
+  closable = true;
+  alwaysOntop = false;
+  resizable = true;
+  isModal = false;
+  initialize(window: any, windowStage: any) {
+    const buttonStyle = {};
+    window.setWindowDecorVisible(!this.hideTitleBar);
+    window.setDecorButtonStyle(buttonStyle);
+    window.setWindowTitleMoveEnabled(!this.hideTitleBar);
+    window.setWindowTitleButtonVisible(this.maximizable, this.minimizable, this.closable);
+    window.setWindowTopmost(this.alwaysOntop);
+    window.setResizeByDragEnabled(this.resizable);
+    windowStage.setWindowModal(this.isModal);
+    window.setTitleAndDockHoverShown(false, false);
+  }
+}
+`);
   const native = join(source, "electron/libs/arm64-v8a/libelectron.so");
   await write(native, elf);
   await write(join(source, "web_engine/src/main/resources/resfile/electron"), elf);
@@ -44,7 +68,7 @@ try {
   runTool("git", ["-C", source, "-c", "core.autocrlf=false", "add", "."]);
   runTool("git", ["-C", source, "-c", "user.name=FrameSeq tests", "-c", "user.email=test@example.invalid", "commit", "--quiet", "-m", "test: create a HAP host fixture"]);
   const revision = runTool("git", ["-C", source, "rev-parse", "HEAD"], { capture: true });
-  const lock = { revision, repository: "https://example.invalid/fixture", bundleName: "io.github.pride7.frameseq", vendor: "pride7", label: "FrameSeq Studio", compatibleSdkVersion: "5.0.3(15)", targetSdkVersion: "5.0.3(15)", deviceTypes: ["2in1"], appPath, nativeLibraries: { "libelectron.so": await sha256(native) }, runtimeResources: ["electron", "resources.pak"] };
+  const lock = { revision, repository: "https://example.invalid/fixture", bundleName: "io.github.pride7.frameseq", vendor: "pride7", label: "FrameSeq Studio", compatibleSdkVersion: "5.0.3(15)", targetSdkVersion: "5.0.3(15)", deviceTypes: ["2in1", "tablet"], appPath, nativeLibraries: { "libelectron.so": await sha256(native) }, runtimeResources: ["electron", "resources.pak"] };
   await write(join(appDirectory, "package.json"), { name: "frameseq-harmony-prototype", main: "main.cjs", version: "0.39.0" });
   for (const name of ["main.cjs", "preload.cjs", "harmony-runtime.json", "client/studio.html", "client/index.html", "client/assets/framework.js", "scripts/harmony-server.mjs", "examples/welcome.slides.ts"]) await write(join(appDirectory, name), "fixture");
   const settings = { source, appDirectory, outputDirectory, lock, allowedRoot: workspace };
@@ -61,7 +85,8 @@ try {
   assert.equal(profile.app.products[0].compatibleSdkVersion, lock.compatibleSdkVersion);
   assert.equal(profile.app.products[0].targetSdkVersion, lock.targetSdkVersion);
   const entry = await read(join(outputDirectory, "electron/src/main/module.json5"));
-  assert.deepEqual(entry.module.deviceTypes, ["2in1"]);
+  assert.deepEqual(entry.module.deviceTypes, ["2in1", "tablet"]);
+  assert.deepEqual((await read(join(outputDirectory, "web_engine/src/main/module.json5"))).module.deviceTypes, ["2in1", "tablet"]);
   assert.deepEqual(entry.module.requestPermissions[0].usedScene, { abilities: ["EntryAbility"], when: "inuse" });
   assert.ok((await readFile(join(outputDirectory, appPath, "main.cjs"), "utf8")).includes("fixture"));
   await assert.rejects(readFile(join(outputDirectory, appPath, "old-demo.js")), /ENOENT/);
@@ -72,6 +97,46 @@ try {
   assert.equal((await readFile(join(outputDirectory, "AppScope/resources/base/media/app_icon.png"))).subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   await prepareHap(settings);
   console.log("✓ Pinned Git host, app replacement, metadata, unsigned profile, labels, icons and repeat generation");
+
+  const warnings = [];
+  const loadEts = (source, dependencies) => {
+    const { outputText, diagnostics } = ts.transpileModule(source, { fileName: "fixture.ts", compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
+    assert.equal(diagnostics.filter((item) => item.category === ts.DiagnosticCategory.Error).length, 0);
+    const exports = {};
+    new Function("require", "exports", outputText)((name) => {
+      if (!(name in dependencies)) throw new Error(`Unexpected fixture dependency: ${name}`);
+      return dependencies[name];
+    }, exports);
+    return exports;
+  };
+  const helperPath = join(outputDirectory, "web_engine/src/main/ets/utils/WindowCompatibility.ets");
+  const helper = await readFile(helperPath, "utf8");
+  const compatibility = loadEts(helper, { "./LogUtil": { default: { warn: (...args) => warnings.push(args) } } });
+  const patched = await readFile(join(outputDirectory, "web_engine/src/main/ets/ability/WebAbility.ets"), "utf8");
+  const { WebAbility } = loadEts(patched, { "../utils/WindowCompatibility": compatibility });
+  const calls = [];
+  const unsupported = { code: 801 };
+  const tablet = {};
+  for (const name of ["setWindowDecorVisible", "setDecorButtonStyle", "setWindowTitleMoveEnabled", "setWindowTitleButtonVisible"]) tablet[name] = () => { calls.push(name); throw unsupported; };
+  for (const name of ["setWindowTopmost", "setResizeByDragEnabled", "setTitleAndDockHoverShown"]) tablet[name] = () => { calls.push(name); return Promise.reject(unsupported); };
+  new WebAbility().initialize(tablet, { setWindowModal: () => { calls.push("setWindowModal"); return Promise.reject(unsupported); } });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 8, "Unsupported desktop decoration must not interrupt the remaining tablet initialization");
+  assert.equal(warnings.length, 8, "Both synchronous errors and rejected promises must be handled");
+  const unexpected = { code: 1300002 };
+  assert.throws(() => compatibility.WindowCompatibility.runSync("broken window", () => { throw unexpected; }), (error) => error === unexpected);
+  calls.length = 0;
+  const desktop = Object.fromEntries(Object.keys(tablet).map((name) => [name, () => { calls.push(name); return Promise.resolve(); }]));
+  new WebAbility().initialize(desktop, { setWindowModal: () => { calls.push("setWindowModal"); return Promise.resolve(); } });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 8, "Supported desktop operations must still run");
+  assert.equal(warnings.length, 8);
+  await applyHostCompatibility(outputDirectory);
+  assert.equal(await readFile(join(outputDirectory, "web_engine/src/main/ets/ability/WebAbility.ets"), "utf8"), patched);
+  await writeFile(helperPath, `${helper}\n// local edit\n`);
+  await assert.rejects(applyHostCompatibility(outputDirectory), /helper was edited/);
+  await writeFile(helperPath, helper);
+  console.log("✓ Tablet API 801 falls back for synchronous and asynchronous window operations; desktop behavior and local edits preserved");
 
   assert.equal(versionCode("1.2.3"), 1002003);
   assert.throws(() => versionCode("1.1000.0"));
@@ -106,7 +171,8 @@ try {
       + `fs.appendFileSync("tool-calls.jsonl", JSON.stringify({name:${JSON.stringify(name)}, args:process.argv.slice(2), sdk:process.env.DEVECO_SDK_HOME}) + "\\n");\n`
       + (name === "hvigorw" ? `if (fs.existsSync("fail-build")) process.exit(7); const out="electron/build/default/outputs/default"; fs.mkdirSync(out,{recursive:true});\n`
         + `if (fs.existsSync("bad-archive")) { fs.writeFileSync(path.join(out,"fixture-unsigned.hap"),Buffer.from([80,75,3,4,0,0])); process.exit(0); }\n`
-        + `const JSZip = require(${JSON.stringify(require.resolve("jszip"))}); const zip = new JSZip(); zip.file("module.json", JSON.stringify({app:{bundleName:${JSON.stringify(lock.bundleName)},versionName:"0.39.0",versionCode:39000}}));\n`
+        + `const JSZip = require(${JSON.stringify(require.resolve("jszip"))}); const zip = new JSZip();\n`
+        + `zip.file("module.json",JSON.stringify({app:{bundleName:${JSON.stringify(lock.bundleName)},versionName:"0.39.0",versionCode:39000},module:{deviceTypes:fs.existsSync("pc-only")?["2in1"]:${JSON.stringify(lock.deviceTypes)}}}));\n`
         + `for (const name of ${JSON.stringify(["main.cjs", "preload.cjs", "harmony-runtime.json", "client/studio.html", "client/index.html", "client/assets/framework.js", "scripts/harmony-server.mjs", "examples/welcome.slides.ts"])}) { if (!fs.existsSync("omit-application") || name !== "main.cjs") zip.file("resources/resfile/resources/app/"+name,"fixture"); } zip.file("libs/arm64-v8a/libelectron.so", "fixture");\n`
         + `zip.generateAsync({type:"nodebuffer"}).then(data=>fs.writeFileSync(path.join(out,"fixture-unsigned.hap"),data));\n` : "");
     await write(join(tools, "bin", `${name}.js`), script);
@@ -122,10 +188,10 @@ try {
   const artifacts = await buildHap({ outputDirectory, lock, tools, environment });
   assert.equal(artifacts.length, 1);
   assert.match(artifacts[0].sha256, /^[a-f0-9]{64}$/);
-  const calls = (await readFile(join(outputDirectory, "tool-calls.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
-  assert.deepEqual(calls[0].args, ["install", "--all"]);
-  assert.ok(calls[1].args.includes("module=electron@default"));
-  assert.equal(calls[1].sdk, sdk);
+  const toolCalls = (await readFile(join(outputDirectory, "tool-calls.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
+  assert.deepEqual(toolCalls[0].args, ["install", "--all"]);
+  assert.ok(toolCalls[1].args.includes("module=electron@default"));
+  assert.equal(toolCalls[1].sdk, sdk);
   await writeFile(join(outputDirectory, "fail-build"), "1");
   await assert.rejects(buildHap({ outputDirectory, lock, tools, environment }), /exit 7/);
   await rm(join(outputDirectory, "fail-build"));
@@ -134,6 +200,9 @@ try {
   await rm(join(outputDirectory, "bad-archive"));
   await writeFile(join(outputDirectory, "omit-application"), "1");
   await assert.rejects(buildHap({ outputDirectory, lock, tools, environment }), /missing FrameSeq application resource: main.cjs/);
+  await rm(join(outputDirectory, "omit-application"));
+  await writeFile(join(outputDirectory, "pc-only"), "1");
+  await assert.rejects(buildHap({ outputDirectory, lock, tools, environment }), /different target device types/);
   console.log("✓ SDK diagnostics, paths containing spaces and &, tool invocation, artifact records and failed-build propagation");
   console.log("HAP integration tests passed (stub tools; no HarmonyOS compilation or device validation).");
 } finally {

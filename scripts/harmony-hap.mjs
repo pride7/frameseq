@@ -49,6 +49,39 @@ export async function sha256(path) {
 async function readJson(path) { return JSON5.parse(await readFile(path, "utf8")); }
 async function writeJson(path, value) { await writeFile(path, `${JSON.stringify(value, null, 2)}\n`); }
 
+/** Retain desktop window features while tolerating API 801 on tablet windows. */
+export async function applyHostCompatibility(directory) {
+  const abilityPath = join(directory, "web_engine/src/main/ets/ability/WebAbility.ets");
+  const helperPath = join(directory, "web_engine/src/main/ets/utils/WindowCompatibility.ets");
+  const helper = await readFile(join(root, "harmony/WindowCompatibility.ets"), "utf8");
+  const imported = "import { WindowCompatibility } from '../utils/WindowCompatibility';";
+  let ability = await readFile(abilityPath, "utf8");
+  if (ability.includes(imported)) {
+    if (await readFile(helperPath, "utf8") !== helper) throw new Error("The host window compatibility helper was edited; keep local changes before updating it.");
+    return;
+  }
+  const importAnchor = "import { ConfigurationConstant } from '@kit.AbilityKit';";
+  if (ability.split(importAnchor).length !== 2) throw new Error("The pinned host window imports changed; review the tablet compatibility patch.");
+  ability = ability.replace(importAnchor, `${importAnchor}\n${imported}`);
+  for (const [target, name, argument, mode] of [
+    ["window", "setWindowDecorVisible", "!this.hideTitleBar", "sync"],
+    ["window", "setDecorButtonStyle", "buttonStyle", "sync"],
+    ["window", "setWindowTitleMoveEnabled", "!this.hideTitleBar", "sync"],
+    ["window", "setWindowTitleButtonVisible", "this.maximizable, this.minimizable, this.closable", "sync"],
+    ["window", "setWindowTopmost", "this.alwaysOntop", "async"],
+    ["window", "setResizeByDragEnabled", "this.resizable", "async"],
+    ["windowStage", "setWindowModal", "this.isModal", "async"],
+    ["window", "setTitleAndDockHoverShown", "false, false", "async"],
+  ]) {
+    const call = `${target}.${name}(${argument})`;
+    if (ability.split(`${call};`).length !== 2) throw new Error(`The pinned host ${name} call changed; review the tablet compatibility patch.`);
+    ability = ability.replace(`${call};`, `WindowCompatibility.${mode === "sync" ? "runSync" : "runAsync"}('${name}', () => ${call});`);
+  }
+  await mkdir(dirname(helperPath), { recursive: true });
+  await writeFile(helperPath, helper);
+  await writeFile(abilityPath, ability);
+}
+
 async function assertApplication(directory) {
   for (const name of applicationFiles) {
     if (!(await stat(join(directory, name))).isFile()) throw new Error(`Incomplete FrameSeq application: ${name}`);
@@ -156,6 +189,7 @@ export async function prepareHap({ source, appDirectory = resolve(root, "output/
     const tar = process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32/tar.exe") : "tar";
     runTool(tar, ["-xf", archive, "-C", stage]);
     await unlink(archive);
+    await applyHostCompatibility(stage);
     // Hvigor emits CommonJS files. Do not inherit an enclosing Node project's ESM scope.
     await writeJson(join(stage, "package.json"), { private: true, type: "commonjs" });
     for (const name of Object.keys(lock.nativeLibraries)) await cp(join(upstream, "electron/libs/arm64-v8a", name), join(stage, "electron/libs/arm64-v8a", name));
@@ -260,6 +294,7 @@ export async function buildHap({ outputDirectory = hapOutput, lock = hostLock, .
   const marker = await readJson(join(directory, markerName));
   if (marker.owner !== owner || marker.revision !== lock.revision) throw new Error("Prepare a pinned HAP project with npm run harmony:prepare first.");
   await validateRuntime(directory, lock);
+  await applyHostCompatibility(directory);
   const environment = {
     DEVECO_SDK_HOME: toolchain.sdk,
     ...(toolchain.javaHome ? { JAVA_HOME: toolchain.javaHome } : {}),
@@ -279,6 +314,10 @@ export async function buildHap({ outputDirectory = hapOutput, lock = hostLock, .
     const metadata = JSON.parse((await manifest.async("string")).replace(/^\uFEFF/, ""));
     if (metadata.app?.bundleName !== marker.bundleName) throw new Error(`${path} belongs to a different application.`);
     if (metadata.app.versionName !== marker.version || metadata.app.versionCode !== versionCode(marker.version)) throw new Error(`${path} has a different application version.`);
+    const devices = metadata.module?.deviceTypes;
+    if (!Array.isArray(devices) || devices.length !== lock.deviceTypes.length || lock.deviceTypes.some((type) => !devices.includes(type))) {
+      throw new Error(`${path} has different target device types. Regenerate the project with npm run harmony:prepare.`);
+    }
     for (const name of applicationFiles) {
       if (!archive.file(`resources/resfile/resources/app/${name}`)) throw new Error(`${path} is missing FrameSeq application resource: ${name}`);
     }

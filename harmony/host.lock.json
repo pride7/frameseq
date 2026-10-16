@@ -7,7 +7,7 @@
   "label": "FrameSeq Studio",
   "compatibleSdkVersion": "5.0.3(15)",
   "targetSdkVersion": "5.0.3(15)",
-  "deviceTypes": ["2in1"],
+  "deviceTypes": ["2in1", "tablet"],
   "appPath": "web_engine/src/main/resources/resfile/resources/app",
   "nativeLibraries": {
     "libadapter.so": "a7f6e4be3fb113b40b64cfb19b2666c5e91e3bf86cf662d90f776899de5330b0",
