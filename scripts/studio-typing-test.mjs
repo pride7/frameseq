@@ -26,6 +26,7 @@ const source = [
   "",
   'slide("Words");',
   'text("Hello");',
+  'text("Revenue [grew]{red} fast");',
   "bullets('First', 'Second');",
   'table([["Model", "Score"], ["Ours", 94]]);',
   "text(`Hi ${name}`);",
@@ -318,6 +319,67 @@ try {
   await page.keyboard.press("z");
   await page.keyboard.up("Control");
   await waitFor(async () => (await read()).includes('text("Hello there");'), "undo to take the typing back");
+
+  // ── Words marked bold or in a colour are typed as they show, and the marks written back ──
+  const pressWith = async (modifiers, key) => {
+    for (const modifier of modifiers) await page.keyboard.down(modifier);
+    await page.keyboard.press(key);
+    for (const modifier of [...modifiers].reverse()) await page.keyboard.up(modifier);
+  };
+  const runShown = (selector, words) => waitFor(() => preview.evaluate((wanted) => [...document.querySelectorAll(
+    `#app .frameseq-slide-frame.is-active ${wanted.selector}`,
+  )].some((run) => run.textContent === wanted.words && !run.closest(".is-frameseq-typing")), { selector, words }).catch(() => false), `“${words}” to be drawn marked`);
+  await runShown(".frameseq-run[data-color='red']", "grew");
+  await doubleClickWords("Revenue grew fast");
+  await waitFor(async () => (await typing()) === "Revenue grew fast", "marked words to be typed as they show, without their marks");
+  assert.ok(await preview.evaluate(() => [...document.querySelectorAll("#app .is-frameseq-typing span")]
+    .some((span) => span.textContent === "grew" && span.style.color)), "a coloured word keeps its colour while it is typed");
+  assert.ok(await preview.evaluate(() => Boolean(document.querySelector(".frameseq-type-toolbar"))), "typing marked words shows the formatting bar");
+  // Nothing typed writes nothing, however the marks were written.
+  const beforeNothing = await read();
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await typing()) === null, "Enter to stop typing");
+  await delay(400);
+  assert.equal(await read(), beforeNothing, "words typed unchanged leave the code alone");
+  assert.equal(await preview.evaluate(() => Boolean(document.querySelector(".frameseq-type-toolbar"))), false, "the formatting bar goes with the typing");
+
+  // Ctrl+B makes the selected word bold.
+  await doubleClickWords("Revenue grew fast");
+  await waitFor(async () => (await typing()) === "Revenue grew fast", "the marked words to be typed again");
+  await page.keyboard.press("End");
+  await pressWith(["Shift", "Control"], "ArrowLeft");
+  await pressWith(["Control"], "b");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('text("Revenue [grew]{red} **fast**");'), "the bold word to be written between double stars");
+  await runShown(".frameseq-run[data-bold='true']", "fast");
+
+  // A colour from the formatting bar colours the selected word.
+  await doubleClickWords("Revenue grew fast");
+  await waitFor(async () => (await typing()) === "Revenue grew fast", "the marked words to be typed once more");
+  await page.keyboard.press("Home");
+  await pressWith(["Shift", "Control"], "ArrowRight");
+  const teal = await preview.evaluate(() => {
+    const swatch = [...document.querySelectorAll(".frameseq-type-toolbar .is-colour")]
+      .find((button) => button.style.getPropertyValue("--frameseq-swatch").replaceAll(" ", "") === "rgb(13,148,136)");
+    const box = swatch?.getBoundingClientRect();
+    return box && { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  });
+  assert.ok(teal, "the formatting bar offers teal");
+  await page.mouse.click(frameBox.x + teal.x, frameBox.y + teal.y);
+  assert.equal(await typing(), "Revenue grew fast", "a press on the formatting bar keeps the words being typed");
+  if (screenshots) await page.screenshot({ path: resolve(screenshots, "typing-format.png") });
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('text("[Revenue]{teal} [grew]{red} **fast**");'), "the coloured word to be written with its colour");
+  await runShown(".frameseq-run[data-color='teal']", "Revenue");
+
+  // Stars typed as words stay words: they are written so they do not read as marks.
+  await doubleClickWords("Hello there");
+  await waitFor(async () => (await typing()) === "Hello there", "plain words to be typed again");
+  await selectAllTyped();
+  await page.keyboard.type("a*b*c");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await read()).includes('text("a\\\\*b\\\\*c");'), "typed stars to be written as stars");
+  await shows("a*b*c");
 
   assert.deepEqual(errors, [], "the Studio must not throw");
   console.log("Studio typing test passed: words typed on the slide are written into their strings, in their own quotes, and the rest says why not.");

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/content.md sha256:1b13085464432b86 -->
+<!-- translation-of: docs/content.md sha256:31c570c03ec4e331 -->
 
 # 内容
 
@@ -30,6 +30,24 @@ text("A memorable sentence").quote();
 ```
 
 在同一个对象上再调用另一个角色,会替换掉前一个角色。
+
+### 部分文字的格式
+
+可以像 Markdown 那样,只标记一段文字里的几个字:
+
+```ts
+text("Revenue **grew** 42% *since* May");
+text("Latency fell to [12 ms]{green}, errors to [**0.1%**]{accent}");
+bullets("Ship the **beta**", "Fix [three]{red} open bugs");
+```
+
+- `**文字**` 加粗,`*文字*` 变成斜体。
+- `[文字]{颜色}` 给文字上色。颜色可以是色调(`blue`、`sky`、`teal`、`green`、`lime`、`amber`、`orange`、`red`、`pink`、`purple`、`indigo` 或 `gray`),主题的 `accent` 或 `muted`,也可以是 CSS 颜色,比如 `#e11d48`。
+- 标记可以嵌套,比如 `[**0.1%**]{accent}`。
+
+凡是画文字的地方都能用这些标记:任何角色的文字、列表项和步骤、表格单元格、卡片和指标、形状和方框的标签,以及封面信息。页面标题、代码和公式里的字符按原样显示。不构成标记的星号或方括号也按原样显示,比如 `5 * 3` 或 `see [1]`;要让一个本会被当作标记的字符按原样显示,在它前面加反斜杠:`\*`、`\[`、`\]`、`\{` 或 `\}`(写在带引号的字符串里时,反斜杠要写两个,比如 `"\\*"`)。行内公式里的星号属于公式。
+
+导出 PDF、PNG、PPTX 和 Typst 时,这些标记都会保留,PowerPoint 里得到的是可以继续编辑的加粗、斜体和彩色文字段。在 FrameSeq Studio 里[在幻灯片上输入文字](studio.md#在幻灯片上输入文字)时,看到的是加粗、斜体和颜色本身,而不是标记字符;用 `Ctrl+B`、`Ctrl+I` 或文字上方的工具条来设置。
 
 ### 让文字适应空间
 

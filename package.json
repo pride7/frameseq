@@ -78,6 +78,7 @@
     "src/paper.ts",
     "src/source-names.ts",
     "src/renderer.ts",
+    "src/rich-text.ts",
     "src/shapes.ts",
     "src/styles.css",
     "src/studio",

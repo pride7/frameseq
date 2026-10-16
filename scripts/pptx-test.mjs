@@ -123,6 +123,12 @@ assert.match(encoder, /<a:custGeom>[\s\S]*<a:moveTo>(?:[\s\S]*?<a:lnTo>){3}[\s\S
 assert.equal(encoder.match(/<a:lnTo>/g)?.length, 3);
 assert.match(encoder, /<a:solidFill><a:srgbClr val="[0-9A-F]{6}"/);
 assert.match(encoder, />Encoder</);
+// Words marked bold, in italics, or in a colour are runs of their own, in text and in labels.
+const runOf = (words) => new RegExp(`<a:r><a:rPr([^>]*)>((?:(?!</a:r>)[\\s\\S])*?)<a:t>${words}</a:t></a:r>`).exec(shapesSlide);
+assert.match(runOf("grew")?.[1] ?? "", /\bb="1"/, "a bold word is bold");
+assert.doesNotMatch(runOf("Revenue ")?.[1] ?? "b=\"1\"", /\bb="1"/, "the words around it are not");
+assert.match(runOf("42%")?.[2] ?? "", /<a:srgbClr val="DC2626"/i, "a coloured word keeps its colour");
+assert.match(runOf("Fast")?.[1] ?? "", /\bi="1"/, "a label's word in italics is in italics");
 // A connector through stops is a path through them, and a junction is a small filled circle.
 const stops = shapesSlide.split("</p:sp>").find((shape) => shape.includes('val="123456"'));
 assert.ok(stops, "the connector through stops is exported");

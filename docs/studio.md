@@ -180,10 +180,11 @@ See [Visual Studio Code extension](vscode.md) for the rules that decide which nu
 
 ## Typing on the slide
 
-Double-click an object's words in the preview to type them where they are, as in PowerPoint: a text, an item of a list, a cell of a table, a card's title or its text, a metric, the label of a shape or a box, or one of the [cover details](#cover-details), which are written into `presentation()`. The words show as the code writes them, with inline math as `$...$`, and the caret lands where you double-clicked.
+Double-click an object's words in the preview to type them where they are, as in PowerPoint: a text, an item of a list, a cell of a table, a card's title or its text, a metric, the label of a shape or a box, or one of the [cover details](#cover-details), which are written into `presentation()`. The words show as the slide does, with their bold, italic, and coloured words, and with inline math as `$...$`; the caret lands where you double-clicked.
 
 - `Enter`, `Tab`, or a click elsewhere writes them into the string that holds them, in the quotes it was written with, as one step in the editor's history; `Esc` puts them back as they were.
 - `Shift+Enter` starts a new line. In code, which runs over lines, `Enter` does, and `Ctrl+Enter` finishes.
+- Select some of the words and press `Ctrl+B` for bold or `Ctrl+I` for italics, or use the bar over the words, which also colours them in the theme's accent or a tone and takes a colour away. They are written with the marks of [bold, italic, and coloured words](content.md#bold-italic-and-coloured-words), such as `**grew**` and `[42%]{red}`, and stars or brackets typed as words stay words. Code is typed as plain text.
 - A number in a table's cell stays a number while it reads as one. A shape written without a label, such as `rect()`, takes the words typed on it, as `rect("Cache")`.
 - Right-click a table's cell for **Table**, which inserts a row above or below it or a column left or right of it, with empty cells written as the others are, one row to a line when they are, and takes its row or column away. A new row or column is typed into at once.
 - **Edit text** in the right-click menu types the object's words the same way, all of them selected.
@@ -368,6 +369,7 @@ The assistant uses the agent installed on this computer, on its own sign-in and 
 | `Shift+F5` | Present from the beginning |
 | `Esc` | End the slide show |
 | `Ctrl+B` | Show or hide the slide rail |
+| `Ctrl+B`, `Ctrl+I` while typing on the slide | Bold and italics for the selected words |
 | `Ctrl+E` | Show or hide the code |
 | `Ctrl+J` | Show or hide the bottom panel |
 | `` Ctrl+` `` | Show the terminal, focus it, or fold it away |

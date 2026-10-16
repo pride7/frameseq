@@ -459,6 +459,73 @@ button {
   user-select: text;
 }
 
+/* The bar over words being typed, which makes the selected ones bold, italic, or coloured. */
+.frameseq-type-toolbar {
+  position: fixed;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--frameseq-accent) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--frameseq-background) 94%, transparent);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
+  color: var(--frameseq-foreground);
+  font: 700 14px/1 ui-sans-serif, system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  backdrop-filter: blur(10px);
+}
+
+.frameseq-type-toolbar button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.frameseq-type-toolbar button:hover {
+  background: color-mix(in srgb, var(--frameseq-foreground) 10%, transparent);
+}
+
+.frameseq-type-toolbar button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--frameseq-accent) 18%, transparent);
+  color: var(--frameseq-accent);
+}
+
+.frameseq-type-toolbar .is-bold {
+  font-weight: 900;
+}
+
+.frameseq-type-toolbar .is-italic {
+  margin-right: 5px;
+  font: italic 600 16px/1 Georgia, "Times New Roman", serif;
+}
+
+.frameseq-type-toolbar .is-colour::before {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--frameseq-swatch);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--frameseq-foreground) 20%, transparent);
+  content: "";
+}
+
+/* Words with no colour of their own take the text's, which the slash over a blank swatch says. */
+.frameseq-type-toolbar .is-plain::before {
+  background:
+    linear-gradient(135deg, transparent 44%, #dc2626 44% 56%, transparent 56%),
+    var(--frameseq-background);
+}
+
 /* A locked layout keeps every object where it is, so none of them offers to move. */
 .frameseq-layout-locked .frameseq-slides :is([data-frameseq-move], [data-frameseq-statement]) {
   cursor: default;

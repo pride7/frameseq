@@ -77,6 +77,8 @@ assert.match(source, /#rect\([^\n]*stroke: \(paint: rgb\("#d97706"\), thickness:
 // A named elbow connector is resolved before export, with its label on the background.
 assert.match(source, /#curve\(stroke: \(paint: [^\n]*curve\.move\([^\n]*curve\.line\(/);
 assert.match(source, /\[#text\("yes"\)\]/);
+// Words marked bold, in italics, or in a colour keep their marks.
+assert.match(source, /#text\("Revenue "\)#text\(weight: "bold"\)\[#text\("grew"\)\]#text\(" "\)#text\(fill: rgb\("#dc2626"\)\)\[#text\("42%"\)\]#text\(" "\)#text\(style: "italic"\)\[#text\("since"\)\]#text\(" May"\)/);
 
 const compileSource = source.replace(
   '#import "@preview/mitex:0.2.7": mi, mitex, mitext',

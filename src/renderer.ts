@@ -27,6 +27,8 @@ import {
 } from "./shapes";
 import { themeCssVariables } from "./theme";
 import { mountThumbnails } from "./thumbnails";
+import { richColor, richRuns, writeRichText } from "./rich-text";
+import type { RichRun } from "./rich-text";
 
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
@@ -65,7 +67,38 @@ function applyStyles(element: HTMLElement, styles: Record<string, string>): void
   Object.assign(element.style, styles);
 }
 
+/**
+ * Write text into an element: words marked bold, in italics, or in a colour as spans of their
+ * own, which say how they were marked for the editors and exports that read them back, and
+ * inline math set by KaTeX.
+ */
 function appendTextWithInlineMath(element: HTMLElement, content: string): void {
+  for (const run of richRuns(content)) {
+    if (!run.bold && !run.italic && !run.color) {
+      appendMath(element, run.text);
+      continue;
+    }
+    const span = document.createElement("span");
+    span.className = "frameseq-run";
+    // Bolder than the text around it, so bold words in a heading still stand out.
+    if (run.bold) {
+      span.style.fontWeight = "bolder";
+      span.dataset.bold = "true";
+    }
+    if (run.italic) {
+      span.style.fontStyle = "italic";
+      span.dataset.italic = "true";
+    }
+    if (run.color) {
+      span.style.color = richColor(run.color);
+      span.dataset.color = run.color;
+    }
+    appendMath(span, run.text);
+    element.append(span);
+  }
+}
+
+function appendMath(element: HTMLElement, content: string): void {
   const inlineMath = /(?<!\\)\$((?:\\.|[^$])+?)(?<!\\)\$/g;
   let cursor = 0;
 
@@ -1087,6 +1120,14 @@ const englishWords = {
   canvas: "FrameSeq slide canvas",
   showEnd: "End of slide show. Click to exit.",
   noMasters: "This presentation has no master pages yet.",
+  formatBar: "Format the selected words",
+  formatBold: "Bold (Ctrl+B)",
+  formatItalic: "Italic (Ctrl+I)",
+  formatColour: (name: string) => `Colour: ${name}`,
+  formatNoColour: "No colour of their own",
+  formatColours: {
+    accent: "accent", red: "red", orange: "orange", green: "green", teal: "teal", blue: "blue", purple: "purple", gray: "gray",
+  } as Record<string, string>,
 };
 
 const chineseWords: typeof englishWords = {
@@ -1188,6 +1229,14 @@ const chineseWords: typeof englishWords = {
   canvas: "FrameSeq 幻灯片画布",
   showEnd: "放映结束，单击鼠标退出。",
   noMasters: "这份演示还没有母版。",
+  formatBar: "设置选中文字的格式",
+  formatBold: "加粗（Ctrl+B）",
+  formatItalic: "斜体（Ctrl+I）",
+  formatColour: (name) => `颜色：${name}`,
+  formatNoColour: "去掉单独设置的颜色",
+  formatColours: {
+    accent: "主题强调色", red: "红", orange: "橙", green: "绿", teal: "青", blue: "蓝", purple: "紫", gray: "灰",
+  },
 };
 
 let chosenWords: typeof englishWords | undefined;
@@ -2460,6 +2509,11 @@ interface TypingSession extends WordsPlace {
   /** The words as the code writes them, which typing started from. */
   value: string;
   multiline: boolean;
+  /** Whether the words may be bold, in italics, or coloured; code is typed as plain text. */
+  rich: boolean;
+  /** The words as typing read them back before anything was typed, which leave the code alone. */
+  baseline: string;
+  colours: TypedColours;
   stop: AbortController;
 }
 
@@ -2471,6 +2525,197 @@ const typingWritten = new Map<number, { host: HTMLElement; original: Node[] }>()
 /** What a double-click on the slide does, as the latest drawing of it set up, and whether the page listens. */
 let typingDoubleClick: ((event: MouseEvent) => void) | undefined;
 let typingListening = false;
+
+/** The colours the formatting bar offers words being typed, by the names the code writes them with. */
+const formatColours = ["accent", "red", "orange", "green", "teal", "blue", "purple", "gray"];
+
+/**
+ * The colours words typed on the slide may show, as an element's style writes them and as the
+ * browser works them out, each with the name the code gives it; and the colour of unmarked words.
+ */
+interface TypedColours {
+  names: Map<string, string>;
+  /** Each name's colour as the browser works it out, which the formatting bar applies. */
+  shades: Map<string, string>;
+  base: string;
+}
+
+/** The colours words typed into `host` may show: those `value` names first, then the formatting bar's. */
+function typedColours(host: HTMLElement, value: string): TypedColours {
+  const written = richRuns(value).flatMap((run) => run.color ? [run.color] : []);
+  const probe = document.createElement("span");
+  host.append(probe);
+  const names = new Map<string, string>();
+  const shades = new Map<string, string>();
+  for (const name of [...written, ...formatColours]) {
+    probe.style.color = "";
+    probe.style.color = richColor(name);
+    const declared = probe.style.color;
+    if (!declared) continue;
+    const shown = getComputedStyle(probe).color;
+    if (!shades.has(name)) shades.set(name, shown);
+    for (const key of [declared, shown]) if (!names.has(key)) names.set(key, name);
+  }
+  probe.style.color = "";
+  const base = getComputedStyle(probe).color;
+  probe.remove();
+  return { names, shades, base };
+}
+
+/** Words as `typed` marks them, drawn to be typed: bold, italics, and colours shown, math as written. */
+function drawTypedWords(host: HTMLElement, typed: string): void {
+  host.replaceChildren(...richRuns(typed).map((run): Node => {
+    const words = document.createTextNode(run.text);
+    if (!run.bold && !run.italic && !run.color) return words;
+    const span = document.createElement("span");
+    if (run.bold) span.style.fontWeight = "bolder";
+    if (run.italic) span.style.fontStyle = "italic";
+    if (run.color) span.style.color = richColor(run.color);
+    span.append(words);
+    return span;
+  }));
+}
+
+/** A colour as an element's style writes it, by the name the code gives it, or else in hex. */
+function typedColour(declared: string, colours: TypedColours): string | undefined {
+  if (declared === colours.base) return undefined;
+  const named = colours.names.get(declared);
+  if (named) return named;
+  const parts = /^rgba?\(([^)]+)\)$/.exec(declared)?.[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+  if (!parts) return /^[a-z]+$/i.test(declared) ? declared : undefined;
+  if (parts.length < 3 || parts.some(Number.isNaN)) return undefined;
+  const hex = parts.slice(0, 3).map((part) => Math.round(part).toString(16).padStart(2, "0")).join("");
+  const alpha = parts.length > 3 && parts[3] < 1 ? Math.round(parts[3] * 255).toString(16).padStart(2, "0") : "";
+  return `#${hex}${alpha}`;
+}
+
+/**
+ * Words typed on the slide, read back from what the browser made of them as marked text. Each
+ * mark is the nearest one an element sets, so words no longer bold inside bold ones read as
+ * plain. Only what elements write is read, which holds for a slide no longer shown.
+ */
+function readTypedWords(host: HTMLElement, colours: TypedColours, value: string): string {
+  const runs: RichRun[] = [];
+  const add = (text: string, marks: Omit<RichRun, "text">): void => {
+    // The browser keeps a space it would otherwise drop as a no-break space, which the code never meant.
+    const words = value.includes("\u00a0") ? text : text.replaceAll("\u00a0", " ");
+    if (!words) return;
+    runs.push({ text: words, ...(marks.bold ? { bold: true } : {}), ...(marks.italic ? { italic: true } : {}), ...(marks.color ? { color: marks.color } : {}) });
+  };
+  const walk = (node: Node, outer: Omit<RichRun, "text">): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      add((node as Text).data, outer);
+      return;
+    }
+    if (!(node instanceof HTMLElement)) return;
+    if (node.tagName === "BR") {
+      add("\n", outer);
+      return;
+    }
+    // A line the browser wraps in a block of its own starts on a line of its own.
+    if (node !== host && /^(?:DIV|P|LI)$/.test(node.tagName) && runs.length > 0 && !runs.at(-1)?.text.endsWith("\n")) add("\n", outer);
+    const marks = { ...outer };
+    if (node !== host) {
+      const tag = node.tagName;
+      const weight = node.style.fontWeight;
+      if (tag === "B" || tag === "STRONG") marks.bold = true;
+      if (weight) marks.bold = weight === "bold" || weight === "bolder" || Number(weight) >= 600;
+      const slant = node.style.fontStyle;
+      if (tag === "I" || tag === "EM") marks.italic = true;
+      if (slant) marks.italic = slant === "italic" || slant.startsWith("oblique");
+      let declared = node.style.color;
+      if (!declared && tag === "FONT" && node.getAttribute("color")) {
+        const probe = document.createElement("span");
+        probe.style.color = node.getAttribute("color") ?? "";
+        declared = probe.style.color;
+      }
+      if (declared) marks.color = typedColour(declared, colours);
+    }
+    for (const child of node.childNodes) walk(child, marks);
+  };
+  walk(host, {});
+  // A line break at the very end is the browser's, holding the caret on an empty last line.
+  const last = runs.at(-1);
+  if (last?.text.endsWith("\n") && !value.endsWith("\n")) {
+    last.text = last.text.slice(0, -1);
+    if (!last.text) runs.pop();
+  }
+  return writeRichText(runs);
+}
+
+/**
+ * The bar over words being typed that makes the selected ones bold, italic, or coloured, as in
+ * PowerPoint. A press on it keeps the words focused, so their selection stays as it was.
+ */
+function formatBar(
+  host: HTMLElement,
+  colours: TypedColours,
+  format: (command: string, value?: string) => void,
+  signal: AbortSignal,
+): void {
+  const w = words();
+  const bar = document.createElement("div");
+  bar.className = "frameseq-type-toolbar";
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", w.formatBar);
+  const place = (): void => {
+    if (!host.isConnected) return;
+    const box = host.getBoundingClientRect();
+    const above = box.top - bar.offsetHeight - 10;
+    bar.style.top = `${Math.round(above >= 4 ? above : box.bottom + 10)}px`;
+    bar.style.left = `${Math.round(Math.max(4, Math.min(box.left, innerWidth - bar.offsetWidth - 4)))}px`;
+  };
+  const shown: Array<[HTMLButtonElement, string]> = [];
+  const refresh = (): void => {
+    for (const [item, command] of shown) item.setAttribute("aria-pressed", String(document.queryCommandState(command)));
+  };
+  const button = (title: string, className: string, act: () => void): HTMLButtonElement => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.tabIndex = -1;
+    item.className = className;
+    item.title = title;
+    item.setAttribute("aria-label", title);
+    item.addEventListener("click", (event) => {
+      event.preventDefault();
+      act();
+      refresh();
+      place();
+    });
+    bar.append(item);
+    return item;
+  };
+  const bold = button(w.formatBold, "is-bold", () => format("bold"));
+  bold.textContent = "B";
+  const italic = button(w.formatItalic, "is-italic", () => format("italic"));
+  italic.textContent = "I";
+  shown.push([bold, "bold"], [italic, "italic"]);
+  // A theme whose accent is one of the tones offers that colour once, as its accent.
+  const offered = new Set<string>();
+  for (const name of formatColours) {
+    const shade = colours.shades.get(name);
+    if (!shade || offered.has(shade)) continue;
+    offered.add(shade);
+    const swatch = button(w.formatColour(w.formatColours[name] ?? name), "is-colour", () => format("foreColor", shade));
+    swatch.style.setProperty("--frameseq-swatch", shade);
+  }
+  button(w.formatNoColour, "is-colour is-plain", () => format("foreColor", colours.base));
+  // The bar is not part of the slide: a press on it neither moves the caret nor starts a drag.
+  for (const type of ["pointerdown", "mousedown", "contextmenu"]) {
+    bar.addEventListener(type, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  }
+  for (const type of ["pointerup", "click", "dblclick"]) bar.addEventListener(type, (event) => event.stopPropagation());
+  document.body.append(bar);
+  place();
+  host.addEventListener("input", place, { signal });
+  addEventListener("resize", place, { signal });
+  addEventListener("scroll", place, { capture: true, signal });
+  document.addEventListener("selectionchange", refresh, { signal });
+  signal.addEventListener("abort", () => bar.remove(), { once: true });
+}
 
 /** Where a list's items, a table's cells, a card's title, or a metric's value are drawn. */
 const wordParts =".frameseq-list-item, th, td, .frameseq-card-title, .frameseq-metric-value";
@@ -2586,6 +2831,14 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     window.parent.postMessage({ type: "frameseq.type-request", request: typingSequence, detail: field, asked: select }, "*");
   };
 
+  /** The words typed so far, as the code would write them. */
+  const typedWords = (session: TypingSession): string => {
+    if (session.rich) return readTypedWords(session.host, session.colours, session.value);
+    const typed = session.host.innerText.replace(/\r\n?/g, "\n");
+    // A line break at the very end is the browser's, holding the caret on an empty last line.
+    return typed.endsWith("\n") && !session.value.endsWith("\n") ? typed.slice(0, -1) : typed;
+  };
+
   /** Stop typing, and hand the words to the Studio when `commit` asks and they changed. */
   const finish = (commit: boolean): void => {
     const session = typingSession;
@@ -2593,13 +2846,11 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     typingSession = undefined;
     session.stop.abort();
     const { host } = session;
+    const value = typedWords(session);
     host.removeAttribute("contenteditable");
     host.classList.remove("is-frameseq-typing");
     getSelection()?.removeAllRanges();
-    const typed = host.innerText.replace(/\r\n?/g, "\n");
-    // A line break at the very end is the browser's, holding the caret on an empty last line.
-    const value = typed.endsWith("\n") && !session.value.endsWith("\n") ? typed.slice(0, -1) : typed;
-    if (!commit || value === session.value) {
+    if (!commit || value === session.baseline) {
       host.replaceChildren(...session.original);
       return;
     }
@@ -2610,41 +2861,72 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
   /** Make the element drawing an object's words editable, holding `typed`, with the caret or a selection in it. */
   const start = (
     host: HTMLElement,
-    session: WordsPlace & { request: number; value: string; multiline: boolean },
+    session: WordsPlace & { request: number; value: string; multiline: boolean; baseline?: string },
     typed: string,
     caret: { selectAll?: boolean; point?: { x: number; y: number } },
   ): void => {
     const original = [...host.childNodes];
-    // A node of its own: setting textContent would type into the text that Escape puts back.
-    host.replaceChildren(document.createTextNode(typed));
+    // Code is typed as it is written; other words show their bold, italics, and colours.
+    const rich = !host.closest("code, pre");
+    const colours = rich ? typedColours(host, session.value) : { names: new Map(), shades: new Map(), base: "" };
+    // Nodes of their own: setting textContent would type into the text that Escape puts back.
+    if (rich) drawTypedWords(host, typed);
+    else host.replaceChildren(document.createTextNode(typed));
     host.classList.add("is-frameseq-typing");
-    host.contentEditable = "plaintext-only";
+    host.contentEditable = rich ? "true" : "plaintext-only";
     if (host.contentEditable !== "plaintext-only") host.contentEditable = "true";
     host.spellcheck = true;
     const stop = new AbortController();
-    typingSession = { ...session, host, original, stop };
+    const typing: TypingSession = { ...session, host, original, stop, rich, colours, baseline: session.baseline ?? "" };
+    // Marked words read back as the code writes them, which may differ in ways that do not show.
+    typing.baseline = session.baseline ?? (rich ? typedWords(typing) : session.value);
+    typingSession = typing;
     const { signal: listening } = stop;
+    /** Mark the selected words, or the words about to be typed, as the browser does on its own. */
+    const format = (command: string, value?: string): void => {
+      document.execCommand("styleWithCSS", false, "true");
+      document.execCommand(command, false, value);
+    };
+    /** Start a new line: a line break where words may be marked, which keeps their marks apart. */
+    const newLine = (): void => {
+      if (rich) document.execCommand("insertLineBreak");
+      else document.execCommand("insertText", false, "\n");
+    };
     // The keys belong to the words being typed, not to the slide around them.
     host.addEventListener("keydown", (event) => {
       event.stopPropagation();
+      const key = event.key.toLowerCase();
+      const command = (event.ctrlKey || event.metaKey) && !event.altKey;
       if (event.key === "Escape") {
         event.preventDefault();
         finish(false);
       } else if (event.key === "Enter") {
         event.preventDefault();
         if (event.ctrlKey || event.metaKey || (!session.multiline && !event.shiftKey)) finish(true);
-        else document.execCommand("insertText", false, "\n");
-      } else if (event.key === "Tab" || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s")) {
+        else newLine();
+      } else if (event.key === "Tab" || (command && key === "s")) {
         event.preventDefault();
         finish(true);
+      } else if (command && ["b", "i", "u"].includes(key)) {
+        // Underlining has no mark in the code, so it is not offered.
+        event.preventDefault();
+        if (rich && key === "b") format("bold");
+        if (rich && key === "i") format("italic");
       }
     }, { signal: listening });
     for (const type of ["keyup", "copy", "cut"]) host.addEventListener(type, (event) => event.stopPropagation(), { signal: listening });
     host.addEventListener("paste", (event) => {
       event.stopPropagation();
       event.preventDefault();
-      document.execCommand("insertText", false, event.clipboardData?.getData("text/plain") ?? "");
+      // Pasted words come in plain, a line at a time, so no line becomes a block of its own.
+      const lines = (event.clipboardData?.getData("text/plain") ?? "").replace(/\r\n?/g, "\n").split("\n");
+      lines.forEach((line, index) => {
+        if (index > 0) newLine();
+        if (line) document.execCommand("insertText", false, line);
+      });
     }, { signal: listening });
+    host.addEventListener("drop", (event) => event.preventDefault(), { signal: listening });
+    if (rich) formatBar(host, colours, format, listening);
     // A slide drawn again takes the element away, which is no reason to stop typing.
     host.addEventListener("blur", () => {
       if (host.isConnected) finish(true);
@@ -2690,7 +2972,7 @@ function enableTyping(root: HTMLElement, signal: AbortSignal): void {
     const session = typingSession;
     if (!session || root.contains(session.host)) return;
     const host = hostOf(session);
-    const typed = session.host.textContent ?? session.value;
+    const typed = session.rich ? typedWords(session) : session.host.textContent ?? session.value;
     session.stop.abort();
     typingSession = undefined;
     if (host) start(host, session, typed, {});

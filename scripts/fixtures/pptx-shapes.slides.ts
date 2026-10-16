@@ -14,4 +14,6 @@ line().from("net").to("store").route("curve").arrow().dashed();
 line().from("cached").to("start").arrow();
 cells([0.1, 1]).tone("#123abc").cell(40).position({ x: 900, y: 40 });
 rect("$x^2$").position({ x: 960, y: 120 }).width(80).height(50);
+text("Revenue **grew** [42%]{red}").position({ x: 760, y: 560 }).width(320);
+rect("*Fast* path").position({ x: 1100, y: 120 }).width(140).height(50);
 at("panel").panel("(b) Generator").canvas().position({ x: 40, y: 500 }).width(300).height(180);

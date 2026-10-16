@@ -16,6 +16,7 @@ typst`#table(columns: 2, [A], [B], [C], [D])`.width(420);
 text("A custom class becomes a conversion note.")
   .style("text-blue-600");
 text("Self-aligned inside its region.").width(320).centerSelf();
+text("Revenue **grew** [42%]{red} *since* May");
 
 slide("LaTeX becomes native Typst").center();
 latex`

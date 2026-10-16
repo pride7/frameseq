@@ -69,6 +69,7 @@ Presentation: `presentation(options)`, with `size: "A0" | "A4" | "letter" | "36x
 Slides: `slide(nameOrOptions)`, `.cover()`, `.split(ratio)`, `.grid(columns, gap?)`, `.center()`, `.fullBleed(src, alt?)`, `.canvas()`, `.notes(content)`, `note(content)`
 
 Content: `text()`, `bullets()`, `steps()`, `metric()`, `card()`, `group()`, `ref()`, `gridSection()`, `image()`, `code()`, `math`, `typst`, `typstFile()`, `latex`, `latexFile()`, `shape(kind, label)`, `polygon(points, label)`, `junction(sign)`, `cells(values)`, `rect()`, `circle()`, `line()`, `spacer()`, `table(rows)`, `chart(kind, data)`, `qr(text)`, `icon(name)`
+Words inside a text: `**bold**`, `*italic*`, and `[words]{red}`, coloured by a tone, `accent`, `muted`, or a CSS colour; they work in text, list items, table cells, cards, metrics, and shape labels, not in slide titles; `"\\*"` and `"\\["` write the character itself
 Citations: `presentation({ bibliography })` with `import bibliography from "./references.bib"` (never name the import `references`), `cite(...keys)` returns a marker to write into text, `footnote(text)` returns a superscript marker, `references()` lists every cited work
 Diagram references: `.as(name)`, `.rightOf()`, `.leftOf()`, `.above()`, `.below()`, `.centerOn()`, `.alignTop()`, `.alignLeft()`, `line().from(ref)`, `line().to(ref)`
 Diagram styling: `.tone(color, "soft" | "solid" | "outline")`, `.shadow()`, `.dashed()` on shapes; `.route("elbow" | "curve")`, `.label(text)`, `.dashed()` on connectors

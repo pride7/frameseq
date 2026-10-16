@@ -4,6 +4,8 @@ export * from "./semantic";
 export * from "./script";
 export * from "./objects";
 export { chartPalette, chartSvg, chartValue } from "./chart";
+export { hasRichText, richColor, richRuns, writeRichText } from "./rich-text";
+export type { RichRun } from "./rich-text";
 export {
   connectorHeading,
   connectorMidpoint,

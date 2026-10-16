@@ -267,10 +267,26 @@ function addDecoration(pptx, slide, item) {
   addPartialBorders(pptx, slide, item);
 }
 
+/**
+ * Text whose words are marked bold, in italics, or in a colour of their own, as runs PowerPoint
+ * keeps editable, each with its own type; a line break ends a paragraph, as in the text itself.
+ */
+function richText(runs) {
+  return runs.flatMap((run) => {
+    const color = cssColor(run.color);
+    const parts = run.text.split("\n");
+    return parts.flatMap((part, index) => {
+      const options = { bold: run.bold, italic: run.italic, ...(color ? { color: color.color } : {}) };
+      if (index < parts.length - 1) options.breakLine = true;
+      return part || options.breakLine ? [{ text: part, options }] : [];
+    });
+  });
+}
+
 function addText(pptx, slide, item) {
   addDecoration(pptx, slide, item);
   if (!item.text) return;
-  slide.addText(item.text, textOptions(item));
+  slide.addText(item.runs ? richText(item.runs) : item.text, textOptions(item));
 }
 
 function addMarker(pptx, slide, item) {
@@ -312,7 +328,7 @@ function addShape(pptx, slide, item) {
     item.style.paddingBottom,
     item.style.paddingLeft,
   ].map((value) => number(value) * pointsPerCssPixel);
-  slide.addText(item.text ?? "", {
+  slide.addText(item.runs ? richText(item.runs) : item.text ?? "", {
     ...textOptions(item, item.box),
     shape: shapeType(pptx, item),
     fill: fill(item.style),
@@ -372,7 +388,7 @@ function addVectorShape(pptx, slide, item) {
   if (shape.shadow) {
     options.shadow = { type: "outer", blur: 8, offset: 3, angle: 90, color: "0F172A", opacity: 0.2 };
   }
-  slide.addText(item.text ?? "", options);
+  slide.addText(item.runs ? richText(item.runs) : item.text ?? "", options);
 }
 
 function lineStroke(item) {
@@ -484,7 +500,7 @@ function addTable(slide, item) {
     const top = rowIndex === 0 ? tableTop : tableBorder(number(style.borderTopWidth), style.borderTopStyle, cssColor(style.borderTopColor));
     const bottom = rowIndex === last ? tableBottom : tableBorder(number(style.borderBottomWidth), style.borderBottomStyle, cssColor(style.borderBottomColor));
     return {
-      text: cell.text,
+      text: cell.runs ? richText(cell.runs) : cell.text,
       options: {
         fontFace: fontFace(style.fontFamily, cell.text),
         fontSize: Math.max(number(style.fontSize, 16) * pointsPerCssPixel, 1),
@@ -670,6 +686,19 @@ async function captureSlides(page) {
         height: Math.max(rect.height - borderTop - borderBottom - paddingTop - paddingBottom, 0),
       };
     };
+    // The words of text that marks some of them bold, in italics, or in a colour, run by run.
+    const runsOf = (host) => {
+      if (!host?.querySelector(".frameseq-run")) return undefined;
+      const runs = [];
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const style = getComputedStyle(node.parentElement);
+        const weight = Number.parseInt(style.fontWeight, 10);
+        runs.push({ text: node.textContent, bold: weight >= 600, italic: style.fontStyle === "italic", color: style.color });
+      }
+      if (runs.length > 0) runs[runs.length - 1].text = runs[runs.length - 1].text.trimEnd();
+      return runs;
+    };
     const hasDecoration = (style) => {
       const background = style.backgroundColor;
       const visibleBackground = background !== "transparent"
@@ -728,6 +757,7 @@ async function captureSlides(page) {
           box: relativeBox(element, slideRect, computed),
           contentBox: relativeBox(element, slideRect, computed, true),
           style: styleSnapshot(computed),
+          runs: kind === "text" || kind === "shape" ? runsOf(element) : undefined,
         };
 
         if (kind === "marker" && item.text === "•") {
@@ -751,6 +781,7 @@ async function captureSlides(page) {
           item.table = {
             rows: rows.map((row) => Array.from(row.cells).map((cell) => ({
               text: (cell.innerText || cell.textContent || "").trim(),
+              runs: runsOf(cell),
               style: styleSnapshot(getComputedStyle(cell)),
             }))),
             columnWidths: rows[0] ? Array.from(rows[0].cells).map((cell) => cell.getBoundingClientRect().width) : [],
@@ -777,6 +808,7 @@ async function captureSlides(page) {
           const label = element.querySelector(".frameseq-shape-label");
           const bodyStyle = body ? getComputedStyle(body) : undefined;
           item.text = (label?.innerText || label?.textContent || "").trimEnd();
+          item.runs = runsOf(label);
           // The label carries the type; the shape itself carries opacity and rotation.
           item.style = {
             ...styleSnapshot(label ? getComputedStyle(label) : computed),

@@ -13,6 +13,8 @@ import {
   polygonCorners,
   resolveAnchors,
   resolveShapePaint,
+  richColor,
+  richRuns,
   shapeGeometry,
   shapeSize,
 } from "../lib/index.js";
@@ -313,7 +315,7 @@ function parseGridColumns(value, childCount, context) {
   return String(Math.max(1, childCount));
 }
 
-function inlineContent(content) {
+function mathContent(content) {
   const source = String(content ?? "");
   const parts = [];
   let cursor = 0;
@@ -325,6 +327,22 @@ function inlineContent(content) {
   }
   if (cursor < source.length) parts.push(`#text(${typstString(source.slice(cursor))})`);
   return parts.length > 0 ? parts.join(" ") : `#text(${typstString(source)})`;
+}
+
+/**
+ * A text's words as Typst content: words marked bold, in italics, or in a colour of their own set
+ * that way, and inline math as math.
+ */
+function inlineContent(content, context) {
+  return richRuns(String(content ?? "")).map((run) => {
+    const words = mathContent(run.text);
+    const settings = [];
+    if (run.bold) settings.push('weight: "bold"');
+    if (run.italic) settings.push('style: "italic"');
+    const fill = run.color ? cssColor(richColor(run.color), context) : undefined;
+    if (fill && fill !== "none") settings.push(`fill: ${fill}`);
+    return settings.length > 0 ? `#text(${settings.join(", ")})[${words}]` : words;
+  }).join("");
 }
 
 function semanticTextStyle(node, context) {
@@ -609,7 +627,7 @@ async function serializeText(node, context) {
   if (size) args.push(`size: ${size}`);
   if (fill && fill !== "none") args.push(`fill: ${fill}`);
   if (fontWeight) args.push(`weight: ${fontWeight}`);
-  const body = inlineContent(node.props?.content);
+  const body = inlineContent(node.props?.content, context);
   const content = `#text(${joinArguments(args)})[${body}]`;
   return wrapCommon(node, content, context);
 }
@@ -633,7 +651,7 @@ async function serializeImage(node, context) {
     const label = node.props?.alt || node.props?.src || "Image unavailable";
     return wrapCommon(
       node,
-      `#text(fill: ${cssColor(context.theme.colors.muted, context)})[${inlineContent(label)}]`,
+      `#text(fill: ${cssColor(context.theme.colors.muted, context)})[${inlineContent(label, context)}]`,
       context,
       { borderColor: context.theme.colors.border, padding: "18px", width: "100%" },
     );
@@ -660,7 +678,7 @@ function serializeTable(node, context) {
   const rule = `table.hline(stroke: ${length("1px", context)} + ${border})`;
   const fill = node.props?.striped ? cssColor(context.theme.colors.surfaceStrong, context) : undefined;
   const cells = (row, bold) => Array.from({ length: columns }, (_, index) => (
-    bold ? `[#strong[${inlineContent(row[index] ?? "")}]]` : `[${inlineContent(row[index] ?? "")}]`
+    bold ? `[#strong[${inlineContent(row[index] ?? "", context)}]]` : `[${inlineContent(row[index] ?? "", context)}]`
   ));
   const body = rows.slice(header);
   const parts = [
@@ -1019,7 +1037,7 @@ async function serializeLatex(node, context) {
     return wrapCommon(node, `#image(${typstString(path)}, width: 100%, fit: "contain")`, context);
   }
   context.warn("A LaTeX fragment could not be converted and had no compiled SVG fallback.");
-  return `#text(fill: ${cssColor(context.theme.colors.error, context)})[${inlineContent("Unsupported LaTeX fragment")}]`;
+  return `#text(fill: ${cssColor(context.theme.colors.error, context)})[${inlineContent("Unsupported LaTeX fragment", context)}]`;
 }
 
 async function serializeShape(node, context) {
@@ -1040,7 +1058,7 @@ async function serializeShape(node, context) {
   if (textColor && textColor !== "none") textArguments.push(`fill: ${textColor}`);
   const size = length(styles.fontSize ?? "24px", context);
   if (size) textArguments.push(`size: ${size}`);
-  const label = text ? `#text(${textArguments.join(", ")})[${inlineContent(text)}]` : "";
+  const label = text ? `#text(${textArguments.join(", ")})[${inlineContent(text, context)}]` : "";
   const element = node.type === "circle" ? "circle" : "rect";
   let result = `#${element}(${joinArguments(args)})[#align(center + horizon)[${label}]]`;
   const rotate = styles.transform?.match(/rotate\(\s*(-?[\d.]+)deg\s*\)/i)?.[1];
@@ -1118,7 +1136,7 @@ async function serializeVectorShape(node, context) {
   const label = text
     ? `#place(top + left, dx: ${length(`${room.x}px`, context, "x")}, dy: ${length(`${room.y}px`, context, "y")})`
       + `[#box(width: ${length(`${room.width}px`, context, "x")}, height: ${length(`${room.height}px`, context, "y")})`
-      + `[#align(center + horizon)[#text(${textArguments.join(", ")})[${inlineContent(text)}]]]]`
+      + `[#align(center + horizon)[#text(${textArguments.join(", ")})[${inlineContent(text, context)}]]]]`
     : "";
   let result = `#box(width: ${length(`${width}px`, context, "x")}, height: ${length(`${height}px`, context, "y")})[${drawing}${label}]`;
   const rotate = styles.transform?.match(/rotate\(\s*(-?[\d.]+)deg\s*\)/i)?.[1];
@@ -1176,7 +1194,7 @@ async function serializeLine(node, context) {
     parts.push(`#place(top + left, dx: ${length(`${middle.x - room.width / 2}px`, context, "x")}, dy: ${length(`${middle.y - room.height / 2}px`, context, "y")})`
       + `[#box(width: ${length(`${room.width}px`, context, "x")}, height: ${length(`${room.height}px`, context, "y")})`
       + `[#align(center + horizon)[#box(fill: ${background}, inset: (x: ${length("10px", context)}, y: ${length("2px", context, "y")}), radius: ${length("10px", context)})`
-      + `[#text(size: ${length("18px", context)}, weight: "semibold"${color && color !== "none" ? `, fill: ${color}` : ""})[${inlineContent(props.label)}]]]]]`);
+      + `[#text(size: ${length("18px", context)}, weight: "semibold"${color && color !== "none" ? `, fill: ${color}` : ""})[${inlineContent(props.label, context)}]]]]]`);
   }
   return parts.join("");
 }

@@ -6,6 +6,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Added
 
+- Bold, italic, and coloured words inside one text: `**bold**`, `*italic*`, and `[words]{red}`, whose colour is a tone, the theme's `accent` or `muted`, or a CSS colour. They work in text, list items, table cells, cards, metrics, shape labels, and the cover's details, and the PDF, PNG, PPTX, and Typst exports keep them, PowerPoint as runs it can edit. In FrameSeq Studio, words typed on the slide show their marks, and `Ctrl+B`, `Ctrl+I`, and a bar over the words set them.
+
 - Select and shape objects in FrameSeq Studio as in a drawing program: drag across the slide's empty part to select the objects inside the box, with `Ctrl` or `Shift` to add to the selection; resize from handles on all four sides and corners, the left and top ones moving `x` and `y` with the edge and `Shift` on a corner keeping the proportions; and turn an object placed by coordinates with the round handle above it, written as `.rotate()`, by steps of 15° with `Shift`. A turn the code works out stays as it is, and says so.
 
 - Add and take away a table's rows and columns in FrameSeq Studio: right-click a cell for **Table**, which inserts a row above or below it or a column left or right of it, or deletes its row or column, written into `table([...])` as the other rows are, and types into the new cell at once.

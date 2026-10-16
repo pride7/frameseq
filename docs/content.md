@@ -29,6 +29,24 @@ text("A memorable sentence").quote();
 
 Calling another text role replaces the previous role on that object.
 
+### Bold, italic, and coloured words
+
+Mark some of the words inside one text, as in Markdown:
+
+```ts
+text("Revenue **grew** 42% *since* May");
+text("Latency fell to [12 ms]{green}, errors to [**0.1%**]{accent}");
+bullets("Ship the **beta**", "Fix [three]{red} open bugs");
+```
+
+- `**words**` makes them bold, and `*words*` puts them in italics.
+- `[words]{colour}` colours them. The colour is a tone (`blue`, `sky`, `teal`, `green`, `lime`, `amber`, `orange`, `red`, `pink`, `purple`, `indigo`, or `gray`), the theme's `accent` or `muted`, or a CSS colour such as `#e11d48`.
+- Marks nest, as in `[**0.1%**]{accent}`.
+
+The marks work wherever a text's words are drawn: in text of any role, in list items and steps, in table cells, cards, and metrics, in the labels of shapes and boxes, and in the cover's details. Slide titles, code, and formulas keep their characters as written. A star or a bracket that marks nothing stays as written, as in `5 * 3` or `see [1]`; a backslash before one, as in `\*`, `\[`, `\]`, `\{`, or `\}`, writes the character itself where it would read as a mark (in a quoted string, write the backslash twice, as in `"\\*"`). Stars inside inline math belong to the formula.
+
+The PDF, PNG, PPTX, and Typst exports keep the marks, and PowerPoint gets bold, italic, and coloured runs it can edit. In FrameSeq Studio, words [typed on the slide](studio.md#typing-on-the-slide) show their marks rather than the characters, and `Ctrl+B`, `Ctrl+I`, and the bar over them set them.
+
 ### Fit text to its room
 
 `.fit()` shrinks an object's text until the object holds it, down to half its size by default:
