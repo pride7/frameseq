@@ -318,7 +318,8 @@ try {
   // Clicking the selected object's row again folds its settings, and once more opens them.
   const cardShown = () => page.evaluate(() => Boolean(document.querySelector(".studio-object-card")));
   for (const shown of [false, true]) {
-    await page.click(".studio-tree-row.is-highlighted[data-kind='rect']");
+    // The fill just written redraws the panel, which can replace the row as it is clicked.
+    await retrying(() => page.click(".studio-tree-row.is-highlighted[data-kind='rect']"));
     await waitFor(async () => (await cardShown()) === shown, shown ? "the settings to open again" : "the settings to fold");
   }
   await waitFor(
