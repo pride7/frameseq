@@ -2719,13 +2719,14 @@ textarea.studio-text-input[style*="height"] {
 }
 
 .studio-page-custom input {
-  width: 86px;
+  width: 72px;
   min-width: 0;
 }
 
 .studio-page-custom .studio-select {
   flex: 1;
   width: auto;
+  min-width: 96px;
 }
 
 .studio-page-keep input[type="checkbox"] {
