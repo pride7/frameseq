@@ -34,6 +34,7 @@ export const groups = [
       test("flow-layout-test"),
       test("single-file-test"),
       test("fsq-test"),
+      test("hidden-consoles-test"),
       test("source-map-test"),
       test("source-edit-test"),
       test("remote-control-test"),

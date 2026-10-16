@@ -25,6 +25,12 @@ import { exportTypst } from "./typst-export.mjs";
 import { agentsMarkdown, claudeMarkdown } from "../packages/create-frameseq/project-instructions.mjs";
 import { appEntry } from "./app-layers.mjs";
 import { updateCommand } from "./app-update.mjs";
+import { hideConsoles } from "./hidden-consoles.mjs";
+
+// A Studio started in the background has no console, so on Windows every console program it
+// starts, or Vite does, such as `net use`, would open one, which Windows 11 shows as a Windows
+// Terminal window. They start hidden instead unless they ask otherwise.
+if (process.platform === "win32" && process.env.FRAMESEQ_HIDE_CONSOLES === "1") hideConsoles();
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configFile = resolve(packageRoot, "vite.config.ts");
@@ -720,26 +726,38 @@ function activateWindow(title) {
 async function startInBackground() {
   const log = join(configDirectory(), "studio.log");
   await mkdir(dirname(log), { recursive: true });
-  const output = openSync(log, "w");
   // A presentation opened by a double-click arrives from wherever Windows started this; the
   // Studio works from its folder, as it does after opening one, so its exports land beside it.
   const entry = named ? resolve(process.cwd(), named) : undefined;
+  const cwd = entry ? dirname(entry) : process.cwd();
+  const opened = `FrameSeq Studio is opening in a window of its own, and stops when that window closes.\nLog: ${log}`;
   const args = process.argv.slice(2)
     .filter((argument) => argument !== "--background")
     .map((argument) => (argument === named ? entry : argument));
-  const child = spawn(
-    process.execPath,
-    [fileURLToPath(import.meta.url), ...args],
-    {
-      cwd: entry ? dirname(entry) : process.cwd(),
-      detached: true,
-      windowsHide: true,
-      stdio: ["ignore", output, output],
-      env: { ...process.env, FRAMESEQ_STUDIO_QUIT_ON_CLOSE: "1", FORCE_COLOR: "0", NO_COLOR: "1" },
-    },
-  );
+
+  // The app's window shows at once, with its splash page, and starts the Studio itself, as when
+  // it is opened directly; waiting for the Studio first left nothing on screen for seconds. A
+  // window Windows refuses, as Smart App Control may an unsigned one, leaves it to Node.js.
+  const plain = args.every((argument) => argument === entry || argument === "studio");
+  const window = plain ? bundledStudioWindow() : undefined;
+  if (window && !windowBlocked(window)) {
+    if (await detachedSpawn(window, entry ? [entry] : [], { cwd })) {
+      console.log(opened);
+      return;
+    }
+    await rememberBlockedWindow(window);
+  }
+
+  const output = openSync(log, "w");
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), ...args], {
+    cwd,
+    detached: true,
+    windowsHide: true,
+    stdio: ["ignore", output, output],
+    env: { ...process.env, FRAMESEQ_STUDIO_QUIT_ON_CLOSE: "1", FRAMESEQ_HIDE_CONSOLES: "1", FORCE_COLOR: "0", NO_COLOR: "1" },
+  });
   child.unref();
-  console.log(`FrameSeq Studio is opening in a window of its own, and stops when that window closes.\nLog: ${log}`);
+  console.log(opened);
 }
 
 const [, , command] = process.argv;

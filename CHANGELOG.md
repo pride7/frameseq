@@ -13,6 +13,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Fixed
 
+- The FrameSeq app's window shows at once when FrameSeq Studio is opened from the Start menu, the desktop, or a double-click on an `.fsq` file, with its splash page while the Studio starts behind it; nothing showed for some seconds before. A window Windows refuses, as Smart App Control may an unsigned one, still leaves the Studio to open in a browser's app window. A Studio started in the background on Windows no longer flashes a Windows Terminal window on every start: the programs it starts, such as Vite's `net use`, start hidden.
 - The HarmonyOS host removes Electron's default English menu bar so only Studio's own localized menus appear. Narrow HarmonyOS windows wrap the toolbar, let the editor and preview fit the available width, and stack them in smaller windows; the workspace follows the visible viewport when its height changes, including when the soft keyboard opens.
 - Unsupported desktop window decoration operations no longer abort HarmonyOS host window initialization on tablets. The host handles capability error 801 from both synchronous calls and rejected promises, while preserving supported desktop operations and other errors.
 - Words being typed on the slide in FrameSeq Studio go on being typed when the slide is drawn again meanwhile, as when an earlier change is saved or another program writes the file. The browser lets go of the words as the old drawing goes, which ended the typing.

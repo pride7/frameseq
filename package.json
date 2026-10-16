@@ -57,6 +57,7 @@
     "scripts/studio-files.mjs",
     "scripts/studio-shortcut.mjs",
     "scripts/studio-instances.mjs",
+    "scripts/hidden-consoles.mjs",
     "packages/create-frameseq/project-instructions.mjs",
     "scripts/frameseq-inspect.mjs",
     "scripts/frameseq-mcp.mjs",
