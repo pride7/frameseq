@@ -189,6 +189,8 @@ Names are unique per slide and may be referenced before they are defined. `from(
 
 ## Diagrams that look good
 
+Aim for the look of a figure in a good paper: neutral boxes, thin grey connectors, colour only where it means something, and room around everything. A diagram in this style reads at a glance and survives printing.
+
 Draw diagram nodes with `shape(kind, label)` rather than plain rectangles. Choose the kind that says what a node is:
 
 - Basic: `rect`, `rounded`, `pill`, `ellipse`, `circle`, `diamond`, `triangle`, `pentagon`, `hexagon`, `octagon`, `parallelogram`, `trapezoid`, `star`, `plus`
@@ -199,28 +201,35 @@ A `pill` starts or ends a flow, a `diamond` is a decision, a `parallelogram` is 
 
 When no kind fits, such as an encoder that narrows from one side to the other, draw the outline with `polygon(points, label)`: its corners are `[x, y]` pixels in order around it, it is as large as they span, and it takes `.tone()`, `.position()`, and names like any shape. A `rect()` with no label has no padding, so `rect().width(30).height(30)` stays 30 pixels square, which suits cells and swatches.
 
-Colour each shape with `.tone(color, style)`. `color` is `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or a CSS colour; `style` is `"soft"` (a tint with a darker label, the default), `"solid"`, or `"outline"`. Tints follow the theme, light or dark, so do not hand-pick fills and label colours. `.shadow()` lifts a shape and `.dashed()` marks it optional.
+Colour a shape with `.tone(color, style)`. `color` is `"accent"`, `"blue"`, `"sky"`, `"teal"`, `"green"`, `"lime"`, `"amber"`, `"orange"`, `"red"`, `"pink"`, `"purple"`, `"indigo"`, `"gray"`, or a CSS colour; `style` is `"soft"` (a tint with a darker label, the default), `"solid"`, or `"outline"`. Tints follow the theme, light or dark, so do not hand-pick fills and label colours. `.shadow()` lifts a shape and `.dashed()` marks it optional.
 
 Connect named shapes with `line().from(a).to(b).arrow()`. `.route("elbow")` turns at right angles and routes around other shapes, `.route("curve")` arcs, `.label("yes")` writes a word halfway along, and `.dashed()` marks an optional or asynchronous link.
+
+The defaults are louder than this style: a shape is tinted in the accent with a bold label, and a connector is a 3-pixel line in the accent. Style each diagram explicitly:
+
+- Boxes are neutral. Most nodes take `.tone("gray").strokeWidth(1.5).weight(500)`: a near-white fill, a thin grey outline, and a label of ordinary weight.
+- Colour carries meaning, never decoration. Give one kind of thing one hue, such as `"amber"` for the data that flows through, in a shade or two, and make at most one shape `"solid"` in a dark colour such as `"#0e3561"`: the component the diagram is about. Do not give every node a colour of its own.
+- Connectors recede: `.stroke("var(--frameseq-muted)").strokeWidth(2)`, which keeps the arrowheads small and follows the theme. Dash a feedback, optional, or training-only path, and keep labels to a word.
+- Bold only titles and the key component. Write symbols as math, such as `"Input $x_{1:L}$"`, and put a short `.caption()` under a figure that needs one.
+- Split a large figure into panels titled "(a) …" and "(b) …": a `rect()` with a light `.stroke()`, a `.radius()`, and no fill behind each part, written before it so it sits underneath.
 
 ```ts
 slide({ name: "Request flow" }).canvas();
 
 at("flow").column().gap(44).align("center").anchor("center");
-shape("pill", "Request").as("start").width(200).height(56).tone("green", "solid");
-shape("diamond", "Cached?").as("cached").width(220).height(110).tone("amber");
-shape("rounded", "Run the model").as("run").width(240).height(72).tone("blue");
-shape("cylinder", "Store").as("store").width(180).height(96).tone("purple");
+shape("pill", "Request").as("start").width(200).height(56).tone("gray").strokeWidth(1.5).weight(500);
+shape("diamond", "Cached?").as("cached").width(220).height(110).tone("gray").strokeWidth(1.5).weight(500);
+shape("rounded", "Run the model").as("run").width(240).height(72).tone("#0e3561", "solid").weight(600);
+shape("cylinder", "Store").as("store").width(180).height(96).tone("amber").strokeWidth(1.5).weight(500);
 
 at("flow");
-line().from("start").to("cached").arrow();
-line().from("cached").to("run").arrow().label("no");
-line().from("run").to("store").arrow();
-line().from("cached.right").to("store.right").route("elbow").arrow().label("yes");
+line().from("start").to("cached").arrow().stroke("var(--frameseq-muted)").strokeWidth(2);
+line().from("cached").to("run").arrow().stroke("var(--frameseq-muted)").strokeWidth(2).label("no");
+line().from("run").to("store").arrow().stroke("var(--frameseq-muted)").strokeWidth(2);
+line().from("cached.right").to("store.right").route("elbow").arrow().stroke("var(--frameseq-muted)").strokeWidth(2).label("yes");
 ```
 
 - Give nodes of the same rank the same size and put them in a `row()` or `column()` with an explicit `gap()` and `align("center")`; anchor the container instead of positioning each node.
-- Use one tone per role, such as input, processing, storage, and decision, and no more than three or four tones on a slide. Make only the one shape that matters most `"solid"`.
 - Use elbow routes for flowcharts and trees, curves for loose relationships, and straight connectors between neighbours. Leave at least 40 pixels between connected shapes so arrowheads and labels have room.
 - Use `table()` and `chart()` for data, never shapes.
 
@@ -277,7 +286,7 @@ text("Important")
 - Prefer `split()`, `grid()`, `gridSection()`, and `center()` over coordinates.
 - Use `canvas()` and `.position()` for diagrams, not ordinary text pages.
 - In a diagram, position one object, then name objects and place and connect the rest relative to it.
-- Draw diagram nodes with `shape()` of the kind that says what each node is, coloured with `.tone()`, and connect them by name.
+- Draw diagram nodes with `shape()` of the kind that says what each node is, neutral with `.tone("gray")` and coloured only where colour means something, and connect them by name with thin grey connectors.
 - Use text roles and a built-in theme before adding local style overrides.
 - Do not invent image paths. Use supplied assets or omit the image.
 - Preserve source citations and label illustrative or synthetic data clearly. Cite with `cite()` from a bibliography instead of typing markers by hand.

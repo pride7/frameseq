@@ -13,6 +13,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ### Changed
 
+- The authoring guide, `llms.txt`, and the instructions a new project gives its coding agent teach diagrams in the style of a figure in a good paper: neutral boxes with `tone("gray")`, one hue only for what colour should mark, at most one solid dark shape for the key component, and thin grey connectors with `stroke("var(--frameseq-muted)")`. The shapes page gives the same advice.
 - Presenter view, the phone remote and its pairing dialog, and the preview's own controls, such as the zoom buttons and the label beside a selected object, speak Chinese when FrameSeq Studio is shown in Chinese. A page takes its language from `lang=zh` in its address, which the Studio adds to the presenter view and the phone remote it opens, or from the Studio around its preview, and passes it on to the windows it opens; elsewhere they stay in English.
 
 ### Fixed

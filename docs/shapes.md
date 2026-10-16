@@ -165,7 +165,8 @@ In [FrameSeq Studio](studio.md#drawing-objects), **Insert** opens a gallery of e
 Names, automatic layout, and connectors are covered in [Diagrams](diagrams.md), which shows how to build a diagram whose objects carry no coordinates at all. A few habits make a diagram read well:
 
 - Give objects of the same rank the same size, and lay them out with `row()` or `column()`, a `gap()`, and `align("center")` rather than with coordinates.
-- Use a tone for each role, such as inputs, processing, storage, and decisions, and no more than three or four on a slide. `solid` draws the eye to the one shape that matters, such as a start or an end.
+- Keep most boxes neutral, with `tone("gray")`, a thin outline, and a label of ordinary weight, as a figure in a paper does. Save colour for what it should mark, one hue for one kind of thing, and make only the one shape that matters most `solid`.
+- Let the connectors recede: `stroke("var(--frameseq-muted)")` and `strokeWidth(2)` draw them thin and grey, with small arrowheads, in any theme.
 - Use elbow connectors in flowcharts and trees, curves for looser relationships, and straight lines between neighbours. Keep labels to a word or two.
 
 ## Layering

@@ -99,7 +99,8 @@ math\`\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}\`;
 - Name diagram objects with \`.as(name)\`; place them with \`.rightOf()\`, \`.below()\`, and related constraints; connect them with \`line().from(name).to(name)\`.
 - Use \`group()\` when several objects must behave as one item. Use a named \`at()\` region when later content should continue flowing into the same container.
 - Keep connectors in the same canvas or named container as their referenced objects.
-- Draw nodes with the \`shape()\` that says what each one is: \`diamond\` for a decision, \`cylinder\` for a store, \`document\`, \`cloud\`, \`pill\` for a start or an end, \`step\` or \`chevron\` for stages. Colour them with \`.tone(color, "soft" | "solid" | "outline")\`, one tone per role, rather than hand-picked fills.
+- Draw nodes with the \`shape()\` that says what each one is: \`diamond\` for a decision, \`cylinder\` for a store, \`document\`, \`cloud\`, \`pill\` for a start or an end, \`step\` or \`chevron\` for stages.
+- Draw diagrams like a figure in a good paper: neutral boxes with \`.tone("gray").strokeWidth(1.5).weight(500)\`, one hue such as \`"amber"\` only for what colour should mark, at most one \`"solid"\` dark shape for the key component, and connectors that recede with \`.stroke("var(--frameseq-muted)").strokeWidth(2)\`. Bold only titles and the key component.
 - Connect with \`.route("elbow")\` in flowcharts and trees and \`.route("curve")\` for looser links; \`.label("yes")\` names a branch. Fix \`label-overflow\` warnings by enlarging the shape or shortening its label.
 
 ## Editing discipline

@@ -1,4 +1,4 @@
-<!-- translation-of: docs/shapes.md sha256:0f16f6588fead6e6 -->
+<!-- translation-of: docs/shapes.md sha256:c6271843df5a4a58 -->
 
 # 图形与连线
 
@@ -167,7 +167,8 @@ line().from("worker").to("queue").route("curve").dashed().label("async");
 命名、自动布局和连线在 [画图](diagrams.md) 里讲,那一页展示如何做出**所有对象都不带坐标**的图。下面几个习惯能让图更好读:
 
 - 同一层级的对象用同样的大小,并用 `row()` 或 `column()`、`gap()` 和 `align("center")` 排列,而不是写坐标。
-- 每种角色用一个色调,比如输入、处理、存储和判断,一页不要超过三四种。`solid` 用来突出最重要的那个形状,比如开始或结束。
+- 大多数框保持中性,用 `tone("gray")`、细轮廓和常规字重的标签,就像论文里的插图那样。颜色只留给需要标出的东西,一类东西用一种色相,只把最重要的那一个形状设成 `solid`。
+- 让连线退到后面:`stroke("var(--frameseq-muted)")` 和 `strokeWidth(2)` 把它们画成细的灰线,箭头也小,在任何主题下都一样。
 - 流程图和树用折线连线,较松散的关系用曲线,相邻对象之间用直线。标签控制在一两个词。
 
 ## 层叠顺序
