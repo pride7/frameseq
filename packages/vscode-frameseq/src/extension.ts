@@ -333,7 +333,7 @@ async function selectEntry(provider: SlidesProvider): Promise<boolean> {
   const candidates = await entryCandidates();
   if (candidates.length === 0) {
     void vscode.window.showInformationMessage(
-      "FrameSeq: no slides.ts or *.slides.ts document was found in this workspace.",
+      "FrameSeq: no .fsq, slides.ts, or *.slides.ts document was found in this workspace.",
     );
     return false;
   }
@@ -703,7 +703,7 @@ class SlidesProvider implements vscode.TreeDataProvider<OutlineItem> {
     this.entry = entry;
     if (!entry) {
       this.report = undefined;
-      this.messageEmitter.fire("Open a FrameSeq slides.ts document.");
+      this.messageEmitter.fire("Open a FrameSeq .fsq or slides.ts document.");
       this.changeEmitter.fire(undefined);
       return;
     }
@@ -948,7 +948,7 @@ function updateRegionStatusBar(
 async function goToRegion(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isSlidesDocument(editor.document.uri)) {
-    void vscode.window.showInformationMessage("FrameSeq: open a slides.ts document first.");
+    void vscode.window.showInformationMessage("FrameSeq: open a .fsq or slides.ts document first.");
     return;
   }
   const source = editor.document.getText();
@@ -1006,7 +1006,7 @@ function suggestedRegionPath(source: string, offset: number): string {
 async function bindSelectionToRegion(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isSlidesDocument(editor.document.uri)) {
-    void vscode.window.showInformationMessage("FrameSeq: select content in a slides.ts document first.");
+    void vscode.window.showInformationMessage("FrameSeq: select content in a .fsq or slides.ts document first.");
     return;
   }
   const range = selectedWholeLines(editor);

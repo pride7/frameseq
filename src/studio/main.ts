@@ -4,6 +4,7 @@ import { openSearchPanel } from "@codemirror/search";
 import { ChangeSet, EditorSelection, Text, type ChangeSpec, type TransactionSpec } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { collectLayoutIssues } from "../../scripts/layout-rules.mjs";
+import { presentationStem } from "../../scripts/presentation-file.mjs";
 import {
   call,
   downloadUrl,
@@ -288,7 +289,7 @@ function showFatal(title: string, detail: string): void {
   const box = element("div", "studio-fatal");
   box.innerHTML = logo;
   box.append(element("h1", "", title), element("p", "", detail));
-  const command = element("code", "", "frameseq studio talk.slides.ts");
+  const command = element("code", "", "frameseq studio talk.fsq");
   box.append(command);
   root.replaceChildren(box);
 }
@@ -2820,7 +2821,7 @@ async function start(): Promise<void> {
     const name = await askText({
       title: t.files.saveTitle,
       message: t.files.saveMessage(mine.folder),
-      value: title && title !== "FrameSeq" ? title : session.name.replace(/\.slides\.ts$|\.ts$/i, ""),
+      value: title && title !== "FrameSeq" ? title : presentationStem(session.name),
       confirm: t.files.saveConfirm,
       validate: templateNameProblem,
     });

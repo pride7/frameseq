@@ -21,6 +21,9 @@ const {
 assert.ok(isSlidesPath("/work/deck/slides.ts"));
 assert.ok(isSlidesPath("/work/talks/2026/kickoff/slides.ts"));
 assert.ok(isSlidesPath("/work/talks/kickoff.slides.ts"));
+assert.ok(isSlidesPath("/work/talks/kickoff.fsq"));
+assert.ok(isSlidesPath("C:\\talks\\Kickoff.FSQ"));
+assert.ok(!isSlidesPath("/work/talks/.fsq"));
 assert.ok(!isSlidesPath("/work/talks/slides.tsx"));
 assert.ok(!isSlidesPath("/work/talks/theme.ts"));
 
@@ -30,7 +33,8 @@ assert.ok(glob.startsWith("**/{"));
 assert.ok(glob.includes("slides.ts"));
 assert.ok(glob.includes("*.slides.ts"));
 assert.ok(glob.includes("talk.ts"));
-assert.equal(entrySearchGlob(), "**/{slides.ts,*.slides.ts}");
+assert.equal(entrySearchGlob(), "**/{slides.ts,*.slides.ts,*.fsq}");
+assert.ok(entrySearchGlob(["decks/review.fsq"]).includes("review.fsq"));
 assert.ok(entryExcludeGlob.includes("node_modules"));
 assert.ok(entryExcludeGlob.includes("output"));
 

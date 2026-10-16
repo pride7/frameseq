@@ -1,3 +1,9 @@
+export const presentationExtension: ".fsq";
+
+export function isPresentationFile(path: string): boolean;
+
+export function presentationStem(name: string): string;
+
 export function presentationFileName(title: string): string;
 
 export function starterDeck(title?: string, language?: "en" | "zh"): string;

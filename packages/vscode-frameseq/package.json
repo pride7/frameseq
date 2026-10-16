@@ -34,7 +34,9 @@
   "main": "./out/extension.js",
   "activationEvents": [
     "workspaceContains:**/slides.ts",
-    "workspaceContains:**/*.slides.ts"
+    "workspaceContains:**/*.slides.ts",
+    "workspaceContains:**/*.fsq",
+    "onLanguage:frameseq"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -43,6 +45,26 @@
     }
   },
   "contributes": {
+    "languages": [
+      {
+        "id": "frameseq",
+        "aliases": [
+          "FrameSeq",
+          "frameseq"
+        ],
+        "extensions": [
+          ".fsq"
+        ],
+        "configuration": "./syntaxes/language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "frameseq",
+        "scopeName": "source.fsq",
+        "path": "./syntaxes/frameseq.tmLanguage.json"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -67,7 +89,7 @@
     "viewsWelcome": [
       {
         "view": "frameseq.slides",
-        "contents": "Open a FrameSeq `slides.ts` or `*.slides.ts` document. Decks in subdirectories are found automatically; pick one yourself when the workspace holds several.\n[Select entry](command:frameseq.selectEntry)\n[Refresh slides](command:frameseq.refresh)"
+        "contents": "Open a FrameSeq `.fsq`, `slides.ts`, or `*.slides.ts` document. Decks in subdirectories are found automatically; pick one yourself when the workspace holds several.\n[Select entry](command:frameseq.selectEntry)\n[Refresh slides](command:frameseq.refresh)"
       },
       {
         "view": "frameseq.currentSlide",
@@ -236,24 +258,24 @@
       "editor/title": [
         {
           "command": "frameseq.preview",
-          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$|\\.fsq$/",
           "group": "navigation@1"
         },
         {
           "command": "frameseq.goToRegion",
-          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$|\\.fsq$/",
           "group": "navigation@2"
         }
       ],
       "editor/context": [
         {
           "command": "frameseq.bindSelectionToRegion",
-          "when": "editorHasSelection && resourceFilename =~ /^(slides|.+\\.slides)\\.ts$/",
+          "when": "editorHasSelection && resourceFilename =~ /^(slides|.+\\.slides)\\.ts$|\\.fsq$/",
           "group": "1_modification@5"
         },
         {
           "command": "frameseq.goToRegion",
-          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$/",
+          "when": "resourceFilename == slides.ts || resourceFilename =~ /\\.slides\\.ts$|\\.fsq$/",
           "group": "navigation@5"
         }
       ],
@@ -302,7 +324,7 @@
         "frameseq.entry": {
           "type": "string",
           "default": "slides.ts",
-          "description": "FrameSeq entry file, relative to the workspace folder or absolute. An active slides editor takes precedence, and any nested slides.ts or *.slides.ts in the workspace is discovered when the configured path does not exist."
+          "description": "FrameSeq entry file, relative to the workspace folder or absolute. An active slides editor takes precedence, and any nested slides.ts, *.slides.ts, or *.fsq in the workspace is discovered when the configured path does not exist."
         },
         "frameseq.previewUrl": {
           "type": "string",
@@ -334,6 +356,10 @@
     "snippets": [
       {
         "language": "typescript",
+        "path": "./snippets/frameseq.code-snippets"
+      },
+      {
+        "language": "frameseq",
         "path": "./snippets/frameseq.code-snippets"
       }
     ]

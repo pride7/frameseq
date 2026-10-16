@@ -51,6 +51,9 @@ function matchesPrefix(name, prefix) {
   return true;
 }
 
+/** Lets a tsconfig's `include` find .fsq presentations as it finds .ts files. */
+const presentationFiles = { extension: ".fsq", isMixedContent: false, scriptKind: ts.ScriptKind.TS };
+
 /**
  * A TypeScript language service for the one slide document FrameSeq Studio edits.
  *
@@ -69,14 +72,15 @@ export function createStudioLanguage({ entry, packageRoot }) {
     const parsed = ts.getParsedCommandLineOfConfigFile(configPath, undefined, {
       ...ts.sys,
       onUnRecoverableConfigFileDiagnostic: () => undefined,
-    });
+    }, undefined, undefined, [presentationFiles]);
     if (parsed) {
       options = parsed.options;
       rootNames = [...parsed.fileNames];
       currentDirectory = dirname(configPath);
     }
   }
-  options = { ...options, noEmit: true };
+  // An .fsq presentation is TypeScript under an extension TypeScript does not know.
+  options = { ...options, noEmit: true, allowNonTsExtensions: true };
 
   let entryName = rootNames.find((name) => fileKey(name) === entryKey);
   if (!entryName) {
@@ -102,6 +106,7 @@ export function createStudioLanguage({ entry, packageRoot }) {
       const content = ts.sys.readFile(fileName);
       return content === undefined ? undefined : ts.ScriptSnapshot.fromString(content);
     },
+    getScriptKind: (fileName) => (/\.fsq$/i.test(fileName) ? ts.ScriptKind.TS : ts.ScriptKind.Unknown),
     getCurrentDirectory: () => currentDirectory,
     getCompilationSettings: () => options,
     getDefaultLibFileName: (compilerOptions) => ts.getDefaultLibFilePath(compilerOptions),
@@ -119,18 +124,14 @@ export function createStudioLanguage({ entry, packageRoot }) {
 
   // A deck kept outside any project that names the FrameSeq globals would otherwise report
   // every command as unknown. Add the declarations only when the program does not have them,
-  // because the repository's own tsconfig already includes them from source.
+  // because the repository's own tsconfig already includes them from source. Only FrameSeq's own
+  // count: a checkout also holds other globals.d.ts files, such as @types/node's.
   const program = service.getProgram();
-  const packageKey = fileKey(packageRoot);
-  const hasGlobals = program?.getSourceFiles().some((file) => {
-    const key = fileKey(file.fileName);
-    return key.startsWith(packageKey) && /\/globals\.(?:d\.)?ts$/.test(key);
-  });
+  const globalsFiles = [resolve(packageRoot, "lib", "globals.d.ts"), resolve(packageRoot, "src", "globals.ts")];
+  const globalsKeys = new Set(globalsFiles.map(fileKey));
+  const hasGlobals = program?.getSourceFiles().some((file) => globalsKeys.has(fileKey(file.fileName)));
   if (!hasGlobals) {
-    const declarations = [
-      resolve(packageRoot, "lib", "globals.d.ts"),
-      resolve(packageRoot, "src", "globals.ts"),
-    ].find((path) => existsSync(path));
+    const declarations = globalsFiles.find((path) => existsSync(path));
     if (declarations) rootNames.push(declarations.replaceAll("\\", "/"));
   }
 

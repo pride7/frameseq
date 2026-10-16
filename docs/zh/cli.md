@@ -1,8 +1,10 @@
-<!-- translation-of: docs/cli.md sha256:1ce5f81b7b7388d1 -->
+<!-- translation-of: docs/cli.md sha256:263b8992a3c753d0 -->
 
 # CLI 参考
 
 npm 包会安装 `frameseq` 可执行文件,不需要 Node.js 的 [FrameSeq 应用](app.md)也会。
+
+每个接受 `[file]` 的命令,都接受后缀为 `.fsq`(FrameSeq 自己的后缀)或 `.slides.ts` 的演示文件,内容是同样的 TypeScript。不给文件时,命令使用当前目录里的 `slides.fsq`,没有的话就用 `slides.ts`。
 
 ## 新建幻灯片文件
 

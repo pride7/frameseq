@@ -5,7 +5,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { inspectSource } from "./frameseq-inspect.mjs";
 import { iconBodies } from "./icon-set.mjs";
-import { presentationFileName, presentationTemplate, templateDeck } from "./presentation-file.mjs";
+import { isPresentationFile, presentationFileName, presentationTemplate, templateDeck } from "./presentation-file.mjs";
 import { readSlides, slidesFileSuffix, slidesLabel } from "./slide-selection.mjs";
 import { documentStatements } from "./source-marks.mjs";
 import { writeDocument } from "./source-edits.mjs";
@@ -258,7 +258,7 @@ function fileMessages(language) {
       noFolder: (path) => `${path} 这个文件夹不存在。`,
       exists: (name) => `那个文件夹里已经有 ${name} 了。`,
       fullPath: "请给出幻灯片文档的完整路径。",
-      notTs: "FrameSeq 演示是一个 .ts 文件，比如 talk.slides.ts。",
+      notTs: "FrameSeq 演示是一个 .fsq 文件，比如 talk.fsq，也可以是 talk.slides.ts 这样的 .ts 文件。",
       noFile: (path) => `${path} 这个文件不存在。`,
       fullPicture: "请给出图片的完整路径。",
       notPicture: (extensions) => `只能插入这些格式的图片：${extensions}。`,
@@ -278,7 +278,7 @@ function fileMessages(language) {
       noFolder: (path) => `There is no folder at ${path}.`,
       exists: (name) => `${name} already exists in that folder.`,
       fullPath: "Give the full path of the slide document.",
-      notTs: "A FrameSeq presentation is a .ts file, such as talk.slides.ts.",
+      notTs: "A FrameSeq presentation is an .fsq file, such as talk.fsq, or a .ts file such as talk.slides.ts.",
       noFile: (path) => `There is no file at ${path}.`,
       fullPicture: "Give the full path of the picture.",
       notPicture: (extensions) => `A picture must be one of ${extensions}.`,
@@ -556,7 +556,7 @@ export function studioPlugin({
           const say = fileMessages(body.language);
           if (!path || !isAbsolute(path)) return [400, { error: say.fullPath }];
           const target = resolve(path);
-          if (extname(target).toLowerCase() !== ".ts") return [400, { error: say.notTs }];
+          if (!isPresentationFile(target)) return [400, { error: say.notTs }];
           if (!await isFile(target)) return [404, { error: say.noFile(target) }];
           if (!start && deckKey(target) === deckKey(entry)) return { ok: true, path: target, name: basename(target), current: true };
           return openPresentation(target);

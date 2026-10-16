@@ -87,10 +87,10 @@ await writeFile(resolve(templates, "Mine.slides.ts"), 'presentation("Mine");\n\n
 // `frameseq new` still writes the starter it always has, now shared with the Studio.
 spawnSync(process.execPath, [cli, "new", "plain.slides.ts"], { cwd: workspace, env: environment });
 assert.equal(await readFile(resolve(workspace, "plain.slides.ts"), "utf8"), starterDeck());
-assert.equal(presentationFileName("Quarterly review"), "quarterly-review.slides.ts");
-assert.equal(presentationFileName("季度回顾 2026"), "季度回顾-2026.slides.ts");
-assert.equal(presentationFileName("CON"), "con-slides.slides.ts");
-assert.equal(presentationFileName("?!"), "presentation.slides.ts");
+assert.equal(presentationFileName("Quarterly review"), "quarterly-review.fsq");
+assert.equal(presentationFileName("季度回顾 2026"), "季度回顾-2026.fsq");
+assert.equal(presentationFileName("CON"), "con-slides.fsq");
+assert.equal(presentationFileName("?!"), "presentation.fsq");
 
 let studio = startStudio([]);
 let browser;
@@ -107,6 +107,7 @@ try {
   assert.equal((await api(origin, "files/open", { method: "POST", token, body: { path: "existing.slides.ts" } })).status, 400);
   assert.equal((await api(origin, "files/open", { method: "POST", token, body: { path: resolve(decks, "notes.txt") } })).status, 400);
   assert.equal((await api(origin, "files/open", { method: "POST", token, body: { path: resolve(decks, "missing.slides.ts") } })).status, 404);
+  assert.equal((await api(origin, "files/open", { method: "POST", token, body: { path: resolve(decks, "missing.fsq") } })).status, 404, "an .fsq file is a presentation");
   assert.equal((await api(origin, "files/create", { method: "POST", token, body: { title: "x", folder: resolve(workspace, "nowhere") } })).status, 404);
   assert.equal((await api(origin, "files/create", { method: "POST", token: "wrong", body: { title: "x", folder: decks } })).status, 403);
   // The new-presentation dialog offers one's own templates on the start page too.
@@ -173,13 +174,13 @@ try {
     return covers.length > 1 && covers.every((cover) => cover.classList.contains("is-ready"));
   }, { timeout: 30_000 });
   await page.type("dialog.studio-new-dialog input[name='title']", "Quarterly review");
-  assert.equal(await page.$eval(".studio-new-file code", (code) => code.textContent), "quarterly-review.slides.ts");
+  assert.equal(await page.$eval(".studio-new-file code", (code) => code.textContent), "quarterly-review.fsq");
   await fill("dialog.studio-new-dialog input[name='folder']", decks);
   await page.click("dialog.studio-new-dialog .is-primary");
-  const quarterly = resolve(decks, "quarterly-review.slides.ts");
-  await opened("quarterly-review.slides.ts", 'presentation("Quarterly review")');
+  const quarterly = resolve(decks, "quarterly-review.fsq");
+  await opened("quarterly-review.fsq", 'presentation("Quarterly review")');
   assert.equal(await readFile(quarterly, "utf8"), starterDeck("Quarterly review"));
-  assert.deepEqual((await readdir(decks)).sort(), ["existing.slides.ts", "quarterly-review.slides.ts"], "only the deck is written");
+  assert.deepEqual((await readdir(decks)).sort(), ["existing.slides.ts", "quarterly-review.fsq"], "only the deck is written");
 
   // The same title again names a file that exists, which is reported, never overwritten.
   await openNewDialog(() => page.click("[data-action='file-menu']").then(() => page.waitForSelector(".studio-menu"))
@@ -205,7 +206,7 @@ try {
   await page.waitForSelector("dialog.studio-dialog[open] button[value='save']");
   await page.click("dialog.studio-dialog[open] .studio-button:not([value])");
   await delay(500);
-  assert.equal(await fileName(), "quarterly-review.slides.ts", "cancelling keeps the document open");
+  assert.equal(await fileName(), "quarterly-review.fsq", "cancelling keeps the document open");
   assert.equal(await readFile(quarterly, "utf8"), starterDeck("Quarterly review"));
   await typedOpen(existing);
   await page.waitForSelector("dialog.studio-dialog[open] button[value='save']");
@@ -228,10 +229,10 @@ try {
   await page.click("[data-action='file-menu']");
   await page.waitForSelector(".studio-menu");
   const labels = await page.$$eval(".studio-menu-label", (items) => items.map((item) => item.textContent));
-  assert.ok(labels.includes("quarterly-review.slides.ts"), `recent presentations are listed: ${labels}`);
+  assert.ok(labels.includes("quarterly-review.fsq"), `recent presentations are listed: ${labels}`);
   assert.ok(!labels.includes("existing.slides.ts"), "the open presentation is not listed again");
   await page.evaluate(() => [...document.querySelectorAll(".studio-menu-item")].find((item) => item.textContent.includes("quarterly-review")).click());
-  await opened("quarterly-review.slides.ts", 'presentation("Quarterly review")');
+  await opened("quarterly-review.fsq", 'presentation("Quarterly review")');
   assert.deepEqual(errors, [], "no page errors");
   await browser.close();
   browser = undefined;
@@ -250,12 +251,12 @@ try {
   await page.goto(await studio.address, { waitUntil: "networkidle2" });
   await page.waitForSelector(".studio-start-recent-item");
   const recent = () => page.$$eval(".studio-start-recent-item", (items) => items.map((item) => item.dataset.path));
-  assert.deepEqual(await recent(), [resolve(decks, "quarterly-review.slides.ts"), existing]);
+  assert.deepEqual(await recent(), [resolve(decks, "quarterly-review.fsq"), existing]);
   await page.hover(".studio-start-recent-row:last-child");
   await page.click(".studio-start-recent-row:last-child .studio-icon-button");
   await waitFor(async () => (await recent()).length === 1, "a presentation to be forgotten");
   const settings = JSON.parse(await readFile(join(config, "studio.json"), "utf8"));
-  assert.deepEqual(settings.recent.map((item) => item.path), [resolve(decks, "quarterly-review.slides.ts")]);
+  assert.deepEqual(settings.recent.map((item) => item.path), [resolve(decks, "quarterly-review.fsq")]);
   assert.equal(settings.folder, decks);
   assert.equal((await api(origin, "files", { token: (await api(origin, "session")).data.token })).data.folder, decks);
   // The start page chooses the language too, before any presentation is open.
@@ -292,7 +293,7 @@ try {
   assert.ok(Date.now() - closedAt > 5_000, "a reload must not stop it, so it waits a moment first");
   // Started without a window, as scripts and tests start it, it leaves the recent list alone.
   const settings = JSON.parse(await readFile(join(config, "studio.json"), "utf8"));
-  assert.deepEqual(settings.recent.map((item) => item.path), [resolve(decks, "quarterly-review.slides.ts")]);
+  assert.deepEqual(settings.recent.map((item) => item.path), [resolve(decks, "quarterly-review.fsq")]);
   await browser.close();
   browser = undefined;
 } finally {
@@ -302,7 +303,15 @@ try {
 
 // The shortcut runs this CLI's Studio in the background; FRAMESEQ_SHORTCUT_DIR keeps it here.
 const shortcuts = resolve(workspace, "shortcuts");
-const shortcutEnvironment = { ...environment, FRAMESEQ_SHORTCUT_DIR: shortcuts };
+// On Windows it also opens .fsq files when they are double-clicked; the test's keys stand apart.
+const testClasses = `Software\\FrameSeqTest-${process.pid}`;
+const classes = `${testClasses}\\Classes`;
+const registry = (script) => spawnSync("powershell.exe", ["-NoProfile", "-Command", script], { encoding: "utf8" }).stdout.trim();
+if (process.platform === "win32") {
+  // Taken away however the test ends.
+  process.on("exit", () => registry(`[Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('${testClasses}', $false)`));
+}
+const shortcutEnvironment = { ...environment, FRAMESEQ_SHORTCUT_DIR: shortcuts, FRAMESEQ_FILE_CLASSES: classes };
 const added = spawnSync(process.execPath, [cli, "shortcut"], { cwd: workspace, env: shortcutEnvironment, encoding: "utf8" });
 assert.equal(added.status, 0, added.stderr);
 if (process.platform === "win32") {
@@ -317,6 +326,15 @@ if (process.platform === "win32") {
   assert.equal(args, `--headless "${process.execPath}" "${cli}" studio --background`);
   assert.equal(icon.toLowerCase(), `${join(config, "FrameSeq.ico")},0`.toLowerCase());
   assert.ok((await stat(join(config, "FrameSeq.ico"))).size > 1000);
+  const [kind, open, fileIcon] = registry([
+    `$user = [Microsoft.Win32.Registry]::CurrentUser`,
+    `$user.OpenSubKey('${classes}\\.fsq').GetValue('')`,
+    `$user.OpenSubKey('${classes}\\FrameSeq.Presentation\\shell\\open\\command').GetValue('')`,
+    `$user.OpenSubKey('${classes}\\FrameSeq.Presentation\\DefaultIcon').GetValue('')`,
+  ].join("; ")).split(/\r?\n/);
+  assert.equal(kind, "FrameSeq.Presentation");
+  assert.equal(open.toLowerCase(), `"${target}" --headless "${process.execPath}" "${cli}" studio "%1" --background`.toLowerCase());
+  assert.equal(fileIcon.toLowerCase(), join(config, "FrameSeq.ico").toLowerCase());
 } else if (process.platform === "darwin") {
   const bundle = join(shortcuts, "FrameSeq Studio.app", "Contents");
   assert.match(await readFile(join(bundle, "Info.plist"), "utf8"), /<string>FrameSeq Studio<\/string>/);
@@ -332,5 +350,10 @@ if (process.platform === "win32") {
 const removed = spawnSync(process.execPath, [cli, "shortcut", "--remove"], { cwd: workspace, env: shortcutEnvironment, encoding: "utf8" });
 assert.equal(removed.status, 0, removed.stderr);
 assert.deepEqual(await readdir(shortcuts), [], "--remove takes the shortcut away");
+if (process.platform === "win32") {
+  const left = registry(`$user = [Microsoft.Win32.Registry]::CurrentUser; [bool]$user.OpenSubKey('${classes}\\FrameSeq.Presentation'); [string]$user.OpenSubKey('${classes}\\.fsq').GetValue('')`);
+  // The key of the presentation kind is gone, and .fsq names no kind: the second line is empty.
+  assert.equal(left, "False", "--remove stops opening .fsq files");
+}
 
-console.log("Studio files test passed: the start page, new and existing presentations, unsaved edits, recent presentations, the start page in Chinese, exports beside the deck, quitting on close, and shortcuts.");
+console.log("Studio files test passed: the start page, new and existing presentations, unsaved edits, recent presentations, the start page in Chinese, exports beside the deck, quitting on close, and shortcuts that also open .fsq files.");

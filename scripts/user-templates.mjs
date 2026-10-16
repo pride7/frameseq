@@ -7,12 +7,22 @@ import { configDirectory } from "./studio-files.mjs";
 
 /**
  * The person's own templates: presentations kept in a folder to start new ones from. A template
- * is a `.slides.ts` file, or a folder holding one beside the pictures and other files it uses.
+ * is an `.fsq` or `.slides.ts` file, or a folder holding one beside the pictures and other files it uses.
  * Its title is replaced by the new presentation's, and everything else is kept as written,
  * masters and theme included. The CLI and FrameSeq Studio share these rules.
  */
 
-const extension = ".slides.ts";
+/** New templates are written as .fsq files; ones kept as .slides.ts are found all the same. */
+const extension = ".fsq";
+const extensions = [".fsq", ".slides.ts"];
+
+/** The extension a template file is named with, or undefined for any other file. */
+function deckExtension(name) {
+  return extensions.find((item) => name.toLowerCase().endsWith(item) && name.length > item.length);
+}
+
+/** The files a template called `name` may be kept as in `directory`. */
+const templateFiles = (directory, name) => extensions.map((item) => join(directory, `${name}${item}`));
 
 /** Documents, wherever Windows put it: in the home folder, or moved into OneDrive. */
 function documentsFolder(environment) {
@@ -54,7 +64,7 @@ export function templateNameProblem(name) {
   return undefined;
 }
 
-/** Every template in the folder, by name: the files ending in .slides.ts and the folders holding one. */
+/** Every template in the folder, by name: the .fsq and .slides.ts files and the folders holding one. */
 export async function userTemplates(directory = templateDirectory()) {
   let entries;
   try {
@@ -65,11 +75,12 @@ export async function userTemplates(directory = templateDirectory()) {
   const templates = [];
   for (const entry of entries) {
     if (entry.name.startsWith(".")) continue;
-    if (entry.isFile() && entry.name.endsWith(extension) && entry.name.length > extension.length) {
-      templates.push({ name: entry.name.slice(0, -extension.length), path: join(directory, entry.name) });
+    const found = entry.isFile() ? deckExtension(entry.name) : undefined;
+    if (found) {
+      templates.push({ name: entry.name.slice(0, -found.length), path: join(directory, entry.name) });
     } else if (entry.isDirectory()) {
       const inside = await readdir(join(directory, entry.name)).catch(() => []);
-      const decks = inside.filter((name) => name.endsWith(extension));
+      const decks = inside.filter((name) => deckExtension(name));
       // A folder with one presentation in it is that presentation and the files it uses.
       if (decks.length === 1) templates.push({ name: entry.name, path: join(directory, entry.name, decks[0]), folder: join(directory, entry.name) });
     }
@@ -223,18 +234,19 @@ export async function saveTemplate({ entry, name, directory = templateDirectory(
   const folder = dirname(entry);
   const assets = localFiles(source, folder, entry);
   const fileTarget = join(directory, `${name}${extension}`);
+  const fileTargets = templateFiles(directory, name);
   const folderTarget = join(directory, name);
   const here = resolve(entry);
   const within = relative(folderTarget, here);
   // Saved from the template itself, there is nothing to copy: the template is that file.
-  if (here === resolve(fileTarget) || (within && !within.startsWith("..") && !isAbsolute(within))) {
+  if (fileTargets.some((file) => here === resolve(file)) || (within && !within.startsWith("..") && !isAbsolute(within))) {
     return { path: here, assets: [], same: true };
   }
-  const exists = existsSync(fileTarget) || existsSync(folderTarget);
-  if (exists && !overwrite) return { exists: true, path: existsSync(folderTarget) ? folderTarget : fileTarget };
+  const existing = [folderTarget, ...fileTargets].find((path) => existsSync(path));
+  if (existing && !overwrite) return { exists: true, path: existing };
   await mkdir(directory, { recursive: true });
-  if (exists) {
-    await rm(fileTarget, { force: true });
+  if (existing) {
+    for (const file of fileTargets) await rm(file, { force: true });
     await rm(folderTarget, { recursive: true, force: true });
   }
   if (assets.length === 0) {
@@ -257,7 +269,8 @@ export async function writeTemplate({ name, source, directory = templateDirector
   const problem = templateNameProblem(name);
   if (problem) return { problem };
   const fileTarget = join(directory, `${name}${extension}`);
-  if (existsSync(fileTarget) || existsSync(join(directory, name))) return { exists: true, path: fileTarget };
+  const existing = [...templateFiles(directory, name), join(directory, name)].find((path) => existsSync(path));
+  if (existing) return { exists: true, path: existing };
   await mkdir(directory, { recursive: true });
   await writeFile(fileTarget, source, { encoding: "utf8", flag: "wx" });
   return { path: fileTarget };

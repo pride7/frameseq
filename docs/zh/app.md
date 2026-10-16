@@ -1,4 +1,4 @@
-<!-- translation-of: docs/app.md sha256:3c33540723552393 -->
+<!-- translation-of: docs/app.md sha256:95313f4f062360c0 -->
 
 # FrameSeq 应用
 
@@ -25,14 +25,16 @@ FrameSeq 应用一个下载就装好 FrameSeq 需要的一切,包括 Node.js,所
 
 从开始菜单、"应用程序"或应用菜单打开 FrameSeq Studio。它从启动页开始,在那里点一下就能新建演示;见 [FrameSeq Studio](studio.md)。
 
+在 Windows 上,安装程序还会让 `.fsq` 文件(也就是 Studio 保存的演示)在双击时用 FrameSeq Studio 打开,并显示 FrameSeq 的图标;每个文件在自己的窗口里打开,导出的文件放在它旁边。便携版运行过 `frameseq shortcut` 之后也一样。
+
 Studio 像桌面程序一样在自己的窗口里打开。在 Windows 上,菜单栏就是标题栏:拖动它移动窗口,双击它最大化,最小化、最大化和关闭按钮在它的右端。在 macOS 上,红绿灯按钮在菜单栏的左端。在 Linux 上,窗口保留桌面自己的标题栏,并且需要 WebKitGTK 4.1(`libwebkit2gtk-4.1`),大多数桌面都已经装了。关闭窗口会停止 Studio,有未保存的修改时会先询问。窗口打不开时,比如 Windows 上没有 WebView2、Linux 上没有 WebKitGTK,Studio 会改在浏览器的应用窗口里打开;设置 `FRAMESEQ_NO_STUDIO_WINDOW=1` 也会这样做。
 
 `frameseq` 命令能做 [CLI 参考](cli.md)里描述的所有事情:
 
 ```bash
-frameseq new talk.slides.ts
-frameseq studio talk.slides.ts
-frameseq pdf talk.slides.ts
+frameseq new talk.fsq
+frameseq studio talk.fsq
+frameseq pdf talk.fsq
 ```
 
 从应用里运行时,`frameseq studio` 打开的也是这个窗口。

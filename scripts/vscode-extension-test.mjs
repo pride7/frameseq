@@ -52,6 +52,19 @@ assert.equal(manifest.contributes.configuration.properties["frameseq.previewBesi
 assert.equal(manifest.contributes.configuration.properties["frameseq.followOutline"].default, true);
 assert.equal(manifest.contributes.configuration.properties["frameseq.followCursor"].default, true);
 assert.ok(manifest.contributes.snippets.some((snippet) => snippet.language === "typescript"));
+// An .fsq presentation is a language of its own, coloured as TypeScript, with the same snippets.
+const fsq = manifest.contributes.languages.find((item) => item.id === "frameseq");
+assert.deepEqual(fsq?.extensions, [".fsq"]);
+assert.ok(manifest.activationEvents.includes("workspaceContains:**/*.fsq"));
+assert.ok(manifest.contributes.snippets.some((snippet) => snippet.language === "frameseq"));
+const grammar = manifest.contributes.grammars.find((item) => item.language === "frameseq");
+const grammarFile = JSON.parse(await readFile(resolve(extensionRoot, grammar.path), "utf8"));
+assert.equal(grammarFile.scopeName, grammar.scopeName);
+assert.deepEqual(grammarFile.patterns, [{ include: "source.ts" }]);
+JSON.parse(await readFile(resolve(extensionRoot, fsq.configuration), "utf8"));
+for (const item of Object.values(manifest.contributes.menus).flat()) {
+  if (/resourceFilename/.test(item.when ?? "")) assert.match(item.when, /fsq/, `${item.command} is missing from .fsq editors`);
+}
 assert.ok(source.includes('["inspect", relativeEntry, "--json"]'));
 assert.ok(source.includes('["check", relativeEntry, "--json"]'));
 assert.ok(source.includes('["dev", relativeEntry, "--no-open"]'));

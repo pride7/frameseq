@@ -95,7 +95,7 @@ await writeFile(resolve(work, "notes.txt"), "not named by the slides");
 await writeFile(talk, source, "utf8");
 assert.deepEqual(localFiles(source, work, talk), ["images/logo.png"]);
 const saved = await saveTemplate({ entry: talk, name: "Group meeting", directory: templates });
-assert.equal(saved.path, join(templates, "Group meeting", "Group meeting.slides.ts"));
+assert.equal(saved.path, join(templates, "Group meeting", "Group meeting.fsq"));
 assert.deepEqual(saved.assets, ["images/logo.png"]);
 assert.ok(existsSync(join(templates, "Group meeting", "images", "logo.png")));
 assert.ok(!existsSync(join(templates, "Group meeting", "notes.txt")), "files the slides do not name stay behind");
@@ -105,8 +105,20 @@ assert.deepEqual(await saveTemplate({ entry: talk, name: "Group meeting", direct
 });
 await writeFile(resolve(work, "plain.slides.ts"), 'presentation("Plain");\n\nslide("One");\n', "utf8");
 const plain = await saveTemplate({ entry: resolve(work, "plain.slides.ts"), name: "Plain", directory: templates });
-assert.equal(plain.path, join(templates, "Plain.slides.ts"), "a presentation that names no files is kept as one file");
+assert.equal(plain.path, join(templates, "Plain.fsq"), "a presentation that names no files is kept as one file");
 assert.deepEqual((await userTemplates(templates)).map((template) => template.name), ["Group meeting", "Plain"]);
+// A template kept as .slides.ts before templates were .fsq files is one all the same, and is
+// replaced, not doubled, when a presentation is saved under its name.
+await writeFile(join(templates, "Older.slides.ts"), 'presentation("Older");\n', "utf8");
+assert.deepEqual((await userTemplates(templates)).map((template) => template.name), ["Group meeting", "Older", "Plain"]);
+assert.deepEqual(await saveTemplate({ entry: resolve(work, "plain.slides.ts"), name: "Older", directory: templates }), {
+  exists: true,
+  path: join(templates, "Older.slides.ts"),
+});
+await saveTemplate({ entry: resolve(work, "plain.slides.ts"), name: "Older", directory: templates, overwrite: true });
+assert.ok(!existsSync(join(templates, "Older.slides.ts")) && existsSync(join(templates, "Older.fsq")));
+assert.deepEqual((await userTemplates(templates)).map((template) => template.name), ["Group meeting", "Older", "Plain"]);
+await rm(join(templates, "Older.fsq"));
 
 // ── Making a presentation from it copies those files, never over one already there ─────────────
 const made = resolve(work, "made", "weekly-sync.slides.ts");
@@ -118,13 +130,13 @@ assert.match(await readFile(made, "utf8"), /title: "Weekly sync"[\s\S]*master\("
 await assert.rejects(createFromTemplate(template, made, "Again"), { code: "EEXIST" });
 
 // ── frameseq new --template finds one's own templates by name ───────────────────────────────────
-const cliMade = spawnSync(process.execPath, [cli, "new", "lab-update.slides.ts", "--template", "Group meeting"], {
+const cliMade = spawnSync(process.execPath, [cli, "new", "lab-update.fsq", "--template", "Group meeting"], {
   cwd: resolve(work, "made"),
   encoding: "utf8",
   env: environment,
 });
 assert.equal(cliMade.status, 0, cliMade.stderr);
-assert.match(await readFile(resolve(work, "made", "lab-update.slides.ts"), "utf8"), /title: "lab update"/);
+assert.match(await readFile(resolve(work, "made", "lab-update.fsq"), "utf8"), /title: "lab update"/);
 const unknown = spawnSync(process.execPath, [cli, "new", "x.slides.ts", "--template", "missing"], {
   cwd: resolve(work, "made"),
   encoding: "utf8",
@@ -198,7 +210,7 @@ try {
   await page.waitForSelector("dialog.studio-dialog input");
   assert.equal(await page.$eval("dialog.studio-dialog input", (input) => input.value), "Studio talk");
   await page.click("dialog.studio-dialog button.is-primary");
-  await waitFor(() => existsSync(join(templates, "Studio talk.slides.ts")), "the template to be written");
+  await waitFor(() => existsSync(join(templates, "Studio talk.fsq")), "the template to be written");
   await waitFor(() => page.evaluate(() => [...document.querySelectorAll(".studio-toast")].some((toast) => toast.textContent.includes("Saved as the template"))), "the saved message");
 
   // The new-presentation dialog lists it among the person's own, with its real cover.
@@ -221,7 +233,7 @@ try {
   assert.equal(await page.$eval("dialog.studio-dialog:not(.studio-new-dialog) input", (input) => input.value), "Paper");
   await page.click("dialog.studio-dialog:not(.studio-new-dialog) button.is-primary");
   await page.waitForSelector(".studio-template[data-template='user:Paper'] input:checked");
-  assert.match(await readFile(join(templates, "Paper.slides.ts"), "utf8"), /theme: "paper"/);
+  assert.match(await readFile(join(templates, "Paper.fsq"), "utf8"), /theme: "paper"/);
 
   // Choosing the saved template makes a presentation from it, titled as the dialog says.
   await page.click(".studio-template[data-template='user:Studio talk']");
@@ -232,7 +244,7 @@ try {
     input.dispatchEvent(new Event("input"));
   }, studioFolder);
   await page.click(".studio-new-dialog button[type='submit']");
-  const second = resolve(studioFolder, "second-talk.slides.ts");
+  const second = resolve(studioFolder, "second-talk.fsq");
   await waitFor(() => existsSync(second), "the presentation to be made from the template");
   const text = await readFile(second, "utf8");
   assert.match(text, /presentation\(\{ title: "Second talk", theme: "paper" \}\);/);

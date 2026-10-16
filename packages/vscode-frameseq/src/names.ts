@@ -20,10 +20,13 @@ import {
 const selector: vscode.DocumentSelector = [
   { language: "typescript", scheme: "file", pattern: "**/slides.ts" },
   { language: "typescript", scheme: "file", pattern: "**/*.slides.ts" },
+  { language: "frameseq", scheme: "file", pattern: "**/*.fsq" },
 ];
 
 function isDeck(document: vscode.TextDocument): boolean {
-  return document.languageId === "typescript" && document.uri.scheme === "file" && isSlidesPath(document.uri.fsPath);
+  return ["typescript", "frameseq"].includes(document.languageId)
+    && document.uri.scheme === "file"
+    && isSlidesPath(document.uri.fsPath);
 }
 
 function range(document: vscode.TextDocument, span: TextSpan): vscode.Range {

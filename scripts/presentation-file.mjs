@@ -3,6 +3,22 @@
  * the file as the title is typed, and the server writes it, so both read the same rules.
  */
 
+/**
+ * A presentation's own file extension. The text is TypeScript, as in a `.slides.ts` file, which
+ * FrameSeq goes on reading; a file of its own can open in FrameSeq when it is double-clicked.
+ */
+export const presentationExtension = ".fsq";
+
+/** Whether a file can be opened as a presentation: an .fsq file, or TypeScript such as talk.slides.ts. */
+export function isPresentationFile(path) {
+  return /\.(?:fsq|ts)$/i.test(String(path));
+}
+
+/** A presentation's file name without its extension: "talk" for talk.fsq and talk.slides.ts alike. */
+export function presentationStem(name) {
+  return String(name).replace(/\.slides\.ts$|\.fsq$|\.ts$/i, "");
+}
+
 /** The file a presentation titled `title` is saved as: its words, lowercased, joined by hyphens. */
 export function presentationFileName(title) {
   const stem = String(title)
@@ -14,7 +30,7 @@ export function presentationFileName(title) {
     .replace(/^-+|-+$/g, "");
   // Windows reserves these names for devices, whatever the extension.
   const safe = /^(?:con|prn|aux|nul|com\d|lpt\d)$/.test(stem) ? `${stem}-slides` : stem;
-  return `${safe || "presentation"}.slides.ts`;
+  return `${safe || "presentation"}${presentationExtension}`;
 }
 
 const starterWords = {

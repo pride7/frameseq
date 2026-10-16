@@ -1,4 +1,4 @@
-import { presentationFileName, presentationTemplate, presentationTemplates } from "../../scripts/presentation-file.mjs";
+import { isPresentationFile, presentationFileName, presentationTemplate, presentationTemplates } from "../../scripts/presentation-file.mjs";
 import {
   call,
   StudioRequestError,
@@ -292,7 +292,7 @@ export class Presentations {
         message: t.files.openMessage,
         value: folderPrefix(folder),
         confirm: t.files.openConfirm,
-        validate: (value) => (/\.ts$/i.test(value) ? undefined : "A FrameSeq presentation is a .ts file."),
+        validate: (value) => (isPresentationFile(value) ? undefined : t.files.notPresentation),
       });
     }
     if (path) await this.openPath(path);

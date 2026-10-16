@@ -1,4 +1,4 @@
-<!-- translation-of: docs/vscode.md sha256:a31f2020c8678bea -->
+<!-- translation-of: docs/vscode.md sha256:8c59a2d1b308b985 -->
 
 # Visual Studio Code 扩展
 
@@ -62,7 +62,7 @@ code --install-extension output/vscode/frameseq-vscode.vsix
 
 ## 入口文件的选择
 
-优先使用当前活动的 `slides.ts` 或 `*.slides.ts` 编辑器,其次是在其他编辑器组里可见的幻灯片编辑器。否则扩展使用 `frameseq.entry` 设置里的路径,该路径可以相对于工作区文件夹,也可以是绝对路径:
+优先使用当前活动的 `slides.ts`、`*.slides.ts` 或 `*.fsq` 编辑器,其次是在其他编辑器组里可见的幻灯片编辑器。否则扩展使用 `frameseq.entry` 设置里的路径,该路径可以相对于工作区文件夹,也可以是绝对路径:
 
 ```json
 {
@@ -70,11 +70,17 @@ code --install-extension output/vscode/frameseq-vscode.vsix
 }
 ```
 
-如果该文件不存在,扩展会在整个工作区里搜索 `slides.ts` 与 `*.slides.ts`,并跳过 `node_modules`、`dist`、`out`、`tmp`、`output`。因此放在子目录里的演示文稿无需任何配置。若存在多个演示文稿,离当前编辑文件最近的优先,其次是路径最浅的。
+如果该文件不存在,扩展会在整个工作区里搜索 `slides.ts`、`*.slides.ts` 与 `*.fsq`,并跳过 `node_modules`、`dist`、`out`、`tmp`、`output`。因此放在子目录里的演示文稿无需任何配置。若存在多个演示文稿,离当前编辑文件最近的优先,其次是路径最浅的。
 
 运行 **FrameSeq: Select Entry**(命令面板、Slides 视图标题菜单,或空视图里的链接)可以自己选择演示文稿。选择器会列出找到的全部演示文稿,标注当前正在使用的那个,并按工作区记住这次选择:在你用 **Follow the active editor** 清除之前,它的优先级高于活动编辑器。Slides 视图标题会显示当前入口,固定选择时还会追加 `(selected)`。切换入口会清除上一份布局诊断,并把正在运行的预览切到新的演示文稿。
 
 命令会在该演示文稿自己的项目根目录下运行:入口文件往上第一个带有 FrameSeq CLI 的目录,否则是最近的 `package.json` 所在目录,否则是工作区文件夹。因此放在 monorepo 子目录里的演示文稿会使用它自己的依赖。
+
+## .fsq 文件
+
+FrameSeq Studio 保存演示时用的 `.fsq` 是 FrameSeq 自己的后缀,内容是同样的 TypeScript。扩展把它当作 **FrameSeq** 文档打开,按 TypeScript 着色;预览、大纲、Current Slide、区域和对象的名字、代码片段以及每个命令,都和在 `.slides.ts` 文件里一样可用。
+
+VS Code 的 TypeScript 支持只读 `.ts` 文件,所以 `.fsq` 文件在 VS Code 里没有类型错误提示、补全和悬停说明;`frameseq check` 和 FrameSeq Studio 仍然会报告它的类型错误。想在 VS Code 里写演示、并让 TypeScript 边写边检查,就把文件命名为 `.slides.ts`:内容一样,两种后缀随时可以互相改名。
 
 ## 命令
 

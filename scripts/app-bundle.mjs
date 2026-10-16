@@ -370,6 +370,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=${arch === "arm64" ? "arm64" : "x64compatible"}
 ArchitecturesInstallIn64BitMode=${arch === "arm64" ? "arm64" : "x64compatible"}
 ChangesEnvironment=yes
+ChangesAssociations=yes
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -388,6 +389,8 @@ Name: "addtopath"; Description: "Add the frameseq command to PATH"
 Source: "${source}\\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 ${nodeShortcuts()}
+
+${fileAssociation()}
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -459,6 +462,11 @@ end;
 `;
 }
 
+/** What the shortcuts and an opened .fsq file run conhost.exe with, before their own arguments. */
+function studioArguments() {
+  return `--headless ""{app}\\node\\node.exe"" ""{app}\\app\\scripts\\app-launch.mjs"" studio`;
+}
+
 /**
  * Shortcuts that start the Studio with Node.js in the background, which opens it in the app's
  * window. Node.js is signed and the window is not, so where Smart App Control refuses the
@@ -469,13 +477,31 @@ end;
  * a shortcut straight to node.exe opened a black window on every start.
  */
 function nodeShortcuts() {
-  const start = `Filename: "{sys}\\conhost.exe"; Parameters: "--headless ""{app}\\node\\node.exe"" ""{app}\\app\\scripts\\app-launch.mjs"" studio --background"; WorkingDir: "{userdocs}"`;
+  const start = `Filename: "{sys}\\conhost.exe"; Parameters: "${studioArguments()} --background"; WorkingDir: "{userdocs}"`;
   return `[Icons]
 Name: "{autoprograms}\\FrameSeq Studio"; ${start}; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"
 Name: "{autodesktop}\\FrameSeq Studio"; ${start}; IconFilename: "{app}\\FrameSeq.ico"; Comment: "Write and present slides with FrameSeq"; Tasks: desktopicon
 
 [Run]
 ${start}; Description: "Open FrameSeq Studio"; Flags: postinstall nowait skipifsilent runhidden
+`;
+}
+
+/**
+ * .fsq files open in FrameSeq Studio when double-clicked, and show its icon. The command is the
+ * shortcuts' own, with the file to open; HKA is the person's own registry, as the setup asks for
+ * no administrator.
+ */
+function fileAssociation() {
+  const classes = "Software\\Classes";
+  const kind = "FrameSeq.Presentation";
+  const open = `"""{sys}\\conhost.exe"" ${studioArguments()} ""%1"" --background"`;
+  return `[Registry]
+Root: HKA; Subkey: "${classes}\\.fsq"; ValueType: string; ValueName: ""; ValueData: "${kind}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "${classes}\\.fsq\\OpenWithProgids"; ValueType: string; ValueName: "${kind}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "${classes}\\${kind}"; ValueType: string; ValueName: ""; ValueData: "FrameSeq presentation"; Flags: uninsdeletekey
+Root: HKA; Subkey: "${classes}\\${kind}\\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\\FrameSeq.ico"
+Root: HKA; Subkey: "${classes}\\${kind}\\shell\\open\\command"; ValueType: string; ValueName: ""; ValueData: ${open}
 `;
 }
 

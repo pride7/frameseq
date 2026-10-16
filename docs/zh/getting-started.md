@@ -1,4 +1,4 @@
-<!-- translation-of: docs/getting-started.md sha256:b66c2afbb90f68e5 -->
+<!-- translation-of: docs/getting-started.md sha256:a67320f27faea6b9 -->
 
 # 用代码上手
 
@@ -23,6 +23,8 @@ frameseq studio talk.slides.ts
 ```
 
 `frameseq new` 会写好一份起步用的幻灯片,并附上给编程助手看的 `AGENTS.md` 和 `CLAUDE.md`;加上 `--template` 则从某个[模板](cli.md#新建幻灯片文件)开始,比如 `--template poster`;自己新建的文件也一样能用。从 `dev`、`studio` 到 `check`、`pdf`、`pptx`,每个命令都接受这样的文件,输出写在运行命令的文件夹下。没有项目的文件使用运行它的那份 FrameSeq。等演示需要自己的组件、主题模块,或者要固定 FrameSeq 版本时,再建项目。
+
+文件也可以叫 `talk.fsq`,这是 FrameSeq 自己的后缀。FrameSeq Studio 新建的演示就用这个后缀,在 Windows 上,FrameSeq 应用可以双击打开它。文件内容是同样的 TypeScript,每个命令两种名字都接受。在项目里继续用 `.slides.ts`,这样 `tsc` 和 VS Code 能边写边检查类型,因为 TypeScript 本身只读 `.ts` 文件。
 
 剩下的事 Studio 不用终端也能做。单独运行 `frameseq studio` 会打开一个启动页,可以新建演示、打开最近用过的演示;`frameseq shortcut` 会把它加到 Windows 的开始菜单和桌面、macOS 的“应用程序”,或 Linux 的应用程序菜单里。详见 [FrameSeq Studio](studio.md#演示文稿)。
 

@@ -1,15 +1,15 @@
-<!-- translation-of: docs/studio.md sha256:7d97b08f6cdaa07e -->
+<!-- translation-of: docs/studio.md sha256:6db030532c0816f1 -->
 
 # FrameSeq Studio
 
-FrameSeq Studio 把写一场讲演的整个循环放进一个窗口：缩略图形式的全部幻灯片、带 TypeScript 支持的 `.slides.ts` 源码编辑器、实时预览，以及一份列出这份演示所有问题的清单。除了 FrameSeq 包本身，它什么都不需要：不用另装编辑器、扩展或单独的程序。
+FrameSeq Studio 把写一场讲演的整个循环放进一个窗口：缩略图形式的全部幻灯片、带 TypeScript 支持的源码编辑器、实时预览，以及一份列出这份演示所有问题的清单。除了 FrameSeq 包本身，它什么都不需要：不用另装编辑器、扩展或单独的程序。
 
 这一页逐一介绍窗口的每个部分。想一步一步做出第一份演示，请从 [Studio 快速上手](studio-quickstart.md) 开始。
 
 装好 [FrameSeq 应用](app.md) 后，从开始菜单、“应用程序”或应用菜单里打开 FrameSeq Studio。在终端里，用下面的命令也能在一个文件上打开同一个 Studio：
 
 ```bash
-frameseq studio talk.slides.ts
+frameseq studio talk.fsq
 ```
 
 这条命令会启动开发服务器并打开 Studio。如果装了 Chrome、Edge、Chromium 或 Brave，Studio 会以一个独立的应用窗口打开，没有标签页也没有地址栏；否则在默认浏览器里打开。用 `npm create frameseq` 生成的项目可以用 `npm run studio` 做同样的事。
@@ -20,7 +20,7 @@ frameseq studio talk.slides.ts
 frameseq shortcut
 ```
 
-源码仍然是这场讲演唯一的描述。Studio 里的每个操作，无论是打字、在预览里拖拽，还是在左侧栏里调整页面顺序，最终都是对 `talk.slides.ts` 的一次编辑，编辑器自己的撤销就能把它撤回。
+源码仍然是这场讲演唯一的描述。Studio 里的每个操作，无论是打字、在预览里拖拽，还是在左侧栏里调整页面顺序，最终都是对 `talk.fsq` 的一次编辑，编辑器自己的撤销就能把它撤回。
 
 ## 窗口布局
 
@@ -92,11 +92,13 @@ Studio 有英文和中文两种界面。它一开始使用浏览器的语言，�
 
 **文件** 菜单里有 **新建演示…**、**打开…**（`Ctrl+O`）、最近打开过的演示，以及 **在文件夹中显示**；点顶栏中间的文件名也会打开同样的列表。启动页同样提供这些操作，并列出最近的演示，每一项都有一个按钮可以把它从列表里移除。
 
-- **新建演示** 会询问标题、模板和文件夹，按标题给文件命名，比如标题 *Quarterly review* 对应 `quarterly-review.slides.ts`，并把模板写进去，标题已经填好。同名的文件永远不会被覆盖；对话框会改为提供打开它。文件夹默认是上次用过的那个，否则是“文档”文件夹。
+- **新建演示** 会询问标题、模板和文件夹，按标题给文件命名，比如标题 *Quarterly review* 对应 `quarterly-review.fsq`，并把模板写进去，标题已经填好。同名的文件永远不会被覆盖；对话框会改为提供打开它。文件夹默认是上次用过的那个，否则是“文档”文件夹。
 - 模板以它们真实的封面展示，渲染方式和演示本身一样。每个内置主题各有一个模板：**空白**，一页封面和第一页内容；**午夜**，深色的产品和技术分享；**纸张**，讲故事用的衬线字体页面；**学术报告**，用 `minimal-academic` 主题的研究报告；**Beamer**、**Beamer Madrid** 和 **Beamer CambridgeUS**，同一份讲义分别用三个 Beamer 风格的主题；以及 **学术海报**，三栏的 A0 会议海报。每个模板原样就能通过布局检查。双击模板会立即创建演示；下次打开对话框时，会选中上次用过的模板。
 - 下面的 **我的模板** 是你自己的模板：用 **文件 › 另存为模板…** 存下的演示，母版和主题都在里面。右键点你的模板，可以编辑、在文件夹中显示或删除；右键点内置模板，可以在你的模板里存一份副本再修改。模板下方的一行写着模板文件夹的位置，旁边的按钮可以打开它，或者把它换到别处；见[母版与模板](masters.md#你自己的模板)。
 - **打开** 会显示这台电脑自己的打开对话框。没有这种对话框时，比如 Linux 上既没有 `zenity` 也没有 `kdialog`，Studio 会改为让你输入文件路径；设置 `FRAMESEQ_NO_DIALOGS=1` 则总是让你输入。
 - 当前文档有未保存的修改时，Studio 会先问是否保存。选 **取消** 则留在当前文档。
+
+演示文件的后缀是 FrameSeq 自己的 `.fsq`。装了 FrameSeq 应用，或者运行过 `frameseq shortcut` 之后，在 Windows 上双击 `.fsq` 文件就会在 Studio 里打开它。文件内容就是 TypeScript，和 `.slides.ts` 文件里写的完全一样，Studio 两种都能打开：把文件从一种后缀改成另一种，别的什么都不用变。如果演示属于一个用 `tsc` 做检查的 TypeScript 项目，或者想让 VS Code 边写边检查类型，就继续用 `.slides.ts`，因为 TypeScript 本身只读 `.ts` 文件；见 [VS Code](vscode.md#fsq-文件)。
 
 随后另一份演示会在同一个窗口里打开，从此 Studio 以它所在的文件夹为工作目录：它的导出会写在它旁边，即它自己的 `output/` 和 `dist/`。最近的演示记录在 FrameSeq 的设置文件夹里：Windows 上是 `%APPDATA%\FrameSeq`，macOS 上是 `~/Library/Application Support/FrameSeq`，Linux 上是 `~/.config/frameseq`；设置了 `FRAMESEQ_CONFIG_DIR` 时则用它。用 `--no-open` 启动的 Studio（脚本和测试就是这样启动的）不会改动这份列表。只有运行 Studio 的那台电脑能打开文件、显示对话框，即使加了 `--host` 也是如此。
 
@@ -106,7 +108,7 @@ Studio 有英文和中文两种界面。它一开始使用浏览器的语言，�
 frameseq shortcut
 ```
 
-这条命令会把带 FrameSeq 图标的 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式打开的是启动页。它运行的是 `frameseq studio --background`：不经过终端启动 Studio，并在它的窗口关闭后停止；服务器的输出写到设置文件夹里的 `studio.log`。`--background` 也可以和文件一起用：`frameseq studio talk.slides.ts --background`。
+这条命令会把带 FrameSeq 图标的 **FrameSeq Studio** 加到 Windows 的开始菜单和桌面、macOS 的 `~/Applications`，或 Linux 的应用程序菜单里。快捷方式打开的是启动页。它运行的是 `frameseq studio --background`：不经过终端启动 Studio，并在它的窗口关闭后停止；服务器的输出写到设置文件夹里的 `studio.log`。`--background` 也可以和文件一起用：`frameseq studio talk.fsq --background`。在 Windows 上，这个快捷方式还会让双击 `.fsq` 文件时在 Studio 里打开它，并给它换上 FrameSeq 的图标；`--remove` 也会把这些一并撤掉。
 
 快捷方式运行的是创建它的那份 FrameSeq，通常是全局安装的那份，所以移动或重新安装 FrameSeq 之后，要再运行一次 `frameseq shortcut`。`frameseq shortcut --remove` 会把它删掉。
 

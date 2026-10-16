@@ -60,7 +60,7 @@ Hold `Ctrl` (or `Command` on macOS) while scrolling over an interactive preview 
 
 ## Entry selection
 
-The active `slides.ts` or `*.slides.ts` editor takes precedence, followed by a slides editor that is visible in another group. Otherwise, the extension uses the path in the `frameseq.entry` setting, which may be relative to the workspace folder or absolute:
+The active `slides.ts`, `*.slides.ts`, or `*.fsq` editor takes precedence, followed by a slides editor that is visible in another group. Otherwise, the extension uses the path in the `frameseq.entry` setting, which may be relative to the workspace folder or absolute:
 
 ```json
 {
@@ -68,11 +68,17 @@ The active `slides.ts` or `*.slides.ts` editor takes precedence, followed by a s
 }
 ```
 
-If that file does not exist, the extension searches the whole workspace for `slides.ts` and `*.slides.ts` documents, skipping `node_modules`, `dist`, `out`, `tmp`, and `output`. A slide file in a subdirectory therefore needs no configuration. When several slide files exist, the one closest to the file being edited wins, then the shallowest path.
+If that file does not exist, the extension searches the whole workspace for `slides.ts`, `*.slides.ts`, and `*.fsq` documents, skipping `node_modules`, `dist`, `out`, `tmp`, and `output`. A slide file in a subdirectory therefore needs no configuration. When several slide files exist, the one closest to the file being edited wins, then the shallowest path.
 
 Run **FrameSeq: Select Entry** — from the palette, the Slides view title menu, or the empty-view link — to choose the slide file yourself. The picker lists every slide file it found, marks the one in use, and remembers the choice for the workspace, so it outranks the active editor until you pick **Follow the active editor** to clear it. The Slides view title shows the entry in use and appends `(selected)` while a choice is pinned. Switching entries clears the previous layout diagnostics and moves a running preview to the new file.
 
 Commands run from the slide file's own project root: the closest directory above the entry that carries the FrameSeq CLI, otherwise the closest `package.json`, otherwise the workspace folder. A slide file kept in a subdirectory of a monorepo therefore runs against its own dependencies.
+
+## .fsq files
+
+An `.fsq` file, as FrameSeq Studio saves a presentation, is FrameSeq's own extension for the same TypeScript. The extension opens it as a **FrameSeq** document, coloured as TypeScript, with the preview, the outline, Current Slide, the names of regions and objects, the snippets, and every command working as they do in a `.slides.ts` file.
+
+VS Code's TypeScript support reads only `.ts` files, so an `.fsq` file gets no type errors, completions, or hovers in VS Code; `frameseq check` and FrameSeq Studio still report its type errors. To write a presentation in VS Code with TypeScript checking it as you type, name it `.slides.ts`: rename one to the other at any time, since the text is the same.
 
 ## Commands
 

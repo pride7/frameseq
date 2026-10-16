@@ -191,7 +191,7 @@ export function windowsScript(kind) {
       "$dialog.Title = $env:FRAMESEQ_DIALOG_TITLE",
       kind === "image"
         ? `$dialog.Filter = 'Pictures|${pictureExtensions.map((extension) => `*${extension}`).join(";")}|All files (*.*)|*.*'`
-        : "$dialog.Filter = 'FrameSeq presentations (*.slides.ts, slides.ts)|*.slides.ts;slides.ts|TypeScript files (*.ts)|*.ts|All files (*.*)|*.*'",
+        : "$dialog.Filter = 'FrameSeq presentations (*.fsq, *.slides.ts)|*.fsq;*.slides.ts;slides.ts|TypeScript files (*.ts)|*.ts|All files (*.*)|*.*'",
       "if ($env:FRAMESEQ_DIALOG_FOLDER) { $dialog.InitialDirectory = $env:FRAMESEQ_DIALOG_FOLDER }",
       "$answer = { $dialog.FileName }",
     ];
@@ -247,7 +247,7 @@ async function linuxDialog(kind, folder) {
         ? ["--directory"]
         : kind === "image"
           ? [`--file-filter=Pictures | ${pictureExtensions.map((extension) => `*${extension}`).join(" ")}`, "--file-filter=All files | *"]
-          : ["--file-filter=FrameSeq presentations | *.slides.ts slides.ts", "--file-filter=All files | *"]),
+          : ["--file-filter=FrameSeq presentations | *.fsq *.slides.ts slides.ts", "--file-filter=All files | *"]),
       ...(folder ? [`--filename=${folder.endsWith("/") ? folder : `${folder}/`}`] : []),
     ]);
     // zenity leaves with 1 when the dialog is cancelled.
@@ -255,7 +255,7 @@ async function linuxDialog(kind, folder) {
   }
   const result = await run("kdialog", kind === "folder"
     ? ["--title", prompts[kind], "--getexistingdirectory", folder || homedir()]
-    : ["--title", prompts[kind], "--getopenfilename", folder || homedir(), kind === "image" ? pictureExtensions.map((extension) => `*${extension}`).join(" ") : "*.ts"]);
+    : ["--title", prompts[kind], "--getopenfilename", folder || homedir(), kind === "image" ? pictureExtensions.map((extension) => `*${extension}`).join(" ") : "*.fsq *.ts"]);
   return result.code === 1 ? { code: 0, stdout: "", stderr: "" } : result;
 }
 

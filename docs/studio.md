@@ -1,13 +1,13 @@
 # FrameSeq Studio
 
-FrameSeq Studio puts the whole loop of writing a talk in one window: the slides as thumbnails, the `.slides.ts` source in a TypeScript editor, the live preview, and one list of everything wrong with the slides. It needs nothing beyond the FrameSeq package: no editor, extension, or separate download.
+FrameSeq Studio puts the whole loop of writing a talk in one window: the slides as thumbnails, the source in a TypeScript editor, the live preview, and one list of everything wrong with the slides. It needs nothing beyond the FrameSeq package: no editor, extension, or separate download.
 
 This page describes every part of the window. To make a first presentation step by step, start with the [Studio quick start](studio-quickstart.md).
 
 With the [FrameSeq app](app.md) installed, open FrameSeq Studio from the Start menu, Applications, or the applications menu. From a terminal, the same Studio opens on a file:
 
 ```bash
-frameseq studio talk.slides.ts
+frameseq studio talk.fsq
 ```
 
 The command starts the development server and opens the Studio. When Chrome, Edge, Chromium, or Brave is installed, the Studio opens as an app window of its own, with no tabs or address bar; otherwise it opens in the default browser. A project generated with `npm create frameseq` runs the same thing with `npm run studio`.
@@ -18,7 +18,7 @@ Without a file, and with no `slides.ts` in the folder it starts from, `frameseq 
 frameseq shortcut
 ```
 
-The source stays the only description of the talk. Everything the Studio does, whether it is typing, dragging in the preview, or reordering slides in the rail, ends as an edit to `talk.slides.ts` that the editor's own undo can take back.
+The source stays the only description of the talk. Everything the Studio does, whether it is typing, dragging in the preview, or reordering slides in the rail, ends as an edit to `talk.fsq` that the editor's own undo can take back.
 
 ## The window
 
@@ -90,11 +90,13 @@ The [FrameSeq app](app.md#updates), and FrameSeq installed with npm, check once 
 
 **File** holds **New presentation…**, **Open…** (`Ctrl+O`), the presentations opened recently, and **Show in folder**; the file name in the middle of the top bar opens the same list. The start page offers them too, and lists the recent presentations with a button that removes one from the list.
 
-- **New presentation** asks for a title, a template, and a folder, names the file after the title, as `quarterly-review.slides.ts` for *Quarterly review*, and writes the template into it with the title in place. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
+- **New presentation** asks for a title, a template, and a folder, names the file after the title, as `quarterly-review.fsq` for *Quarterly review*, and writes the template into it with the title in place. A file of that name is never overwritten; the dialog offers to open it instead. The folder starts as the one used last, or Documents.
 - The templates are shown by their real covers, rendered as the presentation will be. There is one for each built-in theme: **Blank**, a cover and a first slide; **Midnight**, a dark talk for products and code; **Paper**, serif pages for a story; **Academic talk**, a research talk in `minimal-academic`; **Beamer**, **Beamer Madrid**, and **Beamer CambridgeUS**, the same lecture in the three Beamer-inspired themes; and **Poster**, an A0 conference poster in three columns. Each passes the layout check as written. Double-click a template to create the presentation at once; the next dialog starts on the template used last.
 - **My templates**, below them, are your own: presentations kept with **File › Save as template…**, masters and theme included. Right-click one to edit it, show it in its folder, or delete it, and right-click a built-in template to keep a copy among yours to change. The line under the templates names the templates folder, with buttons that open it and move it elsewhere; see [Masters and templates](masters.md#templates-of-your-own).
 - **Open** shows this computer's own open dialog. Where there is none, as on Linux without `zenity` or `kdialog`, the Studio asks for the file's path instead; `FRAMESEQ_NO_DIALOGS=1` makes it always ask.
 - When the open document has unsaved changes, the Studio asks whether to save them first. **Cancel** keeps the document open.
+
+A presentation is an `.fsq` file, FrameSeq's own extension, which the FrameSeq app and `frameseq shortcut` let Windows open in the Studio with a double-click. Its text is TypeScript, exactly what a `.slides.ts` file holds, and the Studio opens both: rename one to the other and nothing else changes. Keep `.slides.ts` for a presentation that a TypeScript project checks with `tsc` or that VS Code should check as you type, since TypeScript itself reads only `.ts` files; see [VS Code](vscode.md#fsq-files).
 
 The other presentation then opens in the same window, and the Studio works from its folder from then on: its exports land beside it, in its own `output/` and `dist/`. Recent presentations are kept in FrameSeq's settings folder, `%APPDATA%\FrameSeq` on Windows, `~/Library/Application Support/FrameSeq` on macOS, and `~/.config/frameseq` on Linux, or `FRAMESEQ_CONFIG_DIR` when it is set; a Studio started with `--no-open`, as scripts and tests start it, leaves the list alone. Only the computer the Studio runs on can open files and show dialogs, even with `--host`.
 
@@ -104,7 +106,7 @@ The other presentation then opens in the same window, and the Studio works from 
 frameseq shortcut
 ```
 
-This adds **FrameSeq Studio**, with the FrameSeq icon, to the Start menu and the desktop on Windows, to `~/Applications` on macOS, and to the applications menu on Linux. The shortcut opens the start page. It runs `frameseq studio --background`, which starts the Studio without a terminal and stops it once its window has closed; what the server prints goes to `studio.log` in the settings folder. `--background` works with a file as well: `frameseq studio talk.slides.ts --background`.
+This adds **FrameSeq Studio**, with the FrameSeq icon, to the Start menu and the desktop on Windows, to `~/Applications` on macOS, and to the applications menu on Linux. The shortcut opens the start page. It runs `frameseq studio --background`, which starts the Studio without a terminal and stops it once its window has closed; what the server prints goes to `studio.log` in the settings folder. `--background` works with a file as well: `frameseq studio talk.fsq --background`. On Windows the shortcut also opens `.fsq` files in the Studio when they are double-clicked, and gives them the FrameSeq icon; `--remove` undoes that too.
 
 The shortcut runs the FrameSeq that made it, usually a global install, so run `frameseq shortcut` again after moving or reinstalling FrameSeq. `frameseq shortcut --remove` takes it away.
 

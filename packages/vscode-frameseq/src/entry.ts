@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
-/** Matches `slides.ts` and `<name>.slides.ts` in any directory, not just a workspace root. */
-export const slidesFilePattern = /(?:^|[\\/])(?:slides|[^\\/]+\.slides)\.ts$/i;
+/** Matches `slides.ts`, `<name>.slides.ts`, and `<name>.fsq` in any directory, not just a workspace root. */
+export const slidesFilePattern = /(?:^|[\\/])(?:(?:slides|[^\\/]+\.slides)\.ts|[^\\/]+\.fsq)$/i;
 
 export const entryExcludeGlob = "**/{node_modules,dist,out,tmp,output,.git}/**";
 
@@ -35,10 +35,10 @@ export function ancestorDirectories(path: string, stopAt?: string): string[] {
 
 /** Searches every directory, so a deck nested below the workspace root is still found. */
 export function entrySearchGlob(configured: Iterable<string> = []): string {
-  const names = new Set(["slides.ts", "*.slides.ts"]);
+  const names = new Set(["slides.ts", "*.slides.ts", "*.fsq"]);
   for (const entry of configured) {
     const name = pathSegments(entry).pop();
-    if (name && name.toLowerCase().endsWith(".ts")) names.add(name);
+    if (name && /\.(?:ts|fsq)$/i.test(name)) names.add(name);
   }
   return `**/{${[...names].join(",")}}`;
 }

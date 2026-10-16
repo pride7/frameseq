@@ -33,6 +33,7 @@ export const groups = [
       test("cjk-test"),
       test("flow-layout-test"),
       test("single-file-test"),
+      test("fsq-test"),
       test("source-map-test"),
       test("source-edit-test"),
       test("remote-control-test"),

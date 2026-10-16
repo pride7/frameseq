@@ -57,7 +57,7 @@ const tools = [
   {
     name: "guide",
     annotations: readOnly,
-    description: "Read FrameSeq's authoring guide: how a .slides.ts file is written, its commands, layouts, text roles, and rules. Read it before writing FrameSeq for the first time.",
+    description: "Read FrameSeq's authoring guide: how a presentation (an .fsq or .slides.ts file, both TypeScript) is written, its commands, layouts, text roles, and rules. Read it before writing FrameSeq for the first time.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
 ];

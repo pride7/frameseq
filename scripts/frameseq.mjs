@@ -15,7 +15,7 @@ import { DocumentRunError, deckReady, displayPath, documentErrorReport, watchDec
 import { collectLayoutIssues } from "./layout-rules.mjs";
 import { exportPptx } from "./pptx-export.mjs";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
-import { presentationTemplate, presentationTemplates, templateDeck } from "./presentation-file.mjs";
+import { presentationStem, presentationTemplate, presentationTemplates, templateDeck } from "./presentation-file.mjs";
 import { keepSlides, readSlides, slidesFileSuffix } from "./slide-selection.mjs";
 import { createFromTemplate, findUserTemplate, templateDirectory, userTemplates } from "./user-templates.mjs";
 import { configDirectory } from "./studio-files.mjs";
@@ -61,31 +61,32 @@ Usage:
   frameseq mcp [file]                 Serve the slides to a coding agent over MCP:
                                       outline, check, screenshots, and the guide
   frameseq new [file] [--template name]
-                                      Create a .slides.ts file, blank or from a template:
+                                      Create a presentation (.fsq or .slides.ts), blank or from a template:
                                       ${presentationTemplates.map((template) => template.id).join(", ")},
                                       or one of your own from your templates folder
 
 Examples:
+  frameseq dev talk.fsq
   frameseq dev talk.slides.ts
-  frameseq dev talk.slides.ts --host
-  frameseq dev talk.slides.ts --remote
-  frameseq studio talk.slides.ts
+  frameseq dev talk.fsq --host
+  frameseq dev talk.fsq --remote
+  frameseq studio talk.fsq
   frameseq studio
   frameseq shortcut
   frameseq update
-  frameseq build talk.slides.ts
-  frameseq build talk.slides.ts --single-file
-  frameseq pdf talk.slides.ts
-  frameseq pdf talk.slides.ts --slides 1-3,5
-  frameseq png figure.slides.ts --scale 3
-  frameseq pptx talk.slides.ts
-  frameseq pptx talk.slides.ts --flatten
-  frameseq typst talk.slides.ts
-  frameseq check talk.slides.ts
-  frameseq inspect talk.slides.ts --json
-  claude mcp add frameseq -- frameseq mcp talk.slides.ts
-  frameseq new quarterly.slides.ts
-  frameseq new poster.slides.ts --template poster`);
+  frameseq build talk.fsq
+  frameseq build talk.fsq --single-file
+  frameseq pdf talk.fsq
+  frameseq pdf talk.fsq --slides 1-3,5
+  frameseq png figure.fsq --scale 3
+  frameseq pptx talk.fsq
+  frameseq pptx talk.fsq --flatten
+  frameseq typst talk.fsq
+  frameseq check talk.fsq
+  frameseq inspect talk.fsq --json
+  claude mcp add frameseq -- frameseq mcp talk.fsq
+  frameseq new quarterly.fsq
+  frameseq new poster.fsq --template poster`);
 }
 
 function option(name) {
@@ -165,7 +166,7 @@ async function createSlidesFile(target, template) {
   await mkdir(dirname(target), { recursive: true });
   if (template.own) {
     // A template of one's own is a presentation already; the new one takes its file's name.
-    const title = basename(target).replace(/\.slides\.ts$|\.ts$/i, "").replace(/[-_]+/g, " ").trim();
+    const title = presentationStem(basename(target)).replace(/[-_]+/g, " ").trim();
     const { copied } = await createFromTemplate(template.own, target, title);
     for (const file of copied) console.log(`Copied ${file} from the template`);
   } else {
@@ -688,11 +689,17 @@ async function startInBackground() {
   const log = join(configDirectory(), "studio.log");
   await mkdir(dirname(log), { recursive: true });
   const output = openSync(log, "w");
+  // A presentation opened by a double-click arrives from wherever Windows started this; the
+  // Studio works from its folder, as it does after opening one, so its exports land beside it.
+  const entry = named ? resolve(process.cwd(), named) : undefined;
+  const args = process.argv.slice(2)
+    .filter((argument) => argument !== "--background")
+    .map((argument) => (argument === named ? entry : argument));
   const child = spawn(
     process.execPath,
-    [fileURLToPath(import.meta.url), ...process.argv.slice(2).filter((argument) => argument !== "--background")],
+    [fileURLToPath(import.meta.url), ...args],
     {
-      cwd: process.cwd(),
+      cwd: entry ? dirname(entry) : process.cwd(),
       detached: true,
       windowsHide: true,
       stdio: ["ignore", output, output],
@@ -705,7 +712,9 @@ async function startInBackground() {
 
 const [, , command] = process.argv;
 const named = positionalFile(process.argv.slice(3));
-const file = named ?? "slides.ts";
+// Without a file named, the folder's slides.fsq, or else its slides.ts.
+const defaultFile = existsSync(resolve(process.cwd(), "slides.fsq")) ? "slides.fsq" : "slides.ts";
+const file = named ?? (command === "new" ? "slides.ts" : defaultFile);
 // `studio --desktop` is how the FrameSeq app's window starts the server it then shows.
 const desktop = process.argv.includes("--desktop");
 
@@ -739,7 +748,7 @@ try {
     }
   } else if (command === "studio" && process.argv.includes("--background")) {
     await startInBackground();
-  } else if (command === "studio" && !named && !existsSync(resolve(process.cwd(), "slides.ts"))) {
+  } else if (command === "studio" && !named && !existsSync(resolve(process.cwd(), defaultFile))) {
     // No document to open: the start page offers a new presentation, an existing one, or a recent one.
     await startDevelopmentServer(resolve(process.cwd(), "slides.ts"), {
       hostEnabled: process.argv.includes("--host"),

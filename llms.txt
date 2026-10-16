@@ -1,6 +1,6 @@
 # FrameSeq
 
-> FrameSeq is a declarative TypeScript framework for creating editable presentations and posters. A linear `.slides.ts` source renders to interactive HTML and exports to PDF, editable PPTX, and Typst, at screen size or at a paper size such as A0.
+> FrameSeq is a declarative TypeScript framework for creating editable presentations and posters. A linear `.slides.ts` source, or the same TypeScript in an `.fsq` file as FrameSeq Studio saves it, renders to interactive HTML and exports to PDF, editable PPTX, and Typst, at screen size or at a paper size such as A0.
 
 Canonical documentation: https://github.com/pride7/frameseq/tree/main/docs
 AI generation guide: https://github.com/pride7/frameseq/blob/main/docs/ai-generation.md

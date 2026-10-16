@@ -46,8 +46,8 @@ async function checkAll(documents) {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const folder = join(workspace, next.name);
       await mkdir(folder, { recursive: true });
-      await writeFile(join(folder, "deck.slides.ts"), next.text, "utf8");
-      const result = await run(["check", "deck.slides.ts", "--strict"], folder);
+      await writeFile(join(folder, "deck.fsq"), next.text, "utf8");
+      const result = await run(["check", "deck.fsq", "--strict"], folder);
       if (result.code !== 0) failures.push(`${next.name}:\n${result.output}`);
     }
   };
@@ -147,7 +147,7 @@ try {
     body: JSON.stringify({ title: "Odd", folder: studioHome, template: "nope" }),
   });
   assert.equal(refusedTemplate.status, 400);
-  assert.equal(existsSync(join(studioHome, "odd.slides.ts")), false);
+  assert.equal(existsSync(join(studioHome, "odd.fsq")), false);
 
   browser = await puppeteer.launch(puppeteerLaunchOptions());
   const page = await browser.newPage();
@@ -213,7 +213,7 @@ try {
   await page.keyboard.press("Backspace");
   await page.type("dialog.studio-new-dialog input[name='folder']", studioHome);
   await page.click("dialog.studio-new-dialog .is-primary");
-  const notes = join(studioHome, "field-notes.slides.ts");
+  const notes = join(studioHome, "field-notes.fsq");
   await page.waitForFunction(() => window.frameseqStudio?.text?.includes('theme: "paper"'), { timeout: 60_000 });
   assert.equal(await readFile(notes, "utf8"), templateDeck("paper", "Field notes", "en"));
   assert.equal(await page.evaluate(() => localStorage.getItem("frameseq-studio-template")), "paper", "the next dialog starts on it");

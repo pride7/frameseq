@@ -22,6 +22,8 @@ frameseq studio talk.slides.ts
 
 `frameseq new` writes a starter presentation, with `AGENTS.md` and `CLAUDE.md` for coding agents; `--template` starts from one of the [templates](cli.md#create-a-slide-file) instead, such as `--template poster`, and a file you create yourself works as well. Every command, from `dev` and `studio` to `check`, `pdf`, and `pptx`, accepts such a file, and writes its output under the folder it was run from. A file with no project of its own uses the FrameSeq that runs it. Create a project when the talk needs its own components, theme module, or a pinned FrameSeq version.
 
+The file may also be named `talk.fsq`, FrameSeq's own extension. FrameSeq Studio names the presentations it creates that way, and the FrameSeq app opens them with a double-click on Windows. The text is the same TypeScript, and every command accepts either name. Keep `.slides.ts` in a project, where `tsc` and VS Code check the types as you type, since TypeScript itself reads only `.ts` files.
+
 The Studio can do the rest without a terminal. `frameseq studio` on its own opens a start page that creates presentations and opens recent ones, and `frameseq shortcut` adds it to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux. See [FrameSeq Studio](studio.md#presentations).
 
 ## Create a project

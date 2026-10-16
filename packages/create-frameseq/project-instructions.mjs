@@ -8,6 +8,7 @@ This repository is a FrameSeq presentation project. Treat the presentation as so
 - \`components/content.ts\` contains reusable content factories.
 - \`components/theme.ts\` contains shared visual settings.
 - FrameSeq authoring functions are global in \`slides.ts\`; do not import FrameSeq there, wrap the deck in a callback, or add an export statement.
+- A presentation saved from FrameSeq Studio is an \`.fsq\` file. Its text is TypeScript and follows the same rules as \`slides.ts\`.
 - Ordinary \`.ts\` component modules must explicitly import the FrameSeq functions they use from \`@pride7/frameseq\`.
 - Read \`node_modules/@pride7/frameseq/llms.txt\` when you need the complete API contract.
 

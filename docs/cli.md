@@ -2,6 +2,8 @@
 
 The npm package installs the `frameseq` executable, and so does the [FrameSeq app](app.md), which needs no Node.js.
 
+Every command that takes a `[file]` accepts a presentation named `.fsq`, FrameSeq's own extension, or `.slides.ts`; the text is the same TypeScript. Without a file, a command uses `slides.fsq` in the current directory when there is one, and `slides.ts` otherwise.
+
 ## Create a slide file
 
 ```bash

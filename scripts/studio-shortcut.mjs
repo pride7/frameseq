@@ -47,10 +47,60 @@ async function windowsFolders() {
 
 const consoleHost = () => join(process.env.SystemRoot ?? "C:\\Windows", "System32", "conhost.exe");
 
+/**
+ * Open .fsq files in the Studio when they are double-clicked, with FrameSeq's icon, or with
+ * `remove` stop doing so. The keys are the person's own, under HKEY_CURRENT_USER, as the app's
+ * setup writes them. FRAMESEQ_FILE_CLASSES names another key to write them under, for testing;
+ * a test that keeps its shortcut in FRAMESEQ_SHORTCUT_DIR leaves the registry alone otherwise.
+ */
+async function windowsFileAssociation({ open, icon, remove }) {
+  const classes = process.env.FRAMESEQ_FILE_CLASSES ?? (process.env.FRAMESEQ_SHORTCUT_DIR ? undefined : "Software\\Classes");
+  if (!classes) return;
+  await powershell([
+    "$ErrorActionPreference = 'Stop'",
+    "$user = [Microsoft.Win32.Registry]::CurrentUser",
+    "$classes = $env:FRAMESEQ_CLASSES",
+    "$kind = 'FrameSeq.Presentation'",
+    "if ($env:FRAMESEQ_REMOVE -eq '1') {",
+    "  $extension = $user.OpenSubKey(\"$classes\\.fsq\", $true)",
+    "  if ($extension) {",
+    // .fsq may have been handed to another program since; it is left with it.
+    "    if ($extension.GetValue('') -eq $kind) { $extension.DeleteValue('', $false) }",
+    "    $with = $extension.OpenSubKey('OpenWithProgids', $true)",
+    "    if ($with) { $with.DeleteValue($kind, $false); $with.Close() }",
+    "    $extension.Close()",
+    "  }",
+    "  $user.DeleteSubKeyTree(\"$classes\\$kind\", $false)",
+    "} else {",
+    "  $extension = $user.CreateSubKey(\"$classes\\.fsq\")",
+    "  $extension.SetValue('', $kind)",
+    "  $extension.CreateSubKey('OpenWithProgids').SetValue($kind, '')",
+    "  $type = $user.CreateSubKey(\"$classes\\$kind\")",
+    "  $type.SetValue('', 'FrameSeq presentation')",
+    "  $type.CreateSubKey('DefaultIcon').SetValue('', $env:FRAMESEQ_ICON)",
+    "  $type.CreateSubKey('shell\\open\\command').SetValue('', $env:FRAMESEQ_OPEN)",
+    "}",
+    // Explorer shows the new icon at once when told the associations changed.
+    "try {",
+    "  Add-Type -Namespace FrameSeq -Name Shell -MemberDefinition '[DllImport(\"shell32.dll\")] public static extern void SHChangeNotify(int e, uint f, System.IntPtr a, System.IntPtr b);'",
+    "  [FrameSeq.Shell]::SHChangeNotify(0x08000000, 0, [System.IntPtr]::Zero, [System.IntPtr]::Zero)",
+    "} catch {}",
+  ].join("\n"), {
+    FRAMESEQ_CLASSES: classes,
+    FRAMESEQ_REMOVE: remove ? "1" : "0",
+    FRAMESEQ_ICON: icon,
+    FRAMESEQ_OPEN: open,
+  });
+}
+
 async function windowsShortcut({ node, cli, window, remove }) {
   const links = (await windowsFolders()).map((folder) => join(folder, `${title}.lnk`));
   const icon = join(configDirectory(), "FrameSeq.ico");
+  const open = window
+    ? `"${window}" "%1"`
+    : `"${consoleHost()}" --headless "${node}" "${cli}" studio "%1" --background`;
   if (remove) {
+    await windowsFileAssociation({ open, icon, remove });
     await Promise.all([...links, icon].map((path) => rm(path, { force: true })));
     return links;
   }
@@ -79,6 +129,7 @@ async function windowsShortcut({ node, cli, window, remove }) {
     FRAMESEQ_ICON: icon,
     FRAMESEQ_DESCRIPTION: description,
   });
+  await windowsFileAssociation({ open, icon, remove });
   return links;
 }
 

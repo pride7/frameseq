@@ -7,7 +7,7 @@ import type { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import type { RunResult } from "node-tectonic";
 import tailwindcss from "@tailwindcss/vite";
 import ts from "typescript";
-import { defineConfig, normalizePath, type ViteDevServer } from "vite";
+import { defineConfig, normalizePath, transformWithEsbuild, type ViteDevServer } from "vite";
 // @ts-expect-error -- plain JavaScript so the marking rules can be tested on their own.
 import { applySourceEdits, markEdits, sourceMarks, statementEdits } from "./scripts/source-marks.mjs";
 // @ts-expect-error -- plain JavaScript so the write-back rules can be tested on their own.
@@ -109,7 +109,7 @@ function templatesModule(): string {
 /** A module the presentation itself wrote, as opposed to FrameSeq or a dependency. */
 function projectModule(id: string): boolean {
   const path = normalizePath(id.split("?")[0]);
-  return /\.(?:[cm]?[jt]sx?)$/.test(path)
+  return /\.(?:[cm]?[jt]sx?|fsq)$/i.test(path)
     && !path.includes("/node_modules/")
     && !path.startsWith("\0")
     && !pathKey(path).startsWith(pathKey(`${normalizePath(packageRoot)}/src/`))
@@ -856,12 +856,17 @@ export default defineConfig({
         // First, so the icons are in place before any module of the deck asks for one.
         const iconImport = `import ${JSON.stringify(virtualIcons)};\n`;
         const internalImports = `${iconImport}${typstImport}${latexImport}${markImport}`;
-        if (importsFramework) return { code: `${internalImports}${transformedSource}`, map: null };
-
         const hasDefaultExport = /\bexport\s+default\b/.test(source);
         const prelude = `import { ${documentCommands.join(", ")}, getActivePresentation as __frameSeqSlides } from "@pride7/frameseq";\n`;
         const postlude = hasDefaultExport ? "" : "\nexport default __frameSeqSlides();\n";
-        return { code: `${internalImports}${prelude}${transformedSource}${postlude}`, map: null };
+        const code = importsFramework
+          ? `${internalImports}${transformedSource}`
+          : `${internalImports}${prelude}${transformedSource}${postlude}`;
+        // Vite compiles TypeScript by the file's extension, so an .fsq document, TypeScript all
+        // the same, is compiled here.
+        if (!/\.fsq$/i.test(document)) return { code, map: null };
+        const compiled = await transformWithEsbuild(code, document, { loader: "ts", sourcemap: false });
+        return { code: compiled.code, map: null };
       },
     },
     studioPlugin({

@@ -23,14 +23,16 @@ The [download page](https://pride7.github.io/frameseq/download/) offers the file
 
 Open FrameSeq Studio from the Start menu, Applications, or the applications menu. It starts on its start page, where a new presentation is one click away; see [FrameSeq Studio](studio.md).
 
+On Windows, the setup also makes `.fsq` files, the presentations the Studio saves, open in FrameSeq Studio when they are double-clicked, with the FrameSeq icon; each opens in a window of its own and exports beside itself. The portable download does the same once `frameseq shortcut` has run.
+
 The Studio opens in a window of its own, as a desktop program does. On Windows its menu bar is the title bar: drag it to move the window, double-click it to maximize, and minimize, maximize, and close sit at its right end. On macOS the traffic lights sit at the menu bar's left end. On Linux the window keeps the desktop's own title bar, and needs WebKitGTK 4.1 (`libwebkit2gtk-4.1`), which most desktops have. Closing the window stops the Studio, after asking about unsaved edits. Where the window cannot open, as on a Windows without WebView2 or a Linux without WebKitGTK, the Studio opens in a browser's app window instead; `FRAMESEQ_NO_STUDIO_WINDOW=1` asks for that anyway.
 
 The `frameseq` command does everything the [CLI reference](cli.md) describes:
 
 ```bash
-frameseq new talk.slides.ts
-frameseq studio talk.slides.ts
-frameseq pdf talk.slides.ts
+frameseq new talk.fsq
+frameseq studio talk.fsq
+frameseq pdf talk.fsq
 ```
 
 `frameseq studio` opens the same window when it runs from the app.
