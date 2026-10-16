@@ -1,4 +1,4 @@
-<!-- translation-of: docs/presenter.md sha256:cbe6bb23130f92f7 -->
+<!-- translation-of: docs/presenter.md sha256:7580dc7b2ebeca9f -->
 
 # 演讲者视图
 

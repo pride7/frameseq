@@ -1,4 +1,4 @@
-<!-- translation-of: docs/vscode.md sha256:87b9dc2153e4396b -->
+<!-- translation-of: docs/vscode.md sha256:a31f2020c8678bea -->
 
 # Visual Studio Code 扩展
 
@@ -66,7 +66,7 @@ code --install-extension output/vscode/frameseq-vscode.vsix
 
 ```json
 {
-  "frameseq.entry": "decks/kickoff/slides.ts"
+  "frameseq.entry": "talks/kickoff/slides.ts"
 }
 ```
 

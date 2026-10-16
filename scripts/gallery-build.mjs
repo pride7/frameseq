@@ -10,6 +10,7 @@ import { marked } from "marked";
 import puppeteer from "puppeteer";
 import { preview } from "vite";
 import { puppeteerLaunchOptions } from "./puppeteer-options.mjs";
+import { addHeadingIds } from "./docs-anchors.mjs";
 import { documentationPages, locales, localisedGroups } from "./docs-structure.mjs";
 import { captureStudio } from "./gallery-studio.mjs";
 
@@ -71,27 +72,6 @@ function rewriteMarkdownLinks(source) {
         ? "changelog"
         : name;
     return `](${prefix}${slug}.html${fragment ? `#${fragment}` : ""})`;
-  });
-}
-
-function headingSlug(value) {
-  return value
-    .replace(/<[^>]+>/g, "")
-    .replaceAll("&amp;", "and")
-    .replaceAll("&quot;", "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function addHeadingIds(html) {
-  const used = new Map();
-  return html.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g, (_match, level, content) => {
-    const base = headingSlug(content) || "section";
-    const count = used.get(base) ?? 0;
-    used.set(base, count + 1);
-    const id = count === 0 ? base : `${base}-${count + 1}`;
-    return `<h${level} id="${id}">${content}<a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a></h${level}>`;
   });
 }
 

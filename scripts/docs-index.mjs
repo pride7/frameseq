@@ -16,25 +16,37 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const intros = {
   en: `# FrameSeq documentation
 
-Three pages get a talk written: install FrameSeq, copy the page you need, then revise it. Everything else is here for the moment a slide asks for it.
+FrameSeq makes slides in two ways, and both make the same file. Click and drag in FrameSeq Studio, as you would in PowerPoint, or write the slides as code. The Studio writes every click into the code, so you can switch from one to the other at any time.
 
-1. [Getting started](getting-started.md) — a project, the first slides, a preview, an export.
+**With the mouse**, one page gets a presentation made:
+
+1. [Studio quick start](studio-quickstart.md) — install the app, start from a template, edit with the mouse, present, and export.
+
+**With code**, three pages get a talk written: install FrameSeq, copy the page you need, then revise it.
+
+1. [Getting started with code](getting-started.md) — a project, the first slides, a preview, an export.
 2. [Recipes](recipes.md) — a complete slide for each page a talk needs, with the result beside it.
 3. [Revising a talk](revising.md) — what a second draft costs, edit by edit.
 
-You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
+Everything else is here for the moment a slide asks for it. You can also edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
 
 A Chinese translation of this reading path is at [中文文档](zh/README.md).
 `,
   zh: `# FrameSeq 文档
 
-三页就能把一场讲演写出来:装上 FrameSeq、抄一页你要的、然后改。其余页面是等某一页真的需要时再看的。
+FrameSeq 有两种做幻灯片的方式，做出来的是同一个文件：在 FrameSeq Studio 里像用 PowerPoint 一样点击和拖动，或者用代码写。Studio 会把每一次点击写进代码，所以随时可以从一种换到另一种。
 
-1. [快速上手](getting-started.md) —— 建项目、写头几页、预览、导出。
+**用鼠标**，一页就能做出一份演示：
+
+1. [Studio 快速上手](studio-quickstart.md) —— 装上应用，从模板开始，用鼠标编辑，放映，再导出。
+
+**用代码**，三页就能把一场讲演写出来：装上 FrameSeq、抄一页你要的、然后改。
+
+1. [用代码上手](getting-started.md) —— 建项目、写头几页、预览、导出。
 2. [配方](recipes.md) —— 讲演需要的每一种页面,各一页完整源码,配渲染结果。
 3. [修改一场讲演](revising.md) —— 第二稿的每一处改动值多少行。
 
-也可以先看 [在线 Gallery](https://pride7.github.io/frameseq/),或者在 [在线 Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) 里直接改,什么都不用装。
+其余页面是等某一页真的需要时再看的。也可以先在 [在线 Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) 里直接改，什么都不用装。
 
 标注 (English) 的页面**刻意保持英文**:函数参考和 API 参考的主体是签名和代码,读者查的就是要敲进去的那串字符;更新日志是历史记录,翻译它意味着每次发版都要再翻一遍;发布自动化只写给维护者。这些页面的链接指向英文原页。
 `,

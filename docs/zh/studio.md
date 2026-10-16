@@ -1,8 +1,12 @@
-<!-- translation-of: docs/studio.md sha256:a1ca4622d8f67373 -->
+<!-- translation-of: docs/studio.md sha256:d10a8164d314868f -->
 
 # FrameSeq Studio
 
 FrameSeq Studio 把写一场讲演的整个循环放进一个窗口：缩略图形式的全部幻灯片、带 TypeScript 支持的 `.slides.ts` 源码编辑器、实时预览，以及一份列出这份演示所有问题的清单。除了 FrameSeq 包本身，它什么都不需要：不用另装编辑器、扩展或单独的程序。
+
+这一页逐一介绍窗口的每个部分。想一步一步做出第一份演示，请从 [Studio 快速上手](studio-quickstart.md) 开始。
+
+装好 [FrameSeq 应用](app.md) 后，从开始菜单、“应用程序”或应用菜单里打开 FrameSeq Studio。在终端里，用下面的命令也能在一个文件上打开同一个 Studio：
 
 ```bash
 frameseq studio talk.slides.ts

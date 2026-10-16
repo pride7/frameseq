@@ -2,7 +2,7 @@
 
 The FrameSeq app installs everything FrameSeq needs in one download, Node.js included, so nothing else has to be installed first. It puts FrameSeq Studio where programs open from, and adds the same `frameseq` command an npm install provides.
 
-Download it from the [releases page](https://github.com/pride7/frameseq/releases/latest):
+The [download page](https://pride7.github.io/frameseq/download/) offers the file for your computer. Every file is also on the [releases page](https://github.com/pride7/frameseq/releases/latest):
 
 | System | Download | Installs |
 | --- | --- | --- |

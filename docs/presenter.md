@@ -111,7 +111,7 @@ How much of a note fits on screen at a readable size depends on the display and 
 
 Only the notes panel changes. The current slide, the next-slide preview, and the audience window are untouched, so shrinking the text to fit a long script never changes what the audience sees.
 
-The chosen size is stored in the browser and applies to every deck opened in the same browser profile, including presenter view on a paired phone.
+The chosen size is stored in the browser and applies to every presentation opened in the same browser profile, including presenter view on a paired phone.
 
 ## Laser pointer
 

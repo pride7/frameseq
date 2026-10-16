@@ -1,6 +1,8 @@
-<!-- translation-of: docs/getting-started.md sha256:c1069c7a47a86139 -->
+<!-- translation-of: docs/getting-started.md sha256:b66c2afbb90f68e5 -->
 
-# 快速上手
+# 用代码上手
+
+这一页用代码写一份演示，用的是终端和你喜欢的编辑器。想像在 PowerPoint 里那样用鼠标做，请从 [Studio 快速上手](studio-quickstart.md) 开始。两种方式做出来的是同一个文件，随时可以换着用。
 
 ## 在线试用
 
@@ -8,7 +10,7 @@
 
 ## 安装应用
 
-[FrameSeq 应用](app.md)一个下载就装好 FrameSeq Studio 和 `frameseq` 命令,不需要事先装任何东西,包括 Node.js。从[发布页](https://github.com/pride7/frameseq/releases/latest)下载 Windows、macOS 或 Linux 版本,打开 FrameSeq Studio,在启动页新建一份演示即可。
+[FrameSeq 应用](app.md)一个下载就装好 FrameSeq Studio 和 `frameseq` 命令,不需要事先装任何东西,包括 Node.js。从[下载页](https://pride7.github.io/frameseq/zh/download/)下载 Windows、macOS 或 Linux 版本,这一页里的每个 `frameseq` 命令就都能用了,不需要 npm。
 
 ## 只写一个文件
 

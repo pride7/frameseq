@@ -19,7 +19,7 @@ The FrameSeq extension adds presentation-aware navigation and commands to Visual
 - A visible export button in the Slides-view toolbar with HTML, PDF, PPTX, and editable Typst choices.
 - Alt-click in the preview to move the cursor to the command that drew an object.
 - Dragging in the preview to change the coordinates a command states, or an object's place among its neighbours, as an undoable edit.
-- **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the deck in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the deck is shown again rather than started twice, unless it has since opened another presentation, in which case it starts again on this deck; **FrameSeq: Stop Studio** ends it.
+- **FrameSeq: Open in Studio**, on the Slides view toolbar, which opens the slides in [FrameSeq Studio](studio.md) in a window of its own. Unsaved edits are saved first, and a Studio already running for the file is shown again rather than started twice, unless it has since opened another presentation, in which case it starts again on this file; **FrameSeq: Stop Studio** ends it.
 
 The extension reads the outline through `frameseq inspect --json` and runs preview, validation, and export through the FrameSeq CLI: the project's own when it has one, otherwise a global install, either from npm or the [FrameSeq app](app.md). The app brings its own Node.js, which the extension then uses, so a computer with only the app needs nothing else. The extension does not bundle another copy of the rendering runtime.
 
@@ -44,7 +44,7 @@ Install it from the VS Code Extensions view with **Install from VSIX...**, or us
 code --install-extension output/vscode/frameseq-vscode.vsix
 ```
 
-Open a FrameSeq project after installation. The project must already have its npm dependencies installed so the extension can call the local `frameseq` executable. A deck with no project of its own, a single `.slides.ts` file in any folder, uses the `frameseq` command that `npm install --global @pride7/frameseq` put on the PATH, the one a terminal would run. With neither, the extension says how to install FrameSeq.
+Open a FrameSeq project after installation. The project must already have its npm dependencies installed so the extension can call the local `frameseq` executable. A slide file with no project of its own, a single `.slides.ts` file in any folder, uses the `frameseq` command that `npm install --global @pride7/frameseq` put on the PATH, the one a terminal would run. With neither, the extension says how to install FrameSeq.
 
 Running **FrameSeq: Preview** keeps the entry document in the first editor group and opens the preview beside it. Set `frameseq.previewBeside` to `false` if you prefer the preview in the active editor group. Selecting a slide in the FrameSeq outline updates both the source selection and the live preview; this behavior is controlled by `frameseq.followOutline`.
 
@@ -64,15 +64,15 @@ The active `slides.ts` or `*.slides.ts` editor takes precedence, followed by a s
 
 ```json
 {
-  "frameseq.entry": "decks/kickoff/slides.ts"
+  "frameseq.entry": "talks/kickoff/slides.ts"
 }
 ```
 
-If that file does not exist, the extension searches the whole workspace for `slides.ts` and `*.slides.ts` documents, skipping `node_modules`, `dist`, `out`, `tmp`, and `output`. A deck in a subdirectory therefore needs no configuration. When several decks exist, the one closest to the file being edited wins, then the shallowest path.
+If that file does not exist, the extension searches the whole workspace for `slides.ts` and `*.slides.ts` documents, skipping `node_modules`, `dist`, `out`, `tmp`, and `output`. A slide file in a subdirectory therefore needs no configuration. When several slide files exist, the one closest to the file being edited wins, then the shallowest path.
 
-Run **FrameSeq: Select Entry** — from the palette, the Slides view title menu, or the empty-view link — to choose the deck yourself. The picker lists every deck it found, marks the one in use, and remembers the choice for the workspace, so it outranks the active editor until you pick **Follow the active editor** to clear it. The Slides view title shows the entry in use and appends `(selected)` while a choice is pinned. Switching entries clears the previous layout diagnostics and moves a running preview to the new deck.
+Run **FrameSeq: Select Entry** — from the palette, the Slides view title menu, or the empty-view link — to choose the slide file yourself. The picker lists every slide file it found, marks the one in use, and remembers the choice for the workspace, so it outranks the active editor until you pick **Follow the active editor** to clear it. The Slides view title shows the entry in use and appends `(selected)` while a choice is pinned. Switching entries clears the previous layout diagnostics and moves a running preview to the new file.
 
-Commands run from the deck's own project root: the closest directory above the entry that carries the FrameSeq CLI, otherwise the closest `package.json`, otherwise the workspace folder. A deck kept in a subdirectory of a monorepo therefore runs against its own dependencies.
+Commands run from the slide file's own project root: the closest directory above the entry that carries the FrameSeq CLI, otherwise the closest `package.json`, otherwise the workspace folder. A slide file kept in a subdirectory of a monorepo therefore runs against its own dependencies.
 
 ## Commands
 

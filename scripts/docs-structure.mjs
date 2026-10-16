@@ -3,13 +3,14 @@
  * the documentation home page are both generated or checked against it, so a page
  * cannot exist without a place in the navigation, and the two cannot disagree.
  *
- * The order is a reading order: what to do first, then how to write slides, then the
- * specialised subjects, and only then the reference.
+ * The order is a reading order: what to do first, with the mouse or with code, then the
+ * Studio, then how to write slides, then the specialised subjects, and only then the
+ * reference.
  */
 export const documentationGroups = [
   {
     label: "Start",
-    summary: "Install FrameSeq, write a first talk, and revise it.",
+    summary: "Make a first presentation in the Studio, or write one as code and revise it.",
     pages: [
       {
         slug: "index",
@@ -18,9 +19,15 @@ export const documentationGroups = [
         blurb: "What to read, in the order that gets a talk written.",
       },
       {
+        slug: "studio-quickstart",
+        source: "docs/studio-quickstart.md",
+        label: "Studio quick start",
+        blurb: "Install the app, start from a template, edit with the mouse, present, and export.",
+      },
+      {
         slug: "getting-started",
         source: "docs/getting-started.md",
-        label: "Getting started",
+        label: "Getting started with code",
         blurb: "Create a project, write the first slides, preview them, and export the result.",
       },
       {
@@ -35,6 +42,24 @@ export const documentationGroups = [
         source: "docs/revising.md",
         label: "Revising a talk",
         blurb: "The edits a second draft needs, each as a diff and measured in lines.",
+      },
+    ],
+  },
+  {
+    label: "Studio and the app",
+    summary: "The window you make slides in, and the download that installs it.",
+    pages: [
+      {
+        slug: "studio",
+        source: "docs/studio.md",
+        label: "FrameSeq Studio",
+        blurb: "Every menu, panel, and shortcut, from the slide rail to presenter view.",
+      },
+      {
+        slug: "app",
+        source: "docs/app.md",
+        label: "FrameSeq app",
+        blurb: "Install Studio and the frameseq command in one download, with no Node.js needed.",
       },
     ],
   },
@@ -130,7 +155,7 @@ export const documentationGroups = [
   },
   {
     label: "Check and generate",
-    summary: "Verify a deck before presenting it, and hand the format to an agent.",
+    summary: "Verify the slides before presenting them, and hand the format to an agent.",
     pages: [
       {
         slug: "layout-checks",
@@ -171,21 +196,9 @@ export const documentationGroups = [
     ],
   },
   {
-    label: "Editor and command line",
+    label: "VS Code and the command line",
     summary: "Drive FrameSeq from the tools you already use.",
     pages: [
-      {
-        slug: "app",
-        source: "docs/app.md",
-        label: "FrameSeq app",
-        blurb: "Install Studio and the frameseq command in one download, with no Node.js needed.",
-      },
-      {
-        slug: "studio",
-        source: "docs/studio.md",
-        label: "FrameSeq Studio",
-        blurb: "Edit, preview, check, and export a deck in one window.",
-      },
       {
         slug: "vscode",
         source: "docs/vscode.md",
@@ -257,7 +270,8 @@ export const locales = {
 
 const chinese = {
   groups: {
-    Start: { label: "开始", summary: "装上 FrameSeq,写出第一份讲演,再改一遍。" },
+    Start: { label: "开始", summary: "在 Studio 里做出第一份演示,或者用代码写一份,再改一遍。" },
+    "Studio and the app": { label: "Studio 与应用", summary: "做幻灯片的窗口,以及装好它的那个下载。" },
     "Write slides": { label: "写幻灯片", summary: "配方背后的模型,一次讲一个主题。" },
     "Typeset mathematics and tables": {
       label: "排版公式与表格",
@@ -265,12 +279,13 @@ const chinese = {
     },
     "Check and generate": { label: "检查与生成", summary: "上台前验证,或者把格式交给 AI。" },
     "Present and export": { label: "演示与导出", summary: "讲完之后,把文件交出去。" },
-    "Editor and command line": { label: "编辑器与命令行", summary: "在你已有的工具里驱动 FrameSeq。" },
+    "VS Code and the command line": { label: "VS Code 与命令行", summary: "在你已有的工具里驱动 FrameSeq。" },
     Reference: { label: "参考", summary: "查东西用。不属于阅读路径。" },
   },
   pages: {
     index: { label: "文档首页", blurb: "按能把讲演写出来的顺序,该读什么。" },
-    "getting-started": { label: "快速上手", blurb: "建项目、写头几页、预览、导出。" },
+    "studio-quickstart": { label: "Studio 快速上手", blurb: "装上应用,从模板开始,用鼠标编辑,放映,再导出。" },
+    "getting-started": { label: "用代码上手", blurb: "建项目、写头几页、预览、导出。" },
     recipes: { label: "配方", blurb: "讲演需要的每一种页面,各一页完整源码,配渲染结果。" },
     revising: { label: "修改一场讲演", blurb: "第二稿要做的改动,每处一段 diff,按行计价。" },
     "document-model": { label: "文档模型", blurb: "presentation()、slide()、对象和当前区域怎么组合在一起。" },
@@ -292,7 +307,7 @@ const chinese = {
     deployment: { label: "部署 HTML", blurb: "发布静态演示、用 GitHub Pages,或构建单个可移植文件。" },
     pptx: { label: "导出 PowerPoint", blurb: "可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。" },
     app: { label: "FrameSeq 应用", blurb: "一个下载装好 Studio 和 frameseq 命令,不需要 Node.js。" },
-    studio: { label: "FrameSeq Studio", blurb: "在一个窗口里编辑、预览、检查和导出一场演示。" },
+    studio: { label: "FrameSeq Studio", blurb: "每一个菜单、面板和快捷键,从幻灯片栏到演讲者视图。" },
     vscode: { label: "VS Code 扩展", blurb: "分屏、页面导航、诊断和导出命令。" },
     cli: { label: "CLI 参考", blurb: "开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。" },
     advanced: { label: "高级组合", blurb: "大写的对象 API 与底层组件。" },

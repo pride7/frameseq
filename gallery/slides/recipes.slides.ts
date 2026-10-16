@@ -23,7 +23,7 @@ bullets(
   "A fixed route spends the same budget on easy and hard inputs",
 );
 note("Give the audience the problem before the method.");
-text("Measurements in this deck are illustrative.").caption();
+text("Measurements in these slides are illustrative.").caption();
 
 // Recipe: comparison
 slide("Two routes, one budget").split("45:55");

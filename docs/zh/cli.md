@@ -1,4 +1,4 @@
-<!-- translation-of: docs/cli.md sha256:d2d90583b63f061d -->
+<!-- translation-of: docs/cli.md sha256:08cf09b0edc3273f -->
 
 # CLI 参考
 

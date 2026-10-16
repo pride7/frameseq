@@ -1,10 +1,10 @@
-<!-- translation-of: docs/recipes.md sha256:76caf35069e69abe -->
+<!-- translation-of: docs/recipes.md sha256:2a146da3b11add3b -->
 
 # 配方
 
-下面每一条都是**一整页**幻灯片,不是片段:复制过去,把文字换成你自己的,它就能渲染。所有配方都取自随 Gallery 发布的一份 deck,也就是说这里看到的每一页都通过了布局检查。
+下面每一条都是**一整页**幻灯片,不是片段:复制过去,把文字换成你自己的,它就能渲染。所有配方都取自网站上的配方演示,也就是说这里看到的每一页都通过了布局检查。
 
-[打开配方 deck](https://pride7.github.io/frameseq/examples/recipes/) 看渲染结果,或者[读它的源码](https://github.com/pride7/frameseq/blob/main/gallery/slides/recipes.slides.ts)按顺序看一遍。
+[打开配方演示](https://pride7.github.io/frameseq/examples/recipes/) 看渲染结果,或者[读它的源码](https://github.com/pride7/frameseq/blob/main/gallery/slides/recipes.slides.ts)按顺序看一遍。
 
 - [封面](#封面)
 - [一个论点和它的证据](#一个论点和它的证据)
@@ -42,7 +42,7 @@ bullets(
   "A fixed route spends the same budget on easy and hard inputs",
 );
 note("Give the audience the problem before the method.");
-text("Measurements in this deck are illustrative.").caption();
+text("Measurements in these slides are illustrative.").caption();
 ```
 
 <!-- preview -->
@@ -211,11 +211,11 @@ text("Research Systems Group · 2026").caption();
 
 ## 修改它们
 
-[修改一场讲演](revising.md)拿同一份 deck 走了一遍第二稿会做的修改 —— 换主题、拆页、加一项指标、给图加一个节点 —— 并给出每一处改动值多少行。
+[修改一场讲演](revising.md)拿同一份演示走了一遍第二稿会做的修改 —— 换主题、拆页、加一项指标、给图加一个节点 —— 并给出每一处改动值多少行。
 
-## 检查你自己的 deck
+## 检查你自己的幻灯片
 
-这些配方所在的 deck 通过了布局检查,你的也可以用同样的标准来要求:
+这些配方所在的演示通过了布局检查,你的也可以用同样的标准来要求:
 
 ```bash
 npx frameseq check my-talk.slides.ts

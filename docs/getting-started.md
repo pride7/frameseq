@@ -1,4 +1,6 @@
-# Getting started
+# Getting started with code
+
+This page writes a presentation as code, from a terminal and the editor you like. To make one with the mouse instead, as in PowerPoint, start with the [Studio quick start](studio-quickstart.md). Both make the same file, so you can move between them at any time.
 
 ## Try it online
 
@@ -6,7 +8,7 @@ Open the [FrameSeq Playground in StackBlitz](https://stackblitz.com/fork/github/
 
 ## Install the app
 
-The [FrameSeq app](app.md) installs FrameSeq Studio and the `frameseq` command in one download, with nothing to install first, Node.js included. Download it for Windows, macOS, or Linux from the [releases page](https://github.com/pride7/frameseq/releases/latest), open FrameSeq Studio, and start a new presentation from its start page.
+The [FrameSeq app](app.md) installs FrameSeq Studio and the `frameseq` command in one download, with nothing to install first, Node.js included. Download it for Windows, macOS, or Linux from the [download page](https://pride7.github.io/frameseq/download/), and every `frameseq` command on this page works without npm.
 
 ## Write a single file
 
@@ -18,7 +20,7 @@ frameseq new talk.slides.ts
 frameseq studio talk.slides.ts
 ```
 
-`frameseq new` writes a starter deck, with `AGENTS.md` and `CLAUDE.md` for coding agents; `--template` starts from one of the [templates](cli.md#create-a-slide-file) instead, such as `--template poster`, and a file you create yourself works as well. Every command, from `dev` and `studio` to `check`, `pdf`, and `pptx`, accepts such a file, and writes its output under the folder it was run from. A file with no project of its own uses the FrameSeq that runs it. Create a project when the talk needs its own components, theme module, or a pinned FrameSeq version.
+`frameseq new` writes a starter presentation, with `AGENTS.md` and `CLAUDE.md` for coding agents; `--template` starts from one of the [templates](cli.md#create-a-slide-file) instead, such as `--template poster`, and a file you create yourself works as well. Every command, from `dev` and `studio` to `check`, `pdf`, and `pptx`, accepts such a file, and writes its output under the folder it was run from. A file with no project of its own uses the FrameSeq that runs it. Create a project when the talk needs its own components, theme module, or a pinned FrameSeq version.
 
 The Studio can do the rest without a terminal. `frameseq studio` on its own opens a start page that creates presentations and opens recent ones, and `frameseq shortcut` adds it to the Start menu and the desktop, Applications on macOS, or the applications menu on Linux. See [FrameSeq Studio](studio.md#presentations).
 

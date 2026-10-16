@@ -1,8 +1,8 @@
 # Recipes
 
-Each recipe below is a complete slide, not a fragment: copy it, replace the words, and it renders. Every one of them is taken from a deck that ships with the Gallery, so what you see here is what the layout checker accepts.
+Each recipe below is a complete slide, not a fragment: copy it, replace the words, and it renders. Every one of them is taken from the recipes presentation on the website, so what you see here is what the layout checker accepts.
 
-[Open the recipes deck](https://pride7.github.io/frameseq/examples/recipes/) to see the rendered result, and [read its source](https://github.com/pride7/frameseq/blob/main/gallery/slides/recipes.slides.ts) to see the recipes in order.
+[Open the recipes presentation](https://pride7.github.io/frameseq/examples/recipes/) to see the rendered result, and [read its source](https://github.com/pride7/frameseq/blob/main/gallery/slides/recipes.slides.ts) to see the recipes in order.
 
 - [Cover](#cover)
 - [One idea and its evidence](#one-idea-and-its-evidence)
@@ -40,7 +40,7 @@ bullets(
   "A fixed route spends the same budget on easy and hard inputs",
 );
 note("Give the audience the problem before the method.");
-text("Measurements in this deck are illustrative.").caption();
+text("Measurements in these slides are illustrative.").caption();
 ```
 
 <!-- preview -->
@@ -209,11 +209,11 @@ A closing slide with one sentence gives the room something to hold on to. `cente
 
 ## Revising them
 
-[Revising a talk](revising.md) takes this same deck through the edits a second draft needs — a theme change, a page split, a new measurement, a new node in a diagram — and shows what each one costs in lines.
+[Revising a talk](revising.md) takes these same slides through the edits a second draft needs — a theme change, a page split, a new measurement, a new node in a diagram — and shows what each one costs in lines.
 
-## Checking your own deck
+## Checking your own slides
 
-The deck these recipes come from passes the layout checker, and yours can be held to the same standard:
+The slides these recipes come from pass the layout checker, and yours can be held to the same standard:
 
 ```bash
 npx frameseq check my-talk.slides.ts

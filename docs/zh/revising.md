@@ -1,10 +1,10 @@
-<!-- translation-of: docs/revising.md sha256:4b8592958ad320bc -->
+<!-- translation-of: docs/revising.md sha256:192be8061a36457c -->
 
 # 修改一场讲演
 
-一份 deck 起步很少昂贵。它的代价出现在第二十次修改上 —— 讲演前一晚,评审说结果页还要再加一个指标,而且章节顺序变了。
+一份演示起步很少昂贵。它的代价出现在第二十次修改上 —— 讲演前一晚,评审说结果页还要再加一个指标,而且章节顺序变了。
 
-下面每一处修改都是对[配方 deck](recipes.md) 的真实改动,以 diff 呈现,并按行数计价。整组改动是**一次性全部应用**的,结果通过了 `frameseq check`,没有一处需要事后返工。
+下面每一处修改都是对[配方演示](recipes.md) 的真实改动,以 diff 呈现,并按行数计价。整组改动是**一次性全部应用**的,结果通过了 `frameseq check`,没有一处需要事后返工。
 
 ## 换掉整套视觉
 
@@ -23,7 +23,7 @@
  note("Give the audience the problem before the method.");
 +
 +slide("What a fixed route costs");
- text("Measurements in this deck are illustrative.").caption();
+ text("Measurements in these slides are illustrative.").caption();
 +bullets("Easy inputs pay the full round trip", "Hard inputs get no extra budget");
 ```
 

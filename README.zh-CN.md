@@ -29,7 +29,7 @@ FrameSeq Studio 有你在 PowerPoint 里熟悉的菜单、插入库、格式窗�
 
 ## 开始使用
 
-**下载应用。** [下载页](https://pride7.github.io/frameseq/zh/download/)里有 Windows 安装包、macOS 磁盘映像和 Linux 压缩包。应用自带 Node.js、Typst 和 Tectonic，不需要先安装任何东西，之后也会自动更新。详见 [FrameSeq 应用](https://pride7.github.io/frameseq/docs/zh/app.html)。
+**下载应用。** [下载页](https://pride7.github.io/frameseq/zh/download/)里有 Windows 安装包、macOS 磁盘映像和 Linux 压缩包。应用自带 Node.js、Typst 和 Tectonic，不需要先安装任何东西，之后也会自动更新。装好后，跟着 [Studio 快速上手](https://pride7.github.io/frameseq/docs/zh/studio-quickstart.html) 一步一步做出第一份幻灯片。
 
 **用 npm 安装。**
 

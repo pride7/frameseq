@@ -1,10 +1,10 @@
-<!-- translation-of: docs/app.md sha256:3c3bcdc77e377ad7 -->
+<!-- translation-of: docs/app.md sha256:1ca0084874a4e145 -->
 
 # FrameSeq 应用
 
 FrameSeq 应用一个下载就装好 FrameSeq 需要的一切,包括 Node.js,所以不需要事先安装任何东西。它把 FrameSeq Studio 放到打开程序的地方,并提供与 npm 安装相同的 `frameseq` 命令。
 
-从[发布页](https://github.com/pride7/frameseq/releases/latest)下载:
+[下载页](https://pride7.github.io/frameseq/zh/download/)会给出适合你这台电脑的文件。所有文件也都在[发布页](https://github.com/pride7/frameseq/releases/latest)上:
 
 | 系统 | 下载 | 安装内容 |
 | --- | --- | --- |

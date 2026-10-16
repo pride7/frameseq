@@ -4,6 +4,9 @@ import { readdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { marked } from "marked";
+
+import { headingIds } from "./docs-anchors.mjs";
 import { documentationGroups, documentationPages } from "./docs-structure.mjs";
 import { renderDocumentationIndex } from "./docs-index.mjs";
 import { translationStatus } from "./docs-translation.mjs";
@@ -143,8 +146,8 @@ assert.equal(documentationGroups[0].label, "Start");
 assert.equal(documentationGroups.at(-1).label, "Reference");
 assert.deepEqual(
   documentationGroups[0].pages.map((page) => page.slug),
-  ["index", "getting-started", "recipes", "revising"],
-  "The reading path should be install, write, revise",
+  ["index", "studio-quickstart", "getting-started", "recipes", "revising"],
+  "The reading path should be the Studio first, then install, write, revise",
 );
 
 // The Chinese reading path must still say what the English pages say. Each translation
@@ -184,14 +187,41 @@ for (const file of present) {
 }
 assert.equal(navigated.size, present.length);
 
-for (const file of [guidePath, docsIndexPath]) {
-  const source = await readFile(file, "utf8");
-  for (const match of source.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
-    const target = match[1];
-    if (/^(?:https?:|#)/.test(target)) continue;
-    const path = target.split("#", 1)[0];
-    assert.ok(existsSync(resolve(dirname(file), path)), `Broken link in ${file}: ${target}`);
+// Every link between pages, in both languages, must reach its page, and a link to a
+// section must reach the heading: the website gives each heading the id that
+// docs-anchors.mjs makes, so the same function decides here.
+const pageFiles = [
+  ...(await readdir(resolve(packageRoot, "docs"))).map((file) => resolve(packageRoot, "docs", file)),
+  ...(await readdir(resolve(packageRoot, "docs", "zh"))).map((file) => resolve(packageRoot, "docs", "zh", file)),
+].filter((file) => file.endsWith(".md"));
+const headingsOf = new Map();
+async function sectionsOf(file) {
+  if (!headingsOf.has(file)) {
+    headingsOf.set(file, headingIds(marked.parse(await readFile(file, "utf8"), { gfm: true })));
   }
+  return headingsOf.get(file);
+}
+for (const file of pageFiles) {
+  // Code blocks show links as text, such as a Markdown link inside an example.
+  const source = (await readFile(file, "utf8")).replace(/```[\s\S]*?```/g, "");
+  for (const match of source.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)) {
+    const target = match[1];
+    if (/^(?:https?:|mailto:)/.test(target)) continue;
+    const [path, fragment] = target.split("#", 2);
+    const page = path ? resolve(dirname(file), path) : file;
+    assert.ok(existsSync(page), `Broken link in ${file}: ${target}`);
+    if (fragment === undefined || !page.endsWith(".md")) continue;
+    assert.ok(
+      (await sectionsOf(page)).has(decodeURIComponent(fragment)),
+      `${file} links to a section ${basename(page)} does not have: #${fragment}`,
+    );
+  }
+}
+
+// The website says slides, not deck, and so does the documentation.
+for (const file of pageFiles) {
+  const words = (await readFile(file, "utf8")).match(/\bdecks?\b/gi);
+  assert.equal(words, null, `${file} says "${words?.[0]}"; say slides, presentation, or slide file`);
 }
 
 // The recipes page claims every snippet comes from a deck that the layout checker

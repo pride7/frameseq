@@ -29,7 +29,7 @@ Free and open source, for Windows, macOS, and Linux.
 
 ## Get started
 
-**Download the app.** The [download page](https://pride7.github.io/frameseq/download/) has an installer for Windows, disk images for macOS, and archives for Linux. The app brings its own Node.js, Typst, and Tectonic, so there is nothing to install first, and it keeps itself up to date. See [FrameSeq app](https://pride7.github.io/frameseq/docs/app.html).
+**Download the app.** The [download page](https://pride7.github.io/frameseq/download/) has an installer for Windows, disk images for macOS, and archives for Linux. The app brings its own Node.js, Typst, and Tectonic, so there is nothing to install first, and it keeps itself up to date. Then the [Studio quick start](https://pride7.github.io/frameseq/docs/studio-quickstart.html) makes your first slides, step by step.
 
 **Install with npm.**
 

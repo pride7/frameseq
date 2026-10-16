@@ -1,14 +1,27 @@
 # FrameSeq documentation
 
-Three pages get a talk written: install FrameSeq, copy the page you need, then revise it. Everything else is here for the moment a slide asks for it.
+FrameSeq makes slides in two ways, and both make the same file. Click and drag in FrameSeq Studio, as you would in PowerPoint, or write the slides as code. The Studio writes every click into the code, so you can switch from one to the other at any time.
 
-1. [Getting started](getting-started.md) — a project, the first slides, a preview, an export.
+**With the mouse**, one page gets a presentation made:
+
+1. [Studio quick start](studio-quickstart.md) — install the app, start from a template, edit with the mouse, present, and export.
+
+**With code**, three pages get a talk written: install FrameSeq, copy the page you need, then revise it.
+
+1. [Getting started with code](getting-started.md) — a project, the first slides, a preview, an export.
 2. [Recipes](recipes.md) — a complete slide for each page a talk needs, with the result beside it.
 3. [Revising a talk](revising.md) — what a second draft costs, edit by edit.
 
-You can also explore the [Live Gallery](https://pride7.github.io/frameseq/) or edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
+Everything else is here for the moment a slide asks for it. You can also edit the [Online Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) before installing anything.
 
 A Chinese translation of this reading path is at [中文文档](zh/README.md).
+
+## Studio and the app
+
+The window you make slides in, and the download that installs it.
+
+- [FrameSeq Studio](studio.md) — Every menu, panel, and shortcut, from the slide rail to presenter view.
+- [FrameSeq app](app.md) — Install Studio and the frameseq command in one download, with no Node.js needed.
 
 ## Write slides
 
@@ -35,7 +48,7 @@ Bring an external typesetter in for the fragments that need one.
 
 ## Check and generate
 
-Verify a deck before presenting it, and hand the format to an agent.
+Verify the slides before presenting them, and hand the format to an agent.
 
 - [Layout checks](layout-checks.md) — Detect empty pages, overflow, clipped text, small type, and mistyped region paths.
 - [Generate with AI](ai-generation.md) — Give an agent the FrameSeq contract and iterate from layout diagnostics.
@@ -48,12 +61,10 @@ Deliver the talk and hand the file over afterwards.
 - [Deploy HTML](deployment.md) — Publish a static presentation, use GitHub Pages, or build one portable file.
 - [Export PowerPoint](pptx.md) — Editable hybrid PPTX or pixel-faithful flattened slides.
 
-## Editor and command line
+## VS Code and the command line
 
 Drive FrameSeq from the tools you already use.
 
-- [FrameSeq app](app.md) — Install Studio and the frameseq command in one download, with no Node.js needed.
-- [FrameSeq Studio](studio.md) — Edit, preview, check, and export a deck in one window.
 - [VS Code extension](vscode.md) — Split view, slide navigation, diagnostics, and export commands.
 - [CLI reference](cli.md) — Development, remote control, HTML, PDF, PPTX, Typst, inspection, and checking.
 

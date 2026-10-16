@@ -1,6 +1,10 @@
 # FrameSeq Studio
 
-FrameSeq Studio puts the whole loop of writing a talk in one window: the slides as thumbnails, the `.slides.ts` source in a TypeScript editor, the live preview, and one list of everything wrong with the deck. It needs nothing beyond the FrameSeq package: no editor, extension, or separate download.
+FrameSeq Studio puts the whole loop of writing a talk in one window: the slides as thumbnails, the `.slides.ts` source in a TypeScript editor, the live preview, and one list of everything wrong with the slides. It needs nothing beyond the FrameSeq package: no editor, extension, or separate download.
+
+This page describes every part of the window. To make a first presentation step by step, start with the [Studio quick start](studio-quickstart.md).
+
+With the [FrameSeq app](app.md) installed, open FrameSeq Studio from the Start menu, Applications, or the applications menu. From a terminal, the same Studio opens on a file:
 
 ```bash
 frameseq studio talk.slides.ts
@@ -25,7 +29,7 @@ The source stays the only description of the talk. Everything the Studio does, w
 | **Editor** (centre) | The slide document, with TypeScript completions, errors, hover documentation, and parameter hints. |
 | **Preview** (right) | The interactive preview, with its usual navigation, zoom, and layout-editing controls. |
 | **Notes** (right, below the preview) | The speaker notes of the slide in the preview, typed in place. |
-| **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the deck ran. |
+| **Problems** (bottom) | TypeScript errors, layout-check findings, build errors, and errors thrown while the slides ran. |
 | **Terminal** (bottom, beside Problems and Output) | A shell in the presentation's folder. |
 
 Drag the dividers to resize the areas; double-click a divider to restore its default. `Ctrl+B` (`⌘B` on macOS) hides the slide rail, `Ctrl+J` shows or hides the bottom panel, and `` Ctrl+` `` opens the [terminal](#the-terminal). The panel starts folded, since the status bar counts the problems and the editor underlines them; the counts open it too, and a build error opens it by itself. The sizes are remembered by the browser.
@@ -133,7 +137,7 @@ Notes that no single string holds are shown but not edited here: several `note()
 
 Turn auto-save off to save only with `Ctrl+S`; the preview then shows the file as last saved.
 
-The editor reads the project the way an editor would, from the nearest `tsconfig.json`, so its completions and errors agree with VS Code and `tsc`. Start typing a command, or a `.` after one, for completions; hover over a name for its documentation; open a call's parentheses for its parameters. A deck outside any TypeScript project still gets the FrameSeq globals.
+The editor reads the project the way an editor would, from the nearest `tsconfig.json`, so its completions and errors agree with VS Code and `tsc`. Start typing a command, or a `.` after one, for completions; hover over a name for its documentation; open a call's parentheses for its parameters. A slide file outside any TypeScript project still gets the FrameSeq globals.
 
 A slide number marks the line where each `slide()` call begins. Click it to show that slide. A band beside the source marks the slide the preview is showing.
 
@@ -242,9 +246,9 @@ The Problems panel collects six kinds of finding, refreshed as you work:
 - **TypeScript**: the same errors the editor underlines.
 - **Names**: names that refer to nothing on their slide, names given twice, and layout regions the slide does not have; see [Names](#names).
 - **Formulas**: a formula in a quoted string whose backslashes became escapes, which TypeScript accepts: in `text("$\frac{1}{2}$")` the `\f` is a form feed, and `\alpha` reads as `alpha`. The button beside it writes the string as `` text`...` ``, which keeps backslashes as written, or, where a template cannot go, as in a list's items, doubles them.
-- **Layout**: the rules of [`frameseq check`](layout-checks.md), measured against the live deck after every save rather than on demand: canvas overflow, clipped text, small type, empty slides and regions, similar region names, and modifiers that have no effect.
-- **Build**: errors the server reported while compiling the deck, such as a Typst or LaTeX fragment that does not compile.
-- **Preview**: an error thrown while the deck ran, with the line of the statement it stopped in, which the editor underlines. The preview keeps showing the last version that ran until the error is fixed.
+- **Layout**: the rules of [`frameseq check`](layout-checks.md), measured against the live slides after every save rather than on demand: canvas overflow, clipped text, small type, empty slides and regions, similar region names, and modifiers that have no effect.
+- **Build**: errors the server reported while compiling the slides, such as a Typst or LaTeX fragment that does not compile.
+- **Preview**: an error thrown while the slides ran, with the line of the statement it stopped in, which the editor underlines. The preview keeps showing the last version that ran until the error is fixed.
 
 Click a finding to go to it: TypeScript, name, and formula findings select the text, preview errors put the cursor on the statement that failed, and layout findings show their slide, outline the object, and put the cursor on the line that wrote it.
 
@@ -344,4 +348,4 @@ The Studio writes whole documents, which the plain preview never does: a drag in
 frameseq studio talk.slides.ts --host
 ```
 
-Anyone who can reach that address can then edit the deck, though the terminal still opens only on the computer running the Studio. Use `--no-open` to start the server without opening a window, and `--tab` to open a browser tab instead of an app window.
+Anyone who can reach that address can then edit the slides, though the terminal still opens only on the computer running the Studio. Use `--no-open` to start the server without opening a window, and `--tab` to open a browser tab instead of an app window.

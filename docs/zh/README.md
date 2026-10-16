@@ -1,14 +1,27 @@
 # FrameSeq 文档
 
-三页就能把一场讲演写出来:装上 FrameSeq、抄一页你要的、然后改。其余页面是等某一页真的需要时再看的。
+FrameSeq 有两种做幻灯片的方式，做出来的是同一个文件：在 FrameSeq Studio 里像用 PowerPoint 一样点击和拖动，或者用代码写。Studio 会把每一次点击写进代码，所以随时可以从一种换到另一种。
 
-1. [快速上手](getting-started.md) —— 建项目、写头几页、预览、导出。
+**用鼠标**，一页就能做出一份演示：
+
+1. [Studio 快速上手](studio-quickstart.md) —— 装上应用，从模板开始，用鼠标编辑，放映，再导出。
+
+**用代码**，三页就能把一场讲演写出来：装上 FrameSeq、抄一页你要的、然后改。
+
+1. [用代码上手](getting-started.md) —— 建项目、写头几页、预览、导出。
 2. [配方](recipes.md) —— 讲演需要的每一种页面,各一页完整源码,配渲染结果。
 3. [修改一场讲演](revising.md) —— 第二稿的每一处改动值多少行。
 
-也可以先看 [在线 Gallery](https://pride7.github.io/frameseq/),或者在 [在线 Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) 里直接改,什么都不用装。
+其余页面是等某一页真的需要时再看的。也可以先在 [在线 Playground](https://stackblitz.com/fork/github/pride7/frameseq/tree/main/examples/playground?file=slides.ts&startScript=dev&title=FrameSeq%20Playground) 里直接改，什么都不用装。
 
 标注 (English) 的页面**刻意保持英文**:函数参考和 API 参考的主体是签名和代码,读者查的就是要敲进去的那串字符;更新日志是历史记录,翻译它意味着每次发版都要再翻一遍;发布自动化只写给维护者。这些页面的链接指向英文原页。
+
+## Studio 与应用
+
+做幻灯片的窗口,以及装好它的那个下载。
+
+- [FrameSeq Studio](studio.md) — 每一个菜单、面板和快捷键,从幻灯片栏到演讲者视图。
+- [FrameSeq 应用](app.md) — 一个下载装好 Studio 和 frameseq 命令,不需要 Node.js。
 
 ## 写幻灯片
 
@@ -48,12 +61,10 @@
 - [部署 HTML](deployment.md) — 发布静态演示、用 GitHub Pages,或构建单个可移植文件。
 - [导出 PowerPoint](pptx.md) — 可编辑的混合 PPTX,或像素级保真的扁平化幻灯片。
 
-## 编辑器与命令行
+## VS Code 与命令行
 
 在你已有的工具里驱动 FrameSeq。
 
-- [FrameSeq 应用](app.md) — 一个下载装好 Studio 和 frameseq 命令,不需要 Node.js。
-- [FrameSeq Studio](studio.md) — 在一个窗口里编辑、预览、检查和导出一场演示。
 - [VS Code 扩展](vscode.md) — 分屏、页面导航、诊断和导出命令。
 - [CLI 参考](cli.md) — 开发、遥控、HTML、PDF、PPTX、Typst、检视与检查。
 

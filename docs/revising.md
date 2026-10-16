@@ -1,8 +1,8 @@
 # Revising a talk
 
-A deck is rarely expensive to start. It becomes expensive on the twentieth revision, the evening before the talk, when a reviewer wants one more measurement on the results page and the section order changed.
+A presentation is rarely expensive to start. It becomes expensive on the twentieth revision, the evening before the talk, when a reviewer wants one more measurement on the results page and the section order changed.
 
-Every edit below is a real change to the [recipes deck](recipes.md), shown as a diff and measured in lines. The whole set was applied at once and the result passes `frameseq check` with no layout issues, so none of them needs a repair pass afterwards.
+Every edit below is a real change to the [recipes presentation](recipes.md), shown as a diff and measured in lines. The whole set was applied at once and the result passes `frameseq check` with no layout issues, so none of them needs a repair pass afterwards.
 
 ## Change the entire visual system
 
@@ -21,7 +21,7 @@ Every edit below is a real change to the [recipes deck](recipes.md), shown as a 
  note("Give the audience the problem before the method.");
 +
 +slide("What a fixed route costs");
- text("Measurements in this deck are illustrative.").caption();
+ text("Measurements in these slides are illustrative.").caption();
 +bullets("Easy inputs pay the full round trip", "Hard inputs get no extra budget");
 ```
 
@@ -110,7 +110,7 @@ The point is what the edit looks like afterwards. Dragging produces the revision
 npx frameseq check my-talk.slides.ts
 ```
 
-The checker renders every slide at its real size and reports text that overflows or is clipped, type below a readable size, empty slides, and mistyped region paths. Run it after a revision pass; it is faster than clicking through the deck, and it is the same check that keeps the recipes honest.
+The checker renders every slide at its real size and reports text that overflows or is clipped, type below a readable size, empty slides, and mistyped region paths. Run it after a revision pass; it is faster than clicking through the slides, and it is the same check that keeps the recipes honest.
 
 ## Why the edits stay small
 
