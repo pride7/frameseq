@@ -151,6 +151,30 @@ assert.ok(
 );
 assert.ok(chineseHome.includes(`href="../styles.css?v=${fingerprint(docsStyles)}"`));
 
+// Search engines are given the site's pages in sitemap.xml. Each one has to be published and name
+// itself as its address, so a search shows one address for it, and a translated page names its
+// counterpart, so a search offers the one in the reader's language.
+const siteUrl = "https://pride7.github.io/frameseq/";
+const sitemap = await readFile(resolve(galleryOutput, "sitemap.xml"), "utf8");
+const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+assert.equal(sitemapUrls.length, 4 + documentationPages.length + translated.length);
+for (const url of sitemapUrls) {
+  assert.ok(url.startsWith(siteUrl), `The sitemap lists a page elsewhere: ${url}`);
+  const path = url.slice(siteUrl.length);
+  const html = await readFile(resolve(galleryOutput, path === "" || path.endsWith("/") ? `${path}index.html` : path), "utf8")
+    .catch(() => "");
+  assert.ok(html, `The sitemap lists a missing page: ${url}`);
+  assert.ok(html.includes(`<link rel="canonical" href="${url}" />`), `${url} should name itself as its address`);
+}
+assert.ok(docsSources.get("studio.html").includes(`<link rel="alternate" hreflang="zh-Hans" href="${siteUrl}docs/zh/studio.html" />`));
+assert.ok(!docsSources.get("changelog.html").includes("hreflang"), "An untranslated page has no Chinese counterpart to name");
+
+// Google Search Console confirms who owns the site by this file.
+assert.match(
+  await readFile(resolve(galleryOutput, "google3463a512ad88acd5.html"), "utf8"),
+  /^google-site-verification: google3463a512ad88acd5\.html/,
+);
+
 // The landing page calls them slides throughout.
 assert.doesNotMatch(landing, /\bdecks?\b/i, "The landing page should say slides, not deck");
 

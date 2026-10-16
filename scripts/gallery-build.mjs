@@ -121,7 +121,32 @@ function pageSections(html, locale) {
       </aside>`;
 }
 
-function documentationPage({ slug, label, source, previews }, content, locale = "en") {
+/** Where the site is published: the address search engines are given for each page. */
+const siteUrl = "https://pride7.github.io/frameseq/";
+const translatedSlugs = new Set(
+  localisedGroups("zh").flatMap((group) => group.pages).filter((page) => page.translated).map((page) => page.slug),
+);
+
+/** A documentation page's address. Each language's home is known by its folder, as the landing pages link to it. */
+function documentationUrl(slug, locale) {
+  return `${siteUrl}docs/${locale === "en" ? "" : "zh/"}${slug === "index" ? "" : `${slug}.html`}`;
+}
+
+/**
+ * The page's own address and, for a translated page, its address in each language, so a search
+ * engine counts docs/ and docs/index.html as one page and shows a reader the one in their language.
+ */
+function documentationAddresses(slug, locale) {
+  const canonical = `<link rel="canonical" href="${documentationUrl(slug, locale)}" />`;
+  if (!translatedSlugs.has(slug)) return canonical;
+  return [
+    canonical,
+    `<link rel="alternate" hreflang="en" href="${documentationUrl(slug, "en")}" />`,
+    `<link rel="alternate" hreflang="zh-Hans" href="${documentationUrl(slug, "zh")}" />`,
+  ].join("\n    ");
+}
+
+function documentationPage({ slug, label, blurb, source, previews }, content, locale = "en") {
   const stale = /^<!-- translation-of: \S+ sha256:stale -->/.test(content);
   const rendered = withSlidePreviews(
     addHeadingIds(marked.parse(rewriteMarkdownLinks(content), { gfm: true })),
@@ -138,7 +163,8 @@ function documentationPage({ slug, label, source, previews }, content, locale = 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content="${escapeHtml(label)} — FrameSeq documentation." />
+    <meta name="description" content="${escapeHtml(blurb)}" />
+    ${documentationAddresses(slug, locale)}
     <link rel="icon" href="${locale === "en" ? ".." : "../.."}/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${locale === "en" ? "." : ".."}/styles.css?v=${fingerprint(docsStyles)}" />
     <title>${escapeHtml(label)} — FrameSeq docs</title>
@@ -330,6 +356,29 @@ for (const page of chinesePages) {
 console.log(`Documentation written: ${documentationPages.length} English, ${chinesePages.length} Chinese.`);
 
 /**
+ * The pages search engines are asked to read, as Google Search Console is given them: the landing
+ * and download pages and the documentation in each language. The examples are slides, not pages to
+ * arrive at from a search.
+ */
+const sitemapUrls = [
+  siteUrl,
+  `${siteUrl}zh/`,
+  `${siteUrl}download/`,
+  `${siteUrl}zh/download/`,
+  ...documentationPages.map((page) => documentationUrl(page.slug, "en")),
+  ...chinesePages.map((page) => documentationUrl(page.slug, "zh")),
+];
+await writeFile(
+  resolve(galleryOutput, "sitemap.xml"),
+  `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapUrls.map((url) => `  <url><loc>${url}</loc></url>`).join("\n")}
+</urlset>
+`,
+  "utf8",
+);
+
+/**
  * Typeset every `data-tex` element on a landing page with KaTeX, using the options the
  * runtime uses for `math`, so the page shows the formula FrameSeq itself would draw.
  */
@@ -425,6 +474,11 @@ await Promise.all([
   writeFile(resolve(galleryOutput, "docs", "styles.css"), docsStyles, "utf8"),
   copyFile(resolve(packageRoot, "public", "favicon.svg"), resolve(galleryOutput, "favicon.svg")),
   copyFile(resolve(packageRoot, "llms.txt"), resolve(galleryOutput, "llms.txt")),
+  // Google Search Console reads this file to confirm who owns the site, so it stays published.
+  copyFile(
+    resolve(packageRoot, "gallery", "google3463a512ad88acd5.html"),
+    resolve(galleryOutput, "google3463a512ad88acd5.html"),
+  ),
   writeFile(resolve(galleryOutput, ".nojekyll"), "", "utf8"),
 ]);
 
