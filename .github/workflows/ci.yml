@@ -38,6 +38,8 @@ jobs:
             run: node scripts/test-suite.mjs app
           - group: exports
             run: node scripts/test-suite.mjs exports
+          - group: harmony
+            run: npm run harmony:test && npm run harmony:hap-test
     steps:
       - name: Check out repository
         uses: actions/checkout@v6

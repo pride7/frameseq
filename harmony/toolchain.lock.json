@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "version": "26.0.0.851",
+  "downloadPage": "https://developer.huawei.com/consumer/cn/download/command-line-tools-for-hmos",
+  "windows": {
+    "archive": "commandline-tools-windows-x64-26.0.0.851.zip",
+    "sha256": "ac8d0563f47f95ca78799ea4aa494fa260bc3f7c8f2a569ac629af1794b5d71c",
+    "signatureFingerprint": "B1000AC38C41525A19BDC08799AD81DF27A74824"
+  }
+}

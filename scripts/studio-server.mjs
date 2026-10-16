@@ -303,6 +303,8 @@ export function studioPlugin({
   start = false,
   quitOnClose = false,
   remember = true,
+  // Packaged editions can supply native dialogs and restrict features to their runtime.
+  host = {},
 }) {
   return {
     name: "frameseq-studio",
@@ -354,16 +356,16 @@ export function studioPlugin({
         language = undefined;
       };
       const frameseqVersion = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version;
-      const updates = createUpdates({ packageRoot, current: frameseqVersion, daily: remember });
+      const updates = createUpdates({ packageRoot, current: frameseqVersion, daily: remember && host.updates !== false });
       // The assistant's events reach the page as they come, on the connection hot reload uses.
-      const assistant = createAssistant({ cliPath, send: (event) => server.ws.send("frameseq:assistant", event) });
-      server.httpServer?.once("close", () => assistant.close());
+      const assistant = host.assistant === false ? undefined : createAssistant({ cliPath, send: (event) => server.ws.send("frameseq:assistant", event) });
+      if (assistant) server.httpServer?.once("close", () => assistant.close());
 
       if (quitOnClose) quitWhenClosed(server);
 
       // A shell runs whatever it is given, so only the Studio's own page on this computer gets one,
       // even when the Studio was started with --host.
-      attachTerminals(server, {
+      if (host.terminal !== false) attachTerminals(server, {
         cwd,
         packageRoot,
         allowed: (request, url) => !start
@@ -470,10 +472,13 @@ export function studioPlugin({
             start,
             quitOnClose,
             frameseq: frameseqVersion,
-            dialogs: dialogsAvailable() && isLoopback(request.socket.remoteAddress),
-            terminal: isLoopback(request.socket.remoteAddress),
-            assistant: isLoopback(request.socket.remoteAddress),
+            dialogs: (Boolean(host.choose) || dialogsAvailable()) && isLoopback(request.socket.remoteAddress),
+            terminal: host.terminal !== false && isLoopback(request.socket.remoteAddress),
+            assistant: host.assistant !== false && isLoopback(request.socket.remoteAddress),
             phoneRemote,
+            ...(host.exportFormats ? { exportFormats: host.exportFormats } : {}),
+            ...(host.updates === false ? { updates: false } : {}),
+            ...(host.phoneRemote === false ? { canPairPhone: false } : {}),
           };
           if (start) return { ...shared, entry: null, name: "FrameSeq Studio" };
           const text = await readFile(entry, "utf8");
@@ -524,7 +529,7 @@ export function studioPlugin({
               ? body.folder
               : await currentFolder();
             const kind = body.kind === "folder" || body.kind === "image" ? body.kind : "open";
-            return await chooseWithDialog(kind, asked);
+            return await (host.choose ?? chooseWithDialog)(kind, asked);
           } finally {
             choosing = false;
           }
@@ -623,11 +628,11 @@ export function studioPlugin({
         "POST /templates/reveal": async (body) => {
           const template = typeof body.name === "string" ? await findUserTemplate(body.name) : undefined;
           if (template) {
-            revealInFolder(template.folder ?? template.path, Boolean(template.folder));
+            await (host.reveal ?? revealInFolder)(template.folder ?? template.path, Boolean(template.folder));
             return { ok: true };
           }
           await mkdir(templateDirectory(), { recursive: true });
-          revealInFolder(templateDirectory(), true);
+          await (host.reveal ?? revealInFolder)(templateDirectory(), true);
           return { ok: true, folder: templateDirectory() };
         },
 
@@ -647,9 +652,9 @@ export function studioPlugin({
           return { recent: await recentPresentations() };
         },
 
-        "POST /files/reveal": () => {
+        "POST /files/reveal": async () => {
           if (start) return [409, { error: "No presentation is open." }];
-          revealInFolder(entry, false);
+          await (host.reveal ?? revealInFolder)(entry, false);
           return { ok: true };
         },
 
@@ -715,6 +720,7 @@ export function studioPlugin({
         }),
 
         "POST /export": async (body) => {
+          if (host.exportFormats && !host.exportFormats.includes(body.format)) return [501, { error: "This export format is not available in this edition of FrameSeq Studio." }];
           const reading = body.slides === undefined ? undefined : readSlides(String(body.slides));
           if (reading && !reading.slides) return [400, { error: "Those slides cannot be read." }];
           const plan = exportPlan(String(body.format ?? ""), entry, cwd, reading?.slides);
@@ -837,6 +843,13 @@ export function studioPlugin({
           }
           if (url.pathname !== "/session" && request.headers["x-frameseq-studio"] !== token) {
             send(response, 403, { error: "The Studio session token is missing or out of date. Reload the page." });
+            return;
+          }
+          if ((url.pathname.startsWith("/assistant") && !assistant)
+            || (url.pathname === "/update" && host.updates === false)
+            || (url.pathname === "/phone-remote" && host.phoneRemote === false)
+            || (url.pathname === "/export" && host.exportFormats?.length === 0)) {
+            send(response, 501, { error: "This feature is not available in this edition of FrameSeq Studio." });
             return;
           }
           const files = url.pathname === "/files" || url.pathname.startsWith("/files/");

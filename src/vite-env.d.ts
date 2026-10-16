@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 declare const __FRAMESEQ_REMOTE_ENABLED__: boolean;
+declare module "virtual:frameseq-icons";
 
 declare module "virtual:frameseq-entry" {
   import type { SlidesRootDefinition } from "./core";

@@ -23,6 +23,10 @@ export interface StudioSession {
   assistant?: boolean;
   /** Whether a phone on the local network can step through the slide show. */
   phoneRemote?: boolean;
+  /** An edition may offer only the export formats its runtime supports. */
+  exportFormats?: ExportFormat[];
+  updates?: boolean;
+  canPairPhone?: boolean;
 }
 
 export interface RecentPresentation {

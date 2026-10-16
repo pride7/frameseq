@@ -4,6 +4,11 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- An experimental HarmonyOS PC build, prepared with `npm run harmony:build`, packages the Studio for the HarmonyOS Electron runtime. Editing and live preview use a prebuilt interface and a JavaScript-only local service, with native file dialogs supplied by the host. See `harmony/README.md` for setup, current feature limits, and the required device validation.
+- `npm run harmony:prepare` generates an unsigned HarmonyOS PC project from a pinned Electron host, verifies its ARM64 libraries and checksums, and supplies FrameSeq's identity, icons and application resources. `harmony:doctor` checks the installed toolchain, and `harmony:hap` runs dependency installation and Hvigor, recording the resulting HAP's SHA-256. Signing and device validation remain separate steps.
+
 ### Fixed
 
 - Words being typed on the slide in FrameSeq Studio go on being typed when the slide is drawn again meanwhile, as when an earlier change is saved or another program writes the file. The browser lets go of the words as the old drawing goes, which ended the typing.

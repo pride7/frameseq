@@ -23,7 +23,7 @@ export interface DesktopScreen {
 
 export interface DesktopShell {
   chrome: "custom" | "overlay" | "native";
-  platform: "windows" | "macos" | "linux";
+  platform: "windows" | "macos" | "linux" | "harmonyos";
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
   isMaximized(): Promise<boolean>;

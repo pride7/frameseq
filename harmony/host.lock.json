@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/ohosvscode/ohos_electron_hap.git",
+  "revision": "0da7eb4c57a21e6ca0cffac247fb26977cb42f9d",
+  "bundleName": "io.github.pride7.frameseq",
+  "vendor": "pride7",
+  "label": "FrameSeq Studio",
+  "compatibleSdkVersion": "5.0.3(15)",
+  "targetSdkVersion": "5.0.3(15)",
+  "deviceTypes": ["2in1"],
+  "appPath": "web_engine/src/main/resources/resfile/resources/app",
+  "nativeLibraries": {
+    "libadapter.so": "a7f6e4be3fb113b40b64cfb19b2666c5e91e3bf86cf662d90f776899de5330b0",
+    "libc++_shared.so": "0212d0e40711b98041101dffae12c17422d80a06dbfb13bd5f0142c78b8bf1f2",
+    "libelectron.so": "013974e02673ada5d746adf2021e8ca7ec623d14ab4ae3a0915b5d56713b1e40",
+    "libextractor.so": "c2d4409fd9bb5a45e330ff101b8a9bbfb2a2676f54e3ece2989bf1118cdf09ae",
+    "libffmpeg.so": "107e2d52578166a4fe58405792b0f4a234303fb3a88b5b2ab164702efc155f77"
+  },
+  "runtimeResources": [
+    "electron", "icudtl.dat", "resources.pak", "chrome_100_percent.pak",
+    "chrome_200_percent.pak", "snapshot_blob.bin", "v8_context_snapshot.bin",
+    "locales/en-US.pak", "locales/zh-CN.pak", "style_font_config.json"
+  ]
+}

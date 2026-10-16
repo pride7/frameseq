@@ -299,7 +299,7 @@ async function start(): Promise<void> {
   let source: SourceResponse;
   try {
     session = await openSession();
-    void watchForUpdates();
+    if (session.updates !== false) void watchForUpdates();
     if (session.start) {
       await showStartPage(root, session, logo);
       return;
@@ -3317,7 +3317,8 @@ async function start(): Promise<void> {
         {
           command: "export",
           label: t.menu.export,
-          submenu: () => exportFormats.map((item) => ({
+          disabled: () => session.exportFormats?.length === 0,
+          submenu: () => exportFormats.filter((item) => !session.exportFormats || session.exportFormats.includes(item.format)).map((item) => ({
             command: `export-${item.format}`,
             label: item.some ? `${item.label}…` : item.label,
             shortcut: item.hint,
@@ -3453,7 +3454,7 @@ async function start(): Promise<void> {
           },
           { command: "show-screen", label: t.menu.showScreen, submenu: showScreenItems },
           { command: "presenter-view", label: t.menu.presenterView, run: openPresenterView },
-          { command: "phone-remote", label: t.menu.phoneRemote, run: () => void pairPhone(session, flushSave) },
+          { command: "phone-remote", label: t.menu.phoneRemote, disabled: () => session.canPairPhone === false, run: () => void pairPhone(session, flushSave) },
           { command: "open-browser", label: t.menu.openInBrowser, run: () => openOutside(`/#${previewSlide + 1}`) },
         ];
       },
@@ -3467,7 +3468,7 @@ async function start(): Promise<void> {
         { command: "language-tour", label: t.menu.languageTour, run: () => openOutside(`${docsBase}language.html`) },
         { command: "shortcuts", label: t.menu.shortcuts, run: showShortcuts },
         "separator",
-        ...updateMenu(),
+        ...(session.updates === false ? [] : updateMenu()),
         "separator",
         { command: "report-issue", label: t.menu.reportIssue, run: () => openOutside("https://github.com/pride7/frameseq/issues") },
         { command: "about", label: t.menu.about, run: showAbout },

@@ -69,7 +69,7 @@ ${names.map((name) => `  | ${JSON.stringify(name)}`).join("\n")};
 `;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && /(?:^|[\\/])icon-set\.mjs$/.test(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const target = resolve(packageRoot, "src", "icon-names.ts");
   writeFileSync(target, iconNamesModule(), "utf8");
   console.log(`Wrote ${Object.keys(iconSet()).length} icon names to ${target}`);
