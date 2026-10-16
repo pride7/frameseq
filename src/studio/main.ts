@@ -2754,6 +2754,7 @@ async function start(): Promise<void> {
       line: "line",
       arrow: "arrow",
       connector: "connector",
+      polygon: "polygon",
       basic: "shapes",
       diagram: "diagram",
       arrows: "arrows",

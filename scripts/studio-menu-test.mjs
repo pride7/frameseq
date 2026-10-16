@@ -297,6 +297,13 @@ try {
   );
   await page.click(".studio-context-menu [data-command='insert']");
   await page.waitForSelector(".studio-context-menu [data-command='insert-formulas']");
+  assert.deepEqual(
+    await page.$eval(".studio-context-menu:has([data-command='insert-formulas'])", (menu) => [...menu.querySelectorAll(":scope > .studio-menu-item")]
+      .filter((item) => !item.querySelector(":scope > .studio-menu-icon svg"))
+      .map((item) => item.dataset.command)),
+    [],
+    "every command in Insert has a picture, the drawing tools included",
+  );
   // The kinds inside Insert's groups are drawn as the gallery draws them, shapes by their outline.
   await page.click(".studio-context-menu [data-command='insert-formulas']");
   await page.waitForSelector(".studio-context-menu [data-command='insert-math'] .studio-menu-icon.is-drawing .studio-insert-picture");
