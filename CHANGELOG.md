@@ -14,6 +14,11 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 - Presenter view, the phone remote and its pairing dialog, and the preview's own controls, such as the zoom buttons and the label beside a selected object, speak Chinese when FrameSeq Studio is shown in Chinese. A page takes its language from `lang=zh` in its address, which the Studio adds to the presenter view and the phone remote it opens, or from the Studio around its preview, and passes it on to the windows it opens; elsewhere they stay in English.
 
+### Fixed
+
+- `rect()` and `circle()` keep a dashed outline beside `stroke()`. `stroke()` set the border solid after `dashed()` had dashed it, so `rect().stroke("#d97706").dashed()` drew a solid line. Typst export now dashes them too.
+- A `rect()` or `circle()` with no label keeps a small size it is given. Its padding, meant to keep a label clear of the border, made `rect().width(30).height(30)` 48 pixels wide.
+
 ## [0.38.1] - 2026-10-15
 
 ### Fixed

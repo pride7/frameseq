@@ -728,7 +728,7 @@ export class ShapeBuilder extends ElementBuilder {
       return this;
     }
     this.node.styles.borderColor = value;
-    this.node.styles.borderStyle = "solid";
+    this.node.styles.borderStyle = this.node.props.dashed === true ? "dashed" : "solid";
     return this;
   }
 
@@ -765,6 +765,10 @@ export class ShapeBuilder extends ElementBuilder {
   /** Draw the outline as a dashed line. */
   dashed(enabled = true): this {
     this.node.props.dashed = enabled;
+    // A rect() or circle() whose stroke() set the border's style keeps the dash, in either order.
+    if (this.node.type !== "shape" && this.node.styles.borderStyle !== undefined) {
+      this.node.styles.borderStyle = enabled ? "dashed" : "solid";
+    }
     return this;
   }
 }

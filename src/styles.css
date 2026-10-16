@@ -729,6 +729,12 @@ button {
   border-radius: 50%;
 }
 
+/* A box with no label has nothing to keep clear of its border, so a small one keeps its size. */
+.frameseq-rect:empty,
+.frameseq-circle:empty {
+  padding: 0;
+}
+
 .frameseq-rect.has-shadow,
 .frameseq-circle.has-shadow {
   box-shadow: 0 6px 18px rgb(15 23 42 / 0.14), 0 1px 3px rgb(15 23 42 / 0.1);

@@ -401,17 +401,18 @@ function semanticTextStyle(node, context) {
   return style;
 }
 
-function borderStroke(styles, context, fallbackColor) {
+function borderStroke(styles, context, fallbackColor, dashed = styles.borderStyle === "dashed") {
   const border = styles.border ? context.resolveVariable(styles.border) : "";
   const widthValue = styles.borderWidth ?? border.match(/(?:^|\s)([\d.]+(?:px|pt|rem|em))(?:\s|$)/)?.[1];
   const colorValue = styles.borderColor
     ?? border.match(/var\([^)]+\)|#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i)?.[0]
     ?? fallbackColor;
   if (styles.borderStyle === "none" || border === "0" || border === "none") return "none";
-  if (!widthValue && !styles.borderColor && !styles.border) return undefined;
-  const width = length(widthValue ?? "1px", context);
+  if (!widthValue && !styles.borderColor && !styles.border && !dashed) return undefined;
+  const width = length(widthValue ?? (dashed ? "2px" : "1px"), context);
   const color = cssColor(colorValue, context, fallbackColor);
-  return width && color && color !== "none" ? `${width} + ${color}` : "none";
+  if (!width || !color || color === "none") return "none";
+  return dashed ? `(paint: ${color}, thickness: ${width}, dash: "dashed")` : `${width} + ${color}`;
 }
 
 function commonBlockArguments(node, context, defaults = {}) {
@@ -420,7 +421,7 @@ function commonBlockArguments(node, context, defaults = {}) {
   const width = length(styles.width ?? defaults.width, context, "x");
   const height = length(styles.height ?? defaults.height, context, "y");
   const fill = cssColor(styles.background ?? defaults.background, context);
-  const stroke = borderStroke(styles, context, defaults.borderColor);
+  const stroke = borderStroke(styles, context, defaults.borderColor, defaults.dashed ?? styles.borderStyle === "dashed");
   const radius = length(styles.borderRadius ?? defaults.radius, context);
   const padding = inset(styles.padding ?? defaults.padding, context);
   if (width) args.push(`width: ${width}`);
@@ -1025,6 +1026,7 @@ async function serializeShape(node, context) {
   const args = commonBlockArguments(node, context, {
     background: paint?.fill,
     borderColor: paint?.stroke ?? context.theme.colors.accent,
+    dashed: node.props?.dashed === true || styles.borderStyle === "dashed",
     height: node.type === "circle" ? "120px" : "120px",
     radius: node.type === "rect" ? context.theme.radii.medium : undefined,
     width: node.type === "circle" ? "120px" : "240px",
