@@ -156,9 +156,17 @@ export async function importPicture(entry, source) {
   if (inside && !inside.startsWith("..") && !isAbsolute(inside)) {
     return { path: `./${inside.replaceAll("\\", "/")}`, copied: false };
   }
-  const extension = extname(source).toLowerCase();
-  const content = await readFile(source);
-  const stem = basename(source, extname(source)).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "") || "picture";
+  return keepPicture(entry, basename(source), await readFile(source));
+}
+
+/**
+ * Write a picture into images/ beside the presentation, as one pasted onto a slide is kept: under
+ * its name unless another picture has it, and not again when the same picture is already there.
+ */
+export async function keepPicture(entry, name, content) {
+  const folder = dirname(entry);
+  const extension = extname(name).toLowerCase();
+  const stem = basename(name, extname(name)).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "") || "picture";
   await mkdir(join(folder, "images"), { recursive: true });
   for (let count = 1; ; count += 1) {
     const name = `${stem}${count === 1 ? "" : `-${count}`}${extension}`;

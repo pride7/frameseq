@@ -10,6 +10,7 @@ import {
   downloadUrl,
   openSession,
   StudioRequestError,
+  upload,
   type ChooseResponse,
   type ExportFormat,
   type ExportResult,
@@ -501,6 +502,7 @@ async function start(): Promise<void> {
       checkRendered: (frame) => scheduleLayoutCheck(frame),
       contextMenu: (x, y, selection, keyboard) => showPreviewMenu(x, y, selection, keyboard),
       objectCommand: (command, selection) => runObjectCommand(command, selection),
+      pastePicture: (file) => void pastePicture(file),
       dragBlocked: (target, reason, code) => void explainBlockedDrag(target, reason, code),
       typeRequest: (request, target, part, shared, asked) => void answerTyping(request, target, part, shared, asked),
       typed: (request, value) => writeTyped(request, value),
@@ -1660,14 +1662,46 @@ async function start(): Promise<void> {
     }
   }
 
+  /** The name ending a pasted picture is kept under, by its type. */
+  const pastedExtensions: Record<string, string> = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/svg+xml": ".svg",
+    "image/avif": ".avif",
+    "image/bmp": ".bmp",
+  };
+
+  /** Put a picture pasted from the clipboard on the slide, kept in images/ as Insert keeps one. */
+  async function pastePicture(file: File): Promise<void> {
+    if (!await contentTarget()) return;
+    // A screenshot comes as image.png; a picture file copied in a folder keeps its own name.
+    const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+    const name = /^image\.\w+$/.test(file.name) || !/\.\w+$/.test(file.name)
+      ? `pasted-${stamp}${pastedExtensions[file.type] ?? ""}`
+      : file.name;
+    try {
+      const kept = await upload<{ path: string; copied: boolean }>(
+        `assets/paste?name=${encodeURIComponent(name)}&language=${language}`,
+        file,
+      );
+      if (kept.copied) toast(t.insert.imageCopied(kept.path), { tone: "info" });
+      await insertContent("image", kept.path);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+    }
+  }
+
   /**
    * Put a content object on the slide in the preview: after the selected object when the slide
    * flows, or where it is drawn on a canvas. Its settings then open in Current slide with its
-   * words selected, ready to be typed over; with that panel folded, the editor takes them.
+   * words selected, ready to be typed over; with that panel folded, the editor takes them. A
+   * picture already beside the presentation, as one pasted, is put there without asking for one.
    */
-  async function insertContent(kind: ContentKind): Promise<void> {
+  async function insertContent(kind: ContentKind, picture?: string): Promise<void> {
     if (!await contentTarget()) return;
-    const image = kind === "image" ? await choosePicture() : undefined;
+    const image = kind === "image" ? picture ?? await choosePicture() : undefined;
     if (kind === "image" && !image) return;
     // An icon is chosen by its picture before it goes on the slide.
     const icon = kind === "icon" ? await chooseIcon(required<HTMLElement>(root, "[data-action='insert']")) : undefined;

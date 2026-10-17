@@ -17,6 +17,7 @@ import {
   importPicture,
   isDirectory,
   isFile,
+  keepPicture,
   pictureExtensions,
   recentPresentations,
   rememberPresentation,
@@ -265,6 +266,7 @@ function fileMessages(language) {
       noFile: (path) => `${path} 这个文件不存在。`,
       fullPicture: "请给出图片的完整路径。",
       notPicture: (extensions) => `只能插入这些格式的图片：${extensions}。`,
+      emptyPicture: "粘贴的图片是空的。",
       templateName: {
         empty: "请给模板起个名字。",
         edges: "模板名称不能以空格或句点开头或结尾。",
@@ -285,6 +287,7 @@ function fileMessages(language) {
       noFile: (path) => `There is no file at ${path}.`,
       fullPicture: "Give the full path of the picture.",
       notPicture: (extensions) => `A picture must be one of ${extensions}.`,
+      emptyPicture: "The pasted picture is empty.",
       templateName: {
         empty: "Give the template a name.",
         edges: "A template's name cannot begin or end with a space or a full stop.",
@@ -577,6 +580,16 @@ export function studioPlugin({
           if (!pictureExtensions.includes(extension)) return [400, { error: say.notPicture(pictureExtensions.join(" ")) }];
           if (!await isFile(source)) return [404, { error: say.noFile(source) }];
           return importPicture(entry, source);
+        },
+
+        /** A picture pasted onto a slide, sent as it is with its name in the address, kept in images/. */
+        "POST /assets/paste": async (body, request) => {
+          const query = new URL(request.url ?? "/", "http://studio.local").searchParams;
+          const name = basename(query.get("name")?.trim() ?? "");
+          const say = fileMessages(query.get("language"));
+          if (!pictureExtensions.includes(extname(name).toLowerCase())) return [400, { error: say.notPicture(pictureExtensions.join(" ")) }];
+          if (body.length === 0) return [400, { error: say.emptyPicture }];
+          return keepPicture(entry, name, body);
         },
 
         "POST /files/open": async (body) => {
@@ -918,10 +931,10 @@ export function studioPlugin({
             send(response, 409, { error: "No presentation is open. Open or create one first." });
             return;
           }
-          // A file attached for the assistant arrives as it is, not as JSON.
+          // A file attached for the assistant, or a pasted picture, arrives as it is, not as JSON.
           const body = request.method === "GET"
             ? {}
-            : url.pathname === "/assistant/attach"
+            : url.pathname === "/assistant/attach" || url.pathname === "/assets/paste"
               ? await readBody(request, maximumAttachment, `A file can be at most ${maximumAttachment / 1024 / 1024} MB.`)
               : await readJson(request);
           const result = await route(body, request);

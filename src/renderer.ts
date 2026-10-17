@@ -2240,6 +2240,8 @@ function enableSourceReveal(
   };
   const inStudio = window.parent !== window
     && new URLSearchParams(location.search).get("frameseq-preview") === "studio";
+  /** The paste keys' request for the copied objects, until a picture pasted instead calls it off. */
+  let pastingObjects: ReturnType<typeof setTimeout> | undefined;
   if (inStudio) {
     /**
      * A right-click opens the Studio's own menu, for the object under the pointer or for the
@@ -2303,6 +2305,17 @@ function enableSourceReveal(
     };
     addEventListener("copy", carryCode, { signal });
     addEventListener("cut", carryCode, { signal });
+    // A picture on the clipboard, such as a screenshot, goes on the slide in place of the objects
+    // copied in the Studio, which the paste keys otherwise ask for.
+    addEventListener("paste", (event) => {
+      const data = event.clipboardData;
+      if (!data || data.types.includes("text/plain")) return;
+      const picture = [...data.files].find((file) => file.type.startsWith("image/"));
+      if (!picture) return;
+      event.preventDefault();
+      clearTimeout(pastingObjects);
+      window.parent.postMessage({ type: "frameseq.paste-picture", file: picture }, "*");
+    }, { signal });
     addEventListener("message", (event: MessageEvent<unknown>) => {
       const data = event.data as { type?: unknown; action?: unknown } | null;
       if (data?.type !== "frameseq.selection-action" || typeof data.action !== "string") return;
@@ -2331,10 +2344,14 @@ function enableSourceReveal(
       const key = event.key.toLowerCase();
       const command = key === "c" ? "copy" : key === "x" ? "cut" : key === "d" ? "duplicate" : key === "v" ? "paste" : undefined;
       if (command && (command === "paste" || selected.size > 0)) {
-        // Copying and cutting go on to the clipboard events, which carry the objects' code.
-        if (command !== "copy" && command !== "cut") event.preventDefault();
+        // Copying and cutting go on to the clipboard events, which carry the objects' code, and
+        // pasting to the paste event, which takes a picture on the clipboard before it.
+        if (command === "duplicate") event.preventDefault();
         event.stopImmediatePropagation();
-        window.parent.postMessage({ type: "frameseq.object-command", command, ...describeSelection() }, "*");
+        const message = { type: "frameseq.object-command", command, ...describeSelection() };
+        if (command !== "paste") window.parent.postMessage(message, "*");
+        // The paste event comes before this, if the browser sends one where nothing is editable.
+        else pastingObjects = setTimeout(() => window.parent.postMessage(message, "*"));
         return;
       }
     }

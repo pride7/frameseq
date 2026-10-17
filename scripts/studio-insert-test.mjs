@@ -354,6 +354,20 @@ try {
     return Boolean(image?.complete && image.naturalWidth > 0);
   }).catch(() => false), "the picture to show in the preview");
 
+  // A screenshot pasted on the slide is kept in images/ under a name of its own, and written
+  // after the selected object as an inserted picture is.
+  await preview.evaluate((data) => {
+    const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+    const clipboard = new DataTransfer();
+    clipboard.items.add(new File([bytes], "image.png", { type: "image/png" }));
+    dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+  }, png.toString("base64"));
+  const pasted = await waitFor(
+    async () => /dot\.png", import\.meta\.url\)\.href, "Picture"\);\nimage\(new URL\("\.\/images\/(pasted-\d{14}\.png)"/.exec(await read())?.[1],
+    "the pasted picture to be written after the inserted one",
+  );
+  assert.ok(existsSync(resolve(workspace, "images", pasted)), "the pasted picture is kept in images/");
+
   // An icon is chosen by its picture, from a search over the whole set.
   await insert("icon");
   await page.waitForSelector(".studio-icon-choice", { timeout: 20_000 });

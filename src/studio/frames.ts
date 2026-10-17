@@ -160,6 +160,8 @@ export interface FrameEvents {
   contextMenu: (x: number, y: number, selection: PreviewSelection, keyboard: boolean) => void;
   /** Copy, cut, duplicate, or paste, pressed on the preview's objects. */
   objectCommand: (command: ObjectCommand, selection: PreviewSelection) => void;
+  /** A picture pasted on the preview from the clipboard, such as a screenshot. */
+  pastePicture: (file: File) => void;
   /**
    * A drag in the preview that could change nothing: the layout is locked, the object's code
    * works out its place or size, written as `code`, or a loop or a helper drew it.
@@ -350,6 +352,9 @@ export class StudioFrames {
           return;
         case "frameseq.object-command":
           if (objectCommands.has(message.command)) events.objectCommand(message.command as ObjectCommand, readSelection(message));
+          return;
+        case "frameseq.paste-picture":
+          if (message.file instanceof File) events.pastePicture(message.file);
           return;
         case "frameseq.drag-blocked": {
           const [target] = readTargets([message.target]);
