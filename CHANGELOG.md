@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.40.0] - 2026-10-16
+
 ### Added
 
 - An experimental HarmonyOS PC build, prepared with `npm run harmony:build`, packages the Studio for the HarmonyOS Electron runtime. Editing and live preview use a prebuilt interface and a JavaScript-only local service, with native file dialogs supplied by the host. See `harmony/README.md` for setup, current feature limits, and the required device validation.
