@@ -275,12 +275,22 @@ async function startDevelopmentServer(
   entry,
   { hostEnabled = false, remoteEnabled = false, openBrowser = true, studio = false, appWindow = true, start = false, desktop = false } = {},
 ) {
+  // A Studio started again on an update its app installed keeps the window and the port it had;
+  // the page there reloads into this server. See studio-relaunch.mjs.
+  const relaunched = process.env.FRAMESEQ_STUDIO_RELAUNCHED === "1";
+  const port = relaunched ? Number(process.env.FRAMESEQ_STUDIO_PORT) || undefined : undefined;
+  // The window's process, kept for the next start; only a server started again watches it.
+  const windowProcess = relaunched ? Number(process.env.FRAMESEQ_STUDIO_WINDOW_PID) || undefined : undefined;
+  if (!windowProcess) delete process.env.FRAMESEQ_STUDIO_WINDOW_PID;
+  delete process.env.FRAMESEQ_STUDIO_RELAUNCHED;
+  delete process.env.FRAMESEQ_STUDIO_PORT;
+  if (relaunched) openBrowser = false;
   process.env.FRAMESEQ_ENTRY = entry;
   if (start) process.env.FRAMESEQ_STUDIO_START = "1";
   else delete process.env.FRAMESEQ_STUDIO_START;
   // A Studio with no window of its own is run by a script or a test, not by the person whose
   // recent presentations it would otherwise add to.
-  process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser || desktop ? "1" : "0";
+  process.env.FRAMESEQ_STUDIO_WINDOW = openBrowser || desktop || relaunched ? "1" : "0";
   // The FrameSeq app's window started this server and shows it, so the server stops with it.
   if (desktop) process.env.FRAMESEQ_STUDIO_QUIT_ON_CLOSE = "1";
   process.env.FRAMESEQ_STUDIO_DESKTOP = desktop ? "1" : "0";
@@ -295,7 +305,7 @@ async function startDevelopmentServer(
   const server = await createServer({
     configFile,
     root: packageRoot,
-    server: hostEnabled ? { host: true } : undefined,
+    server: hostEnabled || port ? { ...(hostEnabled ? { host: true } : {}), ...(port ? { port, strictPort: true } : {}) } : undefined,
   });
   await server.listen();
   server.printUrls();
@@ -313,8 +323,18 @@ async function startDevelopmentServer(
   process.once("SIGINT", close);
   process.once("SIGTERM", close);
   // The app's window keeps this pipe open while it runs, and closes it when it stops, even
-  // when it stops without warning.
-  if (desktop) {
+  // when it stops without warning. A server started again on an update has no such pipe, and
+  // stops once the window's process has.
+  if (desktop && windowProcess) {
+    setInterval(() => {
+      try {
+        process.kill(windowProcess, 0);
+      } catch (error) {
+        // A process this one may not signal is still there.
+        if (error?.code !== "EPERM") void close();
+      }
+    }, 1000);
+  } else if (desktop) {
     process.stdin.once("end", close);
     process.stdin.resume();
   }

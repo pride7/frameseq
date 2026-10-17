@@ -5,7 +5,7 @@
 // runs the newest layer, going back, and the Studio's server installing an update by itself.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { cp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
@@ -248,7 +248,118 @@ const fromLayer = createUpdates({ packageRoot: appLayers(app, environment)[0].pa
 assert.equal(fromLayer.source.app, app);
 assert.equal((await fromLayer.status()).newer, false);
 
-console.log("App update test passed: npm ranges, the registry's signature, runtimes and dependencies, layers, the app's entry, going back, and updating from the Studio.");
+// ── The Studio starts again on the update, as the app's window runs it ──────────────────────
+// The installed FrameSeq runs, as before the update. A stand-in for the app's window holds the
+// server's input, which stops the server when it closes, and reads its output; it stays until
+// its own input closes, as the window stays until the person closes it.
+const talk = resolve(workspace, "talk");
+await mkdir(talk, { recursive: true });
+run(process.execPath, [join(app, "scripts", "frameseq.mjs"), "new", "slides.ts"], { cwd: talk, env: { ...process.env, ...environment } });
+const studioEnvironment = { ...process.env, ...environment, FRAMESEQ_UPDATE_REGISTRY: "https://registry.test", NO_COLOR: "1", FORCE_COLOR: "0" };
+delete studioEnvironment.FRAMESEQ_NO_UPDATE_CHECK;
+const windowStandIn = resolve(workspace, "window.mjs");
+await writeFile(windowStandIn, [
+  'import { spawn } from "node:child_process";',
+  'const server = spawn(process.execPath, process.argv.slice(2), { stdio: ["pipe", "inherit", "inherit"], windowsHide: true });',
+  'server.on("exit", (code) => console.log(`window: the server stopped (${code})`));',
+  'process.stdin.on("end", () => process.exit(0));',
+  "process.stdin.resume();",
+  "",
+].join("\n"));
+
+async function startStudio() {
+  const child = spawn(process.execPath, [windowStandIn, join(app, "scripts", "frameseq.mjs"), "studio", "slides.ts", "--desktop"], {
+    cwd: talk,
+    env: studioEnvironment,
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  let output = "";
+  child.stdout.on("data", (chunk) => {
+    output += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    output += chunk;
+  });
+  const started = Date.now();
+  while (!/Studio:\s+(http\S+)/.test(output)) {
+    if (child.exitCode !== null || Date.now() - started > 120_000) throw new Error(`The Studio did not start:\n${output}`);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 200));
+  }
+  const origin = new URL(/Studio:\s+(http\S+)/.exec(output)[1]).origin;
+  return { child, origin, output: () => output };
+}
+
+async function studioSession(origin) {
+  try {
+    const response = await fetch(`${origin}/__frameseq/studio/session`, { signal: AbortSignal.timeout(5000) });
+    return response.ok ? await response.json() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function studioCall(origin, token, method, body) {
+  const response = await fetch(`${origin}/__frameseq/studio/update`, {
+    method,
+    headers: { "Content-Type": "application/json", "X-FrameSeq-Studio": token },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { status: response.status, body: await response.json() };
+}
+
+async function waitFor(check, what, timeout = 180_000) {
+  const started = Date.now();
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() - started > timeout) throw new Error(`Timed out waiting for ${what}.`);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 300));
+  }
+}
+
+/** Start the installed Studio with an update ready, have it start again, and see what answers. */
+async function restartStudio(expected) {
+  const studio = await startStudio();
+  try {
+    const { token, frameseq } = await studioSession(studio.origin);
+    assert.equal(frameseq, installedVersion);
+    const found = (await studioCall(studio.origin, token, "GET")).body;
+    assert.equal(found.restarts, true, "a Studio the window started starts again on an update");
+    const asked = await studioCall(studio.origin, token, "POST", { restart: true });
+    assert.equal(asked.status, 200, JSON.stringify(asked.body));
+    const answered = await waitFor(async () => {
+      const session = await studioSession(studio.origin);
+      return session && session.token !== token ? session : undefined;
+    }, `FrameSeq ${expected} to answer on ${studio.origin}`).catch((error) => {
+      throw new Error(`${error.message}\n${studio.output()}`);
+    });
+    assert.equal(answered.frameseq, expected, studio.output());
+    assert.equal(answered.entry, join(talk, "slides.ts"), "the same presentation opens again");
+    await waitFor(() => studio.output().includes("window: the server stopped (0)"), "the old server to stop", 30_000);
+  } finally {
+    studio.child.stdin.end();
+  }
+  // The new server watches the window's process, and stops with it.
+  await waitFor(async () => !await studioSession(studio.origin), "the new server to stop with the window", 30_000);
+}
+
+await writeFile(join(environment.FRAMESEQ_CONFIG_DIR, "updates.json"), JSON.stringify({ checked: Date.now(), latest: { version: ahead(5), ota: true } }));
+await restartStudio(ahead(5));
+
+// An update that does not start is set aside, and the Studio starts again on what it ran.
+const brokenLayer = join(environment.FRAMESEQ_UPDATES_DIR, `${ahead(6)}_broken`);
+await mkdir(join(brokenLayer, "scripts"), { recursive: true });
+await writeFile(join(brokenLayer, "scripts", "frameseq.mjs"), `if (process.argv.includes("--version")) console.log("${ahead(6)}"); else throw new Error("broken");\n`);
+await writeFile(join(brokenLayer, "frameseq-layer.json"), JSON.stringify({ format: 1, version: ahead(6), runtime, install: app }));
+await writeFile(join(environment.FRAMESEQ_CONFIG_DIR, "updates.json"), JSON.stringify({ checked: Date.now(), latest: { version: ahead(6), ota: true } }));
+assert.equal(appLayers(app, environment)[0].version, ahead(6));
+await restartStudio(installedVersion);
+assert.equal(appLayers(app, environment)[0].version, ahead(5), "the update that did not start is set aside");
+const afterBroken = JSON.parse(await readFile(join(environment.FRAMESEQ_CONFIG_DIR, "updates.json"), "utf8"));
+assert.equal(afterBroken.failed?.version, ahead(6), "and is not installed again by itself");
+
+console.log("App update test passed: npm ranges, the registry's signature, runtimes and dependencies, layers, the app's entry, going back, updating from the Studio, and starting it again on the update.");
 
 function basenameOf(path) {
   return path.split(/[\\/]/).pop();

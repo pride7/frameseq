@@ -1032,6 +1032,9 @@ const en = {
     installing: (version: string) => `Updating to FrameSeq ${version}…`,
     ready: (version: string) => `FrameSeq ${version} is installed. It starts the next time FrameSeq Studio opens.`,
     otaHint: "The update is small: it installs now and starts the next time FrameSeq Studio opens.",
+    otaRestartHint: "The update is small: it installs now, and FrameSeq Studio starts again on it once you are not busy.",
+    restarting: (version: string) => `Starting FrameSeq ${version}…`,
+    updated: (version: string) => `FrameSeq is updated to ${version}.`,
     installFailed: (version: string, message: string) => `Could not update to FrameSeq ${version}: ${message}`,
   },
 };
@@ -2029,6 +2032,9 @@ const zh: Catalog = {
     installing: (version) => `正在更新到 FrameSeq ${version}…`,
     ready: (version) => `FrameSeq ${version} 已安装，下次打开 FrameSeq Studio 时生效。`,
     otaHint: "这次更新很小：现在安装，下次打开 FrameSeq Studio 时生效。",
+    otaRestartHint: "这次更新很小：现在安装，等你不忙时 FrameSeq Studio 会自动重启到新版本。",
+    restarting: (version) => `正在启动 FrameSeq ${version}…`,
+    updated: (version) => `FrameSeq 已更新到 ${version}。`,
     installFailed: (version, message) => `无法更新到 FrameSeq ${version}：${message}`,
   },
 };

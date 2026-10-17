@@ -67,6 +67,7 @@
     "scripts/source-edits.mjs",
     "scripts/source-marks.mjs",
     "scripts/studio-language.mjs",
+    "scripts/studio-relaunch.mjs",
     "scripts/studio-server.mjs",
     "scripts/studio-terminal.mjs",
     "scripts/studio-updates.mjs",

@@ -518,6 +518,8 @@ export function createAssistant({ cliPath, send }) {
     send: sendMessage,
     stop,
     reset,
+    /** Whether there is a conversation, which lives on the server and would end with it. */
+    busy: () => Boolean(running) || conversation.events.length > 0,
     refresh: () => {
       found = undefined;
       codexCatalog = undefined;

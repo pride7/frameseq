@@ -252,6 +252,11 @@ try {
       if (body.check) found = onCheck();
       if (body.install) found = { ...found, ready: found.latest };
       answer = found;
+      // The server starts again on the version installed, and answers as that version.
+      if (body.restart) {
+        answer = { ok: true, version: found.ready };
+        found = { ...app, current: found.ready, newer: false, restarts: true };
+      }
     } else if (found.installing) {
       // The server says it is installing once, and has installed it when asked again.
       found = { ...found, installing: false, ready: found.latest };
@@ -299,7 +304,9 @@ try {
   await waitFor(() => posted.some((body) => body.automatic === false), "the setting to reach the server");
   assert.ok((await helpCommands()).includes("automatic-updates"), "the item stays, unticked");
 
-  const toastSays = (message) => page.$$eval(".studio-toast-text", (texts, wanted) => texts.some((text) => text.textContent === wanted), message);
+  // A page that is reloading has nothing to say yet.
+  const toastSays = (message) => page.$$eval(".studio-toast-text", (texts, wanted) => texts.some((text) => text.textContent === wanted), message)
+    .catch(() => false);
 
   // The app installs a version it can take by itself, and says it starts next time.
   found = { ...app, newer: true, latest: "9.9.10", ota: true, installing: true };
@@ -317,6 +324,33 @@ try {
   await dialog.$eval(".studio-button.is-primary", (button) => button.click());
   await waitFor(() => toastSays("FrameSeq 9.9.11 is installed. It starts the next time FrameSeq Studio opens."), "the update to install");
   assert.deepEqual(posted.at(-1), { install: true });
+
+  // The app's Studio starts again on the update, at once when the person asked for it; the page
+  // reloads into the new server and says so.
+  const restarts = () => posted.filter((body) => body.restart === true).length;
+  onCheck = () => ({ ...app, automatic: false, newer: true, latest: "9.9.12", ota: true, restarts: true });
+  await page.click("[data-menu='help']");
+  await page.click("[data-command='check-updates']");
+  const restartDialog = await page.waitForSelector("dialog[open]");
+  assert.match(await restartDialog.$eval("p", (text) => text.textContent), /starts again on it once you are not busy/);
+  await restartDialog.$eval(".studio-button.is-primary", (button) => button.click());
+  await waitFor(() => restarts() === 1, "the Studio to start again on the update");
+  await waitFor(() => toastSays("FrameSeq is updated to 9.9.12."), "the page to reload into the update and say so");
+
+  // By itself, it waits until the person has left the Studio, then starts again.
+  await page.evaluateOnNewDocument(() => {
+    Document.prototype.hasFocus = () => !window.__away;
+  });
+  found = { ...app, newer: true, latest: "9.9.13", ota: true, ready: "9.9.13", restarts: true };
+  await page.reload({ waitUntil: "networkidle2" });
+  await page.waitForSelector(".studio-topbar");
+  await delay(7000);
+  assert.equal(restarts(), 1, "not while the person works in the Studio");
+  await page.evaluate(() => {
+    window.__away = true;
+  });
+  await waitFor(() => restarts() === 2, "the Studio to start again once the person is away");
+  await waitFor(() => toastSays("FrameSeq is updated to 9.9.13."), "the page to say it was updated");
 
   assert.deepEqual(errors, []);
   console.log("Studio update checks passed.");

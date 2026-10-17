@@ -182,5 +182,10 @@ export function createUpdates({
     await writeState(state);
   };
 
-  return { source, status, installLatest, remember };
+  /** Remember that an installed version did not start, so it is not installed again by itself. */
+  const failedToStart = async (version, message) => {
+    if (version) await writeState({ ...await readState(), failed: { version, message } });
+  };
+
+  return { source, status, installLatest, remember, failedToStart };
 }

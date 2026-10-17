@@ -70,6 +70,11 @@ export class SlideShow {
     }, { capture: true });
   }
 
+  /** Whether a show is on, or about to start. */
+  get running(): boolean {
+    return Boolean(this.layer) || this.asking;
+  }
+
   /** Show the slides from this one on. Call it from the key press or click that asks for it,
    * which is what lets the page go full screen. */
   start(index: number): void {

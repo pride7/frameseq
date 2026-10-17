@@ -36,7 +36,8 @@ import {
 import { createAssistant, maximumAttachment } from "./studio-assistant.mjs";
 import { createStudioLanguage, setDiagnosticLanguage } from "./studio-language.mjs";
 import { listStudio } from "./studio-instances.mjs";
-import { attachTerminals, closeTerminals } from "./studio-terminal.mjs";
+import { relaunchStudio, studioPort } from "./studio-relaunch.mjs";
+import { attachTerminals, closeTerminals, terminalsOpen } from "./studio-terminal.mjs";
 import { createUpdates } from "./studio-updates.mjs";
 
 /** Pushed to the Studio whenever the slide document changes on disk, whoever changed it. */
@@ -211,7 +212,8 @@ function quitWhenClosed(server) {
   const stopLater = (delay, reason) => {
     clearTimeout(presence.timer);
     presence.timer = setTimeout(() => {
-      if (presence.pages > 0) return;
+      // A Studio starting again on an update stops once the new server is up, not before.
+      if (presence.pages > 0 || presence.leaving) return;
       server.config.logger.info(reason);
       void server.close().finally(() => process.exit(0));
     }, delay);
@@ -496,6 +498,46 @@ export function studioPlugin({
         return { ok: true };
       };
 
+      /**
+       * The app's Studio starts again on an update it has installed, as the page asks once the
+       * person is not busy. Only a Studio that a window started, and that stops with it, does:
+       * one run from a terminal would leave the terminal for a server in the background. A shell
+       * in the terminal, an export, and the assistant's conversation live in this process, so
+       * any of them puts it off.
+       */
+      const restarts = updates.source?.kind === "app" && quitOnClose && remember;
+      const withRestarts = (found) => (restarts ? { ...found, restarts: true } : found);
+      const restartIntoUpdate = async () => {
+        const found = await updates.status();
+        if (!restarts || !found.ready || !studioPort(server)) {
+          return [409, { error: "There is no installed update to start again on." }];
+        }
+        const busy = exporting ? "An export is still running."
+          : switching ? "The Studio is already starting again."
+            : terminalsOpen() ? "A terminal is open."
+              : assistant?.busy() ? "The assistant has a conversation open."
+                : undefined;
+        if (busy) return [409, { error: busy, busy: true }];
+        switching = true;
+        const presence = globalThis[Symbol.for("frameseq.studio.presence")];
+        if (presence) presence.leaving = true;
+        const args = [
+          "studio",
+          ...(start ? [] : [entry]),
+          ...(process.env.FRAMESEQ_STUDIO_DESKTOP === "1" ? ["--desktop"] : []),
+          ...(phoneRemote ? ["--remote"] : []),
+          ...(allowRemote ? ["--host"] : []),
+        ];
+        // Answer first: starting again closes the connection this request arrived on.
+        setTimeout(() => {
+          relaunchStudio({ server, app: updates.source.app, packageRoot, args, failed: updates.failedToStart }).catch((error) => {
+            server.config.logger.error(`FrameSeq Studio could not start again: ${error instanceof Error ? error.message : error}`);
+            process.exit(1);
+          });
+        }, 50);
+        return { ok: true, version: found.ready };
+      };
+
       const routes = {
         "GET /session": async (_body, request) => {
           const shared = {
@@ -536,16 +578,17 @@ export function studioPlugin({
         "GET /files": async () => ({ recent: await recentPresentations(), folder: await currentFolder() }),
 
         // ── Updates: whether a newer FrameSeq is out, checked at most daily unless asked ──
-        "GET /update": () => updates.status(),
+        "GET /update": async () => withRestarts(await updates.status()),
 
         /**
-         * Check now, install the latest version in the app, keep the daily check on or off, or
-         * stop mentioning a version.
+         * Check now, install the latest version in the app, start again on the version it has
+         * installed, keep the daily check on or off, or stop mentioning a version.
          */
         "POST /update": async (body) => {
           await updates.remember({ automatic: body.automatic, skip: body.skip });
-          if (body.install === true) return updates.installLatest();
-          return updates.status({ force: body.check === true });
+          if (body.restart === true) return restartIntoUpdate();
+          if (body.install === true) return withRestarts(await updates.installLatest());
+          return withRestarts(await updates.status({ force: body.check === true }));
         },
 
         /** Every icon icon() can show, by name, for the Studio's icon picker. */

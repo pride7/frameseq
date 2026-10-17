@@ -1,4 +1,4 @@
-<!-- translation-of: docs/app.md sha256:812fc4344f8b7f50 -->
+<!-- translation-of: docs/app.md sha256:817f6ba44556cc32 -->
 
 # FrameSeq 应用
 
@@ -57,7 +57,7 @@ PDF、PowerPoint 和 `frameseq check` 用 Chromium 浏览器渲染。应用按�
 
 ## 更新
 
-应用会自己保持最新。FrameSeq Studio 每天检查一次有没有更新的 FrameSeq,而大多数新版本只改动 FrameSeq 本身,这样的版本应用会自己安装:它从 npm 仓库下载 FrameSeq 的包(几百 KB),验证仓库对它的签名,然后放在应用自己的依赖旁边:Windows 上是 `%LOCALAPPDATA%\FrameSeq\updates`,macOS 上是 `~/Library/Application Support/FrameSeq/updates`,Linux 上是 `~/.local/state/frameseq/updates`。新版本从下次启动 FrameSeq Studio 或 `frameseq` 时开始运行,Studio 也会提示。更新不带任何新程序,只有 FrameSeq 的脚本,由应用自带的 Node.js 运行,所以智能应用控制和 Gatekeeper 没有新东西要检查。应用本身保持安装时的样子。
+应用会自己保持最新。FrameSeq Studio 每天检查一次有没有更新的 FrameSeq,而大多数新版本只改动 FrameSeq 本身,这样的版本应用会自己安装:它从 npm 仓库下载 FrameSeq 的包(几百 KB),验证仓库对它的签名,然后放在应用自己的依赖旁边:Windows 上是 `%LOCALAPPDATA%\FrameSeq\updates`,macOS 上是 `~/Library/Application Support/FrameSeq/updates`,Linux 上是 `~/.local/state/frameseq/updates`。随后 FrameSeq Studio 会像其他软件更新后那样自动重启到新版本:等所有内容都已保存、没有在放映、并且你切到了别的窗口或半分钟没有操作 Studio 时重启;如果是你自己点的更新,则立即重启。重启后回到同一份演示,并提示已经更新。Studio 终端里正在运行的 shell、正在进行的导出,或者和助手的对话会随旧版本一起结束,所以有这些时会等它们结束再重启。新版本如果启动不了,会被搁置,Studio 继续使用原来的版本。从终端启动的 `frameseq` 在下次启动时才运行新版本。更新不带任何新程序,只有 FrameSeq 的脚本,由应用自带的 Node.js 运行,所以智能应用控制和 Gatekeeper 没有新东西要检查。应用本身保持安装时的样子。
 
 如果一个版本还改动了应用在 FrameSeq 之外附带的东西,比如 Node.js、Studio 的窗口或某个依赖,它就以新应用的形式发布:Studio 会提示,提示里的 **下载** 按钮打开发布页。把新版本装在旧版本上即可,装好后之前的更新也就不再使用。
 

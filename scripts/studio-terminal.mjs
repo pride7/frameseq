@@ -214,6 +214,11 @@ export function closeTerminals() {
   for (const session of [...registry.sessions.values()]) session.kill();
 }
 
+/** Whether a shell is running, which the Studio leaves alone rather than start again under it. */
+export function terminalsOpen() {
+  return registry.sessions.size > 0;
+}
+
 /**
  * The Studio's terminal: a shell in the presentation's folder, shown by the page over a
  * WebSocket. A terminal runs anything its user types, so `allowed` decides who may open one, and

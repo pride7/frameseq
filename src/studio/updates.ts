@@ -1,16 +1,17 @@
 /**
  * Telling the person that a newer FrameSeq is out, and in the app, updating to it. The server
  * knows where this FrameSeq came from and asks there, at most once a day by itself; the app
- * installs a version it can take by itself, which starts the next time the Studio opens. The
- * page says what happened, once per version in a window, and checks again whenever
- * **Help › Check for updates** asks it to.
+ * installs a version it can take by itself, and the Studio its window started starts again on
+ * it once the person is not busy, as other programs do after an update. The page says what
+ * happened, once per version in a window, and checks again whenever **Help › Check for
+ * updates** asks it to.
  */
 
-import { call } from "./api";
+import { call, StudioRequestError } from "./api";
 import { openOutside } from "./desktop";
 import { t } from "./i18n";
 import type { MenuEntry } from "./menubar";
-import { askChoice, toast, type ToastAction } from "./ui";
+import { askChoice, element, toast, type ToastAction } from "./ui";
 
 export interface UpdateStatus {
   /** Where this FrameSeq updates from; none for a checkout of the repository. */
@@ -23,6 +24,8 @@ export interface UpdateStatus {
   ota?: boolean;
   /** The version the app has installed, which starts the next time the Studio opens. */
   ready?: string;
+  /** The Studio starts again on the version the app installs by itself. */
+  restarts?: boolean;
   /** The app is installing `latest` now. */
   installing?: boolean;
   /** Why installing `latest` failed last time. */
@@ -79,8 +82,103 @@ async function settled(found: UpdateStatus): Promise<UpdateStatus> {
   return latest;
 }
 
-function showReady(version: string): void {
-  toast(t.updates.ready(version), { tone: "success", actions: [whatsNew], timeout: 20_000, key: "update" });
+// ── Starting again on the installed version ─────────────────────────────────────────────
+const updatedKey = "frameseq-studio-updated";
+/** How long the person leaves the Studio alone before it may start again under them. */
+const quiet = 30_000;
+const delay = (milliseconds: number) => new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+
+/** The page's own say: nothing unsaved and no slide show, as the editor reports. */
+let pageSettled: () => boolean = () => true;
+let restarting = false;
+let lastInput = Date.now();
+
+/** Tell the updates when the page can start again without losing anything. */
+export function restartWhen(settledPage: () => boolean): void {
+  pageSettled = settledPage;
+}
+
+/** Whether the person is elsewhere, or has left the Studio alone for a while. */
+function away(): boolean {
+  return document.hidden || !document.hasFocus() || Date.now() - lastInput > quiet;
+}
+
+/**
+ * Start the Studio again on the version the app has installed, as other programs do after an
+ * update: once nothing is unsaved, no slide show or dialog is open, and the person is away or,
+ * when they asked for the update, at once. The server puts it off while a shell, an export, or
+ * the assistant's conversation runs in it. The page shows what is happening and reloads into
+ * the new server, which answers on the same address.
+ */
+async function restartInto(version: string, { asked = false } = {}): Promise<void> {
+  if (restarting) return;
+  restarting = true;
+  for (const type of ["pointerdown", "pointermove", "keydown", "wheel"]) {
+    addEventListener(type, () => {
+      lastInput = Date.now();
+    }, { capture: true, passive: true });
+  }
+  let first = asked;
+  for (;;) {
+    if (!first) await delay(5000);
+    const ready = (first || away()) && pageSettled() && !document.querySelector("dialog[open]");
+    first = false;
+    if (!ready) continue;
+    try {
+      await call("POST", "update", { restart: true });
+      break;
+    } catch (error) {
+      if (!(error instanceof StudioRequestError && error.data.busy === true)) {
+        // Nothing to start again on after all; the version starts with the next window.
+        restarting = false;
+        toast(t.updates.ready(version), { tone: "success", actions: [whatsNew], timeout: 20_000, key: "update" });
+        return;
+      }
+      await delay(55_000);
+    }
+  }
+  try {
+    sessionStorage.setItem(updatedKey, version);
+  } catch {
+    // The page then reloads without saying it was updated.
+  }
+  const cover = element("div", "studio-switching");
+  cover.append(element("div", "studio-splash", t.updates.restarting(version)));
+  document.body.append(cover);
+  // The development server's own client reloads the page once the new server answers; this
+  // is for when it does not.
+  const started = Date.now();
+  while (Date.now() - started < 180_000) {
+    await delay(500);
+    try {
+      if ((await fetch("/__frameseq/studio/session", { cache: "no-store" })).ok) break;
+    } catch {
+      // Between the old server and the new one.
+    }
+  }
+  location.reload();
+}
+
+/** After starting again on an update, say so once; an update that did not start says why itself. */
+function sayUpdated(current: string): void {
+  let version: string | null = null;
+  try {
+    version = sessionStorage.getItem(updatedKey);
+    sessionStorage.removeItem(updatedKey);
+  } catch {
+    return;
+  }
+  if (version && version === current) {
+    toast(t.updates.updated(version), { tone: "success", actions: [whatsNew], timeout: 20_000, key: "update" });
+  }
+}
+
+/** A version the app has installed: start again on it where the Studio can, or say when it starts. */
+function whenReady(found: UpdateStatus, version: string, asked = false): void {
+  if (found.restarts) void restartInto(version, { asked });
+  else if (asked || firstTime(`ready ${version}`)) {
+    toast(t.updates.ready(version), { tone: "success", actions: [whatsNew], timeout: 20_000, key: "update" });
+  }
 }
 
 /** Install the latest version in the app now, as the person asks. */
@@ -95,7 +193,8 @@ async function installNow(found: UpdateStatus): Promise<void> {
     return;
   }
   if (result.ready) {
-    progress.update(t.updates.ready(result.ready), { tone: "success", actions: [whatsNew], timeout: 20_000 });
+    progress.close();
+    whenReady(result, result.ready, true);
     return;
   }
   progress.update(t.updates.installFailed(version, result.error ?? result.failed ?? ""), { tone: "error", actions: [download] });
@@ -124,15 +223,14 @@ function updateActions(found: UpdateStatus): ToastAction[] {
 export async function watchForUpdates(): Promise<void> {
   try {
     status = await call<UpdateStatus>("GET", "update");
+    sayUpdated(status.current);
     if (!status.automatic || !status.newer || !status.latest || status.skipped) return;
-    if (status.installing) {
-      status = await settled(status);
-      if (status.ready && firstTime(`ready ${status.ready}`)) showReady(status.ready);
-    }
+    if (status.installing) status = await settled(status);
   } catch {
     return;
   }
   const { latest } = status;
+  if (status.ready) whenReady(status, status.ready);
   if (!latest || status.ready || status.installing) return;
   if (status.failed) {
     if (firstTime(`failed ${latest}`)) {
@@ -172,7 +270,8 @@ export async function checkForUpdates(): Promise<void> {
     return;
   }
   if (found.ready) {
-    progress.update(t.updates.ready(found.ready), { tone: "success", actions: [whatsNew], timeout: 20_000 });
+    progress.close();
+    whenReady(found, found.ready, true);
     return;
   }
   progress.close();
@@ -181,7 +280,7 @@ export async function checkForUpdates(): Promise<void> {
     title: t.updates.available(found.latest),
     message: [
       t.updates.current(found.current),
-      found.source === "app" && found.ota ? t.updates.otaHint : "",
+      found.source === "app" && found.ota ? (found.restarts ? t.updates.otaRestartHint : t.updates.otaHint) : "",
       found.source === "npm" && found.command ? t.updates.npmHint(found.command) : "",
     ].filter(Boolean).join(" "),
     choices: actions.map((action, index) => ({ label: action.label, value: String(index), primary: action.primary })),

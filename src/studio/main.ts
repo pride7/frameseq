@@ -93,7 +93,7 @@ import {
   screenName,
 } from "./screens";
 import { pairPhone, remoteSession, resumePairing } from "./remote";
-import { updateMenu, watchForUpdates } from "./updates";
+import { restartWhen, updateMenu, watchForUpdates } from "./updates";
 import { ProblemsPanel, type Problem } from "./problems";
 import { layoutSketch, showLayoutPicker, slideLayouts, type SlideLayout } from "./layouts";
 import { bindRegion, deleteSlide, duplicateSlide, insertSlide, moveSlide, planBinding } from "./slides";
@@ -3002,6 +3002,8 @@ async function start(): Promise<void> {
     presenterView: () => usePresenterView,
   });
   resumePairing(session);
+  // An update the app installed starts once everything is saved and no show is on.
+  restartWhen(() => saveState === "saved" && !show.running);
 
   function present(index = previewSlide): void {
     void flushSave();
