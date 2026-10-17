@@ -4,6 +4,12 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.40.1] - 2026-10-17
+
+### Added
+
+- A picture on the clipboard, such as a screenshot, can be pasted onto a slide with `Ctrl+V` in FrameSeq Studio's preview. It is kept in the `images` folder beside the presentation, as `pasted-20261017153012.png` or under its own name when a picture file was copied, and goes on the slide as **Insert › Picture** puts one. Text on the clipboard, such as objects copied in the Studio, pastes as before.
+
 ## [0.40.0] - 2026-10-16
 
 ### Added
