@@ -1,4 +1,4 @@
-<!-- translation-of: docs/themes.md sha256:ef73269851dcaddf -->
+<!-- translation-of: docs/themes.md sha256:787d7bfee8258b6d -->
 
 # 主题
 
@@ -182,7 +182,7 @@ const conferenceTheme = defineTheme({
 - `radii`:`small`、`medium`、`large`、`pill` 四种圆角。
 - `chrome`:可选的标题栏、页脚、页码、海报的标题横幅(`header`)、封面标题外的色框(`coverTitleBox`),以及它们的尺寸和配色。
 - `family`:`"frameseq"` 或 `"beamer"`;继承主题时会自动保留原有 family。
-- `coverLayout`:`"default"`、`"center"` 或 `"academic-left"`。`"default"` 和 `"center"` 把封面文字放在页面中部,`"default"` 下作者留在页脚;`"academic-left"` 的标题页保持在靠上的位置。
+- `coverLayout`:`"default"`、`"center"` 或 `"academic-left"`。三种都把封面文字放在页面中部;`"default"` 下作者留在页脚。
 - `contentAlign`:`"top"`,或 `"center"`:像 Beamer 主题那样把页面内容放在标题下方空间的中部。
 - `coverBackground`:`.cover()` 页面使用的 CSS 颜色、渐变或图片。
 

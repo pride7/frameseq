@@ -4,10 +4,6 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
-### Fixed
-
-- `minimal-academic` draws its title page where it did before 0.40.0, near the top of the page, in the browser, the PDF, PNG, and PowerPoint exports, and Typst. 0.40.0 had moved it to the middle along with the other themes' covers.
-
 ## [0.40.0] - 2026-10-16
 
 ### Added

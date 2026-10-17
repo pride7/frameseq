@@ -180,7 +180,7 @@ const conferenceTheme = defineTheme({
 - `radii`: `small`, `medium`, `large`, and `pill` CSS radii.
 - `chrome`: optional title bar, footer, slide numbering, a poster's title band (`header`), a box around the cover's title (`coverTitleBox`), their dimensions, and colors.
 - `family`: `"frameseq"` or `"beamer"`; extending a theme preserves its family automatically.
-- `coverLayout`: `"default"`, `"center"`, or `"academic-left"`. `"default"` and `"center"` set the cover's words in the middle of the page, and with `"default"` an author stays at its foot; `"academic-left"` keeps the title page near the top.
+- `coverLayout`: `"default"`, `"center"`, or `"academic-left"`. Each sets the cover's words in the middle of the page; with `"default"`, an author stays at its foot.
 - `contentAlign`: `"top"`, or `"center"` to set a slide's content in the middle of the room below its title, as the Beamer themes do.
 - `coverBackground`: a CSS color, gradient, or image used by `.cover()` slides.
 
