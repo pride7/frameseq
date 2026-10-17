@@ -1,4 +1,4 @@
-<!-- translation-of: docs/studio.md sha256:ed3e7f4efb936ea1 -->
+<!-- translation-of: docs/studio.md sha256:04344b90691e76a6 -->
 
 # FrameSeq Studio
 
