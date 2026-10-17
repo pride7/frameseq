@@ -1044,9 +1044,10 @@ button {
 
 /*
  * A cover's words stand in the middle of the page, not in its top third. With an author at the
- * foot, the title and what goes with it sit in the middle of the room above the author.
+ * foot, the title and what goes with it sit in the middle of the room above the author. The
+ * academic title page keeps its own place near the top.
  */
-.frameseq-cover-slide > .frameseq-slide-body {
+:root:not([data-frameseq-cover-layout="academic-left"]) .frameseq-cover-slide > .frameseq-slide-body {
   justify-content: center;
 }
 
@@ -1063,7 +1064,7 @@ button {
 
 [data-frameseq-cover-layout="academic-left"] .frameseq-cover-slide {
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: left;
 }
 
@@ -1075,7 +1076,7 @@ button {
 }
 
 [data-frameseq-cover-layout="academic-left"] .frameseq-auto-title-page {
-  margin: auto 0;
+  margin-top: 40px;
 }
 
 [data-frameseq-theme="minimal-academic"][data-frameseq-cover-layout="academic-left"] .frameseq-cover-title {

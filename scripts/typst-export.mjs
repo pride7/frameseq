@@ -1596,7 +1596,7 @@ async function serializeSlide(slide, index, presentation, context) {
   // words stand in the middle of the page, above an author at its foot, and a theme like Beamer's
   // sets a content slide's body in the middle of the room below its title.
   let items = children.map(childArgument);
-  if (cover && context.theme.coverLayout !== "center" && !contentAlign) {
+  if (cover && context.theme.coverLayout === "default" && !contentAlign) {
     const isAuthor = (child) => hasClass(child, "frameseq-cover-author");
     // The cover's words usually sit in one column of their own, which is opened up for the room.
     const column = childNodes.length === 1 && (childNodes[0].children ?? []).some(isAuthor)
@@ -1606,9 +1606,7 @@ async function serializeSlide(slide, index, presentation, context) {
       context.parents = recordParents(slide);
       items = (await Promise.all(column.map((child) => serializeNode(child, context)))).map(childArgument);
     }
-    const author = context.theme.coverLayout === "default" && !automaticTitlePage
-      ? (column ?? childNodes).findIndex(isAuthor)
-      : -1;
+    const author = automaticTitlePage ? -1 : (column ?? childNodes).findIndex(isAuthor);
     items = author > 0
       ? ["1fr", ...items.slice(0, author), "1fr", ...items.slice(author)]
       : ["1fr", ...items, "1fr"];
