@@ -616,13 +616,11 @@ export class AssistantPanel {
         this.message.text += event.text;
         const message = this.message;
         cancelAnimationFrame(this.drawing);
-        this.drawing = requestAnimationFrame(() => {
-          message.node.innerHTML = renderMarkdown(message.text);
-        });
+        this.drawing = requestAnimationFrame(() => drawMessage(message));
         break;
       }
       case "break":
-        if (this.message) this.message.node.innerHTML = renderMarkdown(this.message.text);
+        if (this.message) drawMessage(this.message);
         this.message = undefined;
         break;
       case "tool": {
@@ -682,29 +680,82 @@ function toolLabel(name: string, input: string): string {
 
 const escapeHtml = (text: string) => text.replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[character]!);
 
-/** Inline Markdown: code, bold, and italics, on text already escaped. */
-function inline(text: string): string {
-  return escapeHtml(text)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
+/** Draw an answer as far as it has come, and again once the formulas in it can be drawn. */
+function drawMessage(message: { node: HTMLElement; text: string }): void {
+  message.node.innerHTML = renderMarkdown(message.text, () => drawMessage(message));
+}
+
+/** KaTeX, loaded the first time an answer has a formula in it, since most answers never do. */
+let katex: typeof import("katex").default | undefined;
+let katexLoading: Promise<void> | undefined;
+
+function loadKatex(): Promise<void> {
+  katexLoading ??= Promise.all([import("katex"), import("katex/dist/katex.min.css")])
+    .then(([module]) => { katex = module.default; });
+  return katexLoading;
 }
 
 /**
- * The little Markdown agents answer in: paragraphs, lists, headings, and code. Everything is
- * escaped first, so an answer can never put markup of its own into the page.
+ * A formula as KaTeX draws it, or its source while KaTeX loads, which `pending` notes. A formula
+ * KaTeX cannot read shows its source in red rather than breaking the answer.
  */
-export function renderMarkdown(source: string): string {
+function formula(source: string, display: boolean, pending: { math: boolean }): string {
+  if (!katex) {
+    pending.math = true;
+    return `<span class="studio-assistant-math-source">${escapeHtml(source)}</span>`;
+  }
+  return katex.renderToString(source, { displayMode: display, throwOnError: false, strict: false, output: "html" });
+}
+
+/**
+ * Code and formulas in a line, which keep their characters from the Markdown around them: `code`,
+ * \(…\) and $…$ inline, \[…\] and $$…$$ displayed. A $ with a space inside it or a digit after
+ * it, as in "$5 to $10", is a price and not a formula.
+ */
+const inlineSpans = /`([^`]+)`|\\\((.+?)\\\)|\\\[(.+?)\\\]|\$\$(.+?)\$\$|\$(?![\s$])([^$\n]*?[^\s$\\])\$(?!\d)/g;
+
+/** Inline Markdown: code, formulas, bold, and italics. Everything else is escaped. */
+function inline(text: string, pending: { math: boolean }): string {
+  const spans: string[] = [];
+  const marked = text.replace(inlineSpans, (_match, code?: string, paren?: string, bracket?: string, double?: string, single?: string) => {
+    spans.push(code !== undefined
+      ? `<code>${escapeHtml(code)}</code>`
+      : formula(paren ?? bracket ?? double ?? single ?? "", bracket !== undefined || double !== undefined, pending));
+    return `\u0000${spans.length - 1}\u0000`;
+  });
+  return escapeHtml(marked)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+    .replace(/\u0000(\d+)\u0000/g, (_match, index: string) => spans[Number(index)]);
+}
+
+/** How a formula displayed on lines of its own opens, how it closes, and its closing mark. */
+const displayFences: Array<[RegExp, RegExp, string]> = [[/^\s*\$\$/, /\$\$\s*$/, "$$"], [/^\s*\\\[/, /\\\]\s*$/, "\\]"]];
+
+/**
+ * The little Markdown agents answer in: paragraphs, lists, headings, code, and formulas.
+ * Everything is escaped first, so an answer can never put markup of its own into the page.
+ * KaTeX loads the first time a formula appears, and `redraw` is called once it has, to draw the
+ * answer again with its formulas.
+ */
+export function renderMarkdown(source: string, redraw?: () => void): string {
+  const pending = { math: false };
+  const html = renderBlocks(source, pending);
+  if (pending.math) void loadKatex().then(() => redraw?.(), () => undefined);
+  return html;
+}
+
+function renderBlocks(source: string, pending: { math: boolean }): string {
   const out: string[] = [];
   const lines = source.replace(/\r\n/g, "\n").split("\n");
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: string[] } | undefined;
   const flushParagraph = () => {
-    if (paragraph.length) out.push(`<p>${paragraph.map(inline).join("<br>")}</p>`);
+    if (paragraph.length) out.push(`<p>${paragraph.map((line) => inline(line, pending)).join("<br>")}</p>`);
     paragraph = [];
   };
   const flushList = () => {
-    if (list) out.push(`<${list.ordered ? "ol" : "ul"}>${list.items.map((item) => `<li>${inline(item)}</li>`).join("")}</${list.ordered ? "ol" : "ul"}>`);
+    if (list) out.push(`<${list.ordered ? "ol" : "ul"}>${list.items.map((item) => `<li>${inline(item, pending)}</li>`).join("")}</${list.ordered ? "ol" : "ul"}>`);
     list = undefined;
   };
   for (let index = 0; index < lines.length; index += 1) {
@@ -717,6 +768,33 @@ export function renderMarkdown(source: string): string {
       for (index += 1; index < lines.length && !/^\s*```/.test(lines[index]); index += 1) code.push(lines[index]);
       out.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
       continue;
+    }
+    // A formula displayed on lines of its own, as $$ … $$ or \[ … \], which may run over several.
+    const fences = displayFences.find(([open]) => open.test(line));
+    if (fences) {
+      const [open, close, token] = fences;
+      const body: string[] = [line.replace(open, "")];
+      // "$$a$$ and $$b$$" holds two formulas in a line of text, which inline Markdown draws.
+      let closed = close.test(body[0]);
+      if (closed && body[0].replace(close, "").includes(token)) {
+        flushList();
+        paragraph.push(line);
+        continue;
+      }
+      while (!closed && index + 1 < lines.length) {
+        index += 1;
+        body.push(lines[index]);
+        closed = close.test(lines[index]);
+      }
+      // Still being written: shown as it is until the closing fence arrives.
+      if (closed) {
+        flushParagraph();
+        flushList();
+        body[body.length - 1] = body[body.length - 1].replace(close, "");
+        out.push(`<div class="studio-assistant-math">${formula(body.join("\n").trim(), true, pending)}</div>`);
+        continue;
+      }
+      index -= body.length - 1;
     }
     const item = line.match(/^\s*(?:([-*•])|(\d+)[.)])\s+(.*)$/);
     if (item) {
@@ -731,7 +809,7 @@ export function renderMarkdown(source: string): string {
     if (heading) {
       flushParagraph();
       flushList();
-      out.push(`<p><strong>${inline(heading[1])}</strong></p>`);
+      out.push(`<p><strong>${inline(heading[1], pending)}</strong></p>`);
       continue;
     }
     if (!line.trim()) {

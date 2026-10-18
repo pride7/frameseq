@@ -752,6 +752,31 @@ body:has(.studio-topbar) .studio-window-drag {
   background: none;
 }
 
+/* Formulas: a wide one scrolls rather than widening the panel. */
+.studio-assistant-message .katex {
+  font-size: 1.05em;
+}
+
+.studio-assistant-math,
+.studio-assistant-message .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.studio-assistant-math {
+  margin: 0 0 6px;
+}
+
+.studio-assistant-math .katex-display {
+  margin: 4px 0;
+}
+
+/* A formula's source, shown for the moment KaTeX takes to load. */
+.studio-assistant-math-source {
+  color: var(--studio-muted);
+  font: 12px var(--studio-mono);
+}
+
 .studio-assistant-tool {
   display: flex;
   align-items: baseline;

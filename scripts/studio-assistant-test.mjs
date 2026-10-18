@@ -62,7 +62,7 @@ out({ type: "assistant", message: { id: "m1", content: [{ type: "text", text: "C
 await wait(1500);
 writeFileSync(deck, readFileSync(deck, "utf8").replace(/text\\("[^"]*"\\)\\.hero/, 'text("Title ' + Date.now() + '").hero'));
 out({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t1", content: "ok" }] } });
-out({ type: "assistant", message: { id: "m2", content: [{ type: "text", text: "Done." }] } });
+out({ type: "assistant", message: { id: "m2", content: [{ type: "text", text: "Done: \\\\(z=E(x)\\\\) and **\\\\(s\\\\)**, priced $5 to $10.\\n\\n$$\\n\\\\operatorname{Dep}(z,s\\\\mid y,c)\\n$$" }] } });
 out({ type: "result", subtype: "success", is_error: false, session_id: session, duration_ms: 2100, permission_denials: [] });
 `;
 
@@ -155,6 +155,22 @@ try {
   assert.deepEqual(await users(), ["Give the cover a new title"]);
   assert.equal(await page.$eval(".studio-assistant-tool", (row) => `${row.dataset.status} ${row.textContent}`), "done ✓Edit talk.slides.ts");
   assert.ok((await page.$$eval(".studio-assistant-message", (items) => items.map((item) => item.innerHTML))).includes("<p>Changing the <strong>title</strong>.</p>"));
+  // Formulas are drawn by KaTeX, inline and displayed over lines of their own, even in bold; prices are not formulas.
+  const answer = await waitFor(() => page.evaluate(() => {
+    const message = [...document.querySelectorAll(".studio-assistant-message")].at(-1);
+    if (!message?.querySelector(".studio-assistant-math .katex-display")) return undefined;
+    return {
+      inline: message.querySelectorAll("p .katex").length,
+      bold: Boolean(message.querySelector("strong .katex")),
+      pending: message.querySelectorAll(".studio-assistant-math-source").length,
+      text: message.textContent,
+    };
+  }), "the answer's formulas to be drawn");
+  assert.equal(answer.inline, 2);
+  assert.ok(answer.bold, "a formula in bold is drawn in bold");
+  assert.equal(answer.pending, 0);
+  assert.match(answer.text, /priced \$5 to \$10\./);
+  assert.match(answer.text, /Dep/);
 
   const [first] = await calls();
   assert.ok(first.args.includes("-p") && first.args.includes("stream-json"), "Claude Code runs without a terminal, in stream-json");

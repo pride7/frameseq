@@ -7,6 +7,7 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Added
 
 - Objects dragged in FrameSeq Studio's preview snap to the page's edges and middle as well as to the objects around them, and a move snaps to even spacing with the objects in its row, marking the equal gaps. A side pulled by its handle snaps to edges and middles too, and the guide lines run only between the objects they line up. `Ctrl` or `⌘` still drags freely.
+- The assistant's answers in FrameSeq Studio draw their formulas with KaTeX, written inline as `\(…\)` or `$…$` and displayed as `\[…\]` or `$$…$$`, on lines of their own or within a line. KaTeX loads the first time an answer has a formula, and a `$` before a price is left as it is.
 
 ### Changed
 
