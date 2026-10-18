@@ -53,7 +53,7 @@ if (playgroundJson.devDependencies?.["@pride7/frameseq"] !== `^${packageJson.ver
   throw new Error("The standalone StackBlitz playground is incomplete or uses the wrong FrameSeq version");
 }
 if (!cliSource.includes('const hostEnabled = process.argv.includes("--host") || remoteEnabled;')
-  || !cliSource.includes("server: hostEnabled ? { host: true } : undefined")) {
+  || !cliSource.includes("...(hostEnabled ? { host: true } : {})")) {
   throw new Error("FrameSeq dev must expose container previews with --host while preserving --remote behavior");
 }
 if (!publishWorkflow.includes("tags:")
