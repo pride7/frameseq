@@ -366,7 +366,7 @@ export function studioPlugin({
       const frameseqVersion = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version;
       const updates = createUpdates({ packageRoot, current: frameseqVersion, daily: remember && host.updates !== false });
       // The assistant's events reach the page as they come, on the connection hot reload uses.
-      const assistant = host.assistant === false ? undefined : createAssistant({ cliPath, send: (event) => server.ws.send("frameseq:assistant", event) });
+      const assistant = host.assistant === false ? undefined : createAssistant({ cliPath, entry: start ? undefined : entry, send: (event) => server.ws.send("frameseq:assistant", event) });
       if (assistant) server.httpServer?.once("close", () => assistant.close());
 
       if (quitOnClose) quitWhenClosed(server);
@@ -502,8 +502,8 @@ export function studioPlugin({
        * The app's Studio starts again on an update it has installed, as the page asks once the
        * person is not busy. Only a Studio that a window started, and that stops with it, does:
        * one run from a terminal would leave the terminal for a server in the background. A shell
-       * in the terminal, an export, and the assistant's conversation live in this process, so
-       * any of them puts it off.
+       * in the terminal, an export, and a request the assistant is answering live in this
+       * process, so any of them puts it off.
        */
       const restarts = updates.source?.kind === "app" && quitOnClose && remember;
       const withRestarts = (found) => (restarts ? { ...found, restarts: true } : found);
@@ -515,7 +515,7 @@ export function studioPlugin({
         const busy = exporting ? "An export is still running."
           : switching ? "The Studio is already starting again."
             : terminalsOpen() ? "A terminal is open."
-              : assistant?.busy() ? "The assistant has a conversation open."
+              : assistant?.busy() ? "The assistant is answering a request."
                 : undefined;
         if (busy) return [409, { error: busy, busy: true }];
         switching = true;
@@ -889,6 +889,8 @@ export function studioPlugin({
           assistant.reset();
           return { ok: true };
         },
+        "POST /assistant/open": (body) => assistant.open(String(body.id ?? "")),
+        "POST /assistant/forget": (body) => assistant.forget(String(body.id ?? "")),
         "POST /assistant/refresh": () => ({ agents: assistant.refresh() }),
         "POST /phone-remote": (_body, request) => startPhoneRemote(request),
       };

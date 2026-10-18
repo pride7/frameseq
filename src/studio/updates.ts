@@ -107,7 +107,7 @@ function away(): boolean {
  * Start the Studio again on the version the app has installed, as other programs do after an
  * update: once nothing is unsaved, no slide show or dialog is open, and the person is away or,
  * when they asked for the update, at once. The server puts it off while a shell, an export, or
- * the assistant's conversation runs in it. The page shows what is happening and reloads into
+ * a request to the assistant runs in it; the assistant's conversations are kept, and open again. The page shows what is happening and reloads into
  * the new server, which answers on the same address.
  */
 async function restartInto(version: string, { asked = false } = {}): Promise<void> {

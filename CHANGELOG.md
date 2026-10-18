@@ -4,6 +4,14 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+### Added
+
+- FrameSeq Studio's assistant keeps each conversation with the presentation, in FrameSeq's settings folder, and opens the last one again the next time the presentation opens, so a follow-up carries on the agent's session where it left off. The clock beside **+** lists the presentation's last 20 conversations to open again or delete. When Claude Code or Codex no longer keeps a session, the panel says so and asks the request again in a new one.
+
+### Changed
+
+- An open conversation with the assistant no longer puts off starting the Studio again on an app update, since it opens again afterwards; only a request being answered does.
+
 ## [0.40.2] - 2026-10-18
 
 ### Added

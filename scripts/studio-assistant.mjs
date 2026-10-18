@@ -6,6 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, delimiter, dirname, extname, join, relative } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline";
+import { compactEvents, forgetConversation, keepConversation, loadConversations } from "./studio-assistant-history.mjs";
 import { configDirectory, importPicture, pictureExtensions } from "./studio-files.mjs";
 
 /**
@@ -180,9 +181,35 @@ function composePrompt({ text, context, file, first, attachments = [] }) {
   return parts.join("\n");
 }
 
-export function createAssistant({ cliPath, send }) {
-  /** One conversation per Studio: the agent, its session, and everything it has said, for a page that reloads. */
-  let conversation = { agent: undefined, session: undefined, events: [], file: undefined };
+/** What Claude Code or Codex says when the session it was asked to carry on is no longer kept. */
+const lostSession = /no conversation found|session[^\n]*not found|thread[^\n]*not found|no rollout found|could not find (?:a )?(?:session|thread|conversation)/i;
+
+export function createAssistant({ cliPath, send, entry: studioEntry }) {
+  const newConversation = () => ({ id: randomBytes(8).toString("hex"), agent: undefined, session: undefined, events: [], file: studioEntry, title: "", started: 0 });
+  /**
+   * The conversation open in the panel: the agent, its session, and everything it has said, for
+   * a page that reloads. A presentation's conversations are kept, and the last one opens again.
+   */
+  let conversation = newConversation();
+  const restore = (kept) => ({ ...newConversation(), ...kept, file: studioEntry });
+  if (studioEntry) {
+    const [last] = loadConversations(studioEntry);
+    if (last) conversation = restore(last);
+  }
+  /** Keep the conversation open now with the presentation's others, once it has something to keep. */
+  const keep = () => {
+    const kept = conversation;
+    if (!studioEntry || kept.file !== studioEntry || !kept.events.some((event) => event.type === "user")) return;
+    void keepConversation(studioEntry, {
+      id: kept.id,
+      agent: kept.agent,
+      session: kept.session,
+      title: kept.title,
+      started: kept.started,
+      updated: Date.now(),
+      events: compactEvents(kept.events),
+    });
+  };
   let running;
   let stopped = false;
   let found;
@@ -279,6 +306,8 @@ export function createAssistant({ cliPath, send }) {
     if (event.type === "done" && !event.seconds) event.seconds = Math.round((Date.now() - startedAt) / 1000);
     conversation.events.push(event);
     send(event);
+    // The session is kept as soon as it is known, so a Studio closed mid-answer can carry it on.
+    if (event.type === "session") keep();
   };
 
   function agents() {
@@ -295,15 +324,44 @@ export function createAssistant({ cliPath, send }) {
   function state() {
     return {
       agents: agents(),
-      conversation: { agent: conversation.agent, session: conversation.session, running: Boolean(running), events: conversation.events },
+      conversation: { id: conversation.id, agent: conversation.agent, session: conversation.session, running: Boolean(running), events: conversation.events },
+      history: history(),
     };
+  }
+
+  /** The presentation's conversations, to open one again: what each began by asking, and when it was last used. */
+  function history() {
+    if (!studioEntry) return [];
+    return loadConversations(studioEntry).map((kept) => ({ id: kept.id, title: kept.title || "", agent: kept.agent, updated: kept.updated ?? 0 }));
+  }
+
+  /** Open one of the presentation's earlier conversations, to read it and carry it on. */
+  function open(id) {
+    if (running) throw Object.assign(new Error("The assistant is still working on the last request."), { status: 409 });
+    const kept = studioEntry ? loadConversations(studioEntry).find((candidate) => candidate.id === id) : undefined;
+    if (!kept) throw Object.assign(new Error("That conversation is no longer kept."), { status: 404 });
+    conversation = restore(kept);
+    forgetAttachments();
+    return state();
+  }
+
+  /** Forget one of the presentation's conversations; forgetting the open one starts a new one. */
+  async function forget(id) {
+    if (id === conversation.id) {
+      if (running) throw Object.assign(new Error("The assistant is still working on the last request."), { status: 409 });
+      conversation = newConversation();
+      forgetAttachments();
+    }
+    if (studioEntry) await forgetConversation(studioEntry, id);
+    return state();
   }
 
   /** The MCP server the agent starts: this FrameSeq, rendering in the Studio's own server. */
   const mcpArgs = (entry, preview) => [cliPath, "mcp", entry, ...(preview ? ["--preview", preview] : [])];
 
   async function claudeCommand({ entry, preview, prompt, session, settings, folders }) {
-    const config = join(tmpdir(), `frameseq-assistant-${process.pid}.json`);
+    // One file for each run, which a run before it, removing its own, never takes away.
+    const config = join(tmpdir(), `frameseq-assistant-${process.pid}-${randomBytes(4).toString("hex")}.json`);
     await writeFile(config, JSON.stringify({ mcpServers: { frameseq: { command: process.execPath, args: mcpArgs(entry, preview) } } }), "utf8");
     return {
       args: [
@@ -345,7 +403,7 @@ export function createAssistant({ cliPath, send }) {
   }
 
   /** Claude Code's stream-json lines, as the page's events. */
-  function claudeReader() {
+  function claudeReader(emit) {
     const tools = new Map();
     const streamed = new Set();
     return (line) => {
@@ -401,7 +459,7 @@ export function createAssistant({ cliPath, send }) {
   }
 
   /** Codex's JSON events, as the page's events. */
-  function codexReader() {
+  function codexReader(emit) {
     let turn = false;
     return (line) => {
       const event = JSON.parse(line);
@@ -445,56 +503,96 @@ export function createAssistant({ cliPath, send }) {
     // A picture is copied beside the presentation, where a slide can show it; the agent reads any other file where it is kept.
     const given = [];
     for (const attachment of files) given.push(attachment.picture ? { ...attachment, use: (await importPicture(entry, attachment.path)).path } : attachment);
-    // Another agent, or another presentation, starts a new conversation.
-    if (conversation.agent !== agent || conversation.file !== entry) conversation = { agent, session: undefined, events: [], file: entry };
+    // Another agent, or another presentation, starts a new conversation; the one before is kept.
+    if ((conversation.agent && conversation.agent !== agent) || conversation.file !== entry) {
+      conversation = { ...newConversation(), file: entry };
+    }
+    conversation.agent = agent;
+    conversation.title ||= text.replace(/\s+/g, " ").slice(0, 80);
+    conversation.started ||= Date.now();
     const folder = dirname(entry);
     const file = relative(folder, entry) || basename(entry);
-    const prompt = composePrompt({ text, context, file, first: !conversation.session, attachments: given });
     const folders = attachmentFolder ? [await attachmentFolder] : [];
-    const plan = agent === "claude"
-      ? await claudeCommand({ entry, preview, prompt, session: conversation.session, settings, folders })
-      : codexCommand({ entry, preview, prompt, session: conversation.session, settings });
 
     emit({ type: "user", text, context: context?.summary, ...(given.length > 0 ? { files: given.map((attachment) => attachment.name) } : {}) });
-    const child = spawn(command.command, [...command.prefix, ...plan.args], {
-      cwd: folder,
-      env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
-    });
-    running = child;
+    keep();
     startedAt = Date.now();
-    let stderr = "";
-    let finished = false;
-    const read = agent === "claude" ? claudeReader() : codexReader();
-    createInterface({ input: child.stdout }).on("line", (line) => {
-      if (!line.trim()) return;
-      try {
-        read(line);
-        if (conversation.events.at(-1)?.type === "done") finished = true;
-      } catch {
-        // A line that is not an event, such as a warning printed before the stream begins.
-      }
-    });
-    child.stderr.on("data", (chunk) => { stderr = `${stderr}${chunk}`.slice(-4000); });
-    child.stdin.on("error", () => undefined);
-    child.stdin.end(plan.input);
-    child.on("error", (error) => {
-      if (!finished) emit({ type: "done", ok: false, error: error.message });
-      finished = true;
-    });
-    child.on("close", (code) => {
-      running = undefined;
-      void plan.cleanup();
-      if (!finished) emit({ type: "done", ok: false, error: stopped ? "" : (stderr.trim().split("\n").slice(-6).join("\n") || `${chosen.name} stopped with code ${code}.`), stopped });
-      stopped = false;
-      send({ type: "idle" });
-      // Codex says nothing of its limits while it answers, so they are asked for afterwards.
-      if (agent === "codex") {
-        codexUsageAt = 0;
-        void readUsage("codex").catch(() => undefined);
-      }
-    });
+    await run(conversation.session);
+
+    /**
+     * Run the agent on the request, carrying on `session` if there is one. A session the agent
+     * no longer keeps, as when its own history was cleared, is said once and the request asked
+     * again in a new one, which the conversation then carries on.
+     */
+    async function run(session) {
+      const prompt = composePrompt({ text, context, file, first: !session, attachments: given });
+      const plan = agent === "claude"
+        ? await claudeCommand({ entry, preview, prompt, session, settings, folders })
+        : codexCommand({ entry, preview, prompt, session, settings });
+      const child = spawn(command.command, [...command.prefix, ...plan.args], {
+        cwd: folder,
+        env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
+      });
+      running = child;
+      let stderr = "";
+      let finished = false;
+      /** Whether the agent has answered anything yet, after which a failure is its own. */
+      let answered = false;
+      /** A failure held back while it may only say that the session is gone. */
+      let held;
+      const report = (event) => {
+        if (event.type === "done") {
+          finished = true;
+          if (session && !answered && !event.ok) {
+            held = event;
+            return;
+          }
+        }
+        if (["text", "tool", "file"].includes(event.type)) answered = true;
+        emit(event);
+      };
+      const read = agent === "claude" ? claudeReader(report) : codexReader(report);
+      createInterface({ input: child.stdout }).on("line", (line) => {
+        if (!line.trim()) return;
+        try {
+          read(line);
+        } catch {
+          // A line that is not an event, such as a warning printed before the stream begins.
+        }
+      });
+      child.stderr.on("data", (chunk) => { stderr = `${stderr}${chunk}`.slice(-4000); });
+      child.stdin.on("error", () => undefined);
+      child.stdin.end(plan.input);
+      child.on("error", (error) => {
+        if (!finished) report({ type: "done", ok: false, error: error.message });
+        finished = true;
+      });
+      child.on("close", (code) => {
+        running = undefined;
+        void plan.cleanup();
+        if (session && !answered && !stopped && (held || code !== 0) && lostSession.test(`${stderr}\n${held?.error ?? ""}`)) {
+          conversation.session = undefined;
+          emit({ type: "notice", text: "", reason: "session-lost" });
+          void run(undefined).catch((error) => {
+            emit({ type: "done", ok: false, error: error.message });
+            send({ type: "idle" });
+          });
+          return;
+        }
+        if (held) emit(held);
+        else if (!finished) emit({ type: "done", ok: false, error: stopped ? "" : (stderr.trim().split("\n").slice(-6).join("\n") || `${chosen.name} stopped with code ${code}.`), stopped });
+        stopped = false;
+        keep();
+        send({ type: "idle" });
+        // Codex says nothing of its limits while it answers, so they are asked for afterwards.
+        if (agent === "codex") {
+          codexUsageAt = 0;
+          void readUsage("codex").catch(() => undefined);
+        }
+      });
+    }
     return { started: true };
   }
 
@@ -504,9 +602,10 @@ export function createAssistant({ cliPath, send }) {
     stopTree(running);
   }
 
+  /** Start a new conversation; the one before stays among the presentation's. */
   function reset() {
     stop();
-    conversation = { agent: undefined, session: undefined, events: [], file: undefined };
+    conversation = newConversation();
     forgetAttachments();
   }
 
@@ -516,10 +615,15 @@ export function createAssistant({ cliPath, send }) {
     usage: readUsage,
     attach,
     send: sendMessage,
+    open,
+    forget,
     stop,
     reset,
-    /** Whether there is a conversation, which lives on the server and would end with it. */
-    busy: () => Boolean(running) || conversation.events.length > 0,
+    /**
+     * Whether a request is being answered, which would end with this server. A presentation's
+     * conversations are kept, so one that is only open opens again in the next server.
+     */
+    busy: () => Boolean(running) || (!studioEntry && conversation.events.length > 0),
     refresh: () => {
       found = undefined;
       codexCatalog = undefined;

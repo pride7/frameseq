@@ -53,6 +53,7 @@
     "scripts/presentation-file.mjs",
     "scripts/slide-layouts.mjs",
     "scripts/slide-selection.mjs",
+    "scripts/studio-assistant-history.mjs",
     "scripts/studio-assistant.mjs",
     "scripts/studio-files.mjs",
     "scripts/studio-shortcut.mjs",

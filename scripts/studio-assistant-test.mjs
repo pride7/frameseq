@@ -3,12 +3,13 @@
 // FrameSeq Studio's assistant, with a stand-in for Claude Code on the PATH that answers in
 // Claude Code's stream-json, edits the deck, and records what it was given: the panel, the
 // request with its context and attached files, the conversation carried on and started over,
-// holding the editor while the agent works, Stop, and the MCP server handed to the agent.
+// kept with the presentation and opened again, holding the editor while the agent works, Stop,
+// and the MCP server handed to the agent.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -55,6 +56,12 @@ const wait = (ms) => new Promise((done) => setTimeout(done, ms));
 out({ type: "system", subtype: "init", session_id: session });
 out({ type: "rate_limit_event", rate_limit_info: { status: "allowed", unifiedWindows: { five_hour: { utilization: 0.21, resetsAt: 1792059600 }, seven_day: { utilization: 0.06, resetsAt: 1792645200 } } } });
 if (prompt.includes("slowly")) await wait(60_000);
+// A session Claude Code no longer keeps, as after its history was cleared.
+const resumed = args.includes("--resume") ? args[args.indexOf("--resume") + 1] : "";
+if (resumed.startsWith("lost-")) {
+  process.stderr.write("No conversation found with session ID: " + resumed + "\\n");
+  process.exit(1);
+}
 out({ type: "stream_event", api_message_id: "m1", event: { type: "content_block_delta", delta: { type: "text_delta", text: "Changing " } } });
 out({ type: "stream_event", api_message_id: "m1", event: { type: "content_block_delta", delta: { type: "text_delta", text: "the **title**." } } });
 const deck = join(process.cwd(), "talk.slides.ts");
@@ -86,7 +93,7 @@ const pathKey = Object.keys(process.env).find((key) => key.toUpperCase() === "PA
 const environment = {
   ...process.env,
   [pathKey]: `${bin}${delimiter}${process.env[pathKey] ?? ""}`,
-  FRAMESEQ_CONFIG_DIR: resolve(workspace, "config"),
+  FRAMESEQ_CONFIG_DIR: resolve(scratch, "config"),
   FAKE_AGENT_RECORD: record,
   CLAUDE_CONFIG_DIR: claudeHome,
   FORCE_COLOR: "0",
@@ -97,6 +104,9 @@ let output = "";
 studio.stdout.on("data", (chunk) => { output += chunk; });
 studio.stderr.on("data", (chunk) => { output += chunk; });
 const address = await waitFor(() => output.match(/Studio:\s+(https?:\/\/\S+studio\.html)/)?.[1], "the Studio to start", 60_000);
+/** A second Studio on the presentation, started where the first one stopped. */
+let again;
+let againOutput = "";
 const calls = async () => (await readFile(record, "utf8").catch(() => "")).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
 
 let browser;
@@ -322,14 +332,84 @@ try {
   await page.keyboard.up("Alt");
   await page.keyboard.up("Control");
   assert.equal(await page.$eval("#studio", (root) => root.classList.contains("is-assistant-open")), false);
+
+  // Each conversation is kept with the presentation, and the history opens an earlier one again,
+  // which carries on the agent's session.
+  const assistantState = (on) => on.evaluate(() => fetch("/__frameseq/studio/session").then((response) => response.json())
+    .then((session) => fetch("/__frameseq/studio/assistant", { headers: { "X-FrameSeq-Studio": session.token } })).then((response) => response.json()));
+  await page.click("[data-action='toggle-assistant']");
+  await page.click("[data-assistant='history']");
+  const menuLabels = () => page.$$eval(".studio-menu .studio-menu-item .studio-menu-label", (items) => items.map((item) => item.textContent));
+  await waitFor(async () => (await menuLabels()).some((label) => label.startsWith("Give the cover a new title · ")), "the first conversation in the history");
+  const labels = await menuLabels();
+  assert.ok(labels.some((label) => label.startsWith("Start again · ")), "the second conversation in the history");
+  await page.$$eval(".studio-menu .studio-menu-item", (items, index) => items[index].click(), labels.findIndex((label) => label.startsWith("Give the cover")));
+  await waitFor(async () => JSON.stringify(await users()) === JSON.stringify(["Give the cover a new title", "A bit shorter"]), "the first conversation to open again");
+  const firstSession = (await assistantState(page)).conversation.session;
+  assert.match(firstSession, /^fake-session-/);
+  await page.click(".studio-assistant-composer textarea");
+  await page.keyboard.type("One more");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await calls()).length === 5, "the request in the conversation opened again");
+  assert.equal(flag((await calls())[4], "--resume"), firstSession, "a conversation opened again carries on its session");
+  assert.equal((await calls())[4].prompt.includes("FrameSeq Studio"), false);
+  await waitFor(async () => (await reviewText()) === "1 change by the assistant", "the change in the conversation opened again");
+  await page.click("[data-review='accept']");
+  await waitFor(async () => !(await locked()), "the request to finish");
+
+  // The conversations are kept outside the presentation's folder, with an answer's streamed pieces joined.
+  const historyFolder = resolve(scratch, "config", "assistant");
+  const historyPath = async () => join(historyFolder, (await readdir(historyFolder))[0]);
+  const history = await waitFor(async () => {
+    const found = await historyPath().then((path) => readFile(path, "utf8")).then(JSON.parse).catch(() => undefined);
+    return found?.conversations[0]?.events.filter((event) => event.type === "user").length === 3 ? found : undefined;
+  }, "the conversation to be kept");
+  assert.equal(history.conversations.length, 2);
+  assert.equal(resolve(history.file), deck);
+  assert.equal(history.conversations[0].title, "Give the cover a new title");
+  assert.ok(history.conversations[0].events.some((event) => event.type === "text" && event.text === "Changing the **title**."), "streamed text is kept joined");
+  assert.equal(existsSync(join(workspace, "config")), false);
+
+  // Another Studio on the presentation opens its last conversation again. When the agent no
+  // longer keeps the session, the request says so and is asked again in a new one.
+  history.conversations[0].session = "lost-session";
+  await writeFile(await historyPath(), JSON.stringify(history), "utf8");
+  studio.kill();
+  again = spawn(process.execPath, [cli, "studio", deck, "--no-open"], { cwd: workspace, env: environment, windowsHide: true });
+  again.stdout.on("data", (chunk) => { againOutput += chunk; });
+  again.stderr.on("data", (chunk) => { againOutput += chunk; });
+  const againAddress = await waitFor(() => againOutput.match(/Studio:\s+(https?:\/\/\S+studio\.html)/)?.[1], "the second Studio to start", 60_000);
+  const next = await browser.newPage();
+  await next.setViewport({ width: 1500, height: 900 });
+  await next.evaluateOnNewDocument(() => localStorage.setItem("frameseq-studio-language", "en"));
+  next.on("pageerror", (error) => errors.push(error.message));
+  await next.goto(againAddress, { waitUntil: "networkidle2" });
+  await next.waitForSelector("[data-action='toggle-assistant']:not([hidden])");
+  if (!await next.$eval("#studio", (root) => root.classList.contains("is-assistant-open"))) await next.click("[data-action='toggle-assistant']");
+  const nextUsers = () => next.$$eval(".studio-assistant-user p", (items) => items.map((item) => item.textContent));
+  await waitFor(async () => JSON.stringify(await nextUsers()) === JSON.stringify(["Give the cover a new title", "A bit shorter", "One more"]), "the last conversation to open in the new Studio");
+  await waitFor(() => next.$(".studio-assistant-agent option[value='claude']"), "Claude Code in the new Studio");
+  await next.click(".studio-assistant-composer textarea");
+  await next.keyboard.type("After a restart");
+  await next.keyboard.press("Enter");
+  await waitFor(async () => (await calls()).length === 7, "the lost session and the request asked again");
+  assert.equal(flag((await calls())[5], "--resume"), "lost-session");
+  assert.equal((await calls())[6].args.includes("--resume"), false, "the request is asked again in a new session");
+  assert.match((await calls())[6].prompt, /FrameSeq Studio/, "the new session is told the task");
+  await waitFor(async () => (await next.$$eval(".studio-assistant-notice", (items) => items.map((item) => item.textContent))).some((notice) => notice.includes("no longer keeps this conversation")), "the lost session to be said");
+  await waitFor(async () => (await next.$$(".studio-assistant-done")).length === 4, "the request asked again to finish");
+  assert.equal(await next.$$eval(".studio-assistant-error", (items) => items.length), 0, "the lost session is not shown as a failure");
+  await waitFor(async () => (await assistantState(next)).conversation.session?.startsWith("fake-session-"), "the new session to be carried on");
   assert.deepEqual(errors, []);
 } catch (error) {
   console.error(output);
+  if (again) console.error(againOutput);
   throw error;
 } finally {
   await browser?.close();
   studio.kill();
+  again?.kill();
 }
 await rm(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => undefined);
 
-console.log("Studio assistant test passed: the panel and its agents, model, effort, fast mode, and usage, requests with their context and attached files, edits reloading while the editor waits, conversations carried on and started over, Stop, and the MCP server handed to the agent.");
+console.log("Studio assistant test passed: the panel and its agents, model, effort, fast mode, and usage, requests with their context and attached files, edits reloading while the editor waits, conversations carried on, started over, kept with the presentation, and opened again, a session the agent lost, Stop, and the MCP server handed to the agent.");

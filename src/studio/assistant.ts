@@ -1,7 +1,7 @@
 import { call, upload } from "./api";
-import { t } from "./i18n";
+import { language, t } from "./i18n";
 import { menuIcons } from "./menu-icons";
-import { element, toast } from "./ui";
+import { element, showMenu, toast } from "./ui";
 
 /**
  * The assistant panel: a conversation with Claude Code or Codex about the open presentation.
@@ -34,7 +34,7 @@ type AssistantEvent =
   | { type: "break" }
   | { type: "tool"; id: string; name: string; input?: string; status: "running" | "done" | "failed" }
   | { type: "file"; path: string }
-  | { type: "notice"; text: string }
+  | { type: "notice"; text: string; reason?: "session-lost" }
   | { type: "done"; ok: boolean; error?: string; seconds?: number; denied?: string[]; stopped?: boolean }
   | { type: "usage"; agent: AgentId; usage: AgentUsage }
   | { type: "idle" };
@@ -68,9 +68,18 @@ interface AgentSettings {
   fast: boolean;
 }
 
+/** One of the presentation's kept conversations, as the history lists it. */
+interface KeptConversation {
+  id: string;
+  title: string;
+  agent?: AgentId;
+  updated: number;
+}
+
 interface AssistantState {
   agents: AgentInfo[];
-  conversation: { agent?: AgentId; session?: string; running: boolean; events: AssistantEvent[] };
+  conversation: { id: string; agent?: AgentId; session?: string; running: boolean; events: AssistantEvent[] };
+  history: KeptConversation[];
 }
 
 export interface AssistantOptions {
@@ -154,6 +163,7 @@ export class AssistantPanel {
         <span class="studio-pane-title">${t.assistant.title}</span>
         <select class="studio-assistant-agent" aria-label="${t.assistant.agent}"></select>
         <span class="studio-pane-spacer"></span>
+        <button type="button" class="studio-icon-button studio-assistant-history" data-assistant="history" title="${t.assistant.history}" aria-label="${t.assistant.history}">${menuIcons.history}</button>
         <button type="button" class="studio-icon-button" data-assistant="new" title="${t.assistant.newConversation}">+</button>
         <button type="button" class="studio-icon-button" data-assistant="close" title="${t.ui.close}">×</button>
       </header>
@@ -206,6 +216,8 @@ export class AssistantPanel {
 
     host.querySelector("[data-assistant='close']")!.addEventListener("click", () => this.options.onClose());
     host.querySelector("[data-assistant='new']")!.addEventListener("click", () => void this.startOver());
+    const historyButton = host.querySelector<HTMLElement>("[data-assistant='history']")!;
+    historyButton.addEventListener("click", () => void this.showHistory(historyButton));
     this.picker.addEventListener("change", () => {
       try {
         localStorage.setItem(agentKey, this.picker.value);
@@ -339,15 +351,12 @@ export class AssistantPanel {
         this.setAgents(state.agents, state.conversation.agent);
         void this.loadChoices();
         void this.loadUsage();
-        this.log.replaceChildren();
-        for (const event of state.conversation.events) this.draw(event);
-        this.setBusy(state.conversation.running);
+        this.drawConversation(state);
       } catch (error) {
         this.loaded = false;
         this.log.replaceChildren(element("p", "studio-assistant-error", error instanceof Error ? error.message : String(error)));
         return;
       }
-      if (this.log.childElementCount === 0) this.showWelcome();
     }
     this.input.focus();
   }
@@ -523,6 +532,70 @@ export class AssistantPanel {
     this.showWelcome();
   }
 
+  /** Draw a whole conversation, as the panel opens or another one is opened. */
+  private drawConversation(state: AssistantState): void {
+    this.message = undefined;
+    this.tools.clear();
+    this.log.replaceChildren();
+    for (const event of state.conversation.events) this.draw(event);
+    this.log.scrollTop = this.log.scrollHeight;
+    this.setBusy(state.conversation.running);
+    if (this.log.childElementCount === 0) this.showWelcome();
+  }
+
+  /** The presentation's earlier conversations, to open one again and carry it on, or to forget the open one. */
+  private async showHistory(anchor: HTMLElement): Promise<void> {
+    let state: AssistantState;
+    try {
+      state = await call<AssistantState>("GET", "assistant");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+      return;
+    }
+    const when = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const current = state.history.some((kept) => kept.id === state.conversation.id);
+    const items: Parameters<typeof showMenu>[2] = [{ heading: t.assistant.historyHeading }];
+    if (state.history.length === 0) items.push({ note: t.assistant.noHistory });
+    for (const kept of state.history) {
+      const open = kept.id === state.conversation.id;
+      items.push({
+        label: `${open ? "✓ " : ""}${shorten(kept.title) || t.assistant.untitled} · ${when.format(kept.updated)}`,
+        disabled: this.busy && !open,
+        run: () => {
+          if (!open) void this.openConversation(kept.id);
+        },
+      });
+    }
+    items.push("separator", { label: t.assistant.newConversation, disabled: this.busy, run: () => void this.startOver() });
+    if (current) items.push({ label: t.assistant.forget, danger: true, disabled: this.busy, run: () => void this.forgetConversation(state.conversation.id) });
+    const box = anchor.getBoundingClientRect();
+    showMenu(box.right - 280, box.bottom + 4, items, t.assistant.history);
+  }
+
+  private async openConversation(id: string): Promise<void> {
+    try {
+      const state = await call<AssistantState>("POST", "assistant/open", { id });
+      // The server lets go of the files attached to the conversation before.
+      this.clearFiles();
+      this.setAgents(state.agents, state.conversation.agent);
+      void this.loadChoices();
+      this.drawConversation(state);
+      this.input.focus();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+    }
+  }
+
+  private async forgetConversation(id: string): Promise<void> {
+    try {
+      const state = await call<AssistantState>("POST", "assistant/forget", { id });
+      this.clearFiles();
+      this.drawConversation(state);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: "error" });
+    }
+  }
+
   private async startOver(): Promise<void> {
     await call("POST", "assistant/new");
     this.message = undefined;
@@ -638,7 +711,7 @@ export class AssistantPanel {
         break;
       }
       case "notice":
-        this.log.append(element("p", "studio-assistant-notice", event.text));
+        this.log.append(element("p", "studio-assistant-notice", event.reason === "session-lost" ? t.assistant.sessionLost : event.text));
         break;
       case "done": {
         this.message = undefined;
@@ -654,6 +727,9 @@ export class AssistantPanel {
     if (following) this.log.scrollTop = this.log.scrollHeight;
   }
 }
+
+/** A conversation's first request, cut to fit a line of the history. */
+const shorten = (title: string): string => (title.length > 40 ? `${title.slice(0, 39).trimEnd()}…` : title);
 
 /** What a tool call did, in the person's words. */
 function toolLabel(name: string, input: string): string {

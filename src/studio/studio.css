@@ -915,6 +915,7 @@ body:has(.studio-topbar) .studio-window-drag {
   margin-left: -4px;
 }
 
+.studio-assistant-history svg,
 .studio-assistant-attach svg {
   width: 16px;
   height: 16px;
