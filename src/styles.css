@@ -308,6 +308,32 @@ button {
   height: 1px;
 }
 
+/* A gap evened with another, drawn as a dimension line with a tick at each end. */
+.frameseq-smart-gap {
+  --frameseq-gap-colour: color-mix(in srgb, var(--frameseq-accent) 88%, white);
+  position: fixed;
+  z-index: 35;
+  box-sizing: border-box;
+  border: 0 solid var(--frameseq-gap-colour);
+  pointer-events: none;
+}
+
+.frameseq-smart-gap.is-horizontal {
+  height: 9px;
+  margin-top: -4px;
+  border-left-width: 1px;
+  border-right-width: 1px;
+  background: linear-gradient(var(--frameseq-gap-colour), var(--frameseq-gap-colour)) center / 100% 1px no-repeat;
+}
+
+.frameseq-smart-gap.is-vertical {
+  width: 9px;
+  margin-left: -4px;
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  background: linear-gradient(var(--frameseq-gap-colour), var(--frameseq-gap-colour)) center / 1px 100% no-repeat;
+}
+
 /* An object in the document flow has no coordinates to drag, so it trades place instead. */
 .frameseq-edit-mode .frameseq-slides [data-frameseq-statement]:not([data-frameseq-move]) {
   cursor: grab;

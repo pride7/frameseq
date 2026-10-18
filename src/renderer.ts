@@ -29,6 +29,8 @@ import { themeCssVariables } from "./theme";
 import { mountThumbnails } from "./thumbnails";
 import { richColor, richRuns, writeRichText } from "./rich-text";
 import type { RichRun } from "./rich-text";
+import { snapBox } from "./snap";
+import type { SnapBox, SnapEdge } from "./snap";
 
 const remoteSyncEvent = "frameseq:remote-sync";
 const sourceEditEvent = "frameseq:apply-edit";
@@ -3407,8 +3409,13 @@ interface LayoutDrag {
   moved: boolean;
   values: Record<string, number>;
   originBox: DOMRect;
-  peerBoxes: DOMRect[];
+  /** The objects around the one dragged, and the page itself, which its edges snap to. */
+  peerBoxes: SnapBox[];
+  pageBox?: SnapBox;
 }
+
+/** How near, in the viewport's pixels, an edge or a middle has to come to snap to another. */
+const snapThreshold = 6;
 
 /**
  * How far the pointer travels before a press counts as a drag. Writing the slide document
@@ -3479,60 +3486,44 @@ function createLayoutEditor(
   const insertion = document.createElement("div");
   insertion.className = "frameseq-insertion-marker";
   insertion.setAttribute("aria-hidden", "true");
-  const verticalGuide = document.createElement("div");
-  verticalGuide.className = "frameseq-smart-guide is-vertical";
-  const horizontalGuide = document.createElement("div");
-  horizontalGuide.className = "frameseq-smart-guide is-horizontal";
   let editing = false;
   let drag: LayoutDrag | undefined;
 
+  /** The lines and gaps shown while a drag snaps, placed against the viewport outside the slide. */
+  let smartGuides: HTMLElement[] = [];
   const clearSmartGuides = (): void => {
-    verticalGuide.remove();
-    horizontalGuide.remove();
+    for (const guide of smartGuides) guide.remove();
+    smartGuides = [];
   };
 
-  function snapMove(
-    current: LayoutDrag,
-    x: number,
-    y: number,
-    disabled: boolean,
-  ): { x: number; y: number } {
+  /**
+   * Snap what a drag changes to the objects around it and to the page, and show the lines it
+   * lines up on and the gaps it evens. Ctrl or Command drags freely. Returns how far to move
+   * what the drag changes, in the canvas's units.
+   */
+  function snapDrag(current: LayoutDrag, moving: SnapBox, x: SnapEdge, y: SnapEdge, free: boolean): { dx: number; dy: number } {
     clearSmartGuides();
-    if (disabled || current.peerBoxes.length === 0) return { x, y };
-    const canvas = current.element.closest<HTMLElement>(".frameseq-slide");
-    const canvasBox = canvas?.getBoundingClientRect();
-    if (!canvasBox) return { x, y };
-    const movedLeft = current.originBox.left + (x - current.fields.x.value) * current.scale;
-    const movedTop = current.originBox.top + (y - current.fields.y.value) * current.scale;
-    const movingX = [movedLeft, movedLeft + current.originBox.width / 2, movedLeft + current.originBox.width];
-    const movingY = [movedTop, movedTop + current.originBox.height / 2, movedTop + current.originBox.height];
-    const peerX = current.peerBoxes.flatMap((box) => [box.left, box.left + box.width / 2, box.right]);
-    const peerY = current.peerBoxes.flatMap((box) => [box.top, box.top + box.height / 2, box.bottom]);
-    const closest = (moving: number[], peers: number[]): { delta: number; at: number } | undefined => {
-      let best: { delta: number; at: number } | undefined;
-      for (const from of moving) for (const at of peers) {
-        const delta = at - from;
-        if (Math.abs(delta) <= 6 && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, at };
-      }
-      return best;
-    };
-    const snappedX = closest(movingX, peerX);
-    const snappedY = closest(movingY, peerY);
-    if (snappedX) {
-      x += snappedX.delta / current.scale;
-      verticalGuide.style.left = `${snappedX.at}px`;
-      verticalGuide.style.top = `${canvasBox.top}px`;
-      verticalGuide.style.height = `${canvasBox.height}px`;
-      document.body.append(verticalGuide);
+    if (free) return { dx: 0, dy: 0 };
+    const snap = snapBox(moving, current.peerBoxes, current.pageBox, { x, y, threshold: snapThreshold });
+    for (const guide of snap.guides) {
+      const line = document.createElement("div");
+      line.className = `frameseq-smart-guide ${guide.axis === "x" ? "is-vertical" : "is-horizontal"}`;
+      line.style.cssText = guide.axis === "x"
+        ? `left:${guide.at}px;top:${guide.from}px;height:${guide.to - guide.from}px;`
+        : `top:${guide.at}px;left:${guide.from}px;width:${guide.to - guide.from}px;`;
+      smartGuides.push(line);
     }
-    if (snappedY) {
-      y += snappedY.delta / current.scale;
-      horizontalGuide.style.top = `${snappedY.at}px`;
-      horizontalGuide.style.left = `${canvasBox.left}px`;
-      horizontalGuide.style.width = `${canvasBox.width}px`;
-      document.body.append(horizontalGuide);
+    for (const gap of snap.gaps) {
+      const mark = document.createElement("div");
+      mark.className = `frameseq-smart-gap ${gap.axis === "x" ? "is-horizontal" : "is-vertical"}`;
+      mark.style.cssText = gap.axis === "x"
+        ? `left:${gap.from}px;width:${gap.to - gap.from}px;top:${gap.at}px;`
+        : `top:${gap.from}px;height:${gap.to - gap.from}px;left:${gap.at}px;`;
+      smartGuides.push(mark);
     }
-    return { x, y };
+    for (const guide of smartGuides) guide.setAttribute("aria-hidden", "true");
+    document.body.append(...smartGuides);
+    return { dx: snap.dx / current.scale, dy: snap.dy / current.scale };
   }
 
   /**
@@ -3689,6 +3680,7 @@ function createLayoutEditor(
 
     event.preventDefault();
     const box = element.getBoundingClientRect();
+    const page = element.closest<HTMLElement>(".frameseq-slide");
     drag = {
       element,
       fields,
@@ -3708,11 +3700,13 @@ function createLayoutEditor(
       moved: false,
       values: {},
       originBox: element.getBoundingClientRect(),
-      peerBoxes: [...(element.closest(".frameseq-slide")?.querySelectorAll<HTMLElement>("[data-frameseq-edit]") ?? [])]
+      peerBoxes: [...(page?.querySelectorAll<HTMLElement>("[data-frameseq-edit], [data-frameseq-computed]") ?? [])]
         .filter((candidate) => candidate !== element
           && !candidate.contains(element)
           && !element.contains(candidate))
-        .map((candidate) => candidate.getBoundingClientRect()),
+        .map((candidate) => candidate.getBoundingClientRect())
+        .filter((peer) => peer.width > 0 || peer.height > 0),
+      pageBox: page?.getBoundingClientRect(),
     };
   });
 
@@ -3755,13 +3749,15 @@ function createLayoutEditor(
     const dy = (event.clientY - drag.originY) / drag.scale;
 
     if (drag.mode === "move") {
-      const snapped = snapMove(
-        drag,
-        drag.fields.x.value + dx,
-        drag.fields.y.value + dy,
-        event.ctrlKey || event.metaKey,
-      );
-      drag.values = { x: Math.round(snapped.x), y: Math.round(snapped.y) };
+      const { originBox, scale } = drag;
+      const moving = {
+        left: originBox.left + dx * scale,
+        top: originBox.top + dy * scale,
+        right: originBox.right + dx * scale,
+        bottom: originBox.bottom + dy * scale,
+      };
+      const snap = snapDrag(drag, moving, "move", "move", event.ctrlKey || event.metaKey);
+      drag.values = { x: Math.round(drag.fields.x.value + dx + snap.dx), y: Math.round(drag.fields.y.value + dy + snap.dy) };
       drag.element.style.left = `${drag.values.x}px`;
       drag.element.style.top = `${drag.values.y}px`;
       dispatchEvent(new CustomEvent("frameseq-layout-preview", {
@@ -3794,8 +3790,26 @@ function createLayoutEditor(
     if (width && x && side.includes("w")) newWidth = width.value - dx;
     if (height && side.includes("s")) newHeight = height.value + dy;
     if (height && y && side.includes("n")) newHeight = height.value - dy;
-    // Shift on a corner keeps the object's proportions.
-    if (event.shiftKey && side.length === 2 && width && height && newWidth !== undefined) {
+    // Shift on a corner keeps the object's proportions, so only its width snaps.
+    const proportional = event.shiftKey && side.length === 2 && Boolean(width && height);
+    // The edges pulled snap; a turned object's box on the page has no edges of its own to line up.
+    if (!drag.fields.rotate?.value && !drag.element.style.transform.includes("rotate")) {
+      const xEdge: SnapEdge = width && side.includes("e") ? "end" : width && x && side.includes("w") ? "start" : "none";
+      const yEdge: SnapEdge = proportional ? "none"
+        : height && side.includes("s") ? "end" : height && y && side.includes("n") ? "start" : "none";
+      const grownX = ((newWidth ?? 0) - (width?.value ?? 0)) * drag.scale;
+      const grownY = ((newHeight ?? 0) - (height?.value ?? 0)) * drag.scale;
+      const { originBox } = drag;
+      const snap = snapDrag(drag, {
+        left: originBox.left - (xEdge === "start" ? grownX : 0),
+        right: originBox.right + (xEdge === "end" ? grownX : 0),
+        top: originBox.top - (yEdge === "start" ? grownY : 0),
+        bottom: originBox.bottom + (yEdge === "end" ? grownY : 0),
+      }, xEdge, yEdge, event.ctrlKey || event.metaKey);
+      if (newWidth !== undefined) newWidth += xEdge === "end" ? snap.dx : xEdge === "start" ? -snap.dx : 0;
+      if (newHeight !== undefined) newHeight += yEdge === "end" ? snap.dy : yEdge === "start" ? -snap.dy : 0;
+    }
+    if (proportional && width && height && newWidth !== undefined) {
       newHeight = newWidth * (height.value / width.value);
     }
     drag.values = {};

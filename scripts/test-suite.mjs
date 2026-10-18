@@ -49,6 +49,7 @@ export const groups = [
       test("studio-insert-test"),
       test("studio-typing-test"),
       test("studio-handles-test"),
+      test("studio-snap-test"),
       test("studio-cover-test"),
       test("studio-page-test"),
       test("studio-menu-test"),
