@@ -5,7 +5,7 @@ import { basename, resolve } from "node:path";
 import process from "node:process";
 import { agentsMarkdown, claudeMarkdown } from "./project-instructions.mjs";
 
-const FRAMESEQ_VERSION = "^0.40.1";
+const FRAMESEQ_VERSION = "^0.40.2";
 
 function projectName(directory) {
   const name = basename(directory)

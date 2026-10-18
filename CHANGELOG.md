@@ -4,6 +4,8 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.40.2] - 2026-10-18
+
 ### Added
 
 - Objects dragged in FrameSeq Studio's preview snap to the page's edges and middle as well as to the objects around them, and a move snaps to even spacing with the objects in its row, marking the equal gaps. A side pulled by its handle snaps to edges and middles too, and the guide lines run only between the objects they line up. `Ctrl` or `⌘` still drags freely.
@@ -12,6 +14,10 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 ### Changed
 
 - FrameSeq Studio starts again on an update the FrameSeq app has installed by itself, as other programs do, instead of waiting for the next time it opens. It does so once everything is saved, no slide show is on, and the person has turned to another window or left the Studio alone for half a minute, or at once after **Update**; the page covers itself while the new version starts on the same presentation and port, reloads, and says it was updated. A shell in the Studio's terminal, an export, or a conversation with the assistant, which would end with the old server, puts it off. A version that does not start is set aside, and the Studio goes on with the one it ran. The version that starts again is the one running when the update arrives, so updates after this version are the first to arrive this way.
+
+### Fixed
+
+- A file with a long name attached to a request to FrameSeq Studio's assistant no longer widens the panel past its edge, hiding its remove button and **Send**; the name ends in an ellipsis instead.
 
 ## [0.40.1] - 2026-10-17
 
