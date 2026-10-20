@@ -4,6 +4,24 @@ All notable changes to FrameSeq are recorded here. The project follows [Semantic
 
 ## Unreleased
 
+## [0.40.4] - 2026-10-20
+
+### Added
+
+- A LaTeX fragment can load packages of its own: each `\usepackage` line in it moves into the preamble, ahead of FrameSeq's packages, so `\usepackage[table]{xcolor}` keeps its options. An algorithm with `algpseudocode`, a `siunitx` table, or a TikZ or PGFPlots picture can be written as it would be in a LaTeX document.
+- LaTeX fragments draw TikZ and PGFPlots pictures, with their shadings, patterns, opacity, and arrow tips, and keep the colours of `\textcolor`, `\rowcolor`, `\colorbox`, and TikZ fills. Black, LaTeX's default, follows the slide's text colour, so a fragment reads on a dark theme too.
+
+### Changed
+
+- A display formula written with `math` is drawn on the slide as it is, without the bordered and shaded card around it; `.border()`, `.background()`, and `.padding()` give it one.
+- LaTeX fragments compile to SVG paths drawn from their fonts' outlines instead of positioned HTML text, so they carry no font files and print as vectors.
+
+### Fixed
+
+- Math inside a LaTeX fragment, such as `$x$` in a table cell, is drawn; it was left out before.
+- A LaTeX fragment's last glyph on a line, such as a closing parenthesis after math, is no longer cut off at the fragment's edge.
+- A LaTeX fragment that takes longer than ten minutes, as the first use of a large package can while Tectonic downloads it, now says so, rather than failing with no message after two minutes.
+
 ## [0.40.3] - 2026-10-18
 
 ### Added
