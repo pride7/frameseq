@@ -540,7 +540,7 @@ latex`...` → ElementBuilder
 
 **Parameters**
 
-- `content` — `string`, required. A LaTeX body fragment. Do not include `\documentclass` or a complete document.
+- `content` — `string`, required. A LaTeX body fragment. Do not include `\documentclass` or a complete document; a `\usepackage` line in it loads that package.
 
 **Returns** `ElementBuilder` containing the compiled graphic.
 

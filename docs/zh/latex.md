@@ -1,8 +1,8 @@
-<!-- translation-of: docs/latex.md sha256:565f55b1468217e2 -->
+<!-- translation-of: docs/latex.md sha256:24b4db7a8cc9a678 -->
 
 # LaTeX 集成
 
-FrameSeq 可以把一段 LaTeX 表格或其它正文片段编译成普通的演示对象。页面结构、布局、主题、导航和导出仍然由 FrameSeq 负责,片段内部的 LaTeX 排版交给 Tectonic。
+FrameSeq 可以把一段 LaTeX 表格、TikZ 或 PGFPlots 图、算法伪代码或其它正文片段编译成普通的演示对象。页面结构、布局、主题、导航和导出仍然由 FrameSeq 负责,片段内部的 LaTeX 排版交给 Tectonic。
 
 ## 安装编译器
 
@@ -72,22 +72,66 @@ FrameSeq 会把每个片段包进一个紧凑贴合的 `standalone` 文档,并�
 - `booktabs`
 - `array`、`tabularx`、`multirow`
 - `xcolor` 和 `graphicx`
+- `unicode-math`,数学用 Latin Modern Math 排版
 
 公开接口接受的是**片段**而不是完整文档。不要写 `\documentclass`、`\begin{document}` 或 `\end{document}`。静态模板里也不能有 JavaScript 插值。
 
-普通公式请用 FrameSeq 基于 KaTeX 的 `text` 和 `math`。LaTeX 集成最有价值的场景,是你想原样保留现有的 `tabular` 源码或依赖宏包的表格排版。
+要用别的宏包,就像在文档开头那样,把 `\usepackage` 写进片段里。FrameSeq 会把以 `\usepackage` 或 `\RequirePackage` 开头的每一行移到导言区,放在它自己的宏包之前,所以 `\usepackage[table]{xcolor}` 这样的选项也能生效:
+
+```ts
+latex`
+  \usepackage{algorithm}
+  \usepackage{algpseudocode}
+  \begin{minipage}{9cm}
+  \begin{algorithmic}[1]
+  \Procedure{Euclid}{$a,b$}
+  \While{$r\neq 0$}
+  \State $a \gets b$
+  \EndWhile
+  \State \Return $b$
+  \EndProcedure
+  \end{algorithmic}
+  \end{minipage}
+`.width(700);
+```
+
+片段第一次载入某个宏包时,Tectonic 会去下载它。其它只能写在导言区的命令,比如 `\DeclareMathOperator`,不会被移动;请改在片段里用 `\newcommand` 定义宏。
+
+普通公式请用 FrameSeq 基于 KaTeX 的 `text` 和 `math`。LaTeX 集成最有价值的场景,是你想原样保留现有的 LaTeX 源码、依赖宏包的表格,或者一张 TikZ 图。
+
+## 用 TikZ 画图
+
+在片段里载入 TikZ 和需要的库:
+
+```ts
+latex`
+  \usepackage{tikz}
+  \usetikzlibrary{arrows.meta,positioning}
+  \begin{tikzpicture}[node distance=14mm, every node/.style={draw, rounded corners}]
+    \node[fill=blue!10] (in) {Input};
+    \node[right=of in, fill=orange!15] (enc) {Encoder};
+    \draw[-{Stealth}] (in) -- (enc);
+  \end{tikzpicture}
+`.width(640);
+```
+
+PGFPlots 用法相同,写 `\usepackage{pgfplots}` 即可。渐变、图案、透明度和箭头都能保留。
+
+## 颜色
+
+用 `xcolor` 设置的颜色,比如 `\textcolor`、`\rowcolor`、`\colorbox` 和 TikZ 的 `fill=`,都保持原色。黑色是 LaTeX 的默认颜色,它会改为跟随幻灯片的文字颜色,所以片段在深色主题上也看得清。在深色主题上,浅色填充上的文字也会因此变浅;请给这些文字一个不是纯黑的深色,比如 `\color{gray!20!black}`。
 
 ## 构建与导出行为
 
 ```text
 静态 LaTeX 片段
         ↓ Vite 转换期间由 Tectonic 编译
-定位好的 HTML 字形与线条
-        ↓ FrameSeq 内嵌字体并包装结果
-一个可缩放的幻灯片对象
+一页 XDV:字形、线条、颜色和 TikZ 绘图
+        ↓ FrameSeq 按字体轮廓画出每个字形
+一个可缩放的 SVG 幻灯片对象
 ```
 
-浏览器端**不含编译器**,也不会去请求宏包。HTML 和 PDF 直接使用内嵌结果。可编辑的 PPTX 导出把片段保留为高分辨率图片,扁平化 PPTX 则与整页一起截取。
+浏览器端**不含编译器**,也不需要字体文件,不会去请求宏包。HTML 和 PDF 直接使用矢量结果。可编辑的 PPTX 导出把片段保留为高分辨率图片,扁平化 PPTX 则与整页一起截取。
 
 ## 目前的限制
 
@@ -95,4 +139,6 @@ FrameSeq 会把每个片段包进一个紧凑贴合的 `standalone` 文档,并�
 - 输入是正文片段,不是完整的 LaTeX 文档。
 - 构建机器需要 `node-tectonic` 支持的平台,并且在 Tectonic 首次拉取宏包时需要网络。
 - LaTeX 对象保留自己的 TeX 字体度量;FrameSeq 的主题字体设置**不会**替换这些字体。
+- 字体必须是 OpenType。FrameSeq 载入了 `unicode-math`,所以默认的正文和数学字体都是;如果某个宏包换成了旧式 TeX 字体,比如 Type 1 符号字体,构建会报错停止。
+- 暂不支持用 `\includegraphics` 放图片;请在片段旁边用 `image()`。
 - PowerPoint 把编译结果当作一个整体渲染对象,而不是可编辑的表格单元。

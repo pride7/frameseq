@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
@@ -16,6 +17,7 @@ import { applyIncomingEdits, applyIncomingMove, applyIncomingRemove, undoLastEdi
 import { studioPlugin } from "./scripts/studio-server.mjs";
 // @ts-expect-error -- plain JavaScript, shared with the script that writes the icon name type.
 import { iconNamesIn, iconSet, namesIconsAtRuntime } from "./scripts/icon-set.mjs";
+import { xdvToSvg } from "./scripts/latex-svg.mjs";
 // @ts-expect-error -- plain JavaScript, so the parser can be tested on its own.
 import { parseBibtex } from "./scripts/bibtex.mjs";
 // @ts-expect-error -- plain JavaScript, shared with the CLI.
@@ -220,14 +222,21 @@ type TectonicRun = (
   options?: { cwd?: string; timeout?: number; input?: string | Buffer },
 ) => Promise<RunResult>;
 let tectonicRun: TectonicRun | undefined;
+let tectonicBinary = "";
 let tectonicVersion = "unknown";
 
-const latexTemplate = "<!doctype html><html><body>{{ tduxContent | safe }}</body></html>";
+// TikZ draws through its dvisvgm driver, whose SVG the XDV conversion places as written. It is
+// chosen before any package, so a fragment's own \usepackage{tikz} picks it up.
 const latexPreamble = String.raw`\documentclass[border=0pt]{standalone}
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs,array,tabularx,multirow}
 \usepackage{xcolor,graphicx}
+\usepackage{unicode-math}
 \pagestyle{empty}`;
+// A \usepackage or \RequirePackage at the start of a line, with its options, which may span
+// lines, and an optional date.
+const latexPackageLine = /^[ \t]*\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{[^}]*\}(?:\s*\[[^\]]*\])?[ \t]*\r?\n?/gm;
 
 async function getTypstCompiler(): Promise<NodeCompiler> {
   if (typstCompiler) return typstCompiler;
@@ -251,6 +260,7 @@ async function getTectonicRun(): Promise<TectonicRun> {
   try {
     const module = await import("node-tectonic");
     tectonicRun = module.run;
+    tectonicBinary = module.binaryPath();
     tectonicVersion = module.tectonicVersion;
     return tectonicRun;
   } catch (error) {
@@ -423,7 +433,16 @@ function typstError(error: unknown, label: string): Error {
   return new Error(`Could not compile ${label}: ${String(error)}`);
 }
 
+// The first fragment to load a large package, such as pgfplots, waits for Tectonic to download it.
+const latexTimeout = 600_000;
+
 function latexError(result: RunResult, label: string): Error {
+  if (result.exitCode === null) {
+    return new Error(
+      `Could not compile ${label}: Tectonic did not finish within ${latexTimeout / 60_000} minutes. `
+      + "The first use of a package downloads it, so check the network and build again.",
+    );
+  }
   const detail = result.stderr
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -433,86 +452,73 @@ function latexError(result: RunResult, label: string): Error {
   return new Error(`Could not compile ${label}${detail ? `:\n${detail}` : ""}`);
 }
 
-function latexDocument(fragment: string, templatePath: string): string {
+function latexDocument(fragment: string): string {
   if (/\\documentclass\b|\\begin\s*\{document\}/.test(fragment)) {
     throw new Error(
       "latex() and latexFile() accept document-body fragments, not complete LaTeX documents",
     );
   }
 
-  const normalizedTemplatePath = normalizePath(templatePath);
-  return `${latexPreamble}
+  // Packages may only be loaded in the preamble, so a fragment's own \usepackage lines move
+  // there. They load before FrameSeq's packages, so one given options, such as
+  // \usepackage[table]{xcolor}, does not clash with the plain load that follows, and after the
+  // class and the TikZ driver, which they may need.
+  const packages: string[] = [];
+  const body = fragment.replace(latexPackageLine, (line) => {
+    packages.push(line.trim());
+    return "";
+  });
+  const [documentClass, driver, ...preamble] = latexPreamble.split("\n");
+  return `${[documentClass, driver, ...packages, ...preamble].join("\n")}
 \\begin{document}
-\\special{tdux:setTemplate ${normalizedTemplatePath}}
-\\special{tdux:setOutputPath fragment.html}
-${fragment}
-\\special{tdux:provideSpecial font-css fonts.css}
-\\special{tdux:emit}
+${body}
 \\end{document}
 `;
 }
 
-async function inlineLatexFonts(css: string, directory: string): Promise<string> {
-  let result = css;
-  const assets = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)];
+// Font files read from Tectonic's bundle, by name, for every fragment this process compiles.
+const latexFonts = new Map<string, Promise<Buffer>>();
 
-  for (const asset of assets) {
-    const filename = asset[1];
-    const extension = filename.split(".").pop()?.toLowerCase();
-    const mime = extension === "ttf"
-      ? "font/ttf"
-      : extension === "woff"
-        ? "font/woff"
-        : extension === "woff2"
-          ? "font/woff2"
-          : "font/otf";
-    const data = await readFile(resolve(directory, filename));
-    result = result.replace(asset[0], `url("data:${mime};base64,${data.toString("base64")}")`);
-  }
-
-  return result;
+function bundleFile(name: string): Promise<Buffer> {
+  return new Promise((resolveFile, reject) => {
+    const child = spawn(tectonicBinary, ["-X", "bundle", "cat", name], { windowsHide: true });
+    const chunks: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const data = Buffer.concat(chunks);
+      if (code === 0 && data.length > 0) resolveFile(data);
+      else reject(new Error(`${name} is not in the TeX bundle`));
+    });
+  });
 }
 
-function latexHtmlToSvg(html: string, fontCss: string): string {
-  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1]?.trim();
-  if (!body) throw new Error("Tectonic produced no LaTeX fragment content");
-
-  const canvasStyle = body.match(/class="canvas[^"]*"\s+style="([^"]+)"/i)?.[1];
-  const width = Number.parseFloat(canvasStyle?.match(/\bwidth:\s*([\d.]+)rem/i)?.[1] ?? "");
-  const height = Number.parseFloat(canvasStyle?.match(/\bheight:\s*([\d.]+)rem/i)?.[1] ?? "");
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    throw new Error("Could not determine the dimensions of the compiled LaTeX fragment");
+// XDV names a font as fontspec was given it, which may leave out the extension.
+function latexFont(name: string): Promise<Buffer> {
+  let font = latexFonts.get(name);
+  if (!font) {
+    font = (async () => {
+      for (const candidate of [name, `${name}.otf`, `${name}.ttf`]) {
+        try {
+          return await bundleFile(candidate);
+        } catch {
+          // Try the next spelling.
+        }
+      }
+      throw new Error(`${name} is not in the TeX bundle`);
+    })();
+    latexFonts.set(name, font);
+    font.catch(() => latexFonts.delete(name));
   }
-
-  const padding = 2;
-  const svgWidth = width + padding * 2;
-  const svgHeight = height + padding * 2;
-  const pixelBody = body
-    .replace(/(-?\d+(?:\.\d+)?)rem\b/g, "$1px")
-    .replace(/vertical-align:\s*[^;"]+;?/gi, "");
-  const layoutCss = `
-.frameseq-latex-root { box-sizing: border-box; color: currentColor; line-height: 0; overflow: visible; }
-.frameseq-latex-root .canvas { position: relative; display: block !important; vertical-align: top !important; }
-.frameseq-latex-root .ci,
-.frameseq-latex-root .cr { position: absolute; display: block; box-sizing: border-box; }
-.frameseq-latex-root .ci { line-height: 1; white-space: pre; font-synthesis: none; }
-.frameseq-latex-root .cr { background: currentColor; }
-`;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="${svgWidth}" height="${svgHeight}" role="img" aria-label="Typeset LaTeX fragment">
-<style>${fontCss}${layoutCss}</style>
-<foreignObject x="0" y="0" width="${svgWidth}" height="${svgHeight}">
-<div xmlns="http://www.w3.org/1999/xhtml" class="frameseq-latex-root" style="width:${svgWidth}px;height:${svgHeight}px;padding:${padding}px">${pixelBody}</div>
-</foreignObject>
-</svg>`;
+  return font;
 }
 
 async function compileLatex(fragment: string, label: string): Promise<string> {
   const run = await getTectonicRun();
   const cacheKey = createHash("sha256")
-    .update(`frameseq-latex-v1\0${tectonicVersion}\0${fragment}`)
+    .update(`frameseq-latex-v3\0${tectonicVersion}\0${fragment}`)
     .digest("hex");
-  const cacheDirectory = resolve(tmpdir(), "frameseq-latex-cache-v1");
+  const cacheDirectory = resolve(tmpdir(), "frameseq-latex-cache-v3");
   const cachePath = resolve(cacheDirectory, `${cacheKey}.svg`);
 
   try {
@@ -522,34 +528,28 @@ async function compileLatex(fragment: string, label: string): Promise<string> {
   }
 
   const buildDirectory = await mkdtemp(resolve(tmpdir(), "frameseq-latex-"));
-  const templatePath = resolve(buildDirectory, "frameseq-template.html");
   const inputPath = resolve(buildDirectory, "fragment.tex");
 
   try {
-    await writeFile(templatePath, latexTemplate, "utf8");
-    await writeFile(inputPath, latexDocument(fragment, templatePath), "utf8");
+    await writeFile(inputPath, latexDocument(fragment), "utf8");
 
     const result = await run([
       inputPath,
       "--outdir",
       buildDirectory,
       "--outfmt",
-      "html",
+      "xdv",
       "--untrusted",
       "--chatter",
       "minimal",
     ], {
       cwd: dirname(entry),
-      timeout: 120_000,
+      timeout: latexTimeout,
     });
     if (result.exitCode !== 0) throw latexError(result, label);
 
-    const [html, rawFontCss] = await Promise.all([
-      readFile(resolve(buildDirectory, "fragment.html"), "utf8"),
-      readFile(resolve(buildDirectory, "fonts.css"), "utf8"),
-    ]);
-    const fontCss = await inlineLatexFonts(rawFontCss, buildDirectory);
-    const svg = latexHtmlToSvg(html, fontCss);
+    const xdv = await readFile(resolve(buildDirectory, "fragment.xdv"));
+    const { svg } = await xdvToSvg(xdv, latexFont, `fsq-latex-${cacheKey.slice(0, 8)}-`);
     await mkdir(cacheDirectory, { recursive: true });
     await writeFile(cachePath, svg, "utf8");
     return svg;

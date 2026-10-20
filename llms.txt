@@ -297,7 +297,7 @@ text("Important")
 - Use `table()` for tabular data and `chart()` for numbers that are compared; never draw a chart from rectangles.
 - Use tagged templates for LaTeX so backslashes remain intact.
 - Never interpolate dynamic values into `typst` templates.
-- Keep `latex` templates static and body-only; use `latexFile()` for larger table fragments.
+- Keep `latex` templates static and body-only; use `latexFile()` for larger table fragments. A `\usepackage` line in a fragment loads that package, so a fragment can hold an algorithm, a `siunitx` table, or a TikZ or PGFPlots picture. Colours keep their colour; black follows the slide's text colour.
 - Do not construct Tailwind class names from fragments.
 - After generation, run the type and rendered-layout checks, then correct every error and unintended warning.
 

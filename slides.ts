@@ -85,7 +85,7 @@ latex`
 `
   .className("latex-inline-smoke")
   .width(640);
-text("Compiled by Tectonic at build time · cached and embedded with its fonts").caption();
+text("Compiled by Tectonic at build time · cached and drawn as vector paths").caption();
 
 slide("Shapes and connectors")
   .canvas()

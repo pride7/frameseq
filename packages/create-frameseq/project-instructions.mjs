@@ -91,7 +91,7 @@ math\`\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}\`;
 
 - Prefer KaTeX-backed \`text\` and \`math\` for ordinary formulas.
 - Do not replace the tagged-template form with a normal quoted string unless escaping every backslash deliberately.
-- Use a static \`latex\` template or \`latexFile()\` for an existing LaTeX \`tabular\` fragment. It must be body-only and requires the optional \`node-tectonic\` package.
+- Use a static \`latex\` template or \`latexFile()\` for an existing LaTeX \`tabular\` fragment or a TikZ picture. It must be body-only, may load packages with \`\\usepackage\` lines, and requires the optional \`node-tectonic\` package.
 - Use a static \`typst\` template or \`typstFile()\` only for complex local typesetting. Do not interpolate JavaScript into \`typst\`; it requires the optional Typst compiler package.
 
 ## Diagrams and grouping

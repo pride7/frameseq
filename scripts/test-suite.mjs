@@ -23,6 +23,7 @@ export const groups = [
       test("puppeteer-options-test"),
       test("theme-test"),
       test("smoke-test"),
+      test("latex-test"),
       test("beamer-smoke-test"),
       test("minimal-academic-smoke-test"),
       test("layout-check-test"),

@@ -129,14 +129,16 @@ try {
     (element) => ({
       viewBox: element.getAttribute("viewBox"),
       configuredWidth: element.parentElement?.getAttribute("style"),
-      hasForeignObject: Boolean(element.querySelector("foreignObject")),
-      hasEmbeddedFont: element.querySelector("style")?.textContent?.includes("data:font/") ?? false,
+      glyphs: element.querySelectorAll("use").length,
+      outlines: element.querySelectorAll("defs > path[d]").length,
+      rules: element.querySelectorAll("rect").length,
     }),
   );
   assert.match(latexFragment.viewBox ?? "", /^0 0 [\d.]+ [\d.]+$/);
   assert.match(latexFragment.configuredWidth ?? "", /width:\s*640px/);
-  assert.equal(latexFragment.hasForeignObject, true);
-  assert.equal(latexFragment.hasEmbeddedFont, true);
+  // Glyphs are drawn from outlines defined once, and the table's booktabs rules are rectangles.
+  assert.ok(latexFragment.glyphs > latexFragment.outlines && latexFragment.outlines > 0);
+  assert.ok(latexFragment.rules >= 3);
 
   const tailwindStyle = await page.$eval(".tailwind-smoke", (element) => {
     const style = getComputedStyle(element);

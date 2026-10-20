@@ -375,7 +375,7 @@ latex(content: string): ElementBuilder
 latex(strings: TemplateStringsArray): ElementBuilder
 ```
 
-Adds a static LaTeX body fragment to the current region. The Vite build uses the optional `node-tectonic` compiler and embeds the typeset result and its fonts. JavaScript interpolation is not supported. Complete documents with `\documentclass` or `\begin{document}` are rejected.
+Adds a static LaTeX body fragment to the current region. The Vite build uses the optional `node-tectonic` compiler and embeds the typeset result and its fonts. JavaScript interpolation is not supported. Complete documents with `\documentclass` or `\begin{document}` are rejected; a `\usepackage` line in the fragment loads that package.
 
 ### `latexFile(path)`
 
