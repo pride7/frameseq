@@ -1502,11 +1502,7 @@ button {
   max-width: 100%;
   box-sizing: border-box;
   align-self: center;
-  padding: 28px 48px;
-  border: 1px solid var(--frameseq-border);
-  border-radius: var(--frameseq-radius-large);
   color: var(--frameseq-foreground);
-  background: var(--frameseq-surface-strong);
   font-size: 34px;
 }
 
