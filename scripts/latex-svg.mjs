@@ -5,9 +5,9 @@
 // files. Colours come from the colour stack specials, and TikZ draws through its dvisvgm driver,
 // whose specials carry SVG markup that goes into the output as written, as dvisvgm would put it.
 
-import opentype from "opentype.js";
-
-const parseFont = opentype.parse;
+// opentype.js ships inside FrameSeq rather than as a dependency, so an installed app takes this
+// version as an update without installing anything.
+import { parse as parseFont } from "./vendor/opentype.mjs";
 
 const inch = 72;
 // TeX points per big point, the SVG user unit.
