@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 - 2026-11-09
 
+- Open `.fsq` files, FrameSeq's own extension for presentations, as FrameSeq documents: they get TypeScript highlighting, the snippets, the Slides view, and the preview, region, and binding commands in the editor's menus, and a workspace that holds one starts the extension.
 - Check `.fsq` presentations with VS Code's TypeScript support: a TypeScript plugin that comes with the extension gives them type errors, completions, and hovers, with FrameSeq's commands declared from the FrameSeq installed in the file's project, from the source in a checkout of the FrameSeq repository, or from the global install, the FrameSeq app or npm's.
 - Delete the objects selected in the preview with `Delete` or `Backspace`: their lines leave the slide document as one undoable edit, along with any connector that ends at one of them.
 - Make the names a slide document gives with `.as()` and `at()` identifiers: completion inside `ref()`, `group()`, `.from()`, `.to()`, placements such as `.rightOf()`, and `at()`, with anchor sides after a dot; Go to Definition, Find All References, and highlights; Rename Symbol across the slide, including the paths of regions inside a renamed region; hover; and Problems entries, as you type, for a name that refers to nothing on its slide, an object name given twice, or a layout region the slide does not have. The rules are the ones FrameSeq Studio uses, shared from the FrameSeq repository.

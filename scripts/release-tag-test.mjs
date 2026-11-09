@@ -41,4 +41,24 @@ if (!/^\d+\.\d+\.\d+$/.test(creatorJson.version)) {
   throw new Error(`Invalid create-frameseq version: ${creatorJson.version}`);
 }
 
-console.log(`Release tag verified: ${tag}; FrameSeq ${packageJson.version}; create-frameseq ${creatorJson.version}.`);
+// The release publishes the VS Code extension with --skip-duplicate, so changes listed as
+// Unreleased would be skipped without a word while its version stays the published one.
+const extensionJson = JSON.parse(await readFile(
+  resolve(packageRoot, "packages", "vscode-frameseq", "package.json"),
+  "utf8",
+));
+const extensionChangelog = await readFile(
+  resolve(packageRoot, "packages", "vscode-frameseq", "CHANGELOG.md"),
+  "utf8",
+);
+const unreleased = /^## Unreleased\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(extensionChangelog)?.[1] ?? "";
+if (/^\s*[-*] /m.test(unreleased)) {
+  throw new Error(
+    `The VS Code extension lists Unreleased changes; give them a version above ${extensionJson.version} in packages/vscode-frameseq`,
+  );
+}
+if (!new RegExp(`^## ${extensionJson.version.replace(/\./g, "\\.")} `, "m").test(extensionChangelog)) {
+  throw new Error(`packages/vscode-frameseq/CHANGELOG.md has no entry for version ${extensionJson.version}`);
+}
+
+console.log(`Release tag verified: ${tag}; FrameSeq ${packageJson.version}; create-frameseq ${creatorJson.version}; VS Code extension ${extensionJson.version}.`);

@@ -124,8 +124,11 @@ jobs:
       - name: Install extension dependencies
         working-directory: packages/vscode-frameseq
         run: npm ci
+      # Not --no-dependencies: the TypeScript plugin that checks .fsq files ships from node_modules.
+      # --skip-duplicate skips an unchanged version quietly, so release-tag-test.mjs refuses a tag
+      # while the extension's changelog still has Unreleased entries.
       - name: Publish VS Code extension
         working-directory: packages/vscode-frameseq
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx @vscode/vsce publish --no-dependencies --skip-duplicate
+        run: npx @vscode/vsce publish --skip-duplicate

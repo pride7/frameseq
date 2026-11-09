@@ -72,6 +72,10 @@ const pluginManifest = JSON.parse(await readFile(resolve(extensionRoot, "typescr
 assert.equal(pluginManifest.name, tsPlugin.name);
 assert.ok(manifest.scripts.compile.includes("npm run plugin"), "compiling must refresh the installed plugin");
 assert.ok(!manifest.scripts.package.includes("--no-dependencies"), "the package must carry the plugin from node_modules");
+const publishWorkflow = await readFile(resolve(packageRoot, ".github", "workflows", "publish.yml"), "utf8");
+const publishCommand = publishWorkflow.split(/\r?\n/).find((line) => /vsce publish/.test(line) && !/^\s*#/.test(line));
+assert.ok(publishCommand, "publish.yml must publish the VS Code extension");
+assert.ok(!publishCommand.includes("--no-dependencies"), "the published extension must carry the plugin from node_modules");
 // npm links a file: dependency by default, and vsce packs no file below a link.
 assert.match(await readFile(resolve(extensionRoot, ".npmrc"), "utf8"), /^install-links=true\r?$/m);
 const vscodeIgnore = (await readFile(resolve(extensionRoot, ".vscodeignore"), "utf8")).split(/\r?\n/);
